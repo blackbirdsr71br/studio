@@ -8,7 +8,7 @@ import { useDesign } from '@/contexts/DesignContext';
 import { getDesignAsJsonAction } from '@/app/actions';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Copy } from 'lucide-react';
+import { Loader2, Copy, Download } from 'lucide-react';
 
 export interface ViewJsonModalRef {
   openModal: () => void;
@@ -70,6 +70,29 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
     }
   };
 
+  const handleDownloadJson = () => {
+    if (designJson && !designJson.startsWith("// Error")) {
+      const blob = new Blob([designJson], { type: 'application/json;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'design.json';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+      toast({
+        title: "JSON Downloaded",
+        description: "design.json has started downloading.",
+      });
+    } else {
+      toast({
+        title: "Download Failed",
+        description: "No valid JSON to download.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col">
@@ -95,12 +118,15 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
             )}
           </pre>
         </ScrollArea>
-        <DialogFooter className="sm:justify-end gap-2">
+        <DialogFooter className="sm:justify-end gap-2 flex-wrap">
            <Button variant="outline" onClick={() => setIsOpen(false)}>
             Close
           </Button>
           <Button onClick={handleCopyToClipboard} disabled={isLoading || !designJson || designJson.startsWith("// Error")}>
-            <Copy className="mr-2 h-4 w-4" /> Copy to Clipboard
+            <Copy className="mr-2 h-4 w-4" /> Copy
+          </Button>
+          <Button onClick={handleDownloadJson} disabled={isLoading || !designJson || designJson.startsWith("// Error")}>
+            <Download className="mr-2 h-4 w-4" /> Download .json
           </Button>
         </DialogFooter>
       </DialogContent>

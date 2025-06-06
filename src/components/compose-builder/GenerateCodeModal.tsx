@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useImperativeHandle, forwardRef, useCallback } from 'react';
@@ -7,7 +8,7 @@ import { useDesign } from '@/contexts/DesignContext';
 import { generateJetpackComposeCodeAction } from '@/app/actions';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Copy } from 'lucide-react';
+import { Loader2, Copy, Download } from 'lucide-react';
 
 export interface GenerateCodeModalRef {
   openModal: () => void;
@@ -69,13 +70,36 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
     }
   };
 
+  const handleDownloadCode = () => {
+    if (generatedCode && !generatedCode.startsWith("// Error") && !generatedCode.startsWith("No components")) {
+      const blob = new Blob([generatedCode], { type: 'text/plain;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'GeneratedComposeScreen.kt';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+      toast({
+        title: "Code Downloaded",
+        description: "GeneratedComposeScreen.kt has started downloading.",
+      });
+    } else {
+      toast({
+        title: "Download Failed",
+        description: "No valid code to download.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="font-headline">Generated Jetpack Compose Code</DialogTitle>
           <DialogDescription>
-            Copy the code below to use in your Android project.
+            Copy or download the code below to use in your Android project.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="flex-grow my-4 rounded-md border bg-muted/30">
@@ -99,14 +123,19 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
             )}
           </pre>
         </ScrollArea>
-        <DialogFooter className="sm:justify-between">
+        <DialogFooter className="sm:justify-between flex-wrap gap-2">
           <Button variant="outline" onClick={() => { handleGenerateCode(); }} disabled={isLoading || components.length === 0}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Regenerate
           </Button>
-          <Button onClick={handleCopyToClipboard} disabled={isLoading || !generatedCode || generatedCode.startsWith("// Error")}>
-            <Copy className="mr-2 h-4 w-4" /> Copy to Clipboard
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleCopyToClipboard} disabled={isLoading || !generatedCode || generatedCode.startsWith("// Error") || generatedCode.startsWith("No components")}>
+              <Copy className="mr-2 h-4 w-4" /> Copy
+            </Button>
+            <Button onClick={handleDownloadCode} disabled={isLoading || !generatedCode || generatedCode.startsWith("// Error") || generatedCode.startsWith("No components")}>
+              <Download className="mr-2 h-4 w-4" /> Download .kt
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
