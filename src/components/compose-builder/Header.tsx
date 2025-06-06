@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/icons/Logo";
 import { Code, Trash2, FileJson } from "lucide-react";
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
-import type { ViewJsonModalRef } from "./ViewJsonModal"; // Import the new ref type
+import type { ViewJsonModalRef } from "./ViewJsonModal";
 import type { RefObject } from "react";
 import { useDesign } from "@/contexts/DesignContext";
 
 interface HeaderProps {
   generateModalRef: RefObject<GenerateCodeModalRef>;
-  viewJsonModalRef: RefObject<ViewJsonModalRef>; // Add the new ref prop
+  viewJsonModalRef: RefObject<ViewJsonModalRef>;
 }
 
 export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
@@ -40,20 +40,20 @@ export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
       <Logo />
       <div className="flex items-center gap-2">
         <Button 
-          variant="outline" 
           size="sm" 
           onClick={handleClearCanvas}
           disabled={components.length === 0}
           aria-label="Clear Canvas"
+          className="border border-sidebar text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
         >
           <Trash2 className="mr-2 h-4 w-4" /> Clear Canvas
         </Button>
         <Button 
-          variant="outline"
           size="sm" 
           onClick={handleViewJson} 
           disabled={components.length === 0}
           aria-label="View JSON"
+          className="border border-sidebar text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
         >
           <FileJson className="mr-2 h-4 w-4" /> View JSON
         </Button>
@@ -70,3 +70,4 @@ export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
     </header>
   );
 }
+
