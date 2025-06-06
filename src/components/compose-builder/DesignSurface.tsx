@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useRef, useCallback } from 'react';
@@ -93,16 +94,16 @@ export function DesignSurface() {
     <div
       ref={surfaceRef}
       className={cn(
-        "flex-grow bg-background relative overflow-auto border-2 border-transparent transition-colors duration-200",
-        "drag-over-surface:border-primary/50 drag-over-surface:bg-primary/5",
-        "p-4" // Add some padding to the surface itself
+        "bg-background relative overflow-auto border-2 border-transparent transition-colors duration-200", // Removed flex-grow as size is dictated by MobileFrame
+        "drag-over-surface:border-primary/50 drag-over-surface:bg-primary/10", // Adjusted drag-over style
+        "w-full h-full" // Ensure it fills the 'screen' area of MobileFrame
       )}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onClick={handleSurfaceClick}
       id="design-surface"
-      style={{ minHeight: '400px' }} // Ensure surface has some minimum height
+      // style={{ minHeight: '400px' }} // This is now controlled by the frame
     >
       <style jsx global>{`
         .drag-over-container {
@@ -114,8 +115,9 @@ export function DesignSurface() {
         <RenderedComponentWrapper key={component.id} component={component} />
       ))}
       {components.length === 0 && (
-         <div className="absolute inset-0 flex items-center justify-center text-muted-foreground pointer-events-none">
+         <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground pointer-events-none p-4 text-center">
             <p className="text-lg">Drag components here to start designing</p>
+            <p className="text-xs mt-1">(This is your app screen)</p>
         </div>
       )}
     </div>

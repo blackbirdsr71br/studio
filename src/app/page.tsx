@@ -9,6 +9,7 @@ import { DesignSurface } from '@/components/compose-builder/DesignSurface';
 import { PropertyPanel } from '@/components/compose-builder/PropertyPanel';
 import { GenerateCodeModal, type GenerateCodeModalRef } from '@/components/compose-builder/GenerateCodeModal';
 import { ViewJsonModal, type ViewJsonModalRef } from '@/components/compose-builder/ViewJsonModal';
+import { MobileFrame } from '@/components/compose-builder/MobileFrame'; // Added import
 
 export default function ComposeBuilderPage() {
   const generateModalRef = useRef<GenerateCodeModalRef>(null);
@@ -20,8 +21,10 @@ export default function ComposeBuilderPage() {
         <Header generateModalRef={generateModalRef} viewJsonModalRef={viewJsonModalRef} />
         <div className="flex flex-row flex-grow overflow-hidden">
           <ComponentLibraryPanel />
-          <main className="flex-grow flex flex-col overflow-hidden">
-            <DesignSurface />
+          <main className="flex-grow flex flex-col overflow-hidden items-center justify-center bg-muted/20 p-4"> {/* Centering and bg for area around phone */}
+            <MobileFrame> {/* Added MobileFrame wrapper */}
+              <DesignSurface />
+            </MobileFrame>
           </main>
           <PropertyPanel />
         </div>
