@@ -4,7 +4,19 @@
 import { DraggableComponentItem } from "./DraggableComponentItem";
 import type { ComponentType } from "@/types/compose-spec";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Type, Image as ImageIcon, Columns, Rows, MousePointerSquareDashed } from "lucide-react";
+import { 
+  Type, 
+  Image as ImageIcon, 
+  Columns, 
+  Rows, 
+  MousePointerSquareDashed,
+  Box,
+  CreditCard,
+  GalleryVertical,
+  GalleryHorizontal,
+  Grid3x3,
+  GalleryThumbnails
+} from "lucide-react";
 
 const availableComponents: { type: ComponentType; icon: React.ElementType }[] = [
   { type: "Text", icon: Type },
@@ -12,6 +24,12 @@ const availableComponents: { type: ComponentType; icon: React.ElementType }[] = 
   { type: "Image", icon: ImageIcon },
   { type: "Column", icon: Columns },
   { type: "Row", icon: Rows },
+  { type: "Box", icon: Box },
+  { type: "Card", icon: CreditCard },
+  { type: "LazyColumn", icon: GalleryVertical },
+  { type: "LazyRow", icon: GalleryHorizontal },
+  { type: "LazyVerticalGrid", icon: Grid3x3 },
+  { type: "LazyHorizontalGrid", icon: GalleryThumbnails },
 ];
 
 export function ComponentLibraryPanel() {
@@ -28,3 +46,5 @@ export function ComponentLibraryPanel() {
     </aside>
   );
 }
+
+    

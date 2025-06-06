@@ -1,4 +1,16 @@
-export type ComponentType = 'Text' | 'Button' | 'Column' | 'Row' | 'Image';
+
+export type ComponentType = 
+  | 'Text' 
+  | 'Button' 
+  | 'Column' 
+  | 'Row' 
+  | 'Image'
+  | 'Box'
+  | 'Card'
+  | 'LazyColumn'
+  | 'LazyRow'
+  | 'LazyVerticalGrid'
+  | 'LazyHorizontalGrid';
 
 export interface ComponentPropertyOption {
   label: string;
@@ -7,7 +19,7 @@ export interface ComponentPropertyOption {
 export interface ComponentProperty {
   name: string;
   type: 'string' | 'number' | 'color' | 'boolean' | 'enum';
-  value: string | number | boolean;
+  value: string | number | boolean; // Default value for the definition
   options?: ComponentPropertyOption[]; // For enum type
   label: string;
   placeholder?: string;
@@ -17,18 +29,21 @@ export interface BaseComponentProps {
   [key: string]: any; 
   text?: string;
   fontSize?: number;
-  textColor?: string; // Renamed from color to avoid conflict with html color attribute
+  textColor?: string; 
   backgroundColor?: string; 
-  width?: 'wrap_content' | 'match_parent' | number; // number is dp
-  height?: 'wrap_content' | 'match_parent' | number; // number is dp
-  padding?: number; // All sides, in dp
-  id?: string; // HTML id for DOM elements, not the component's logical id
-  x?: number; // For absolute positioning on canvas
-  y?: number; // For absolute positioning on canvas
-  children?: string[]; // IDs of child components, only for containers
-  contentDescription?: string; // For Image accessibility
-  src?: string; // For Image
-  "data-ai-hint"?: string; // For placeholder images
+  width?: 'wrap_content' | 'match_parent' | number; 
+  height?: 'wrap_content' | 'match_parent' | number; 
+  padding?: number; 
+  id?: string; 
+  x?: number; 
+  y?: number; 
+  children?: string[]; 
+  contentDescription?: string; 
+  src?: string; 
+  "data-ai-hint"?: string;
+  elevation?: number; // For Card
+  columns?: number; // For LazyVerticalGrid
+  rows?: number; // For LazyHorizontalGrid
 }
 
 export interface DesignComponent {
@@ -49,7 +64,7 @@ export const getDefaultProperties = (type: ComponentType): BaseComponentProps =>
   const common = { x: 50, y: 50 };
   switch (type) {
     case 'Text':
-      return { ...common, text: 'Sample Text', fontSize: 16, textColor: '#000000' };
+      return { ...common, text: 'Sample Text', fontSize: 16, textColor: '#000000', padding: 0 };
     case 'Button':
       return { ...common, text: 'Click Me', backgroundColor: '#3F51B5', textColor: '#FFFFFF', padding: 12 };
     case 'Image':
@@ -58,6 +73,18 @@ export const getDefaultProperties = (type: ComponentType): BaseComponentProps =>
       return { ...common, children: [], padding: 8, backgroundColor: 'rgba(224, 224, 224, 0.5)', width: 200, height: 200 };
     case 'Row':
       return { ...common, children: [], padding: 8, backgroundColor: 'rgba(224, 224, 224, 0.5)', width: 200, height: 100 };
+    case 'Box':
+      return { ...common, children: [], padding: 0, backgroundColor: 'rgba(220, 220, 220, 0.3)', width: 100, height: 100 };
+    case 'Card':
+      return { ...common, children: [], padding: 16, backgroundColor: '#FFFFFF', width: 200, height: 150, elevation: 2 };
+    case 'LazyColumn':
+      return { ...common, children: [], padding: 8, backgroundColor: 'rgba(200, 240, 200, 0.3)', width: 'match_parent', height: 300 };
+    case 'LazyRow':
+      return { ...common, children: [], padding: 8, backgroundColor: 'rgba(200, 200, 240, 0.3)', width: 'match_parent', height: 120 };
+    case 'LazyVerticalGrid':
+      return { ...common, children: [], padding: 8, backgroundColor: 'rgba(240, 200, 200, 0.3)', width: 'match_parent', height: 300, columns: 2 };
+    case 'LazyHorizontalGrid':
+      return { ...common, children: [], padding: 8, backgroundColor: 'rgba(240, 240, 200, 0.3)', width: 'match_parent', height: 200, rows: 2 };
     default:
       return common;
   }
@@ -70,6 +97,12 @@ export const getComponentDisplayName = (type: ComponentType): string => {
     case 'Column': return 'Column Layout';
     case 'Row': return 'Row Layout';
     case 'Image': return 'Image';
+    case 'Box': return 'Box Container';
+    case 'Card': return 'Card Container';
+    case 'LazyColumn': return 'Lazy Column';
+    case 'LazyRow': return 'Lazy Row';
+    case 'LazyVerticalGrid': return 'Lazy Vertical Grid';
+    case 'LazyHorizontalGrid': return 'Lazy Horizontal Grid';
     default: return 'Unknown';
   }
 };
@@ -96,8 +129,8 @@ export const propertyDefinitions: Record<ComponentType, Omit<ComponentProperty, 
   Column: [
     { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color' },
-    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '200' },
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '200' },
+    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '200' }, // Changed from string to number for editor
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '200' }, // Changed from string to number for editor
   ],
   Row: [
     { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8' },
@@ -105,4 +138,45 @@ export const propertyDefinitions: Record<ComponentType, Omit<ComponentProperty, 
     { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '200' },
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '100' },
   ],
+  Box: [
+    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '0' },
+    { name: 'backgroundColor', type: 'color', label: 'Background Color' },
+    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '100' },
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '100' },
+  ],
+  Card: [
+    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '16' },
+    { name: 'backgroundColor', type: 'color', label: 'Background Color' },
+    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '200' },
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '150' },
+    { name: 'elevation', type: 'number', label: 'Elevation (dp)', placeholder: '2' },
+  ],
+  LazyColumn: [
+    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8' },
+    { name: 'backgroundColor', type: 'color', label: 'Background Color' },
+    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '300' }, // Default for canvas, 'match_parent' internally
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '300' },
+  ],
+  LazyRow: [
+    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8' },
+    { name: 'backgroundColor', type: 'color', label: 'Background Color' },
+    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '300' },
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '120' }, // Default for canvas
+  ],
+  LazyVerticalGrid: [
+    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8' },
+    { name: 'backgroundColor', type: 'color', label: 'Background Color' },
+    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '300' },
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '300' },
+    { name: 'columns', type: 'number', label: 'Number of Columns', placeholder: '2' },
+  ],
+  LazyHorizontalGrid: [
+    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8' },
+    { name: 'backgroundColor', type: 'color', label: 'Background Color' },
+    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '300' },
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '200' },
+    { name: 'rows', type: 'number', label: 'Number of Rows', placeholder: '2' },
+  ],
 };
+
+    

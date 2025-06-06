@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { DesignComponent } from '@/types/compose-spec';
@@ -14,7 +15,7 @@ interface RenderedComponentWrapperProps {
 }
 
 export function RenderedComponentWrapper({ component }: RenderedComponentWrapperProps) {
-  const { selectedComponentId, selectComponent, getComponentById, components } = useDesign();
+  const { selectedComponentId, selectComponent, getComponentById } = useDesign(); // Removed 'components' as getComponentById is used
   const [isDragging, setIsDragging] = useState(false);
   const [position, setPosition] = useState({ x: component.properties.x || 0, y: component.properties.y || 0 });
 
@@ -26,7 +27,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
   const isSelected = component.id === selectedComponentId;
 
   const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent triggering DesignSurface click
+    e.stopPropagation(); 
     selectComponent(component.id);
   };
 
@@ -35,7 +36,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     e.dataTransfer.setData('application/component-id', component.id);
     e.dataTransfer.effectAllowed = 'move';
     setIsDragging(true);
-    selectComponent(component.id); // Select on drag start
+    selectComponent(component.id); 
   };
 
   const handleDragEnd = (e: React.DragEvent) => {
@@ -44,6 +45,8 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
 
 
   const renderSpecificComponent = () => {
+    const children = (component.properties.children || []).map(id => getComponentById(id)).filter(Boolean) as DesignComponent[];
+    
     switch (component.type) {
       case 'Text':
         return <TextView properties={component.properties} />;
@@ -51,21 +54,24 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
         return <ButtonView properties={component.properties} />;
       case 'Image':
         return <ImageView properties={component.properties} />;
-      case 'Column': {
-        const children = (component.properties.children || []).map(id => getComponentById(id)).filter(Boolean) as DesignComponent[];
+      
+      case 'Column':
+      case 'Box':
+      case 'Card':
+      case 'LazyColumn':
         return <ContainerView component={component} childrenComponents={children} isRow={false} />;
-      }
-      case 'Row': {
-        const children = (component.properties.children || []).map(id => getComponentById(id)).filter(Boolean) as DesignComponent[];
+
+      case 'Row':
+      case 'LazyRow':
+      case 'LazyVerticalGrid':
+      case 'LazyHorizontalGrid': // Visually like LazyRow, AI handles true grid for code
         return <ContainerView component={component} childrenComponents={children} isRow={true} />;
-      }
+      
       default:
         return <div className="p-2 border border-dashed border-red-500">Unknown: {component.type}</div>;
     }
   };
 
-  // Only root components are draggable for canvas positioning
-  // Children components' positions are relative to their parent container (handled by flex in ContainerView)
   const isDraggableOnCanvas = !component.parentId; 
 
   const wrapperStyle: React.CSSProperties = isDraggableOnCanvas ? {
@@ -75,7 +81,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     cursor: isDragging ? 'grabbing' : 'grab',
     transition: isDragging ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
   } : { 
-    position: 'relative', // Children are positioned by parent flex layout
+    position: 'relative', 
     cursor: 'pointer',
     transition: 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
   };
@@ -85,7 +91,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     <div
       style={wrapperStyle}
       className={cn(
-        'p-0.5 border border-transparent hover:border-primary/50', // Reduced padding, rely on component's own padding
+        'p-0.5 border border-transparent hover:border-primary/50', 
         {
           'ring-2 ring-primary ring-offset-2 shadow-lg !border-primary': isSelected,
           'opacity-50': isDragging,
@@ -101,3 +107,5 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     </div>
   );
 }
+
+    
