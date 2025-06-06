@@ -1,22 +1,31 @@
+
 'use client';
 
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/icons/Logo";
-import { Code, Trash2 } from "lucide-react";
+import { Code, Trash2, FileJson } from "lucide-react";
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
+import type { ViewJsonModalRef } from "./ViewJsonModal"; // Import the new ref type
 import type { RefObject } from "react";
 import { useDesign } from "@/contexts/DesignContext";
 
 interface HeaderProps {
   generateModalRef: RefObject<GenerateCodeModalRef>;
+  viewJsonModalRef: RefObject<ViewJsonModalRef>; // Add the new ref prop
 }
 
-export function Header({ generateModalRef }: HeaderProps) {
+export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
   const { clearDesign, components } = useDesign();
 
   const handleGenerateCode = () => {
     if (generateModalRef.current) {
       generateModalRef.current.openModal();
+    }
+  };
+
+  const handleViewJson = () => {
+    if (viewJsonModalRef.current) {
+      viewJsonModalRef.current.openModal();
     }
   };
 
@@ -38,6 +47,15 @@ export function Header({ generateModalRef }: HeaderProps) {
           aria-label="Clear Canvas"
         >
           <Trash2 className="mr-2 h-4 w-4" /> Clear Canvas
+        </Button>
+        <Button 
+          variant="outline"
+          size="sm" 
+          onClick={handleViewJson} 
+          disabled={components.length === 0}
+          aria-label="View JSON"
+        >
+          <FileJson className="mr-2 h-4 w-4" /> View JSON
         </Button>
         <Button 
           size="sm" 

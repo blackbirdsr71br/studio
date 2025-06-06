@@ -1,3 +1,4 @@
+
 'use client'; // Top-level client component for context and refs
 
 import { useRef } from 'react';
@@ -7,14 +8,16 @@ import { ComponentLibraryPanel } from '@/components/compose-builder/ComponentLib
 import { DesignSurface } from '@/components/compose-builder/DesignSurface';
 import { PropertyPanel } from '@/components/compose-builder/PropertyPanel';
 import { GenerateCodeModal, type GenerateCodeModalRef } from '@/components/compose-builder/GenerateCodeModal';
+import { ViewJsonModal, type ViewJsonModalRef } from '@/components/compose-builder/ViewJsonModal';
 
 export default function ComposeBuilderPage() {
   const generateModalRef = useRef<GenerateCodeModalRef>(null);
+  const viewJsonModalRef = useRef<ViewJsonModalRef>(null);
 
   return (
     <DesignProvider>
       <div className="flex flex-col h-screen overflow-hidden bg-background">
-        <Header generateModalRef={generateModalRef} />
+        <Header generateModalRef={generateModalRef} viewJsonModalRef={viewJsonModalRef} />
         <div className="flex flex-row flex-grow overflow-hidden">
           <ComponentLibraryPanel />
           <main className="flex-grow flex flex-col overflow-hidden">
@@ -24,6 +27,7 @@ export default function ComposeBuilderPage() {
         </div>
       </div>
       <GenerateCodeModal ref={generateModalRef} />
+      <ViewJsonModal ref={viewJsonModalRef} />
     </DesignProvider>
   );
 }
