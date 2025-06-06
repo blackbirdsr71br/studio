@@ -23,6 +23,7 @@ export interface ComponentProperty {
   options?: ComponentPropertyOption[]; // For enum type
   label: string;
   placeholder?: string;
+  group: 'Layout' | 'Appearance' | 'Content' | 'Behavior'; // Added group for tabbing
 }
 
 export interface BaseComponentProps {
@@ -107,76 +108,75 @@ export const getComponentDisplayName = (type: ComponentType): string => {
   }
 };
 
-export const propertyDefinitions: Record<ComponentType, Omit<ComponentProperty, 'value'>[]> = {
+export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty, 'value'>)[]> = {
   Text: [
-    { name: 'text', type: 'string', label: 'Text Content', placeholder: 'Enter text' },
-    { name: 'fontSize', type: 'number', label: 'Font Size (sp)', placeholder: '16' },
-    { name: 'textColor', type: 'color', label: 'Text Color' },
-    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '0' },
+    { name: 'text', type: 'string', label: 'Text Content', placeholder: 'Enter text', group: 'Content' },
+    { name: 'fontSize', type: 'number', label: 'Font Size (sp)', placeholder: '16', group: 'Appearance' },
+    { name: 'textColor', type: 'color', label: 'Text Color', group: 'Appearance' },
+    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '0', group: 'Layout' },
   ],
   Button: [
-    { name: 'text', type: 'string', label: 'Button Text', placeholder: 'Button' },
-    { name: 'backgroundColor', type: 'color', label: 'Background Color' },
-    { name: 'textColor', type: 'color', label: 'Text Color' },
-    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '12' },
+    { name: 'text', type: 'string', label: 'Button Text', placeholder: 'Button', group: 'Content' },
+    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'textColor', type: 'color', label: 'Text Color', group: 'Appearance' },
+    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '12', group: 'Layout' },
   ],
   Image: [
-    { name: 'src', type: 'string', label: 'Image URL', placeholder: 'https://example.com/image.png' },
-    { name: 'contentDescription', type: 'string', label: 'Content Description', placeholder: 'Image description' },
-    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '100' },
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '100' },
+    { name: 'src', type: 'string', label: 'Image URL', placeholder: 'https://example.com/image.png', group: 'Content' },
+    { name: 'contentDescription', type: 'string', label: 'Content Description', placeholder: 'Image description', group: 'Content' },
+    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '100', group: 'Layout' },
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '100', group: 'Layout' },
+    { name: 'data-ai-hint', type: 'string', label: 'AI Hint (for placeholder)', placeholder: 'e.g. "landscape"', group: 'Content'},
   ],
   Column: [
-    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8' },
-    { name: 'backgroundColor', type: 'color', label: 'Background Color' },
-    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '200' }, // Changed from string to number for editor
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '200' }, // Changed from string to number for editor
+    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8', group: 'Layout' },
+    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '200', group: 'Layout' }, 
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '200', group: 'Layout' }, 
   ],
   Row: [
-    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8' },
-    { name: 'backgroundColor', type: 'color', label: 'Background Color' },
-    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '200' },
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '100' },
+    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8', group: 'Layout' },
+    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '200', group: 'Layout' },
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '100', group: 'Layout' },
   ],
   Box: [
-    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '0' },
-    { name: 'backgroundColor', type: 'color', label: 'Background Color' },
-    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '100' },
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '100' },
+    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '0', group: 'Layout' },
+    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '100', group: 'Layout' },
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '100', group: 'Layout' },
   ],
   Card: [
-    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '16' },
-    { name: 'backgroundColor', type: 'color', label: 'Background Color' },
-    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '200' },
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '150' },
-    { name: 'elevation', type: 'number', label: 'Elevation (dp)', placeholder: '2' },
+    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '16', group: 'Layout' },
+    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '200', group: 'Layout' },
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '150', group: 'Layout' },
+    { name: 'elevation', type: 'number', label: 'Elevation (dp)', placeholder: '2', group: 'Appearance' },
   ],
   LazyColumn: [
-    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8' },
-    { name: 'backgroundColor', type: 'color', label: 'Background Color' },
-    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '300' }, // Default for canvas, 'match_parent' internally
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '300' },
+    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8', group: 'Layout' },
+    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '300', group: 'Layout' }, 
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '300', group: 'Layout' },
   ],
   LazyRow: [
-    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8' },
-    { name: 'backgroundColor', type: 'color', label: 'Background Color' },
-    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '300' },
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '120' }, // Default for canvas
+    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8', group: 'Layout' },
+    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '300', group: 'Layout' },
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '120', group: 'Layout' }, 
   ],
   LazyVerticalGrid: [
-    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8' },
-    { name: 'backgroundColor', type: 'color', label: 'Background Color' },
-    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '300' },
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '300' },
-    { name: 'columns', type: 'number', label: 'Number of Columns', placeholder: '2' },
+    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8', group: 'Layout' },
+    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '300', group: 'Layout' },
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '300', group: 'Layout' },
+    { name: 'columns', type: 'number', label: 'Number of Columns', placeholder: '2', group: 'Layout' },
   ],
   LazyHorizontalGrid: [
-    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8' },
-    { name: 'backgroundColor', type: 'color', label: 'Background Color' },
-    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '300' },
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '200' },
-    { name: 'rows', type: 'number', label: 'Number of Rows', placeholder: '2' },
+    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8', group: 'Layout' },
+    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '300', group: 'Layout' },
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '200', group: 'Layout' },
+    { name: 'rows', type: 'number', label: 'Number of Rows', placeholder: '2', group: 'Layout' },
   ],
 };
-
-    
