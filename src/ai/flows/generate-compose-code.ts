@@ -15,7 +15,18 @@ import {z} from 'genkit';
 const GenerateComposeCodeInputSchema = z.object({
   designJson: z
     .string()
-    .describe('A JSON string representing the UI design.'),
+    .describe('A JSON string representing the UI design.')
+    .refine(
+      (data) => {
+        try {
+          JSON.parse(data);
+          return true;
+        } catch (e) {
+          return false;
+        }
+      },
+      { message: 'The design data is not in a valid JSON format.' }
+    ),
 });
 export type GenerateComposeCodeInput = z.infer<typeof GenerateComposeCodeInputSchema>;
 
@@ -35,9 +46,9 @@ const prompt = ai.definePrompt({
   prompt: `You are a skilled Jetpack Compose developer. Generate Jetpack Compose code based on the following JSON representation of the UI design:
 
   Design JSON:
-  \\\`\\\`\\\`json
+  \`\`\`json
   {{{designJson}}}
-  \\\`\\\`\\\`
+  \`\`\`
 
   Ensure the generated code is well-formatted, readable, and implements the design accurately.
   Do not include any comments unless they are necessary to explain complex logic.
