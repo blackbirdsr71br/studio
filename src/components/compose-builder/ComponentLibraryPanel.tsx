@@ -35,7 +35,7 @@ const availableComponents: { type: ComponentType; icon: React.ElementType }[] = 
 
 export function ComponentLibraryPanel() {
   return (
-    <aside className="w-48 border-r bg-sidebar p-4 flex flex-col shrink-0">
+    <aside className="w-40 border-r bg-sidebar p-4 flex flex-col shrink-0">
       <h2 className="text-xl font-semibold mb-4 text-sidebar-foreground font-headline">Components</h2>
       <TooltipProvider delayDuration={200}>
         <ScrollArea className="flex-grow">
