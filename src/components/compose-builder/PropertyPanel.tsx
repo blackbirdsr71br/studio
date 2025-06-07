@@ -22,7 +22,7 @@ export function PropertyPanel() {
 
   if (!selectedComponent) {
     return (
-      <aside className="w-72 border-l bg-sidebar p-4 flex flex-col shrink-0">
+      <aside className="w-64 border-l bg-sidebar p-4 flex flex-col shrink-0">
         <h2 className="text-xl font-semibold mb-4 text-sidebar-foreground font-headline">Properties</h2>
         <div className="flex-grow flex items-center justify-center">
           <p className="text-sm text-muted-foreground">Select a component to see its properties.</p>
@@ -84,7 +84,7 @@ export function PropertyPanel() {
   
 
   return (
-    <aside className="w-72 border-l bg-sidebar p-4 flex flex-col shrink-0">
+    <aside className="w-64 border-l bg-sidebar p-4 flex flex-col shrink-0">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold text-sidebar-foreground font-headline truncate" title={selectedComponent.name}>
           {selectedComponent.name}
