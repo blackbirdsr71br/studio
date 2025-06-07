@@ -1,9 +1,10 @@
 
 'use client';
 
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/icons/Logo";
-import { Code, Trash2, FileJson } from "lucide-react";
+import { Code, Trash2, FileJson, UploadCloud, Loader2 } from "lucide-react";
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
 import type { ViewJsonModalRef } from "./ViewJsonModal";
 import type { RefObject } from "react";
@@ -14,6 +15,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { publishToRemoteConfigAction } from '@/app/actions';
+import { useToast } from '@/hooks/use-toast';
 
 interface HeaderProps {
   generateModalRef: RefObject<GenerateCodeModalRef>;
@@ -22,6 +25,8 @@ interface HeaderProps {
 
 export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
   const { clearDesign, components } = useDesign();
+  const { toast } = useToast();
+  const [isPublishing, setIsPublishing] = useState(false);
 
   const handleGenerateCode = () => {
     if (generateModalRef.current) {
@@ -41,6 +46,42 @@ export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
     }
   };
 
+  const handlePublishToRemoteConfig = async () => {
+    if (components.length === 0) {
+      toast({
+        title: "Cannot Publish",
+        description: "There are no components on the canvas to publish.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsPublishing(true);
+    try {
+      const result = await publishToRemoteConfigAction(components);
+      if (result.success) {
+        toast({
+          title: "Publish Successful",
+          description: `${result.message} (Version: ${result.version || 'N/A'})`,
+        });
+      } else {
+        toast({
+          title: "Publish Failed",
+          description: result.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Publishing error:", error);
+      toast({
+        title: "Publish Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   return (
     <header className="h-16 border-b bg-sidebar flex items-center justify-between px-6 shrink-0">
       <Logo />
@@ -50,12 +91,13 @@ export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
             <TooltipTrigger asChild>
               <Button
                 size="icon"
+                variant="outline"
                 onClick={handleClearCanvas}
-                disabled={components.length === 0}
+                disabled={components.length === 0 || isPublishing}
                 aria-label="Clear Canvas"
-                className="border border-sidebar text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+                className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
@@ -67,16 +109,35 @@ export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
             <TooltipTrigger asChild>
               <Button
                 size="icon"
+                variant="outline"
                 onClick={handleViewJson}
-                disabled={components.length === 0}
+                disabled={components.length === 0 || isPublishing}
                 aria-label="View JSON"
-                className="border border-sidebar text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+                className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
               >
-                <FileJson className="h-4 w-4" />
+                <FileJson />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>View JSON</p>
+              <p>View Design JSON</p>
+            </TooltipContent>
+          </Tooltip>
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={handlePublishToRemoteConfig}
+                disabled={components.length === 0 || isPublishing}
+                aria-label="Publish to Remote Config"
+                className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+              >
+                {isPublishing ? <Loader2 className="animate-spin" /> : <UploadCloud />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Publish to Remote Config</p>
             </TooltipContent>
           </Tooltip>
 
@@ -85,15 +146,15 @@ export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
               <Button
                 size="icon"
                 onClick={handleGenerateCode}
-                className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                disabled={components.length === 0}
-                aria-label="Generate Code"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                disabled={components.length === 0 || isPublishing}
+                aria-label="Generate Jetpack Compose Code"
               >
-                <Code className="h-4 w-4" />
+                <Code />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Generate Code</p>
+              <p>Generate Jetpack Compose Code</p>
             </TooltipContent>
           </Tooltip>
         </div>
