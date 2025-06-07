@@ -27,8 +27,8 @@ export function DraggableComponentItem({ type, Icon }: DraggableComponentItemPro
           className="flex items-center p-1 mb-2 border border-sidebar bg-card rounded-md shadow-sm hover:shadow-md cursor-grab transition-all duration-150 ease-in-out active:cursor-grabbing hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           aria-label={`Drag to add ${getComponentDisplayName(type)} component`}
         >
-          <GripVertical className="h-4 w-4 text-sidebar-foreground opacity-70 mr-1" />
-          <Icon className="h-4 w-4 text-sidebar-primary" />
+          <GripVertical className="h-4 w-4 text-sidebar-foreground opacity-70" />
+          <Icon className="h-4 w-4 text-sidebar-primary ml-1" />
         </div>
       </TooltipTrigger>
       <TooltipContent side="right" align="center">
