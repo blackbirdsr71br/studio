@@ -5,6 +5,7 @@ import type { ComponentType } from "@/types/compose-spec";
 import { getComponentDisplayName } from "@/types/compose-spec";
 import { GripVertical } from "lucide-react";
 import type { Icon as LucideIcon } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 interface DraggableComponentItemProps {
   type: ComponentType;
@@ -18,16 +19,21 @@ export function DraggableComponentItem({ type, Icon }: DraggableComponentItemPro
   };
 
   return (
-    <div
-      draggable
-      onDragStart={handleDragStart}
-      className="flex items-center p-3 mb-2 border border-sidebar bg-card rounded-md shadow-sm hover:shadow-md cursor-grab transition-all duration-150 ease-in-out active:cursor-grabbing hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-      aria-label={`Drag to add ${getComponentDisplayName(type)} component`}
-    >
-      <GripVertical className="h-5 w-5 text-sidebar-foreground opacity-70 mr-3" />
-      <Icon className="h-5 w-5 text-sidebar-primary mr-3" />
-      <span className="text-sm font-medium text-card-foreground">{getComponentDisplayName(type)}</span>
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div
+          draggable
+          onDragStart={handleDragStart}
+          className="flex items-center p-2 mb-2 border border-sidebar bg-card rounded-md shadow-sm hover:shadow-md cursor-grab transition-all duration-150 ease-in-out active:cursor-grabbing hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          aria-label={`Drag to add ${getComponentDisplayName(type)} component`}
+        >
+          <GripVertical className="h-5 w-5 text-sidebar-foreground opacity-70 mr-2" />
+          <Icon className="h-5 w-5 text-sidebar-primary" />
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="right" align="center">
+        <p>{getComponentDisplayName(type)}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 }
-
