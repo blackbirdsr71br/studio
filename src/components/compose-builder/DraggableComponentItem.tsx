@@ -24,11 +24,11 @@ export function DraggableComponentItem({ type, Icon }: DraggableComponentItemPro
         <div
           draggable
           onDragStart={handleDragStart}
-          className="flex items-center p-2 mb-2 border border-sidebar bg-card rounded-md shadow-sm hover:shadow-md cursor-grab transition-all duration-150 ease-in-out active:cursor-grabbing hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          className="flex items-center p-1.5 mb-2 border border-sidebar bg-card rounded-md shadow-sm hover:shadow-md cursor-grab transition-all duration-150 ease-in-out active:cursor-grabbing hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           aria-label={`Drag to add ${getComponentDisplayName(type)} component`}
         >
-          <GripVertical className="h-5 w-5 text-sidebar-foreground opacity-70 mr-2" />
-          <Icon className="h-5 w-5 text-sidebar-primary" />
+          <GripVertical className="h-4 w-4 text-sidebar-foreground opacity-70 mr-1.5" />
+          <Icon className="h-4 w-4 text-sidebar-primary" />
         </div>
       </TooltipTrigger>
       <TooltipContent side="right" align="center">
@@ -37,3 +37,4 @@ export function DraggableComponentItem({ type, Icon }: DraggableComponentItemPro
     </Tooltip>
   );
 }
+
