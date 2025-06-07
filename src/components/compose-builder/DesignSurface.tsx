@@ -3,71 +3,118 @@
 
 import React, { useRef, useCallback } from 'react';
 import { useDesign } from '@/contexts/DesignContext';
-import type { ComponentType } from '@/types/compose-spec';
+import type { ComponentType, DesignComponent } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from './RenderedComponentWrapper';
 import { cn } from '@/lib/utils';
+import { useDrop, type XYCoord } from 'react-dnd';
+import { ItemTypes } from '@/lib/dnd-types';
+
+interface LibraryItem {
+  type: ComponentType;
+}
 
 export function DesignSurface() {
-  const { components, addComponent, selectComponent, selectedComponentId, updateComponentPosition, moveComponent, getComponentById } = useDesign();
+  const { components, addComponent, selectComponent, updateComponentPosition, moveComponent, getComponentById } = useDesign();
   const surfaceRef = useRef<HTMLDivElement>(null);
 
-  const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+  const [{ isOverCanvas, canDropOnCanvas }, dropRef] = useDrop(() => ({
+    accept: ItemTypes.COMPONENT_LIBRARY_ITEM,
+    drop: (item: LibraryItem, monitor) => {
+      const surfaceBounds = surfaceRef.current?.getBoundingClientRect();
+      if (!surfaceBounds) return;
+
+      const clientOffset = monitor.getClientOffset();
+      if (!clientOffset) return;
+      
+      const dropX = clientOffset.x - surfaceBounds.left;
+      const dropY = clientOffset.y - surfaceBounds.top;
+
+      // Determine if dropping onto a container - for react-dnd, this requires containers to also be drop targets
+      // For now, this drop target is only for the main surface for NEW components.
+      // The targetElement logic for parentContainerId would need to be integrated with react-dnd's monitor.getTargetIds()
+      // if containers were also react-dnd drop targets for library items.
+      // For simplicity, we assume new items from library dropped on surface are root items.
+      // TODO: Extend to allow dropping new library items directly into react-dnd enabled containers.
+      
+      addComponent(item.type, null, { x: dropX, y: dropY });
+    },
+    collect: (monitor) => ({
+      isOverCanvas: !!monitor.isOver() && monitor.canDrop(), // isOver applies to this specific drop target
+      canDropOnCanvas: !!monitor.canDrop(),
+    }),
+  }), [addComponent]);
+
+  // Attach the react-dnd drop ref to the surface
+  dropRef(surfaceRef);
+
+  // Native HTML5 D&D handlers for moving EXISTING components (for now)
+  const handleNativeDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
     
     const surfaceBounds = surfaceRef.current?.getBoundingClientRect();
     if (!surfaceBounds) return;
 
-    const droppedComponentType = event.dataTransfer.getData("application/component-type") as ComponentType;
+    // Check if react-dnd has handled a drop (e.g. via monitor.didDrop() if we had access to monitor here, or by checking item type)
+    // For now, we rely on the dataTransfer type to differentiate.
     const draggedComponentId = event.dataTransfer.getData("application/component-id");
+    const droppedComponentType = event.dataTransfer.getData("application/component-type"); // This will be empty if from react-dnd
 
-    const dropX = event.clientX - surfaceBounds.left;
-    const dropY = event.clientY - surfaceBounds.top;
+    if (droppedComponentType) {
+      // This case should ideally not happen if react-dnd is capturing library drops.
+      // Fallback or ensure react-dnd drop handler stops propagation if it handles it.
+      // For safety, let's add the component if data is present.
+      // console.warn("Native drop handler caught a library item drop, react-dnd should handle this.");
+      // const dropX = event.clientX - surfaceBounds.left;
+      // const dropY = event.clientY - surfaceBounds.top;
+      // addComponent(droppedComponentType as ComponentType, null, { x: dropX, y: dropY });
+      // return; 
+      // If react-dnd handles it, this block might not be needed.
+      // If react-dnd's drop doesn't stopPropagation, this might run.
+    } else if (draggedComponentId) { // Moving existing component (still using native D&D for this part)
+      const dropX = event.clientX - surfaceBounds.left;
+      const dropY = event.clientY - surfaceBounds.top;
+      let targetElement = event.target as HTMLElement;
+      let parentContainerId: string | null = null;
 
-    // Determine if dropping onto a container
-    let targetElement = event.target as HTMLElement;
-    let parentContainerId: string | null = null;
-    while (targetElement && targetElement !== surfaceRef.current) {
-        if (targetElement.classList.contains('component-container')) {
-            parentContainerId = targetElement.dataset.containerId || null;
-            break;
-        }
-        targetElement = targetElement.parentElement as HTMLElement;
-    }
-
-    if (droppedComponentType) { // New component from library
-        addComponent(droppedComponentType, parentContainerId, { x: dropX, y: dropY });
-    } else if (draggedComponentId) { // Moving existing component
-      const currentlyDraggedComponent = getComponentById(draggedComponentId);
-
-      if (parentContainerId && parentContainerId !== draggedComponentId) { // Dropped into a valid container (and not itself)
-          moveComponent(draggedComponentId, parentContainerId);
-          // Position update for children is handled by CSS flex layout, not absolute x/y.
-          // No need to call updateComponentPosition here if it's becoming a child.
-      } else if (!parentContainerId) { // Dropped onto root canvas
-          // If component was child and now on root, or was on root and moved on root
-          if (currentlyDraggedComponent && currentlyDraggedComponent.parentId !== null) {
-             moveComponent(draggedComponentId, null); // Ensure parent is set to null
+      while (targetElement && targetElement !== surfaceRef.current) {
+          if (targetElement.classList.contains('component-container')) {
+              parentContainerId = targetElement.dataset.containerId || null;
+              break;
           }
-          // Always update position if dropped on root, regardless of previous parent.
+          targetElement = targetElement.parentElement as HTMLElement;
+      }
+      
+      const currentlyDraggedComponent = getComponentById(draggedComponentId);
+      if (parentContainerId && parentContainerId !== draggedComponentId) {
+          moveComponent(draggedComponentId, parentContainerId);
+      } else if (!parentContainerId) {
+          if (currentlyDraggedComponent && currentlyDraggedComponent.parentId !== null) {
+             moveComponent(draggedComponentId, null);
+          }
           updateComponentPosition(draggedComponentId, { x: dropX, y: dropY });
       }
-      // If parentContainerId IS draggedComponentId, do nothing (can't drop into self - DesignContext handles this).
-      // If parentContainerId is null and draggedComponent was already on root, only position is updated (handled by updateComponentPosition).
     }
     
-    // Clean up drag-over classes from all elements that might have it
     document.querySelectorAll('.drag-over-surface, .drag-over-container').forEach(el => {
         el.classList.remove('drag-over-surface', 'drag-over-container');
     });
 
   }, [addComponent, updateComponentPosition, moveComponent, getComponentById]);
 
-  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+  const handleNativeDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault(); 
-    event.dataTransfer.dropEffect = "move";
+    // For native D&D of existing components. react-dnd handles its own preview.
+    const draggedComponentId = event.dataTransfer.types.includes("application/component-id");
+    if (draggedComponentId) {
+      event.dataTransfer.dropEffect = "move";
+    } else if (event.dataTransfer.types.includes("application/component-type")) {
+       // This might be redundant if react-dnd provides visual cues via isOverCanvas
+       event.dataTransfer.dropEffect = "copy";
+    }
 
-    // Clear previous drag-over highlights on other elements before applying to current target
+
+    // Visual highlighting for native drag over
     document.querySelectorAll('.drag-over-surface, .drag-over-container').forEach(el => {
       if (el !== event.target && !el.contains(event.target as Node)) {
         el.classList.remove('drag-over-surface', 'drag-over-container');
@@ -80,31 +127,28 @@ export function DesignSurface() {
         if (targetElement.classList.contains('component-container')) {
             onContainer = true;
             targetElement.classList.add('drag-over-container');
-            surfaceRef.current?.classList.remove('drag-over-surface'); // Remove surface highlight if over container
-            return; // Found a container, highlight it and stop
+            surfaceRef.current?.classList.remove('drag-over-surface');
+            return; 
         }
         targetElement = targetElement.parentElement as HTMLElement;
     }
-    // If no container was found by traversing up, and we are over the surfaceRef itself
-    if (!onContainer && surfaceRef.current) {
+    if (!onContainer && surfaceRef.current && (draggedComponentId || event.dataTransfer.types.includes("application/component-type"))) {
         surfaceRef.current.classList.add('drag-over-surface');
     }
   };
 
-  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
-    // Check if the mouse is leaving for a child element; if so, don't remove class yet.
+  const handleNativeDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
     if (event.currentTarget.contains(event.relatedTarget as Node)) {
       return;
     }
     (event.currentTarget as HTMLElement).classList.remove('drag-over-surface', 'drag-over-container');
-    
-    // If leaving the surface itself, clear all container highlights too
     if (event.currentTarget === surfaceRef.current) {
         document.querySelectorAll('.drag-over-container').forEach(el => el.classList.remove('drag-over-container'));
     }
   };
 
   const handleSurfaceClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Check if the click target is the surface itself, not a child component or part of react-dnd interaction
     if (e.target === surfaceRef.current) {
       selectComponent(null);
     }
@@ -114,25 +158,28 @@ export function DesignSurface() {
 
   return (
     <div
-      ref={surfaceRef}
+      ref={surfaceRef} // react-dnd's dropRef is already attached. Native handlers use this ref too.
       className={cn(
         "bg-background relative overflow-auto border-2 border-transparent transition-colors duration-200",
-        "w-full h-full" 
+        "w-full h-full",
+        { 
+          'drag-over-surface': isOverCanvas && canDropOnCanvas, // Highlight from react-dnd
+        }
       )}
-      onDrop={handleDrop}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
+      onDrop={handleNativeDrop} // For existing component moves (native D&D)
+      onDragOver={handleNativeDragOver} // For existing component moves (native D&D)
+      onDragLeave={handleNativeDragLeave} // For existing component moves (native D&D)
       onClick={handleSurfaceClick}
       id="design-surface"
     >
       <style jsx global>{`
-        .drag-over-surface {
+        .drag-over-surface { /* Used by both react-dnd via state and native D&D via direct class manipulation */
           border-color: hsl(var(--primary) / 0.5) !important;
           background-color: hsl(var(--primary) / 0.1) !important;
         }
-        .drag-over-container {
+        .drag-over-container { /* Still used by native D&D for highlighting containers */
           outline: 2px dashed hsl(var(--accent));
-          background-color: hsla(var(--accent-hsl), 0.1); /* Ensure --accent-hsl is defined or use a direct HSL value */
+          background-color: hsla(var(--accent-hsl), 0.1); 
         }
       `}</style>
       {rootComponents.map((component) => (
