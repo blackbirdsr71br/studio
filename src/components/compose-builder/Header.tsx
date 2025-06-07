@@ -8,6 +8,12 @@ import type { GenerateCodeModalRef } from "./GenerateCodeModal";
 import type { ViewJsonModalRef } from "./ViewJsonModal";
 import type { RefObject } from "react";
 import { useDesign } from "@/contexts/DesignContext";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface HeaderProps {
   generateModalRef: RefObject<GenerateCodeModalRef>;
@@ -38,36 +44,60 @@ export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
   return (
     <header className="h-16 border-b bg-sidebar flex items-center justify-between px-6 shrink-0">
       <Logo />
-      <div className="flex items-center gap-2">
-        <Button 
-          size="sm" 
-          onClick={handleClearCanvas}
-          disabled={components.length === 0}
-          aria-label="Clear Canvas"
-          className="border border-sidebar text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
-        >
-          <Trash2 className="mr-2 h-4 w-4" /> Clear Canvas
-        </Button>
-        <Button 
-          size="sm" 
-          onClick={handleViewJson} 
-          disabled={components.length === 0}
-          aria-label="View JSON"
-          className="border border-sidebar text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
-        >
-          <FileJson className="mr-2 h-4 w-4" /> View JSON
-        </Button>
-        <Button 
-          size="sm" 
-          onClick={handleGenerateCode} 
-          className="bg-accent hover:bg-accent/90 text-accent-foreground"
-          disabled={components.length === 0}
-          aria-label="Generate Code"
-        >
-          <Code className="mr-2 h-4 w-4" /> Generate Code
-        </Button>
-      </div>
+      <TooltipProvider delayDuration={200}>
+        <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                onClick={handleClearCanvas}
+                disabled={components.length === 0}
+                aria-label="Clear Canvas"
+                className="border border-sidebar text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Clear Canvas</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                onClick={handleViewJson}
+                disabled={components.length === 0}
+                aria-label="View JSON"
+                className="border border-sidebar text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+              >
+                <FileJson className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>View JSON</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                onClick={handleGenerateCode}
+                className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                disabled={components.length === 0}
+                aria-label="Generate Code"
+              >
+                <Code className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Generate Code</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      </TooltipProvider>
     </header>
   );
 }
-
