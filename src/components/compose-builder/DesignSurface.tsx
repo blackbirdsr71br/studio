@@ -8,7 +8,7 @@ import { RenderedComponentWrapper } from './RenderedComponentWrapper';
 import { cn } from '@/lib/utils';
 
 export function DesignSurface() {
-  const { components, addComponent, selectComponent, selectedComponentId, updateComponentPosition, moveComponent } = useDesign();
+  const { components, addComponent, selectComponent, selectedComponentId, updateComponentPosition, moveComponent, getComponentById } = useDesign();
   const surfaceRef = useRef<HTMLDivElement>(null);
 
   const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
@@ -38,51 +38,73 @@ export function DesignSurface() {
     if (droppedComponentType) { // New component from library
         addComponent(droppedComponentType, parentContainerId, { x: dropX, y: dropY });
     } else if (draggedComponentId) { // Moving existing component
-      if (parentContainerId && parentContainerId !== draggedComponentId) { // Dropped into a valid container
+      const currentlyDraggedComponent = getComponentById(draggedComponentId);
+
+      if (parentContainerId && parentContainerId !== draggedComponentId) { // Dropped into a valid container (and not itself)
           moveComponent(draggedComponentId, parentContainerId);
-          // Position update for children is handled by CSS flex layout, not absolute x/y
+          // Position update for children is handled by CSS flex layout, not absolute x/y.
+          // No need to call updateComponentPosition here if it's becoming a child.
       } else if (!parentContainerId) { // Dropped onto root canvas
-          moveComponent(draggedComponentId, null); // Set parent to null
+          // If component was child and now on root, or was on root and moved on root
+          if (currentlyDraggedComponent && currentlyDraggedComponent.parentId !== null) {
+             moveComponent(draggedComponentId, null); // Ensure parent is set to null
+          }
+          // Always update position if dropped on root, regardless of previous parent.
           updateComponentPosition(draggedComponentId, { x: dropX, y: dropY });
       }
+      // If parentContainerId IS draggedComponentId, do nothing (can't drop into self - DesignContext handles this).
+      // If parentContainerId is null and draggedComponent was already on root, only position is updated (handled by updateComponentPosition).
     }
     
-    (event.target as HTMLElement).classList.remove('drag-over-surface', 'drag-over-container');
+    // Clean up drag-over classes from all elements that might have it
+    document.querySelectorAll('.drag-over-surface, .drag-over-container').forEach(el => {
+        el.classList.remove('drag-over-surface', 'drag-over-container');
+    });
 
-  }, [addComponent, updateComponentPosition, moveComponent]);
+  }, [addComponent, updateComponentPosition, moveComponent, getComponentById]);
 
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault(); // Necessary to allow drop
+    event.preventDefault(); 
     event.dataTransfer.dropEffect = "move";
 
+    // Clear previous drag-over highlights on other elements before applying to current target
+    document.querySelectorAll('.drag-over-surface, .drag-over-container').forEach(el => {
+      if (el !== event.target && !el.contains(event.target as Node)) {
+        el.classList.remove('drag-over-surface', 'drag-over-container');
+      }
+    });
+    
     let targetElement = event.target as HTMLElement;
     let onContainer = false;
      while (targetElement && targetElement !== surfaceRef.current) {
         if (targetElement.classList.contains('component-container')) {
             onContainer = true;
             targetElement.classList.add('drag-over-container');
-            break;
+            surfaceRef.current?.classList.remove('drag-over-surface'); // Remove surface highlight if over container
+            return; // Found a container, highlight it and stop
         }
         targetElement = targetElement.parentElement as HTMLElement;
     }
+    // If no container was found by traversing up, and we are over the surfaceRef itself
     if (!onContainer && surfaceRef.current) {
         surfaceRef.current.classList.add('drag-over-surface');
     }
   };
 
   const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
-    (event.target as HTMLElement).classList.remove('drag-over-surface', 'drag-over-container');
-    let relatedTarget = event.relatedTarget as Node | null;
-    // Ensure drag leave doesn't remove class if still over a child
-    if (surfaceRef.current && relatedTarget && surfaceRef.current.contains(relatedTarget)) {
-        return;
+    // Check if the mouse is leaving for a child element; if so, don't remove class yet.
+    if (event.currentTarget.contains(event.relatedTarget as Node)) {
+      return;
     }
-    surfaceRef.current?.classList.remove('drag-over-surface');
-    document.querySelectorAll('.drag-over-container').forEach(el => el.classList.remove('drag-over-container'));
+    (event.currentTarget as HTMLElement).classList.remove('drag-over-surface', 'drag-over-container');
+    
+    // If leaving the surface itself, clear all container highlights too
+    if (event.currentTarget === surfaceRef.current) {
+        document.querySelectorAll('.drag-over-container').forEach(el => el.classList.remove('drag-over-container'));
+    }
   };
 
   const handleSurfaceClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Deselect if clicked on empty surface area
     if (e.target === surfaceRef.current) {
       selectComponent(null);
     }
@@ -94,21 +116,23 @@ export function DesignSurface() {
     <div
       ref={surfaceRef}
       className={cn(
-        "bg-background relative overflow-auto border-2 border-transparent transition-colors duration-200", // Removed flex-grow as size is dictated by MobileFrame
-        "drag-over-surface:border-primary/50 drag-over-surface:bg-primary/10", // Adjusted drag-over style
-        "w-full h-full" // Ensure it fills the 'screen' area of MobileFrame
+        "bg-background relative overflow-auto border-2 border-transparent transition-colors duration-200",
+        "w-full h-full" 
       )}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onClick={handleSurfaceClick}
       id="design-surface"
-      // style={{ minHeight: '400px' }} // This is now controlled by the frame
     >
       <style jsx global>{`
+        .drag-over-surface {
+          border-color: hsl(var(--primary) / 0.5) !important;
+          background-color: hsl(var(--primary) / 0.1) !important;
+        }
         .drag-over-container {
           outline: 2px dashed hsl(var(--accent));
-          background-color: hsla(var(--accent-hsl), 0.1);
+          background-color: hsla(var(--accent-hsl), 0.1); /* Ensure --accent-hsl is defined or use a direct HSL value */
         }
       `}</style>
       {rootComponents.map((component) => (
