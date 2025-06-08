@@ -48,6 +48,9 @@ export interface BaseComponentProps {
   elevation?: number; // For Card
   columns?: number; // For LazyVerticalGrid
   rows?: number; // For LazyHorizontalGrid
+  maxLines?: number; // For Text
+  textOverflow?: 'Clip' | 'Ellipsis' | 'Visible'; // For Text
+  contentScale?: 'Crop' | 'Fit' | 'FillBounds' | 'Inside' | 'None' | 'FillWidth' | 'FillHeight'; // For Image
 }
 
 export interface DesignComponent {
@@ -77,11 +80,11 @@ export const getDefaultProperties = (type: ComponentType): BaseComponentProps =>
   const common = { x: 50, y: 50 };
   switch (type) {
     case 'Text':
-      return { ...common, text: 'Sample Text', fontSize: 16, textColor: '#000000', padding: 0 };
+      return { ...common, text: 'Sample Text', fontSize: 16, textColor: '#000000', padding: 0, maxLines: undefined, textOverflow: 'Clip' };
     case 'Button':
       return { ...common, text: 'Click Me', backgroundColor: '#3F51B5', textColor: '#FFFFFF', padding: 12 };
     case 'Image':
-      return { ...common, src: 'https://placehold.co/200x100.png', contentDescription: 'Placeholder Image', width: 200, height: 100, "data-ai-hint": "abstract pattern" };
+      return { ...common, src: 'https://placehold.co/200x100.png', contentDescription: 'Placeholder Image', width: 200, height: 100, "data-ai-hint": "abstract pattern", contentScale: 'Crop' };
     case 'Column':
       return { ...common, children: [], padding: 8, backgroundColor: 'rgba(224, 224, 224, 0.5)', width: 200, height: 200 };
     case 'Row':
@@ -129,6 +132,18 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'fontSize', type: 'number', label: 'Font Size (sp)', placeholder: '16', group: 'Appearance' },
     { name: 'textColor', type: 'color', label: 'Text Color', group: 'Appearance' },
     { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '0', group: 'Layout' },
+    { name: 'maxLines', type: 'number', label: 'Max Lines', placeholder: 'e.g., 2', group: 'Content' },
+    { 
+      name: 'textOverflow', 
+      type: 'enum', 
+      label: 'Text Overflow', 
+      group: 'Content', 
+      options: [
+        { label: 'Clip', value: 'Clip' },
+        { label: 'Ellipsis', value: 'Ellipsis' },
+        { label: 'Visible', value: 'Visible' },
+      ] 
+    },
   ],
   Button: [
     { name: 'text', type: 'string', label: 'Button Text', placeholder: 'Button', group: 'Content' },
@@ -142,6 +157,21 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '100', group: 'Layout' },
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '100', group: 'Layout' },
     { name: 'data-ai-hint', type: 'string', label: 'AI Hint (for placeholder)', placeholder: 'e.g. "landscape"', group: 'Content'},
+    {
+      name: 'contentScale',
+      type: 'enum',
+      label: 'Content Scale',
+      group: 'Appearance',
+      options: [
+        { label: 'Crop', value: 'Crop' },
+        { label: 'Fit', value: 'Fit' },
+        { label: 'Fill Bounds', value: 'FillBounds' },
+        { label: 'Inside', value: 'Inside' },
+        { label: 'None', value: 'None' },
+        { label: 'Fill Width', value: 'FillWidth' },
+        { label: 'Fill Height', value: 'FillHeight' },
+      ]
+    },
   ],
   Column: [
     { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8', group: 'Layout' },
