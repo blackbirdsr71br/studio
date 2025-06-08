@@ -51,6 +51,12 @@ export interface BaseComponentProps {
   maxLines?: number; // For Text
   textOverflow?: 'Clip' | 'Ellipsis' | 'Visible'; // For Text
   contentScale?: 'Crop' | 'Fit' | 'FillBounds' | 'Inside' | 'None' | 'FillWidth' | 'FillHeight'; // For Image
+  // Properties for LazyColumn
+  verticalArrangementSpacing?: number;
+  userScrollEnabled?: boolean;
+  reverseLayout?: boolean;
+  // Properties for LazyRow (some may overlap, like userScrollEnabled and reverseLayout)
+  horizontalArrangementSpacing?: number;
 }
 
 export interface DesignComponent {
@@ -95,9 +101,9 @@ export const getDefaultProperties = (type: ComponentType): BaseComponentProps =>
     case 'Card':
       return { ...common, children: [], padding: 16, backgroundColor: '#FFFFFF', width: 200, height: 150, elevation: 2 };
     case 'LazyColumn':
-      return { ...common, children: [], padding: 8, backgroundColor: 'rgba(200, 240, 200, 0.3)', width: 'match_parent', height: 300 };
+      return { ...common, children: [], padding: 8, backgroundColor: 'rgba(200, 240, 200, 0.3)', width: 'match_parent', height: 300, verticalArrangementSpacing: 0, userScrollEnabled: true, reverseLayout: false };
     case 'LazyRow':
-      return { ...common, children: [], padding: 8, backgroundColor: 'rgba(200, 200, 240, 0.3)', width: 'match_parent', height: 120 };
+      return { ...common, children: [], padding: 8, backgroundColor: 'rgba(200, 200, 240, 0.3)', width: 'match_parent', height: 120, horizontalArrangementSpacing: 0, userScrollEnabled: true, reverseLayout: false };
     case 'LazyVerticalGrid':
       return { ...common, children: [], padding: 8, backgroundColor: 'rgba(240, 200, 200, 0.3)', width: 'match_parent', height: 300, columns: 2 };
     case 'LazyHorizontalGrid':
@@ -204,12 +210,18 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '300', group: 'Layout' }, 
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '300', group: 'Layout' },
+    { name: 'verticalArrangementSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' },
+    { name: 'userScrollEnabled', type: 'boolean', label: 'Enable Scrolling', group: 'Behavior' },
+    { name: 'reverseLayout', type: 'boolean', label: 'Reverse Layout', group: 'Behavior' },
   ],
   LazyRow: [
     { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8', group: 'Layout' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '300', group: 'Layout' },
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '120', group: 'Layout' }, 
+    { name: 'horizontalArrangementSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' },
+    { name: 'userScrollEnabled', type: 'boolean', label: 'Enable Scrolling', group: 'Behavior' },
+    { name: 'reverseLayout', type: 'boolean', label: 'Reverse Layout', group: 'Behavior' },
   ],
   LazyVerticalGrid: [
     { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8', group: 'Layout' },
