@@ -20,7 +20,7 @@ export interface ComponentPropertyOption {
   value: string;
 }
 export interface ComponentProperty {
-  name: string;
+  name:string;
   type: 'string' | 'number' | 'color' | 'boolean' | 'enum';
   value: string | number | boolean; // Default value for the definition
   options?: ComponentPropertyOption[]; // For enum type
@@ -62,6 +62,7 @@ export interface DesignComponent {
 }
 
 export interface CustomComponentTemplate {
+  firestoreId?: string; // Firestore document ID
   templateId: string; // e.g., "custom/MyHeader" - acts as its type
   name: string; // User-friendly name, e.g., "My Header"
   rootComponentId: string; // The ID of the root component within this template's componentTree

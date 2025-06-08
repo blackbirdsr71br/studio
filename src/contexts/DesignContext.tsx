@@ -5,6 +5,8 @@ import type { ReactNode} from 'react';
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { DesignComponent, DesignState, ComponentType, BaseComponentProps, CustomComponentTemplate } from '@/types/compose-spec';
 import { getDefaultProperties, CUSTOM_COMPONENT_TYPE_PREFIX, isCustomComponentType } from '@/types/compose-spec';
+import { db } from '@/lib/firebase'; // Import Firestore instance
+import { collection, addDoc, getDocs, doc, setDoc } from "firebase/firestore"; 
 
 interface DesignContextType extends DesignState {
   addComponent: (type: ComponentType | string, parentId?: string | null, dropPosition?: { x: number; y: number }) => string | string[]; // Can return multiple IDs for custom
@@ -28,6 +30,8 @@ const initialDesignState: DesignState = {
   customComponentTemplates: [],
 };
 
+const CUSTOM_TEMPLATES_COLLECTION = 'customComponentTemplates';
+
 // Helper function for deep cloning
 const deepClone = <T>(obj: T): T => {
   return JSON.parse(JSON.stringify(obj));
@@ -37,10 +41,45 @@ const deepClone = <T>(obj: T): T => {
 export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [designState, setDesignState] = useState<DesignState>(initialDesignState);
   const [isClient, setIsClient] = useState(false);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
+
 
   useEffect(() => {
     setIsClient(true);
+    const loadTemplates = async () => {
+      if (!db) {
+        console.warn("Firestore not initialized, skipping loading custom templates.");
+        setIsLoadingTemplates(false);
+        return;
+      }
+      try {
+        setIsLoadingTemplates(true);
+        const querySnapshot = await getDocs(collection(db, CUSTOM_TEMPLATES_COLLECTION));
+        const templates: CustomComponentTemplate[] = [];
+        querySnapshot.forEach((doc) => {
+          // Ensure we don't accidentally try to use non-template data
+          const data = doc.data();
+          if (data.templateId && data.name && data.rootComponentId && data.componentTree) {
+            templates.push({ 
+              firestoreId: doc.id, 
+              ...data 
+            } as CustomComponentTemplate);
+          } else {
+            console.warn("Found document in customComponentTemplates that is not a valid template:", doc.id, data);
+          }
+        });
+        setDesignState(prev => ({ ...prev, customComponentTemplates: templates }));
+      } catch (error) {
+        console.error("Error loading custom templates from Firestore:", error);
+        // Keep existing local templates if loading fails, or clear them
+        // setDesignState(prev => ({ ...prev, customComponentTemplates: [] })); 
+      } finally {
+        setIsLoadingTemplates(false);
+      }
+    };
+    loadTemplates();
   }, []);
+
 
   const generateNewId = useCallback((prefix = 'comp-') => {
     const newId = `${prefix}${designState.nextId}`;
@@ -81,7 +120,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
       // First pass: clone components and generate new IDs
       template.componentTree.forEach(templateComp => {
-        const newInstanceCompId = generateNewId(`inst-${templateComp.type}-`);
+        const newInstanceCompId = generateNewId(`inst-${templateComp.type.toLowerCase().replace(/\s+/g, '-')}-`);
         idMap[templateComp.id] = newInstanceCompId;
         
         const newInstanceComp = deepClone(templateComp);
@@ -102,16 +141,18 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const originalTemplateId = Object.keys(idMap).find(key => idMap[key] === newInstanceComp.id);
         const originalTemplateComp = template.componentTree.find(tc => tc.id === originalTemplateId);
 
-        if (originalTemplateComp?.parentId) {
-          newInstanceComp.parentId = idMap[originalTemplateComp.parentId] || null; // Ensure parentId is from the new batch
+        if (originalTemplateComp?.parentId && idMap[originalTemplateComp.parentId]) {
+          newInstanceComp.parentId = idMap[originalTemplateComp.parentId];
         } else {
-          newInstanceComp.parentId = parentId; // Root of custom component instance gets the drop target parentId
+          // If original parentId is not in idMap, it means it's the root of the template instance
+          // and should take the drop target parentId (if any)
+          newInstanceComp.parentId = parentId; 
         }
         
         if (newInstanceComp.properties.children && Array.isArray(newInstanceComp.properties.children)) {
           newInstanceComp.properties.children = newInstanceComp.properties.children
-            .map(childId => idMap[childId])
-            .filter(Boolean); // Map to new child IDs
+            .map(childId => idMap[childId]) // childId here is from the template's original componentTree
+            .filter(Boolean); // Map to new instance child IDs
         }
         return newInstanceComp;
       });
@@ -125,7 +166,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             const parentIndex = updatedComponents.findIndex(c => c.id === parentId);
             if (parentIndex !== -1) {
                 const parentComp = updatedComponents[parentIndex];
-                if (parentComp.type === 'Column' || parentComp.type === 'Row' || parentComp.type === 'Card' || parentComp.type === 'Box') {
+                if (parentComp.type === 'Column' || parentComp.type === 'Row' || parentComp.type === 'Card' || parentComp.type === 'Box' || parentComp.type.startsWith('Lazy')) {
                     parentComp.properties.children = [...(parentComp.properties.children || []), instanceRootId];
                     updatedComponents[parentIndex] = {...parentComp};
                 }
@@ -177,18 +218,17 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, [designState.nextId, designState.customComponentTemplates, getComponentById, generateNewId]);
 
 
-  const saveSelectedAsCustomTemplate = useCallback((name: string) => {
+  const saveSelectedAsCustomTemplate = useCallback(async (name: string) => {
     if (!designState.selectedComponentId) return;
     const selectedComponent = getComponentById(designState.selectedComponentId);
     if (!selectedComponent) return;
 
     const templateComponentTree: DesignComponent[] = [];
-    const idMap: Record<string, string> = {}; // Maps original ID to template-local ID
+    const idMap: Record<string, string> = {}; 
     let nextTemplateInternalId = 1;
 
-    const generateTemplateInternalId = (type: string) => `tmpl-${type}-${nextTemplateInternalId++}`;
+    const generateTemplateInternalId = (type: string) => `tmpl-${type.toLowerCase().replace(/\s+/g, '-')}-${nextTemplateInternalId++}`;
     
-    // Helper to recursively clone and collect components for the template
     const cloneAndCollectForTemplate = (originalCompId: string, newTemplateParentId: string | null) => {
       const originalComp = getComponentById(originalCompId);
       if (!originalComp) return;
@@ -200,18 +240,15 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       clonedComp.id = templateLocalId;
       clonedComp.parentId = newTemplateParentId;
       
-      // Clear runtime positions for template, they will be set on instantiation
       delete clonedComp.properties.x;
       delete clonedComp.properties.y;
 
-      // Recursively process children, map their IDs
       if (clonedComp.properties.children && Array.isArray(clonedComp.properties.children)) {
-        const originalChildIds = [...clonedComp.properties.children]; // Copy before modifying
-        clonedComp.properties.children = []; // Reset, will be repopulated with template-local IDs
+        const originalChildIds = [...clonedComp.properties.children]; 
+        clonedComp.properties.children = []; 
 
         originalChildIds.forEach(childId => {
-          cloneAndCollectForTemplate(childId, templateLocalId); // Pass new parent's template-local ID
-           // Add mapped child ID to current cloned component's children
+          cloneAndCollectForTemplate(childId, templateLocalId); 
           if (idMap[childId]) {
             clonedComp.properties.children!.push(idMap[childId]);
           }
@@ -220,7 +257,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       templateComponentTree.push(clonedComp);
     };
     
-    cloneAndCollectForTemplate(selectedComponent.id, null); // Start with selected component as root of template
+    cloneAndCollectForTemplate(selectedComponent.id, null); 
 
     const templateRootComponent = templateComponentTree.find(c => idMap[selectedComponent.id] === c.id);
     if (!templateRootComponent) {
@@ -228,18 +265,44 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         return;
     }
 
-    const newTemplate: CustomComponentTemplate = {
+    const newTemplate: Omit<CustomComponentTemplate, 'firestoreId'> = { // Omit firestoreId for creation
       templateId: `${CUSTOM_COMPONENT_TYPE_PREFIX}${name.replace(/\s+/g, '_')}-${Date.now()}`,
       name: name,
-      rootComponentId: templateRootComponent.id, // ID of the root WITHIN the templateComponentTree
+      rootComponentId: templateRootComponent.id, 
       componentTree: templateComponentTree,
     };
 
-    setDesignState(prev => ({
-      ...prev,
-      customComponentTemplates: [...prev.customComponentTemplates, newTemplate],
-    }));
-  }, [designState.selectedComponentId, getComponentById]);
+    try {
+      if (!db) {
+        console.error("Firestore not initialized. Cannot save template.");
+        // Potentially save to local state only as a fallback or show an error
+        setDesignState(prev => ({
+          ...prev,
+          customComponentTemplates: [...prev.customComponentTemplates, newTemplate as CustomComponentTemplate],
+        }));
+        return;
+      }
+      // Save to Firestore
+      // We use templateId as the document ID for easier lookup if needed, requires setDoc
+      const templateRef = doc(db, CUSTOM_TEMPLATES_COLLECTION, newTemplate.templateId);
+      await setDoc(templateRef, newTemplate);
+
+      // Add to local state with the firestoreId (which is same as templateId here)
+      setDesignState(prev => ({
+        ...prev,
+        customComponentTemplates: [...prev.customComponentTemplates, { ...newTemplate, firestoreId: newTemplate.templateId }],
+      }));
+    } catch (error) {
+      console.error("Error saving custom template to Firestore:", error);
+      // Optionally: Add to local state anyway or show error to user
+      // For now, we'll still add to local state if firestore fails, so user doesn't lose work locally
+       setDesignState(prev => ({
+        ...prev,
+        customComponentTemplates: [...prev.customComponentTemplates, newTemplate as CustomComponentTemplate],
+      }));
+    }
+
+  }, [designState.selectedComponentId, getComponentById, designState.nextId]); // designState.nextId dependency for generateNewId if it were used inside this callback directly for instances
 
 
   const deleteComponent = useCallback((id: string) => {
@@ -312,7 +375,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, []);
 
   const clearDesign = useCallback(() => {
-    setDesignState(prev => ({...initialDesignState, nextId: prev.nextId})); // Keep nextId to avoid ID collision if design is loaded later
+    setDesignState(prev => ({...initialDesignState, nextId: prev.nextId, customComponentTemplates: prev.customComponentTemplates})); 
   }, []);
 
   const setDesign = useCallback((newDesign: DesignState) => {
@@ -375,7 +438,10 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     saveSelectedAsCustomTemplate: () => {},
   };
 
-  if (!isClient) {
+  if (!isClient || isLoadingTemplates) { // Also show loading or default if templates are loading
+    // Potentially return a loading state or a non-interactive context
+    // For simplicity, returning default context while loading.
+    // Consider a loading indicator in the UI if template loading is slow.
     return (
       <DesignContext.Provider value={defaultContextValue}>
         {children}
