@@ -1,20 +1,22 @@
+
 'use client';
 
 import type { ReactNode} from 'react';
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import type { DesignComponent, DesignState, ComponentType, BaseComponentProps } from '@/types/compose-spec';
-import { getDefaultProperties } from '@/types/compose-spec';
+import type { DesignComponent, DesignState, ComponentType, BaseComponentProps, CustomComponentTemplate } from '@/types/compose-spec';
+import { getDefaultProperties, CUSTOM_COMPONENT_TYPE_PREFIX, isCustomComponentType } from '@/types/compose-spec';
 
 interface DesignContextType extends DesignState {
-  addComponent: (type: ComponentType, parentId?: string | null, dropPosition?: { x: number; y: number }) => string;
+  addComponent: (type: ComponentType | string, parentId?: string | null, dropPosition?: { x: number; y: number }) => string | string[]; // Can return multiple IDs for custom
   deleteComponent: (id: string) => void;
   selectComponent: (id: string | null) => void;
   updateComponentProperties: (id: string, newProperties: Partial<BaseComponentProps>) => void;
-  updateComponentPosition: (id: string, position: { x: number; y: number }) => void; // For direct manipulation on canvas
+  updateComponentPosition: (id: string, position: { x: number; y: number }) => void; 
   getComponentById: (id: string) => DesignComponent | undefined;
   clearDesign: () => void;
-  setDesign: (newDesign: DesignState) => void; // For loading designs
-  moveComponent: (draggedId: string, targetId: string | null) => void; // For re-parenting or re-ordering
+  setDesign: (newDesign: DesignState) => void; 
+  moveComponent: (draggedId: string, targetId: string | null) => void; 
+  saveSelectedAsCustomTemplate: (name: string) => void;
 }
 
 const DesignContext = createContext<DesignContextType | undefined>(undefined);
@@ -23,7 +25,14 @@ const initialDesignState: DesignState = {
   components: [],
   selectedComponentId: null,
   nextId: 1,
+  customComponentTemplates: [],
 };
+
+// Helper function for deep cloning
+const deepClone = <T>(obj: T): T => {
+  return JSON.parse(JSON.stringify(obj));
+};
+
 
 export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [designState, setDesignState] = useState<DesignState>(initialDesignState);
@@ -33,63 +42,205 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setIsClient(true);
   }, []);
 
+  const generateNewId = useCallback((prefix = 'comp-') => {
+    const newId = `${prefix}${designState.nextId}`;
+    setDesignState(prev => ({...prev, nextId: prev.nextId + 1}));
+    return newId;
+  }, [designState.nextId]);
+
 
   const getComponentById = useCallback(
     (id: string) => designState.components.find(comp => comp.id === id),
     [designState.components]
   );
   
-  const addComponent = useCallback((type: ComponentType, parentId: string | null = null, dropPosition?: { x: number; y: number }) => {
-    const newId = `comp-${designState.nextId}`;
+  const addComponent = useCallback((
+    type: ComponentType | string, // Can be ComponentType or a custom templateId string
+    parentId: string | null = null, 
+    dropPosition?: { x: number; y: number }
+  ) => {
     
-    let positionProps = {};
-    if (dropPosition) {
-      if (parentId) {
-        // Position relative to parent for simplicity, real layout is complex
-        const parentComp = getComponentById(parentId);
-        positionProps = { 
-          x: dropPosition.x - (parentComp?.properties.x || 0), 
-          y: dropPosition.y - (parentComp?.properties.y || 0) 
-        };
-      } else {
-        positionProps = { x: dropPosition.x, y: dropPosition.y };
+    const positionProps = dropPosition 
+      ? (parentId 
+          ? { x: dropPosition.x - (getComponentById(parentId)?.properties.x || 0), y: dropPosition.y - (getComponentById(parentId)?.properties.y || 0) } 
+          : { x: dropPosition.x, y: dropPosition.y }
+        ) 
+      : { x: 50, y: 50 };
+
+    if (isCustomComponentType(type)) {
+      const templateId = type;
+      const template = designState.customComponentTemplates.find(t => t.templateId === templateId);
+      if (!template) {
+        console.error(`Custom template ${templateId} not found.`);
+        return ""; // Or handle error appropriately
       }
+
+      const newComponentsBatch: DesignComponent[] = [];
+      const idMap: Record<string, string> = {}; // Map template IDs to new instance IDs
+      let instanceRootId = "";
+
+      // First pass: clone components and generate new IDs
+      template.componentTree.forEach(templateComp => {
+        const newInstanceCompId = generateNewId(`inst-${templateComp.type}-`);
+        idMap[templateComp.id] = newInstanceCompId;
+        
+        const newInstanceComp = deepClone(templateComp);
+        newInstanceComp.id = newInstanceCompId;
+        newInstanceComp.name = `${newInstanceComp.name} (instance)`; // Distinguish instance
+
+        if (templateComp.id === template.rootComponentId) {
+          instanceRootId = newInstanceCompId;
+          // Apply drop position to the root of the custom component instance
+          newInstanceComp.properties.x = positionProps.x;
+          newInstanceComp.properties.y = positionProps.y;
+        }
+        newComponentsBatch.push(newInstanceComp);
+      });
+      
+      // Second pass: update parentIds and children arrays
+      const finalNewComponents = newComponentsBatch.map(newInstanceComp => {
+        const originalTemplateId = Object.keys(idMap).find(key => idMap[key] === newInstanceComp.id);
+        const originalTemplateComp = template.componentTree.find(tc => tc.id === originalTemplateId);
+
+        if (originalTemplateComp?.parentId) {
+          newInstanceComp.parentId = idMap[originalTemplateComp.parentId] || null; // Ensure parentId is from the new batch
+        } else {
+          newInstanceComp.parentId = parentId; // Root of custom component instance gets the drop target parentId
+        }
+        
+        if (newInstanceComp.properties.children && Array.isArray(newInstanceComp.properties.children)) {
+          newInstanceComp.properties.children = newInstanceComp.properties.children
+            .map(childId => idMap[childId])
+            .filter(Boolean); // Map to new child IDs
+        }
+        return newInstanceComp;
+      });
+
+
+      setDesignState(prev => {
+        let updatedComponents = [...prev.components, ...finalNewComponents];
+        
+        // If the custom component instance is dropped into a container
+        if (parentId && instanceRootId) {
+            const parentIndex = updatedComponents.findIndex(c => c.id === parentId);
+            if (parentIndex !== -1) {
+                const parentComp = updatedComponents[parentIndex];
+                if (parentComp.type === 'Column' || parentComp.type === 'Row' || parentComp.type === 'Card' || parentComp.type === 'Box') {
+                    parentComp.properties.children = [...(parentComp.properties.children || []), instanceRootId];
+                    updatedComponents[parentIndex] = {...parentComp};
+                }
+            }
+        }
+        return {
+          ...prev,
+          components: updatedComponents,
+          selectedComponentId: instanceRootId,
+        };
+      });
+      return finalNewComponents.map(c => c.id);
+
+
     } else {
-       positionProps = { x: 50, y: 50 }; // Default if no dropPosition
-    }
+      // Adding a base component
+      const newId = generateNewId();
+      const newComponent: DesignComponent = {
+        id: newId,
+        type: type as ComponentType,
+        name: `${type} ${designState.nextId -1 }`, // designState.nextId already incremented by generateNewId
+        properties: {
+          ...getDefaultProperties(type as ComponentType),
+          ...positionProps,
+        },
+        parentId,
+      };
 
-    const newComponent: DesignComponent = {
-      id: newId,
-      type,
-      name: `${type} ${designState.nextId}`,
-      properties: {
-        ...getDefaultProperties(type),
-        ...positionProps,
-      },
-      parentId,
-    };
-
-    setDesignState(prev => {
-      let updatedComponents = [...prev.components, newComponent];
-      if (parentId) {
-        const parentIndex = updatedComponents.findIndex(c => c.id === parentId);
-        if (parentIndex !== -1) {
-          const parent = updatedComponents[parentIndex];
-          if (parent.type === 'Column' || parent.type === 'Row') {
-            parent.properties.children = [...(parent.properties.children || []), newId];
-            updatedComponents[parentIndex] = {...parent};
+      setDesignState(prev => {
+        let updatedComponents = [...prev.components, newComponent];
+        if (parentId) {
+          const parentIndex = updatedComponents.findIndex(c => c.id === parentId);
+          if (parentIndex !== -1) {
+            const parent = updatedComponents[parentIndex];
+             if (parent.type === 'Column' || parent.type === 'Row' || parent.type === 'Card' || parent.type === 'Box' || parent.type.startsWith('Lazy')) {
+              parent.properties.children = [...(parent.properties.children || []), newId];
+              updatedComponents[parentIndex] = {...parent};
+            }
           }
         }
+        return {
+          ...prev,
+          components: updatedComponents,
+          selectedComponentId: newId,
+        };
+      });
+      return newId;
+    }
+  }, [designState.nextId, designState.customComponentTemplates, getComponentById, generateNewId]);
+
+
+  const saveSelectedAsCustomTemplate = useCallback((name: string) => {
+    if (!designState.selectedComponentId) return;
+    const selectedComponent = getComponentById(designState.selectedComponentId);
+    if (!selectedComponent) return;
+
+    const templateComponentTree: DesignComponent[] = [];
+    const idMap: Record<string, string> = {}; // Maps original ID to template-local ID
+    let nextTemplateInternalId = 1;
+
+    const generateTemplateInternalId = (type: string) => `tmpl-${type}-${nextTemplateInternalId++}`;
+    
+    // Helper to recursively clone and collect components for the template
+    const cloneAndCollectForTemplate = (originalCompId: string, newTemplateParentId: string | null) => {
+      const originalComp = getComponentById(originalCompId);
+      if (!originalComp) return;
+
+      const templateLocalId = generateTemplateInternalId(originalComp.type);
+      idMap[originalCompId] = templateLocalId;
+
+      const clonedComp = deepClone(originalComp);
+      clonedComp.id = templateLocalId;
+      clonedComp.parentId = newTemplateParentId;
+      
+      // Clear runtime positions for template, they will be set on instantiation
+      delete clonedComp.properties.x;
+      delete clonedComp.properties.y;
+
+      // Recursively process children, map their IDs
+      if (clonedComp.properties.children && Array.isArray(clonedComp.properties.children)) {
+        const originalChildIds = [...clonedComp.properties.children]; // Copy before modifying
+        clonedComp.properties.children = []; // Reset, will be repopulated with template-local IDs
+
+        originalChildIds.forEach(childId => {
+          cloneAndCollectForTemplate(childId, templateLocalId); // Pass new parent's template-local ID
+           // Add mapped child ID to current cloned component's children
+          if (idMap[childId]) {
+            clonedComp.properties.children!.push(idMap[childId]);
+          }
+        });
       }
-      return {
-        ...prev,
-        components: updatedComponents,
-        nextId: prev.nextId + 1,
-        selectedComponentId: newId,
-      };
-    });
-    return newId;
-  }, [designState.nextId, getComponentById]);
+      templateComponentTree.push(clonedComp);
+    };
+    
+    cloneAndCollectForTemplate(selectedComponent.id, null); // Start with selected component as root of template
+
+    const templateRootComponent = templateComponentTree.find(c => idMap[selectedComponent.id] === c.id);
+    if (!templateRootComponent) {
+        console.error("Failed to identify template root component.");
+        return;
+    }
+
+    const newTemplate: CustomComponentTemplate = {
+      templateId: `${CUSTOM_COMPONENT_TYPE_PREFIX}${name.replace(/\s+/g, '_')}-${Date.now()}`,
+      name: name,
+      rootComponentId: templateRootComponent.id, // ID of the root WITHIN the templateComponentTree
+      componentTree: templateComponentTree,
+    };
+
+    setDesignState(prev => ({
+      ...prev,
+      customComponentTemplates: [...prev.customComponentTemplates, newTemplate],
+    }));
+  }, [designState.selectedComponentId, getComponentById]);
+
 
   const deleteComponent = useCallback((id: string) => {
     setDesignState(prev => {
@@ -97,26 +248,23 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       if (!componentToDelete) return prev;
   
       let idsToDelete = [id];
-      // Recursively find children if it's a container
       const findChildrenRecursive = (currentParentId: string) => {
         prev.components.forEach(comp => {
           if (comp.parentId === currentParentId) {
             idsToDelete.push(comp.id);
-            if (comp.type === 'Column' || comp.type === 'Row') {
+            if (comp.type === 'Column' || comp.type === 'Row' || comp.type === 'Box' || comp.type === 'Card' || comp.type.startsWith('Lazy')) { // Check all container types
               findChildrenRecursive(comp.id);
             }
           }
         });
       };
   
-      if (componentToDelete.type === 'Column' || componentToDelete.type === 'Row') {
+      if (componentToDelete.type === 'Column' || componentToDelete.type === 'Row' || componentToDelete.type === 'Box' || componentToDelete.type === 'Card' || componentToDelete.type.startsWith('Lazy')) {
         findChildrenRecursive(id);
       }
   
-      // Filter out deleted components
       let components = prev.components.filter(comp => !idsToDelete.includes(comp.id));
   
-      // Remove reference from parent if any
       if (componentToDelete.parentId) {
         components = components.map(comp => {
           if (comp.id === componentToDelete.parentId && comp.properties.children) {
@@ -164,7 +312,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, []);
 
   const clearDesign = useCallback(() => {
-    setDesignState(initialDesignState);
+    setDesignState(prev => ({...initialDesignState, nextId: prev.nextId})); // Keep nextId to avoid ID collision if design is loaded later
   }, []);
 
   const setDesign = useCallback((newDesign: DesignState) => {
@@ -199,11 +347,10 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             const newParentIndex = currentComponents.findIndex(c => c.id === targetParentId);
             if (newParentIndex !== -1) {
                  const newParent = {...currentComponents[newParentIndex]};
-                 if (newParent.type === 'Column' || newParent.type === 'Row') {
+                 if (newParent.type === 'Column' || newParent.type === 'Row' || newParent.type === 'Card' || newParent.type === 'Box' || newParent.type.startsWith('Lazy')) {
                     newParent.properties.children = [...(newParent.properties.children || []), draggedId];
                     currentComponents[newParentIndex] = newParent;
                  } else {
-                    // Cannot drop into non-container, revert parentId change
                      currentComponents[draggedComponentIndex] = { ...draggedComponent, parentId: draggedComponent.parentId };
                  }
             }
@@ -214,12 +361,23 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 }, []);
 
 
+  const defaultContextValue: DesignContextType = {
+    ...initialDesignState,
+    addComponent: () => "",
+    deleteComponent: () => {},
+    selectComponent: () => {},
+    updateComponentProperties: () => {},
+    updateComponentPosition: () => {},
+    getComponentById: () => undefined,
+    clearDesign: () => {},
+    setDesign: () => {},
+    moveComponent: () => {},
+    saveSelectedAsCustomTemplate: () => {},
+  };
+
   if (!isClient) {
-     // Render minimal or null UI on server to avoid hydration mismatches
-     // if state is used in rendering.
-     // Or provide a default, non-interactive state.
     return (
-      <DesignContext.Provider value={{...initialDesignState, addComponent: () =>"", deleteComponent: ()=>{}, selectComponent: ()=>{}, updateComponentProperties: ()=>{}, updateComponentPosition: ()=>{}, getComponentById: ()=>undefined, clearDesign: ()=>{}, setDesign: ()=>{}, moveComponent: ()=>{}}}>
+      <DesignContext.Provider value={defaultContextValue}>
         {children}
       </DesignContext.Provider>
     );
@@ -236,7 +394,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       getComponentById,
       clearDesign,
       setDesign,
-      moveComponent
+      moveComponent,
+      saveSelectedAsCustomTemplate
     }}>
       {children}
     </DesignContext.Provider>
@@ -250,3 +409,6 @@ export const useDesign = (): DesignContextType => {
   }
   return context;
 };
+
+
+    

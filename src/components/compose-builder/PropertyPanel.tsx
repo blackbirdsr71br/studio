@@ -4,21 +4,23 @@
 import { useDesign } from '@/contexts/DesignContext';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { propertyDefinitions, type ComponentType, type ComponentProperty } from '@/types/compose-spec';
+import { propertyDefinitions, type ComponentType, type ComponentProperty, getComponentDisplayName } from '@/types/compose-spec';
 import { PropertyEditor } from './PropertyEditor';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Save } from 'lucide-react'; // Added Save icon
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ReactNode } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 interface GroupedProperties {
   [groupName: string]: ReactNode[];
 }
 
 export function PropertyPanel() {
-  const { selectedComponentId, getComponentById, updateComponentProperties, deleteComponent } = useDesign();
+  const { selectedComponentId, getComponentById, updateComponentProperties, deleteComponent, saveSelectedAsCustomTemplate } = useDesign();
   const selectedComponent = selectedComponentId ? getComponentById(selectedComponentId) : null;
+  const { toast } = useToast();
 
   if (!selectedComponent) {
     return (
@@ -47,6 +49,23 @@ export function PropertyPanel() {
     }
   };
 
+  const handleSaveAsCustom = () => {
+    const name = window.prompt("Enter a name for your custom component:", selectedComponent.name);
+    if (name && name.trim() !== "") {
+      saveSelectedAsCustomTemplate(name.trim());
+      toast({
+        title: "Custom Component Saved",
+        description: `"${name.trim()}" added to the component library.`,
+      });
+    } else if (name !== null) { // Prompt was not cancelled, but name was empty
+      toast({
+        title: "Save Failed",
+        description: "Custom component name cannot be empty.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const groupedProperties: GroupedProperties = {};
   const propertyGroups: string[] = [];
 
@@ -66,36 +85,33 @@ export function PropertyPanel() {
     );
   });
 
-  // Helper to get default value if not set on component, for initial rendering
-  // This is a bit of a workaround as PropertyEditor expects a 'value' in its propDef, but we Omit it for the main array.
-  // We need to find the original default from the full spec if we were to re-add it.
-  // For now, we'll assume a sensible default or let PropertyEditor handle undefined.
-  // The type `Omit<ComponentProperty, 'value'>` makes it tricky to access the original default here easily.
-  // Let's assume that properties always have a value on the `selectedComponent.properties` due to `getDefaultProperties`
-  // or PropertyEditor handles it.
   const getDefaultPropertyValue = (propDef: Omit<ComponentProperty, 'value'>) => {
-    // This is a simplification. Ideally, we'd look up the actual default.
-    // However, `getDefaultProperties` in `DesignContext` should ensure initial values are set.
-    // If a new property is added to spec and not old components, it might be undefined.
     if (propDef.type === 'number') return 0;
     if (propDef.type === 'boolean') return false;
     return '';
   };
   
+  const componentDisplayName = getComponentDisplayName(selectedComponent.type);
 
   return (
     <aside className="w-56 border-l bg-sidebar p-4 flex flex-col shrink-0">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-sidebar-foreground font-headline truncate" title={selectedComponent.name}>
+      <div className="flex items-center justify-between mb-1">
+         <h2 className="text-lg font-semibold text-sidebar-foreground font-headline truncate mr-2" title={`${selectedComponent.name} (${componentDisplayName})`}>
           {selectedComponent.name}
         </h2>
-        <Button variant="ghost" size="icon" onClick={handleDelete} className="text-destructive hover:bg-destructive/10" aria-label="Delete component">
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center">
+          <Button variant="ghost" size="icon" onClick={handleSaveAsCustom} className="text-sidebar-primary hover:bg-primary/10 h-7 w-7" aria-label="Save as custom component">
+            <Save className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={handleDelete} className="text-destructive hover:bg-destructive/10 h-7 w-7" aria-label="Delete component">
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
+      <p className="text-xs text-muted-foreground mb-3 -mt-1">{componentDisplayName}</p>
       
       <div className="mb-4">
-        <Label htmlFor="componentName" className="text-xs">Component Name</Label>
+        <Label htmlFor="componentName" className="text-xs">Instance Name</Label>
         <Input 
           id="componentName"
           type="text" 
@@ -109,7 +125,7 @@ export function PropertyPanel() {
         {componentPropsDef.length === 0 ? (
           <p className="text-sm text-muted-foreground">No editable properties for this component type.</p>
         ) : (
-          <Tabs defaultValue={propertyGroups[0] || 'general'} className="w-full">
+          <Tabs defaultValue={propertyGroups[0] || 'General'} className="w-full">
             <TabsList className="grid w-full grid-cols-auto">
               {propertyGroups.map((group) => (
                 <TabsTrigger key={group} value={group} className="text-xs px-2 py-1.5">
@@ -130,3 +146,5 @@ export function PropertyPanel() {
     </aside>
   );
 }
+
+    

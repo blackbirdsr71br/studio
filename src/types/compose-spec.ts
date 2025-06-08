@@ -12,6 +12,9 @@ export type ComponentType =
   | 'LazyVerticalGrid'
   | 'LazyHorizontalGrid';
 
+// Added to distinguish custom component types in the library
+export const CUSTOM_COMPONENT_TYPE_PREFIX = "custom/";
+
 export interface ComponentPropertyOption {
   label: string;
   value: string;
@@ -49,16 +52,25 @@ export interface BaseComponentProps {
 
 export interface DesignComponent {
   id: string;
-  type: ComponentType;
+  type: ComponentType; // Base component type
   name: string; 
   properties: BaseComponentProps;
   parentId?: string | null; 
+}
+
+export interface CustomComponentTemplate {
+  templateId: string; // e.g., "custom/MyHeader" - acts as its type
+  name: string; // User-friendly name, e.g., "My Header"
+  rootComponentId: string; // The ID of the root component within this template's componentTree
+  componentTree: DesignComponent[]; // All components forming this template, with relative parentIds.
+                                   // IDs within this tree are template-local.
 }
 
 export interface DesignState {
   components: DesignComponent[];
   selectedComponentId: string | null;
   nextId: number;
+  customComponentTemplates: CustomComponentTemplate[];
 }
 
 export const getDefaultProperties = (type: ComponentType): BaseComponentProps => {
@@ -91,8 +103,11 @@ export const getDefaultProperties = (type: ComponentType): BaseComponentProps =>
   }
 };
 
-export const getComponentDisplayName = (type: ComponentType): string => {
-  switch (type) {
+export const getComponentDisplayName = (type: ComponentType | string, templateName?: string): string => {
+  if (type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
+    return templateName || type.replace(CUSTOM_COMPONENT_TYPE_PREFIX, "");
+  }
+  switch (type as ComponentType) {
     case 'Text': return 'Text';
     case 'Button': return 'Button';
     case 'Column': return 'Column Layout';
@@ -180,3 +195,10 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'rows', type: 'number', label: 'Number of Rows', placeholder: '2', group: 'Layout' },
   ],
 };
+
+// Helper to check if a type string is for a custom component
+export const isCustomComponentType = (type: string): boolean => {
+  return type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX);
+};
+
+    
