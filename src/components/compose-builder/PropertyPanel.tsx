@@ -66,6 +66,13 @@ export function PropertyPanel() {
     }
   };
 
+  // Moved function definition before its usage
+  const getDefaultPropertyValue = (propDef: Omit<ComponentProperty, 'value'>) => {
+    if (propDef.type === 'number') return 0;
+    if (propDef.type === 'boolean') return false;
+    return '';
+  };
+
   const groupedProperties: GroupedProperties = {};
   const propertyGroups: string[] = [];
 
@@ -84,12 +91,6 @@ export function PropertyPanel() {
       />
     );
   });
-
-  const getDefaultPropertyValue = (propDef: Omit<ComponentProperty, 'value'>) => {
-    if (propDef.type === 'number') return 0;
-    if (propDef.type === 'boolean') return false;
-    return '';
-  };
   
   const componentDisplayName = getComponentDisplayName(selectedComponent.type);
 
