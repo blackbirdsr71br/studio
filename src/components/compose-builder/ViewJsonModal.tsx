@@ -87,7 +87,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
 
   const handleSaveChanges = () => {
     if (jsonError) {
-      const errorSummary = Array.isArray(jsonError) ? jsonError.join("\n") : "JSON is invalid.";
+      const errorSummary = Array.isArray(jsonError) ? jsonError.slice(0,5).join("\n") : "JSON is invalid.";
       toast({ title: "Save Failed", description: `${errorSummary} Please correct errors before saving.`, variant: "destructive" });
       return;
     }
@@ -100,7 +100,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
           (err) => `${err.path.join('.')} - ${err.message}`
         ).join('\n');
         setJsonError(['Schema validation failed (on save):', ...validationResult.error.errors.map(e => `Path "${e.path.join('.')}": ${e.message}`)]);
-        toast({ title: "Save Failed", description: `JSON is invalid according to schema:\n${formattedErrors}`, variant: "destructive" });
+        toast({ title: "Save Failed", description: `JSON is invalid according to schema:\n${formattedErrors.substring(0, 200)}...`, variant: "destructive" });
         return;
       }
 
@@ -168,12 +168,12 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
             Syntax and schema errors will be shown below.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex-grow my-2 flex flex-col"> {/* Removed min-h-[400px] */}
+        <div className="flex-grow my-2 flex flex-col"> 
           <div className="flex flex-col flex-grow rounded-md border overflow-hidden bg-background">
             <CodeMirror
               value={editableJsonString}
               height="100%"
-              className="h-full text-xs"
+              className="text-xs" 
               extensions={[json(), githubLight]}
               onChange={(value) => validateAndSetJson(value)}
               editable={!isLoading}
