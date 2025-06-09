@@ -144,7 +144,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
         toast({ title: "Download Failed", description: "JSON contains errors. Please correct them before downloading.", variant: "destructive" });
         return;
     }
-    const blob = new Blob([editableJsonString], { type: 'application/json;charset=utf-f8' });
+    const blob = new Blob([editableJsonString], { type: 'application/json;charset=utf-8' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = 'design_components.json';
@@ -168,8 +168,8 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
             Syntax and schema errors will be shown below.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex-grow my-2 flex flex-col"> 
-          <div className="flex flex-col flex-grow rounded-md border overflow-hidden bg-background">
+        <div className="flex-grow my-2 flex flex-col min-h-0"> 
+          <div className="h-[400px] rounded-md border overflow-hidden bg-background">
             <CodeMirror
               value={editableJsonString}
               height="100%"
