@@ -9,7 +9,10 @@ import { getDesignComponentsAsJsonAction } from '@/app/actions';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Copy, Download, Save, RefreshCw, AlertTriangle } from 'lucide-react';
-import { Textarea } from '@/components/ui/textarea';
+// import { Textarea } from '@/components/ui/textarea'; // Replaced with CodeMirror
+import CodeMirror from '@uiw/react-codemirror';
+import { json } from '@codemirror/lang-json';
+import { githubLight } from '@uiw/codemirror-theme-github';
 import type { DesignComponent } from '@/types/compose-spec';
 import { ModalJsonSchema, DEFAULT_ROOT_LAZY_COLUMN_ID } from '@/types/compose-spec'; // Import the Zod schema
 import { ZodError } from 'zod';
@@ -49,32 +52,31 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
         setJsonError("Invalid JSON syntax. Check for missing commas, brackets, etc.");
       }
     }
-  }, []); // Empty dependency array as it only uses setters from useState
+  }, []); 
 
   const handleFetchJson = useCallback(async () => {
     setIsLoading(true);
-    setJsonError(null); // Clear previous errors at the start of fetch
+    setJsonError(null);
 
     try {
       const rootLazyColumn = components.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID);
-      // Check if the canvas is effectively empty (only root with no children from user's perspective)
       if (components.length <= 1 && rootLazyColumn && (!rootLazyColumn.properties.children || rootLazyColumn.properties.children.length === 0)) {
-        validateAndSetJson("[]"); // Set to "[]" for an empty user design
+        validateAndSetJson("[]"); 
       } else {
         const jsonString = await getDesignComponentsAsJsonAction(components, customComponentTemplates);
         validateAndSetJson(jsonString);
       }
-    } catch (error) { // This catch is for errors from getDesignComponentsAsJsonAction or other async errors
+    } catch (error) { 
       const errorMessage = error instanceof Error ? error.message : "Failed to fetch JSON.";
-      setEditableJsonString(`// Error fetching JSON:\n// ${errorMessage}`); // Show error in textarea
-      setJsonError(`Fetch error: ${errorMessage}`); // Also set the jsonError state for UI feedback
+      setEditableJsonString(`// Error fetching JSON:\n// ${errorMessage}`); 
+      setJsonError(`Fetch error: ${errorMessage}`); 
       toast({
         title: "JSON Fetch Failed",
         description: errorMessage,
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false); // Ensure isLoading is reset
+      setIsLoading(false); 
     }
   }, [components, customComponentTemplates, toast, validateAndSetJson]);
 
@@ -120,11 +122,10 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
   };
 
   const handleCopyToClipboard = async () => {
-    if (!editableJsonString) {
-        toast({ title: "Copy Failed", description: "JSON is empty.", variant: "destructive" });
-        return;
+    if (!editableJsonString && !jsonError) { // Allow copy even if empty but valid like "[]"
+        toast({ title: "Copying Empty JSON", description: "JSON is empty, copied as is.", variant: "default" });
     }
-    if (jsonError) {
+    if (jsonError) { // If there's an error, prevent copy of invalid content
         toast({ title: "Copy Failed", description: "JSON contains errors. Please correct them before copying.", variant: "destructive" });
         return;
     }
@@ -144,9 +145,8 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
   };
 
   const handleDownloadJson = () => {
-    if (!editableJsonString) {
-        toast({ title: "Download Failed", description: "JSON is empty.", variant: "destructive" });
-        return;
+     if (!editableJsonString && !jsonError) {
+        toast({ title: "Downloading Empty JSON", description: "JSON is empty, downloading as is.", variant: "default" });
     }
     if (jsonError) {
         toast({ title: "Download Failed", description: "JSON contains errors. Please correct them before downloading.", variant: "destructive" });
@@ -173,18 +173,27 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
           <DialogTitle className="font-headline">Design JSON (User Components)</DialogTitle>
           <DialogDescription>
             View, edit, and save the JSON representation of your design components.
-            Errors (syntax or schema violations) will be shown below.
+            Syntax and schema errors will be shown below.
           </DialogDescription>
         </DialogHeader>
         <div className="flex-grow my-2 flex flex-col min-h-[400px]">
-          <Textarea
-            value={editableJsonString}
-            onChange={(e) => validateAndSetJson(e.target.value)}
-            placeholder="JSON data will appear here..."
-            className="flex-grow font-code text-xs p-2 rounded-md border bg-muted/30 resize-none min-h-[inherit]"
-            disabled={isLoading}
-            aria-label="Design JSON content"
-          />
+          <div className="flex-grow rounded-md border overflow-hidden bg-background">
+            <CodeMirror
+              value={editableJsonString}
+              height="100%" 
+              className="h-full text-xs"
+              extensions={[json(), githubLight]}
+              onChange={(value) => validateAndSetJson(value)}
+              editable={!isLoading}
+              basicSetup={{
+                lineNumbers: true,
+                foldGutter: true,
+                autocompletion: true,
+                highlightActiveLine: true,
+                highlightActiveLineGutter: true,
+              }}
+            />
+          </div>
           {jsonError && (
             <ScrollArea className="mt-2 max-h-28">
               <pre className="p-2 text-xs text-destructive-foreground bg-destructive rounded-md flex items-start gap-2 whitespace-pre-wrap">
