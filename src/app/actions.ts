@@ -41,22 +41,23 @@ const buildComponentTree = (
         id: component.id,
         type: component.type,
         name: component.name,
-        properties: cleanEmptyStringProperties({ ...component.properties }), // Clean properties here
+        properties: cleanEmptyStringProperties({ ...component.properties }),
       };
 
-      // For AI, remove x,y from root components if they are not the absolute root LazyColumn.
-      // For children, x,y are generally not used for layout within Compose containers.
       if (component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && !parentId) {
         const { x, y, ...restProperties } = node.properties;
         node.properties = restProperties;
-      } else if (parentId) { // For children inside containers
+      } else if (parentId) {
         delete node.properties.x;
         delete node.properties.y;
       }
 
 
       if (isContainerType(component.type, customComponentTemplates)) {
-        node.children = buildComponentTree(allComponents, customComponentTemplates, component.id);
+        const children = buildComponentTree(allComponents, customComponentTemplates, component.id);
+        if (children.length > 0) {
+          node.children = children;
+        }
       }
       return node;
     });
@@ -68,7 +69,6 @@ export async function generateJetpackComposeCodeAction(
   customComponentTemplates: CustomComponentTemplate[]
 ): Promise<string> {
   try {
-    // The AI needs the full tree, including the root LazyColumn.
     const componentTreeForAi = buildComponentTree(components, customComponentTemplates);
     const designJson = JSON.stringify(componentTreeForAi, null, 2);
 
@@ -84,7 +84,7 @@ export async function generateJetpackComposeCodeAction(
   }
 }
 
-// Interface for the nodes in the full JSON tree (for Remote Config)
+// Interface for the nodes in the full JSON tree (for Remote Config & View JSON modal)
 interface FullComponentTreeNodeForRemoteConfig extends DesignComponent {
   childrenComponents?: FullComponentTreeNodeForRemoteConfig[];
 }
@@ -97,33 +97,43 @@ const buildFullComponentTreeForRemoteConfig = (
   return allComponents
     .filter(c => c.parentId === currentParentId)
     .map(c => {
-      const node: FullComponentTreeNodeForRemoteConfig = { 
-        ...c,
-        properties: cleanEmptyStringProperties({ ...c.properties }) // Clean properties here
+      // Create a mutable copy of component `c` to be used as the base for our node
+      const componentDataCopy = { ...c };
+      // Clean properties directly on the copy that will form the node
+      componentDataCopy.properties = cleanEmptyStringProperties({ ...c.properties });
+
+      const node: FullComponentTreeNodeForRemoteConfig = {
+        ...componentDataCopy
       };
+
       if (isContainerType(c.type, customComponentTemplates)) {
-        node.childrenComponents = buildFullComponentTreeForRemoteConfig(allComponents, customComponentTemplates, c.id);
+        const childrenNodes = buildFullComponentTreeForRemoteConfig(allComponents, customComponentTemplates, c.id);
+        if (childrenNodes.length > 0) {
+          node.childrenComponents = childrenNodes;
+          // The `node.properties.children` (array of IDs) is already present from `componentDataCopy`
+          // if it was in the original component `c` from the design context.
+        }
       }
       return node;
     });
 };
 
-// This action is now specifically for getting the flat list of components for editing in the modal
+// This action is now specifically for getting the hierarchical list of user components for editing in the modal
 export async function getDesignComponentsAsJsonAction(
-  components: DesignComponent[],
-  customComponentTemplates: CustomComponentTemplate[] 
+  allComponents: DesignComponent[], // Pass all components from the context
+  customComponentTemplates: CustomComponentTemplate[]
 ): Promise<string> {
   try {
-    // Filter out the default root LazyColumn for the JSON editor view
-    const userComponents = components
-      .filter(c => c.id !== DEFAULT_ROOT_LAZY_COLUMN_ID)
-      .map(c => ({
-        ...c,
-        properties: cleanEmptyStringProperties({ ...c.properties }) // Clean properties here
-      }));
-    return JSON.stringify(userComponents, null, 2);
+    // Build the hierarchical tree for children of the default root LazyColumn
+    const rootLazyColumnChildrenTree = buildFullComponentTreeForRemoteConfig(
+        allComponents,
+        customComponentTemplates,
+        DEFAULT_ROOT_LAZY_COLUMN_ID // Get children of the root LazyColumn
+    );
+    // Properties within this tree are already cleaned by buildFullComponentTreeForRemoteConfig
+    return JSON.stringify(rootLazyColumnChildrenTree, null, 2);
   } catch (error) {
-    console.error("Error generating design components JSON for editor:", error);
+    console.error("Error generating hierarchical design components JSON for editor:", error);
     if (error instanceof Error) {
       return `Error: ${error.message}`;
     }
@@ -146,10 +156,9 @@ export async function publishToRemoteConfigAction(
   }
 
   try {
-    // For Remote Config, we still want the full hierarchical tree structure including the root.
-    // Properties will be cleaned by buildFullComponentTreeForRemoteConfig
-    const componentTreeForRemoteConfig = buildFullComponentTreeForRemoteConfig(components, customComponentTemplates);
-    const designJsonString = JSON.stringify(componentTreeForRemoteConfig, null, 2);
+    // For Remote Config, we build the full hierarchical tree including the root.
+    const fullComponentTree = buildFullComponentTreeForRemoteConfig(components, customComponentTemplates, null);
+    const designJsonString = JSON.stringify(fullComponentTree, null, 2);
 
 
     const currentTemplate = await remoteConfig.getTemplate();
