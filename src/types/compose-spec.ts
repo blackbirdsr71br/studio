@@ -52,12 +52,17 @@ export interface BaseComponentProps {
   maxLines?: number; // For Text
   textOverflow?: 'Clip' | 'Ellipsis' | 'Visible'; // For Text
   contentScale?: 'Crop' | 'Fit' | 'FillBounds' | 'Inside' | 'None' | 'FillWidth' | 'FillHeight'; // For Image
-  // Properties for LazyColumn
-  verticalArrangementSpacing?: number;
+  // Properties for LazyColumn / LazyRow
+  itemSpacing?: number; // Renamed from verticalArrangementSpacing / horizontalArrangementSpacing
   userScrollEnabled?: boolean;
   reverseLayout?: boolean;
-  // Properties for LazyRow (some may overlap, like userScrollEnabled and reverseLayout)
-  horizontalArrangementSpacing?: number;
+  // New LazyColumn specific layout properties
+  verticalArrangement?: 'Top' | 'Bottom' | 'Center' | 'SpaceAround' | 'SpaceBetween' | 'SpaceEvenly';
+  horizontalAlignment?: 'Start' | 'CenterHorizontally' | 'End';
+  // New LazyRow specific layout properties
+  horizontalArrangement?: 'Start' | 'End' | 'Center' | 'SpaceAround' | 'SpaceBetween' | 'SpaceEvenly';
+  verticalAlignment?: 'Top' | 'CenterVertically' | 'Bottom';
+
   // New Text properties
   fontWeight?: 'Normal' | 'Bold';
   fontStyle?: 'Normal' | 'Italic';
@@ -121,9 +126,33 @@ export const getDefaultProperties = (type: ComponentType): BaseComponentProps =>
     case 'Card':
       return { ...common, children: [], padding: 16, backgroundColor: '#FFFFFF', width: 200, height: 150, elevation: 2, cornerRadius: 8 };
     case 'LazyColumn':
-      return { ...common, children: [], padding: 8, backgroundColor: 'rgba(200, 240, 200, 0.3)', width: 'match_parent', height: 300, verticalArrangementSpacing: 0, userScrollEnabled: true, reverseLayout: false };
+      return {
+        ...common,
+        children: [],
+        padding: 8,
+        backgroundColor: 'rgba(200, 240, 200, 0.3)',
+        width: 'match_parent',
+        height: 300,
+        itemSpacing: 0, // Renamed
+        userScrollEnabled: true,
+        reverseLayout: false,
+        verticalArrangement: 'Top',
+        horizontalAlignment: 'Start',
+      };
     case 'LazyRow':
-      return { ...common, children: [], padding: 8, backgroundColor: 'rgba(200, 200, 240, 0.3)', width: 'match_parent', height: 120, horizontalArrangementSpacing: 0, userScrollEnabled: true, reverseLayout: false };
+      return {
+        ...common,
+        children: [],
+        padding: 8,
+        backgroundColor: 'rgba(200, 200, 240, 0.3)',
+        width: 'match_parent',
+        height: 120,
+        itemSpacing: 0, // Renamed
+        userScrollEnabled: true,
+        reverseLayout: false,
+        horizontalArrangement: 'Start',
+        verticalAlignment: 'Top',
+      };
     case 'LazyVerticalGrid':
       return { ...common, children: [], padding: 8, backgroundColor: 'rgba(240, 200, 200, 0.3)', width: 'match_parent', height: 300, columns: 2 };
     case 'LazyHorizontalGrid':
@@ -278,7 +307,32 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '300', group: 'Layout' },
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '300', group: 'Layout' },
-    { name: 'verticalArrangementSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' },
+    { name: 'itemSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' }, // Renamed
+    {
+      name: 'verticalArrangement',
+      type: 'enum',
+      label: 'Vertical Arrangement',
+      group: 'Layout',
+      options: [
+        { label: 'Top', value: 'Top' },
+        { label: 'Bottom', value: 'Bottom' },
+        { label: 'Center', value: 'Center' },
+        { label: 'Space Around', value: 'SpaceAround' },
+        { label: 'Space Between', value: 'SpaceBetween' },
+        { label: 'Space Evenly', value: 'SpaceEvenly' },
+      ],
+    },
+    {
+      name: 'horizontalAlignment',
+      type: 'enum',
+      label: 'Horizontal Alignment',
+      group: 'Layout',
+      options: [
+        { label: 'Start', value: 'Start' },
+        { label: 'Center Horizontally', value: 'CenterHorizontally' },
+        { label: 'End', value: 'End' },
+      ],
+    },
     { name: 'userScrollEnabled', type: 'boolean', label: 'Enable Scrolling', group: 'Behavior' },
     { name: 'reverseLayout', type: 'boolean', label: 'Reverse Layout', group: 'Behavior' },
   ],
@@ -287,7 +341,32 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '300', group: 'Layout' },
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '120', group: 'Layout' },
-    { name: 'horizontalArrangementSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' },
+    { name: 'itemSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' }, // Renamed
+    {
+      name: 'horizontalArrangement',
+      type: 'enum',
+      label: 'Horizontal Arrangement',
+      group: 'Layout',
+      options: [
+        { label: 'Start', value: 'Start' },
+        { label: 'End', value: 'End' },
+        { label: 'Center', value: 'Center' },
+        { label: 'Space Around', value: 'SpaceAround' },
+        { label: 'Space Between', value: 'SpaceBetween' },
+        { label: 'Space Evenly', value: 'SpaceEvenly' },
+      ],
+    },
+    {
+      name: 'verticalAlignment',
+      type: 'enum',
+      label: 'Vertical Alignment',
+      group: 'Layout',
+      options: [
+        { label: 'Top', value: 'Top' },
+        { label: 'Center Vertically', value: 'CenterVertically' },
+        { label: 'Bottom', value: 'Bottom' },
+      ],
+    },
     { name: 'userScrollEnabled', type: 'boolean', label: 'Enable Scrolling', group: 'Behavior' },
     { name: 'reverseLayout', type: 'boolean', label: 'Reverse Layout', group: 'Behavior' },
   ],

@@ -16,6 +16,14 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     padding = 8,
     elevation = 2, // Default for Card
     cornerRadius = 0, // Default for Box, Card will override if set
+    itemSpacing = 0, // Renamed from vertical/horizontalArrangementSpacing
+    // LazyColumn specific
+    verticalArrangement = 'Top',
+    horizontalAlignment = 'Start',
+    // LazyRow specific
+    horizontalArrangement = 'Start', // Note: name collision, Jetpack uses different enums
+    verticalAlignment = 'Top',      // Will need to be careful with which one applies
+    reverseLayout = false,
   } = properties;
 
   // Helper to process dimension values (number, 'match_parent', 'wrap_content')
@@ -54,9 +62,14 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
   const styleHeight = processDimension(properties.height, defaultHeight);
 
   let flexDirection: 'row' | 'column' = isRow ? 'row' : 'column';
+  if (reverseLayout) {
+    flexDirection = isRow ? 'row-reverse' : 'column-reverse';
+  }
+
   let specificStyles: React.CSSProperties = {
     overflow: 'hidden', // Default, can be overridden
     borderRadius: `${cornerRadius}px`,
+    gap: `${itemSpacing}px`, // Apply itemSpacing as gap
   };
 
   switch (type) {
@@ -65,30 +78,71 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
       specificStyles.backgroundColor = properties.backgroundColor || '#FFFFFF';
       break;
     case 'LazyColumn':
-      flexDirection = 'column';
-      specificStyles.overflowY = 'auto';
-      specificStyles.minHeight = '100px'; // Ensure it's scrollable
+      flexDirection = reverseLayout ? 'column-reverse' : 'column';
+      specificStyles.overflowY = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
+      specificStyles.minHeight = '100px';
       delete specificStyles.borderRadius; // Lazy lists typically don't have their own border radius
+
+      // Vertical Arrangement (maps to justify-content for column flex)
+      switch (properties.verticalArrangement) {
+        case 'Top': specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
+        case 'Bottom': specificStyles.justifyContent = reverseLayout ? 'flex-start' : 'flex-end'; break;
+        case 'Center': specificStyles.justifyContent = 'center'; break;
+        case 'SpaceAround': specificStyles.justifyContent = 'space-around'; break;
+        case 'SpaceBetween': specificStyles.justifyContent = 'space-between'; break;
+        case 'SpaceEvenly': specificStyles.justifyContent = 'space-evenly'; break;
+        default: specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start';
+      }
+      // Horizontal Alignment (maps to align-items for column flex)
+      switch (properties.horizontalAlignment) {
+        case 'Start': specificStyles.alignItems = 'flex-start'; break;
+        case 'CenterHorizontally': specificStyles.alignItems = 'center'; break;
+        case 'End': specificStyles.alignItems = 'flex-end'; break;
+        default: specificStyles.alignItems = 'flex-start';
+      }
       break;
     case 'LazyRow':
-      flexDirection = 'row';
-      specificStyles.overflowX = 'auto';
-      specificStyles.minHeight = '80px'; // Ensure it's scrollable if children are tall
+      flexDirection = reverseLayout ? 'row-reverse' : 'row';
+      specificStyles.overflowX = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
+      specificStyles.minHeight = '80px';
       delete specificStyles.borderRadius;
+
+      // Horizontal Arrangement (maps to justify-content for row flex)
+      switch (properties.horizontalArrangement) {
+          case 'Start': specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
+          case 'End': specificStyles.justifyContent = reverseLayout ? 'flex-start' : 'flex-end'; break;
+          case 'Center': specificStyles.justifyContent = 'center'; break;
+          case 'SpaceAround': specificStyles.justifyContent = 'space-around'; break;
+          case 'SpaceBetween': specificStyles.justifyContent = 'space-between'; break;
+          case 'SpaceEvenly': specificStyles.justifyContent = 'space-evenly'; break;
+          default: specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start';
+      }
+      // Vertical Alignment (maps to align-items for row flex)
+      switch (properties.verticalAlignment) {
+          case 'Top': specificStyles.alignItems = 'flex-start'; break;
+          case 'CenterVertically': specificStyles.alignItems = 'center'; break;
+          case 'Bottom': specificStyles.alignItems = 'flex-end'; break;
+          default: specificStyles.alignItems = 'flex-start';
+      }
       break;
     case 'LazyVerticalGrid':
-      flexDirection = 'row';
+      flexDirection = 'row'; // Grids typically use row for main axis then wrap
       specificStyles.flexWrap = 'wrap';
-      specificStyles.alignContent = 'flex-start';
-      specificStyles.overflowY = 'auto'; // If content exceeds height
+      specificStyles.alignContent = 'flex-start'; // How lines are packed
+      specificStyles.overflowY = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
       specificStyles.minHeight = '100px';
       delete specificStyles.borderRadius;
+      // TODO: Grid column/row spanning logic would be more complex here for item rendering.
+      // For now, items will flow based on their own sizes.
       break;
-    case 'LazyHorizontalGrid': // Visually like LazyRow
-      flexDirection = 'row';
-      specificStyles.overflowX = 'auto';
-      specificStyles.minHeight = '100px'; // Allow children to define height of items in row
+    case 'LazyHorizontalGrid':
+      flexDirection = 'column'; // For a horizontal grid, items fill column-wise then wrap
+      specificStyles.flexWrap = 'wrap'; // Or 'nowrap' if only one "row" of columns is desired
+      specificStyles.alignContent = 'flex-start';
+      specificStyles.overflowX = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
+      specificStyles.minHeight = '100px';
       delete specificStyles.borderRadius;
+      // TODO: Similar to VerticalGrid, actual grid behavior is more complex.
       break;
     case 'Box':
       // Default container styles are fine
@@ -102,7 +156,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     height: styleHeight,
     display: 'flex',
     flexDirection: flexDirection,
-    gap: '8px',
+    // gap is now set in specificStyles
     border: '1px dashed hsl(var(--border))',
     position: 'relative',
     minWidth: '60px', // Slightly larger min size
@@ -127,3 +181,4 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     </div>
   );
 }
+
