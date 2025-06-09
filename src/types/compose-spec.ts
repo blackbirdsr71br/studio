@@ -1,9 +1,9 @@
 
-export type ComponentType = 
-  | 'Text' 
-  | 'Button' 
-  | 'Column' 
-  | 'Row' 
+export type ComponentType =
+  | 'Text'
+  | 'Button'
+  | 'Column'
+  | 'Row'
   | 'Image'
   | 'Box'
   | 'Card'
@@ -30,22 +30,23 @@ export interface ComponentProperty {
 }
 
 export interface BaseComponentProps {
-  [key: string]: any; 
+  [key: string]: any;
   text?: string;
   fontSize?: number;
-  textColor?: string; 
-  backgroundColor?: string; 
-  width?: 'wrap_content' | 'match_parent' | number; 
-  height?: 'wrap_content' | 'match_parent' | number; 
-  padding?: number; 
-  id?: string; 
-  x?: number; 
-  y?: number; 
-  children?: string[]; 
-  contentDescription?: string; 
-  src?: string; 
+  textColor?: string;
+  backgroundColor?: string;
+  width?: 'wrap_content' | 'match_parent' | number;
+  height?: 'wrap_content' | 'match_parent' | number;
+  padding?: number;
+  id?: string;
+  x?: number;
+  y?: number;
+  children?: string[];
+  contentDescription?: string;
+  src?: string;
   "data-ai-hint"?: string;
   elevation?: number; // For Card
+  cornerRadius?: number; // For Card, Box
   columns?: number; // For LazyVerticalGrid
   rows?: number; // For LazyHorizontalGrid
   maxLines?: number; // For Text
@@ -62,9 +63,9 @@ export interface BaseComponentProps {
 export interface DesignComponent {
   id: string;
   type: ComponentType; // Base component type
-  name: string; 
+  name: string;
   properties: BaseComponentProps;
-  parentId?: string | null; 
+  parentId?: string | null;
 }
 
 export interface CustomComponentTemplate {
@@ -97,9 +98,9 @@ export const getDefaultProperties = (type: ComponentType): BaseComponentProps =>
     case 'Row':
       return { ...common, children: [], padding: 8, backgroundColor: 'rgba(224, 224, 224, 0.5)', width: 200, height: 100 };
     case 'Box':
-      return { ...common, children: [], padding: 0, backgroundColor: 'rgba(220, 220, 220, 0.3)', width: 100, height: 100 };
+      return { ...common, children: [], padding: 0, backgroundColor: 'rgba(220, 220, 220, 0.3)', width: 100, height: 100, cornerRadius: 4 };
     case 'Card':
-      return { ...common, children: [], padding: 16, backgroundColor: '#FFFFFF', width: 200, height: 150, elevation: 2 };
+      return { ...common, children: [], padding: 16, backgroundColor: '#FFFFFF', width: 200, height: 150, elevation: 2, cornerRadius: 8 };
     case 'LazyColumn':
       return { ...common, children: [], padding: 8, backgroundColor: 'rgba(200, 240, 200, 0.3)', width: 'match_parent', height: 300, verticalArrangementSpacing: 0, userScrollEnabled: true, reverseLayout: false };
     case 'LazyRow':
@@ -140,16 +141,16 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'textColor', type: 'color', label: 'Text Color', group: 'Appearance' },
     { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '0', group: 'Layout' },
     { name: 'maxLines', type: 'number', label: 'Max Lines', placeholder: 'e.g., 2', group: 'Content' },
-    { 
-      name: 'textOverflow', 
-      type: 'enum', 
-      label: 'Text Overflow', 
-      group: 'Content', 
+    {
+      name: 'textOverflow',
+      type: 'enum',
+      label: 'Text Overflow',
+      group: 'Content',
       options: [
         { label: 'Clip', value: 'Clip' },
         { label: 'Ellipsis', value: 'Ellipsis' },
         { label: 'Visible', value: 'Visible' },
-      ] 
+      ]
     },
   ],
   Button: [
@@ -183,8 +184,8 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
   Column: [
     { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8', group: 'Layout' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '200', group: 'Layout' }, 
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '200', group: 'Layout' }, 
+    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '200', group: 'Layout' },
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '200', group: 'Layout' },
   ],
   Row: [
     { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8', group: 'Layout' },
@@ -195,12 +196,14 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
   Box: [
     { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '0', group: 'Layout' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'cornerRadius', type: 'number', label: 'Corner Radius (dp)', placeholder: '4', group: 'Appearance' },
     { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '100', group: 'Layout' },
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '100', group: 'Layout' },
   ],
   Card: [
     { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '16', group: 'Layout' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'cornerRadius', type: 'number', label: 'Corner Radius (dp)', placeholder: '8', group: 'Appearance' },
     { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '200', group: 'Layout' },
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '150', group: 'Layout' },
     { name: 'elevation', type: 'number', label: 'Elevation (dp)', placeholder: '2', group: 'Appearance' },
@@ -208,7 +211,7 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
   LazyColumn: [
     { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8', group: 'Layout' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '300', group: 'Layout' }, 
+    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '300', group: 'Layout' },
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '300', group: 'Layout' },
     { name: 'verticalArrangementSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' },
     { name: 'userScrollEnabled', type: 'boolean', label: 'Enable Scrolling', group: 'Behavior' },
@@ -218,7 +221,7 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8', group: 'Layout' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '300', group: 'Layout' },
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '120', group: 'Layout' }, 
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '120', group: 'Layout' },
     { name: 'horizontalArrangementSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' },
     { name: 'userScrollEnabled', type: 'boolean', label: 'Enable Scrolling', group: 'Behavior' },
     { name: 'reverseLayout', type: 'boolean', label: 'Reverse Layout', group: 'Behavior' },
@@ -245,7 +248,7 @@ export const isCustomComponentType = (type: string): boolean => {
 };
 
 export const CONTAINER_TYPES: ReadonlyArray<ComponentType> = [
-  'Column', 'Row', 'Box', 'Card', 
+  'Column', 'Row', 'Box', 'Card',
   'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid'
 ];
 
@@ -267,4 +270,3 @@ export function isContainerType(type: ComponentType | string, customTemplates?: 
   }
   return CONTAINER_TYPES.includes(type as ComponentType);
 }
-    

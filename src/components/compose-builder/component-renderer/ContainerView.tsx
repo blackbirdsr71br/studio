@@ -12,14 +12,15 @@ interface ContainerViewProps {
 
 export function ContainerView({ component, childrenComponents, isRow }: ContainerViewProps) {
   const { type, properties } = component;
-  const { 
-    padding = 8, 
+  const {
+    padding = 8,
     elevation = 2, // Default for Card
+    cornerRadius = 0, // Default for Box, Card will override if set
   } = properties;
-  
+
   // Helper to process dimension values (number, 'match_parent', 'wrap_content')
   const processDimension = (
-    dimValue: string | number | undefined, 
+    dimValue: string | number | undefined,
     defaultValueIfUndefined: string | number
   ): string => {
     if (typeof dimValue === 'number') return `${dimValue}px`;
@@ -51,10 +52,11 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
 
   const styleWidth = processDimension(properties.width, defaultWidth);
   const styleHeight = processDimension(properties.height, defaultHeight);
-  
+
   let flexDirection: 'row' | 'column' = isRow ? 'row' : 'column';
   let specificStyles: React.CSSProperties = {
     overflow: 'hidden', // Default, can be overridden
+    borderRadius: `${cornerRadius}px`,
   };
 
   switch (type) {
@@ -66,11 +68,13 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
       flexDirection = 'column';
       specificStyles.overflowY = 'auto';
       specificStyles.minHeight = '100px'; // Ensure it's scrollable
+      delete specificStyles.borderRadius; // Lazy lists typically don't have their own border radius
       break;
     case 'LazyRow':
       flexDirection = 'row';
       specificStyles.overflowX = 'auto';
       specificStyles.minHeight = '80px'; // Ensure it's scrollable if children are tall
+      delete specificStyles.borderRadius;
       break;
     case 'LazyVerticalGrid':
       flexDirection = 'row';
@@ -78,17 +82,19 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
       specificStyles.alignContent = 'flex-start';
       specificStyles.overflowY = 'auto'; // If content exceeds height
       specificStyles.minHeight = '100px';
+      delete specificStyles.borderRadius;
       break;
     case 'LazyHorizontalGrid': // Visually like LazyRow
       flexDirection = 'row';
       specificStyles.overflowX = 'auto';
       specificStyles.minHeight = '100px'; // Allow children to define height of items in row
+      delete specificStyles.borderRadius;
       break;
     case 'Box':
       // Default container styles are fine
       break;
   }
-  
+
   const baseStyle: React.CSSProperties = {
     backgroundColor: properties.backgroundColor || (type === 'Card' ? '#FFFFFF' : 'rgba(200, 200, 200, 0.2)'), // Softer default BG
     padding: `${padding}px`,
@@ -96,12 +102,12 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     height: styleHeight,
     display: 'flex',
     flexDirection: flexDirection,
-    gap: '8px', 
-    border: '1px dashed hsl(var(--border))', 
-    position: 'relative', 
+    gap: '8px',
+    border: '1px dashed hsl(var(--border))',
+    position: 'relative',
     minWidth: '60px', // Slightly larger min size
     minHeight: '60px',
-    ...specificStyles, 
+    ...specificStyles,
   };
 
   const placeholderText = `Drop components into this ${getComponentDisplayName(type)}`;
@@ -121,5 +127,3 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     </div>
   );
 }
-
-    
