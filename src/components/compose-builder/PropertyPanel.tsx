@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { propertyDefinitions, type ComponentType, type ComponentProperty, getComponentDisplayName } from '@/types/compose-spec';
 import { PropertyEditor } from './PropertyEditor';
-import { Trash2, Save } from 'lucide-react'; // Added Save icon
+import { Trash2, Save } from 'lucide-react'; 
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,7 +18,7 @@ interface GroupedProperties {
 }
 
 export function PropertyPanel() {
-  const { selectedComponentId, getComponentById, updateComponentProperties, deleteComponent, saveSelectedAsCustomTemplate } = useDesign();
+  const { selectedComponentId, getComponentById, updateComponent, deleteComponent, saveSelectedAsCustomTemplate } = useDesign();
   const selectedComponent = selectedComponentId ? getComponentById(selectedComponentId) : null;
   const { toast } = useToast();
 
@@ -33,14 +33,20 @@ export function PropertyPanel() {
     );
   }
 
+  const getDefaultPropertyValue = (propDef: Omit<ComponentProperty, 'value'>) => {
+    if (propDef.type === 'number') return 0;
+    if (propDef.type === 'boolean') return false;
+    return '';
+  };
+
   const componentPropsDef = (propertyDefinitions[selectedComponent.type as ComponentType] || []) as (Omit<ComponentProperty, 'value'> & { group: string })[];
 
   const handlePropertyChange = (propName: string, value: string | number | boolean) => {
-    updateComponentProperties(selectedComponent.id, { [propName]: value });
+    updateComponent(selectedComponent.id, { properties: { [propName]: value } });
   };
 
   const handleNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-     updateComponentProperties(selectedComponent.id, { name: event.target.value });
+     updateComponent(selectedComponent.id, { name: event.target.value });
   };
 
   const handleDelete = () => {
@@ -57,7 +63,7 @@ export function PropertyPanel() {
         title: "Custom Component Saved",
         description: `"${name.trim()}" added to the component library.`,
       });
-    } else if (name !== null) { // Prompt was not cancelled, but name was empty
+    } else if (name !== null) { 
       toast({
         title: "Save Failed",
         description: "Custom component name cannot be empty.",
@@ -66,12 +72,6 @@ export function PropertyPanel() {
     }
   };
 
-  // Moved function definition before its usage
-  const getDefaultPropertyValue = (propDef: Omit<ComponentProperty, 'value'>) => {
-    if (propDef.type === 'number') return 0;
-    if (propDef.type === 'boolean') return false;
-    return '';
-  };
 
   const groupedProperties: GroupedProperties = {};
   const propertyGroups: string[] = [];
@@ -149,3 +149,4 @@ export function PropertyPanel() {
 }
 
     
+
