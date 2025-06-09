@@ -8,10 +8,10 @@ import { TextView } from './component-renderer/TextView';
 import { ButtonView } from './component-renderer/ButtonView';
 import { ImageView } from './component-renderer/ImageView';
 import { ContainerView } from './component-renderer/ContainerView';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDrag, useDrop, type XYCoord } from 'react-dnd';
 import { ItemTypes } from '@/lib/dnd-types';
-import { isContainerType } from '@/types/compose-spec';
+import { isContainerType, DEFAULT_ROOT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 
 interface RenderedComponentWrapperProps {
   component: DesignComponent;
@@ -19,75 +19,75 @@ interface RenderedComponentWrapperProps {
 
 interface DraggedCanvasItem {
   id: string;
-  type: typeof ItemTypes.CANVAS_COMPONENT_ITEM; // To distinguish from library items
+  type: typeof ItemTypes.CANVAS_COMPONENT_ITEM;
 }
 
 interface DraggedLibraryItem {
-  type: string; // ComponentType or custom templateId
+  type: string;
 }
 
+type HandleType = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
+
+const MIN_DIMENSION = 20; // Minimum width/height in pixels
 
 export function RenderedComponentWrapper({ component }: RenderedComponentWrapperProps) {
-  const { selectedComponentId, selectComponent, getComponentById, addComponent, moveComponent, customComponentTemplates } = useDesign();
+  const { selectedComponentId, selectComponent, getComponentById, addComponent, moveComponent, updateComponent, customComponentTemplates } = useDesign();
   const ref = useRef<HTMLDivElement>(null);
+
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeDetails, setResizeDetails] = useState<{
+    handle: HandleType;
+    startX: number;
+    startY: number;
+    initialWidth: number;
+    initialHeight: number;
+    initialCompX: number;
+    initialCompY: number;
+  } | null>(null);
+
 
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.CANVAS_COMPONENT_ITEM,
-    item: { id: component.id, type: ItemTypes.CANVAS_COMPONENT_ITEM }, // Add type explicitly
+    item: { id: component.id, type: ItemTypes.CANVAS_COMPONENT_ITEM },
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
-    // Optional: canDrag can be used to prevent dragging certain items if needed
-    // canDrag: () => !component.properties.isLocked, 
+    canDrag: () => component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID,
   }));
 
   const [{ canDrop, isOver }, drop] = useDrop(() => ({
     accept: [ItemTypes.COMPONENT_LIBRARY_ITEM, ItemTypes.CANVAS_COMPONENT_ITEM],
     canDrop: (item: DraggedCanvasItem | DraggedLibraryItem, monitor) => {
       if (!isContainerType(component.type, customComponentTemplates)) {
-        return false; // Only containers can be drop targets
+        return false;
       }
-      // Prevent dropping a component onto itself
       if ('id' in item && item.id === component.id) {
         return false;
       }
-      // TODO: Prevent dropping a parent into one of its own children (cycle prevention)
-      // This would require traversing up the tree from `component.id` to see if `item.id` is an ancestor.
       return true;
-    },
-    hover: (item: DraggedCanvasItem | DraggedLibraryItem, monitor) => {
-      // You can add hover effects here if needed, e.g., for reordering within a list
-      // For now, the main visual cue will be on the container itself via isOver
     },
     drop: (item: DraggedCanvasItem | DraggedLibraryItem, monitor) => {
       if (monitor.didDrop() || !isContainerType(component.type, customComponentTemplates)) {
-        // If already handled by a child, or this isn't a container, bail.
         return;
       }
-
-      const itemTypeFromMonitor = monitor.getItemType(); // More reliable way to get the type of the dragged item
-
+      const itemTypeFromMonitor = monitor.getItemType();
       if (itemTypeFromMonitor === ItemTypes.COMPONENT_LIBRARY_ITEM) {
         const libraryItem = item as DraggedLibraryItem;
-        // Dropping a NEW component from the library into this container
-        // Position within the container is usually handled by flex/grid, not absolute coords
         addComponent(libraryItem.type, component.id);
       } else if (itemTypeFromMonitor === ItemTypes.CANVAS_COMPONENT_ITEM) {
         const canvasItem = item as DraggedCanvasItem;
-        // Moving an EXISTING component into this container
-        if (canvasItem.id !== component.id) { // Ensure not dropping onto self
+        if (canvasItem.id !== component.id) {
           moveComponent(canvasItem.id, component.id);
         }
       }
     },
     collect: (monitor) => ({
-      isOver: monitor.isOver({ shallow: true }), // shallow: true for nested drop targets
+      isOver: monitor.isOver({ shallow: true }),
       canDrop: monitor.canDrop(),
     }),
   }), [component.id, component.type, addComponent, moveComponent, customComponentTemplates, isContainerType]);
 
-  // Attach drag and drop refs
-  drag(drop(ref)); // If it's a container, it's both draggable and a drop target. If not, drop is a no-op.
+  drag(drop(ref));
 
   const [position, setPosition] = useState({ x: component.properties.x || 0, y: component.properties.y || 0 });
 
@@ -101,8 +101,100 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    selectComponent(component.id);
+    if (component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID) {
+      selectComponent(component.id);
+    } else {
+      selectComponent(DEFAULT_ROOT_LAZY_COLUMN_ID); // Allow selecting root but not showing handles etc.
+    }
   };
+
+  // Resize Handlers
+  const handleMouseDownOnResizeHandle = useCallback((event: React.MouseEvent<HTMLDivElement>, handle: HandleType) => {
+    event.stopPropagation();
+    event.preventDefault();
+    if (component.id === DEFAULT_ROOT_LAZY_COLUMN_ID) return;
+
+    selectComponent(component.id); // Ensure component is selected when starting resize
+    setIsResizing(true);
+    
+    const rect = ref.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    setResizeDetails({
+      handle,
+      startX: event.clientX,
+      startY: event.clientY,
+      initialWidth: rect.width,
+      initialHeight: rect.height,
+      initialCompX: component.properties.x || 0,
+      initialCompY: component.properties.y || 0,
+    });
+  }, [component.id, component.properties.x, component.properties.y, selectComponent]);
+
+  useEffect(() => {
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!isResizing || !resizeDetails || !ref.current) return;
+
+      const dx = event.clientX - resizeDetails.startX;
+      const dy = event.clientY - resizeDetails.startY;
+
+      let newWidth = resizeDetails.initialWidth;
+      let newHeight = resizeDetails.initialHeight;
+      let newX = resizeDetails.initialCompX;
+      let newY = resizeDetails.initialCompY;
+
+      // Calculate new dimensions and position based on handle
+      if (resizeDetails.handle.includes('e')) {
+        newWidth = resizeDetails.initialWidth + dx;
+      }
+      if (resizeDetails.handle.includes('w')) {
+        newWidth = resizeDetails.initialWidth - dx;
+        if (!component.parentId) newX = resizeDetails.initialCompX + dx;
+      }
+      if (resizeDetails.handle.includes('s')) {
+        newHeight = resizeDetails.initialHeight + dy;
+      }
+      if (resizeDetails.handle.includes('n')) {
+        newHeight = resizeDetails.initialHeight - dy;
+        if (!component.parentId) newY = resizeDetails.initialCompY + dy;
+      }
+      
+      newWidth = Math.max(newWidth, MIN_DIMENSION);
+      newHeight = Math.max(newHeight, MIN_DIMENSION);
+
+      const updatedProps: Record<string, any> = {
+        width: Math.round(newWidth),
+        height: Math.round(newHeight),
+      };
+
+      if (!component.parentId) { // Only update x,y for root components
+        if (resizeDetails.handle.includes('w') || resizeDetails.handle.includes('n')) {
+           if (newX !== resizeDetails.initialCompX) updatedProps.x = Math.round(newX);
+           if (newY !== resizeDetails.initialCompY) updatedProps.y = Math.round(newY);
+        }
+      }
+      
+      updateComponent(component.id, { properties: updatedProps });
+    };
+
+    const handleMouseUp = () => {
+      if (isResizing) {
+        setIsResizing(false);
+        setResizeDetails(null);
+      }
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, resizeDetails, component.id, component.parentId, updateComponent]);
+
 
   const renderSpecificComponent = () => {
     const children = (component.properties.children || []).map(id => getComponentById(id)).filter(Boolean) as DesignComponent[];
@@ -148,13 +240,22 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
 
   const wrapperStyle: React.CSSProperties = {
     ...absolutePositionStyle,
-    transition: isDragging ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
+    transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
+    width: component.properties.width === 'match_parent' ? '100%' : component.properties.width === 'wrap_content' ? 'auto' : `${component.properties.width}px`,
+    height: component.properties.height === 'match_parent' ? '100%' : component.properties.height === 'wrap_content' ? 'auto' : `${component.properties.height}px`,
   };
+  
+  if (component.id === DEFAULT_ROOT_LAZY_COLUMN_ID) {
+      wrapperStyle.width = '100%';
+      wrapperStyle.height = '100%';
+  }
 
-  // Visual feedback for drop target (container)
+
   const containerDropTargetStyle = isContainerType(component.type, customComponentTemplates) && isOver && canDrop 
-    ? 'drag-over-container' // This class is defined in DesignSurface global styles
+    ? 'drag-over-container'
     : '';
+
+  const showResizeHandles = isSelected && component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID;
 
   return (
     <div
@@ -163,15 +264,29 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       className={cn(
         'p-0.5 border border-transparent hover:border-primary/50',
         {
-          'ring-2 ring-primary ring-offset-2 shadow-lg !border-primary': isSelected,
-          'opacity-50': isDragging, // Visual feedback for dragging item
+          'ring-2 ring-primary ring-offset-2 shadow-lg !border-primary': isSelected && component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID,
+          'opacity-50': isDragging,
+          'cursor-grab': !isResizing && component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID,
+          'cursor-grabbing': isDragging,
         },
-        containerDropTargetStyle // Visual feedback for container being hovered over
+        containerDropTargetStyle
       )}
       onClick={handleClick}
       data-component-id={component.id}
     >
       {renderSpecificComponent()}
+      {showResizeHandles && (
+        <>
+          {(['nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w'] as HandleType[]).map(handle => (
+            <div
+              key={handle}
+              className={`resize-handle ${handle}`}
+              onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle)}
+            />
+          ))}
+        </>
+      )}
     </div>
   );
 }
+

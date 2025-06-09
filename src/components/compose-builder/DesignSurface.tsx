@@ -10,11 +10,11 @@ import { useDrop, type XYCoord } from 'react-dnd';
 import { ItemTypes } from '@/lib/dnd-types';
 
 interface LibraryItem {
-  type: ComponentType | string; // Can be base type or custom templateId
+  type: ComponentType | string; 
 }
 
 interface CanvasItem {
-  id: string; // ID of the component being dragged from the canvas
+  id: string; 
   type: typeof ItemTypes.CANVAS_COMPONENT_ITEM;
 }
 
@@ -26,7 +26,7 @@ export function DesignSurface() {
     accept: [ItemTypes.COMPONENT_LIBRARY_ITEM, ItemTypes.CANVAS_COMPONENT_ITEM],
     drop: (item: LibraryItem | CanvasItem, monitor) => {
       const surfaceBounds = surfaceRef.current?.getBoundingClientRect();
-      if (!surfaceBounds || monitor.didDrop()) return; // Already handled by a nested target
+      if (!surfaceBounds || monitor.didDrop()) return; 
 
       const clientOffset = monitor.getClientOffset();
       if (!clientOffset) return;
@@ -41,24 +41,21 @@ export function DesignSurface() {
         addComponent(libItem.type, null, { x: dropX, y: dropY });
       } else if (itemType === ItemTypes.CANVAS_COMPONENT_ITEM) {
         const canvasItem = item as CanvasItem;
-        // Check if the component being dragged is already a root component and just needs position update
         const draggedComponent = getComponentById(canvasItem.id);
         if (draggedComponent && !draggedComponent.parentId) {
-            // It's a root component being moved on the canvas
             moveComponent(canvasItem.id, null, { x: dropX, y: dropY });
         } else if (draggedComponent) {
-            // It's a child component being moved to become a root component
             moveComponent(canvasItem.id, null, { x: dropX, y: dropY });
         }
       }
     },
     collect: (monitor) => ({
-      isOverSurface: !!monitor.isOver({ shallow: true }), // shallow:true because surface is top-level
+      isOverSurface: !!monitor.isOver({ shallow: true }), 
       canDropOnSurface: !!monitor.canDrop(),
     }),
   }), [addComponent, moveComponent, getComponentById]);
 
-  dropRef(surfaceRef); // Attach react-dnd drop ref to the surface
+  dropRef(surfaceRef); 
 
   const handleSurfaceClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === surfaceRef.current) {
@@ -90,6 +87,23 @@ export function DesignSurface() {
           outline: 2px dashed hsl(var(--accent));
           background-color: hsla(var(--accent-hsl, 291 64% 42%) / 0.1) !important; 
         }
+        .resize-handle {
+          position: absolute;
+          width: 10px;
+          height: 10px;
+          background-color: hsl(var(--primary));
+          border: 1px solid hsl(var(--primary-foreground));
+          border-radius: 2px;
+          z-index: 10; 
+        }
+        .resize-handle.nw { cursor: nwse-resize; top: -5px; left: -5px; }
+        .resize-handle.ne { cursor: nesw-resize; top: -5px; right: -5px; }
+        .resize-handle.sw { cursor: nesw-resize; bottom: -5px; left: -5px; }
+        .resize-handle.se { cursor: nwse-resize; bottom: -5px; right: -5px; }
+        .resize-handle.n { cursor: ns-resize; top: -5px; left: 50%; transform: translateX(-50%); }
+        .resize-handle.s { cursor: ns-resize; bottom: -5px; left: 50%; transform: translateX(-50%); }
+        .resize-handle.w { cursor: ew-resize; top: 50%; left: -5px; transform: translateY(-50%); }
+        .resize-handle.e { cursor: ew-resize; top: 50%; right: -5px; transform: translateY(-50%); }
       `}</style>
       {rootComponents.map((component) => (
         <RenderedComponentWrapper key={component.id} component={component} />
@@ -100,6 +114,13 @@ export function DesignSurface() {
             <p className="text-xs mt-1">(This is your app screen)</p>
         </div>
       )}
+       {components.length === 1 && components[0].id === "default-root-lazy-column" && components[0].properties.children?.length === 0 && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground pointer-events-none p-4 text-center">
+            <p className="text-lg">Drag components into the Root Canvas</p>
+            <p className="text-xs mt-1">(This is your app screen)</p>
+        </div>
+      )}
     </div>
   );
 }
+
