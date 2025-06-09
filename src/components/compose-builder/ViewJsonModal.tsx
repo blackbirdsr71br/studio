@@ -1,14 +1,16 @@
 
 'use client';
 
-import React, { useState, useImperativeHandle, forwardRef, useCallback } from 'react';
+import React, { useState, useImperativeHandle, forwardRef, useCallback, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useDesign } from '@/contexts/DesignContext';
-import { getDesignAsJsonAction } from '@/app/actions';
+import { getDesignComponentsAsJsonAction } from '@/app/actions'; // Updated action name
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Copy, Download } from 'lucide-react';
+import { Loader2, Copy, Download, Save, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import type { DesignComponent } from '@/types/compose-spec';
 
 export interface ViewJsonModalRef {
   openModal: () => void;
@@ -16,9 +18,10 @@ export interface ViewJsonModalRef {
 
 export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [designJson, setDesignJson] = useState<string | null>(null);
+  const [editableJsonString, setEditableJsonString] = useState<string>("");
+  const [jsonError, setJsonError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { components, customComponentTemplates } = useDesign(); // Added customComponentTemplates
+  const { components, overwriteComponents } = useDesign();
   const { toast } = useToast();
 
   useImperativeHandle(ref, () => ({
@@ -28,21 +31,33 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
     }
   }));
 
+  const validateAndSetJson = (jsonStr: string) => {
+    setEditableJsonString(jsonStr);
+    try {
+      JSON.parse(jsonStr);
+      setJsonError(null);
+    } catch (error) {
+      if (error instanceof Error) {
+        setJsonError(error.message);
+      } else {
+        setJsonError("Invalid JSON format.");
+      }
+    }
+  };
+
   const handleFetchJson = useCallback(async () => {
     if (components.length === 0) {
-      setDesignJson("[]"); // Empty array for no components
+      validateAndSetJson("[]");
       return;
     }
     setIsLoading(true);
-    setDesignJson(null);
+    setJsonError(null);
     try {
-      // Pass customComponentTemplates to the action
-      const jsonString = await getDesignAsJsonAction(components, customComponentTemplates);
-      setDesignJson(jsonString);
+      const jsonString = await getDesignComponentsAsJsonAction(components); // Uses the flat list
+      validateAndSetJson(jsonString);
     } catch (error) {
-      console.error("Error fetching design JSON:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to fetch JSON.";
-      setDesignJson(`// Error fetching JSON:\n// ${errorMessage}`);
+      validateAndSetJson(`// Error fetching JSON:\n// ${errorMessage}`);
       toast({
         title: "JSON Fetch Failed",
         description: errorMessage,
@@ -51,12 +66,38 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
     } finally {
       setIsLoading(false);
     }
-  }, [components, customComponentTemplates, toast]); // Added customComponentTemplates to dependencies
+  }, [components, toast]);
+
+  const handleSaveChanges = () => {
+    if (jsonError) {
+      toast({ title: "Save Failed", description: "JSON is invalid. Please correct errors before saving.", variant: "destructive" });
+      return;
+    }
+    try {
+      const parsedComponents = JSON.parse(editableJsonString) as DesignComponent[];
+      // Basic validation: check if it's an array
+      if (!Array.isArray(parsedComponents)) {
+        throw new Error("Invalid format: Top level must be an array of components.");
+      }
+      const result = overwriteComponents(parsedComponents);
+      if (result.success) {
+        toast({ title: "Changes Saved", description: "Design updated from JSON successfully." });
+        setIsOpen(false);
+      } else {
+        toast({ title: "Save Failed", description: result.error || "Could not apply JSON changes.", variant: "destructive" });
+        setJsonError(result.error || "Could not apply JSON changes.");
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "An error occurred while saving.";
+      toast({ title: "Save Failed", description: message, variant: "destructive" });
+      setJsonError(message);
+    }
+  };
 
   const handleCopyToClipboard = async () => {
-    if (designJson) {
+    if (editableJsonString && !jsonError) {
       try {
-        await navigator.clipboard.writeText(designJson);
+        await navigator.clipboard.writeText(editableJsonString);
         toast({
           title: "JSON Copied!",
           description: "Design JSON copied to clipboard.",
@@ -68,67 +109,77 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
           variant: "destructive",
         });
       }
+    } else {
+      toast({ title: "Copy Failed", description: "JSON is invalid or empty.", variant: "destructive" });
     }
   };
 
   const handleDownloadJson = () => {
-    if (designJson && !designJson.startsWith("// Error")) {
-      const blob = new Blob([designJson], { type: 'application/json;charset=utf-8' });
+    if (editableJsonString && !jsonError) {
+      const blob = new Blob([editableJsonString], { type: 'application/json;charset=utf-8' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = 'design.json';
+      link.download = 'design_components.json';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(link.href);
       toast({
         title: "JSON Downloaded",
-        description: "design.json has started downloading.",
+        description: "design_components.json has started downloading.",
       });
     } else {
       toast({
         title: "Download Failed",
-        description: "No valid JSON to download.",
+        description: "JSON is invalid or empty.",
         variant: "destructive",
       });
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col">
+    <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if(open) handleFetchJson(); }}>
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="font-headline">Design JSON</DialogTitle>
+          <DialogTitle className="font-headline">Design JSON (Components List)</DialogTitle>
           <DialogDescription>
-            The JSON representation of your current design.
+            View, edit, and save the JSON representation of your design components.
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="flex-grow my-4 rounded-md border bg-muted/30">
-          <pre className="p-4 text-sm font-code whitespace-pre-wrap break-all min-h-[200px]">
-            {isLoading && (
-              <div className="flex items-center justify-center h-full">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <span className="ml-2">Loading JSON...</span>
-              </div>
-            )}
-            {!isLoading && designJson}
-             {!isLoading && !designJson && components.length === 0 && (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                    Add components to the canvas to view JSON.
-                </div>
-            )}
-          </pre>
-        </ScrollArea>
-        <DialogFooter className="sm:justify-end gap-2 flex-wrap">
-           <Button variant="outline" onClick={() => setIsOpen(false)}>
-            Close
-          </Button>
-          <Button onClick={handleCopyToClipboard} disabled={isLoading || !designJson || designJson.startsWith("// Error")}>
-            <Copy className="mr-2 h-4 w-4" /> Copy
-          </Button>
-          <Button onClick={handleDownloadJson} disabled={isLoading || !designJson || designJson.startsWith("// Error")}>
-            <Download className="mr-2 h-4 w-4" /> Download .json
-          </Button>
+        <div className="flex-grow my-2 flex flex-col min-h-[400px]">
+          <Textarea
+            value={editableJsonString}
+            onChange={(e) => validateAndSetJson(e.target.value)}
+            placeholder="JSON data will appear here..."
+            className="flex-grow font-code text-xs p-2 rounded-md border bg-muted/30 resize-none min-h-[inherit]"
+            disabled={isLoading}
+            aria-label="Design JSON content"
+          />
+          {jsonError && (
+            <div className="mt-2 p-2 text-xs text-destructive-foreground bg-destructive rounded-md flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>{jsonError}</span>
+            </div>
+          )}
+        </div>
+        <DialogFooter className="sm:justify-between flex-wrap gap-2">
+          <div className="flex gap-2">
+             <Button variant="outline" onClick={handleFetchJson} disabled={isLoading}>
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                Refresh
+             </Button>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Button onClick={handleCopyToClipboard} disabled={isLoading || !!jsonError || !editableJsonString}>
+              <Copy className="mr-2 h-4 w-4" /> Copy
+            </Button>
+            <Button onClick={handleDownloadJson} disabled={isLoading || !!jsonError || !editableJsonString}>
+              <Download className="mr-2 h-4 w-4" /> Download .json
+            </Button>
+            <Button onClick={handleSaveChanges} disabled={isLoading || !!jsonError || !editableJsonString}>
+              <Save className="mr-2 h-4 w-4" /> Save Changes
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
