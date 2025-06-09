@@ -4,7 +4,7 @@
 import type { ReactNode} from 'react';
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { DesignComponent, DesignState, ComponentType, BaseComponentProps, CustomComponentTemplate } from '@/types/compose-spec';
-import { getDefaultProperties, CUSTOM_COMPONENT_TYPE_PREFIX, isCustomComponentType, isContainerType } from '@/types/compose-spec';
+import { getDefaultProperties, CUSTOM_COMPONENT_TYPE_PREFIX, isCustomComponentType, isContainerType, getComponentDisplayName } from '@/types/compose-spec';
 import { db } from '@/lib/firebase';
 import { collection, doc, setDoc, getDocs, deleteDoc } from "firebase/firestore";
 
@@ -43,7 +43,7 @@ function createDefaultRootLazyColumn(): DesignComponent {
       width: 'match_parent',
       height: 'match_parent',
       padding: 8,
-      backgroundColor: 'transparent', // or a very subtle debug color like 'rgba(0,0,0,0.02)'
+      backgroundColor: 'transparent',
       children: [],
       verticalArrangementSpacing: 0,
       userScrollEnabled: true,
@@ -84,7 +84,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           const data = docSnap.data();
           if (data.templateId && data.name && data.rootComponentId && data.componentTree) {
             templates.push({
-              firestoreId: docSnap.id, 
+              firestoreId: docSnap.id,
               ...data
             } as CustomComponentTemplate);
           } else {
@@ -105,58 +105,44 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     (id: string) => designState.components.find(comp => comp.id === id),
     [designState.components]
   );
-  
+
   const getComponentDisplayNameResolved = useCallback((type: ComponentType | string): string => {
-    if (type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
-        const template = designState.customComponentTemplates.find(t => t.templateId === type);
-        return template ? template.name : type.replace(CUSTOM_COMPONENT_TYPE_PREFIX, "");
-    }
-    switch (type as ComponentType) {
-        case 'Text': return 'Text';
-        case 'Button': return 'Button';
-        case 'Image': return 'Image';
-        case 'Column': return 'Column (Layout)';
-        case 'Row': return 'Row (Layout)';
-        case 'Box': return 'Box (Container)';
-        case 'Card': return 'Card (Container)';
-        case 'LazyColumn': return 'Lazy Column';
-        case 'LazyRow': return 'Lazy Row';
-        case 'LazyVerticalGrid': return 'Lazy Vertical Grid';
-        case 'LazyHorizontalGrid': return 'Lazy Horizontal Grid';
-        default: return 'Unknown';
-    }
+    return getComponentDisplayName(type, designState.customComponentTemplates.find(t => t.templateId === type)?.name);
   }, [designState.customComponentTemplates]);
 
 
   const addComponent = useCallback((
-    type: ComponentType | string, 
-    parentIdOrNull: string | null = null, // Explicitly allow null for root drop
+    type: ComponentType | string,
+    parentIdOrNull: string | null = null,
     dropPosition?: { x: number; y: number }
   ) => {
     setDesignState(prev => {
       let currentNextId = prev.nextId;
       let updatedComponentsList = [...prev.components];
       let finalSelectedId = '';
-      
+
       let actualParentId = parentIdOrNull;
       let propertiesForNewComponent: BaseComponentProps;
 
-      if (!actualParentId) { // Dropping onto the root canvas area
+      if (!actualParentId) {
         actualParentId = DEFAULT_ROOT_LAZY_COLUMN_ID;
-         // Ensure root lazy column exists, though it should by design
         if (!updatedComponentsList.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID)) {
             console.warn("Default root LazyColumn missing during addComponent. Re-adding.");
             updatedComponentsList.unshift(createDefaultRootLazyColumn());
         }
       }
-      
+
       const positionProps = dropPosition ? { x: dropPosition.x, y: dropPosition.y } : { x: 50, y: 50 };
 
       if (isCustomComponentType(type)) {
         const templateId = type;
         const template = prev.customComponentTemplates.find(t => t.templateId === templateId);
         if (!template) {
-          console.error(`Custom template ${templateId} not found.`);
+          if (prev.customComponentTemplates.length === 0 && isCustomComponentType(type)) {
+            console.warn(`Attempted to add custom template ${templateId}, but no custom templates are loaded yet. Please try again shortly.`);
+          } else {
+            console.error(`Custom template ${templateId} not found among loaded templates.`);
+          }
           return prev;
         }
 
@@ -178,12 +164,10 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
           const newInstanceComp = deepClone(templateComp);
           newInstanceComp.id = instanceCompId;
-          
+
           if (templateComp.id === template.rootComponentId) {
             newInstanceComp.name = `${template.name} Instance`;
             finalInstanceRootId = instanceCompId;
-            // If actualParentId is the root LC or any other parent, x,y are not needed.
-            // If it were to become a new root (not possible with default LC), then apply positionProps.
             if (actualParentId === DEFAULT_ROOT_LAZY_COLUMN_ID || actualParentId) {
                 delete newInstanceComp.properties.x;
                 delete newInstanceComp.properties.y;
@@ -191,14 +175,14 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 newInstanceComp.properties.x = positionProps.x;
                 newInstanceComp.properties.y = positionProps.y;
             }
-            newInstanceComp.parentId = actualParentId; 
+            newInstanceComp.parentId = actualParentId;
           } else {
             delete newInstanceComp.properties.x;
             delete newInstanceComp.properties.y;
             if (templateComp.parentId && finalIdMap[templateComp.parentId]) {
               newInstanceComp.parentId = finalIdMap[templateComp.parentId];
             } else {
-               newInstanceComp.parentId = null; // Should ideally be attached to the instance root.
+               newInstanceComp.parentId = null;
             }
           }
 
@@ -209,10 +193,10 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           }
           finalNewComponentsBatch.push(newInstanceComp);
         });
-        
+
         finalSelectedId = finalInstanceRootId;
         updatedComponentsList = [...updatedComponentsList, ...finalNewComponentsBatch];
-        
+
         if (actualParentId && finalInstanceRootId) {
             const parentCompIndex = updatedComponentsList.findIndex(c => c.id === actualParentId);
             if (parentCompIndex !== -1) {
@@ -236,10 +220,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const newId = `comp-${currentNextId++}`;
         finalSelectedId = newId;
         const defaultProps = getDefaultProperties(type as ComponentType);
-        
-        // If parent is the root LazyColumn or any other parent, don't use absolute x,y.
-        // Only use positionProps if it were to become a new root (which is prevented by default LC).
-        const shouldUsePositionProps = !actualParentId && parentIdOrNull === null; 
+
+        const shouldUsePositionProps = !actualParentId && parentIdOrNull === null;
 
         const newComponent: DesignComponent = {
           id: newId,
@@ -251,7 +233,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           },
           parentId: actualParentId,
         };
-        if (actualParentId) { // Remove x,y if it has a parent (including default root LC)
+        if (actualParentId) {
             delete newComponent.properties.x;
             delete newComponent.properties.y;
         }
@@ -278,9 +260,9 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           }
         }
       }
-      
+
       const finalUniqueComponents = updatedComponentsList.filter((comp, index, self) => index === self.findIndex(t => t.id === comp.id));
-      
+
       return {
         ...prev,
         components: finalUniqueComponents,
@@ -293,10 +275,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const saveSelectedAsCustomTemplate = useCallback(async (name: string) => {
     if (!designState.selectedComponentId) return;
-    // Prevent saving the default root lazy column as a custom template
     if (designState.selectedComponentId === DEFAULT_ROOT_LAZY_COLUMN_ID) {
         console.warn("Cannot save the root canvas as a custom component.");
-        // Optionally: toast({ title: "Cannot save root canvas", description: "Please select a different component to save as a template.", variant: "destructive" });
         return;
     }
     const selectedComponent = getComponentById(designState.selectedComponentId);
@@ -309,7 +289,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const generateTemplateInternalId = (typeStr: string) => `tmpl-${typeStr.toLowerCase().replace(/\s+/g, '-')}-${nextTemplateInternalId++}`;
 
     const cloneAndCollectForTemplate = (originalCompId: string, newTemplateParentId: string | null) => {
-      const originalComp = getComponentById(originalCompId); 
+      const originalComp = getComponentById(originalCompId);
       if (!originalComp) return;
 
       const templateLocalId = generateTemplateInternalId(originalComp.type);
@@ -318,17 +298,17 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const clonedComp = deepClone(originalComp);
       clonedComp.id = templateLocalId;
       clonedComp.parentId = newTemplateParentId;
-      
+
       delete clonedComp.properties.x;
       delete clonedComp.properties.y;
 
       if (clonedComp.properties.children && Array.isArray(clonedComp.properties.children)) {
-        const originalChildIds = [...clonedComp.properties.children]; 
-        clonedComp.properties.children = []; 
+        const originalChildIds = [...clonedComp.properties.children];
+        clonedComp.properties.children = [];
 
         originalChildIds.forEach(childId => {
-          cloneAndCollectForTemplate(childId, templateLocalId); 
-          if (idMap[childId]) { 
+          cloneAndCollectForTemplate(childId, templateLocalId);
+          if (idMap[childId]) {
             clonedComp.properties.children!.push(idMap[childId]);
           }
         });
@@ -346,7 +326,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     const newTemplate: Omit<CustomComponentTemplate, 'firestoreId'> = {
       templateId: `${CUSTOM_COMPONENT_TYPE_PREFIX}${name.replace(/\s+/g, '_')}-${Date.now()}`,
-      name: name, 
+      name: name,
       rootComponentId: templateRootComponent.id,
       componentTree: templateComponentTree,
     };
@@ -374,14 +354,12 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         customComponentTemplates: [...prev.customComponentTemplates, { ...newTemplate, firestoreId: `local-error-${newTemplate.templateId}` }],
       }));
     }
-  }, [designState.selectedComponentId, getComponentById]); 
+  }, [designState.selectedComponentId, getComponentById]);
 
 
   const deleteComponent = useCallback((id: string) => {
      if (id === DEFAULT_ROOT_LAZY_COLUMN_ID) {
         console.warn("Attempted to delete the default root LazyColumn. Operation prevented.");
-        // Optionally, show a toast to the user.
-        // toast({ title: "Action Denied", description: "The root canvas cannot be deleted.", variant: "destructive" });
         return;
     }
     setDesignState(prev => {
@@ -390,7 +368,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
       let idsToDelete = new Set<string>();
       const queue = [id];
-      
+
       while(queue.length > 0) {
           const currentId = queue.shift()!;
           if (idsToDelete.has(currentId)) continue;
@@ -405,13 +383,13 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
               });
           }
       }
-      
+
       const idsToDeleteArray = Array.from(idsToDelete);
       let components = prev.components.filter(comp => !idsToDeleteArray.includes(comp.id));
 
       if (componentToDelete.parentId) {
         components = components.map(comp => {
-          if (comp.id === componentToDelete.parentId && Array.isArray(comp.properties.children)) { 
+          if (comp.id === componentToDelete.parentId && Array.isArray(comp.properties.children)) {
             return {
               ...comp,
               properties: {
@@ -427,7 +405,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       return {
         ...prev,
         components,
-        selectedComponentId: idsToDeleteArray.includes(prev.selectedComponentId || "") ? null : prev.selectedComponentId,
+        selectedComponentId: idsToDeleteArray.includes(prev.selectedComponentId || "") ? DEFAULT_ROOT_LAZY_COLUMN_ID : prev.selectedComponentId,
       };
     });
   }, []);
@@ -445,9 +423,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           let newComp = { ...comp };
           if (updates.name !== undefined) {
             newComp.name = updates.name;
-             // Special handling for root lazy column name: it's fixed.
             if (id === DEFAULT_ROOT_LAZY_COLUMN_ID) {
-                newComp.name = "Root Canvas"; // Enforce name
+                newComp.name = "Root Canvas";
             }
           }
           if (updates.properties !== undefined) {
@@ -475,12 +452,11 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         components: [newRootLazyColumn],
         selectedComponentId: newRootLazyColumn.id,
         nextId: 1,
-        customComponentTemplates: prev.customComponentTemplates, // Preserve custom templates
+        customComponentTemplates: prev.customComponentTemplates,
     }));
   }, []);
 
   const setDesign = useCallback((newDesign: DesignState) => {
-    // Ensure default root is always present if design is being set from external source
     if (!newDesign.components.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID)) {
         newDesign.components.unshift(createDefaultRootLazyColumn());
         if (!newDesign.selectedComponentId) {
@@ -493,7 +469,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const moveComponent = useCallback((draggedId: string, targetParentIdOrNull: string | null, newPosition?: { x: number, y: number}) => {
      if (draggedId === DEFAULT_ROOT_LAZY_COLUMN_ID) {
         console.warn("Cannot move the default root LazyColumn.");
-        return; // Prevent moving the root
+        return;
     }
     setDesignState(prev => {
         let currentComponents = [...prev.components];
@@ -503,20 +479,19 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         let draggedComponent = {...currentComponents[draggedComponentIndex]};
         const oldParentId = draggedComponent.parentId;
-        
+
         let actualTargetParentId = targetParentIdOrNull;
-        if (targetParentIdOrNull === null) { // Attempting to move to root canvas
+        if (targetParentIdOrNull === null) {
             actualTargetParentId = DEFAULT_ROOT_LAZY_COLUMN_ID;
         }
 
-        if (actualTargetParentId === draggedId) return prev; // Cannot drop onto self
-        
-        // Cycle check: ensure target parent is not a descendant of dragged component
+        if (actualTargetParentId === draggedId) return prev;
+
         let tempParentCheck = actualTargetParentId;
         while(tempParentCheck) {
             if (tempParentCheck === draggedId) {
                 console.warn("Cannot move component into its own descendant.");
-                return prev; 
+                return prev;
             }
             const parentComponent = currentComponents.find(c => c.id === tempParentCheck);
             tempParentCheck = parentComponent ? parentComponent.parentId : null;
@@ -524,36 +499,32 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         draggedComponent.parentId = actualTargetParentId;
 
-        // If new parent is any container (including root LC), remove x,y.
-        // If new parent becomes null (which is redirected to root LC), also remove x,y.
-        if (actualTargetParentId) { 
+        if (actualTargetParentId) {
             delete draggedComponent.properties.x;
             delete draggedComponent.properties.y;
-        } else if (newPosition) { // This case should not be hit if root is always default LC
+        } else if (newPosition) {
              draggedComponent.properties.x = newPosition.x;
              draggedComponent.properties.y = newPosition.y;
         }
 
         currentComponents[draggedComponentIndex] = draggedComponent;
 
-        // Remove from old parent's children list
         if (oldParentId && oldParentId !== actualTargetParentId) {
             const oldParentIndex = currentComponents.findIndex(c => c.id === oldParentId);
             if (oldParentIndex !== -1) {
                 const oldParent = {...currentComponents[oldParentIndex]};
-                if (Array.isArray(oldParent.properties.children)) { 
+                if (Array.isArray(oldParent.properties.children)) {
                     oldParent.properties.children = oldParent.properties.children.filter(childId => childId !== draggedId);
                     currentComponents[oldParentIndex] = oldParent;
                 }
             }
         }
 
-        // Add to new parent's children list
         if (actualTargetParentId) {
             const newParentIndex = currentComponents.findIndex(c => c.id === actualTargetParentId);
             if (newParentIndex !== -1) {
                  const newParent = {...currentComponents[newParentIndex]};
-                 if (isContainerType(newParent.type, prev.customComponentTemplates)) { 
+                 if (isContainerType(newParent.type, prev.customComponentTemplates)) {
                     let existingChildren = Array.isArray(newParent.properties.children) ? newParent.properties.children : [];
                     if (!existingChildren.includes(draggedId)) {
                          newParent.properties.children = [...existingChildren, draggedId];
@@ -562,7 +533,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                  }
             }
         }
-        return { ...prev, components: currentComponents, selectedComponentId: draggedId }; // Select the moved component
+        return { ...prev, components: currentComponents, selectedComponentId: draggedId };
     });
   }, []);
 
@@ -582,23 +553,27 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   if (!isClient || isLoadingTemplates) {
-    // Provide a minimal but functional context during SSR/loading
-    // Ensure getComponentById can find the initial root lazy column if components state is available
     const currentComponents = designState.components.length > 0 ? designState.components : defaultContextValue.components;
     const currentSelectedId = designState.selectedComponentId || defaultContextValue.selectedComponentId;
 
     return (
       <DesignContext.Provider value={{
-        ...defaultContextValue, 
-        components: currentComponents, 
+        ...defaultContextValue,
+        components: currentComponents,
         selectedComponentId: currentSelectedId,
         customComponentTemplates: designState.customComponentTemplates.length > 0 ? designState.customComponentTemplates : defaultContextValue.customComponentTemplates,
         getComponentById: (id: string) => currentComponents.find(comp => comp.id === id) || undefined,
-        // Provide stubs for functions that modify state, as they shouldn't run on server or before hydration
-        addComponent: () => console.warn("addComponent called before client hydration"),
-        deleteComponent: () => console.warn("deleteComponent called before client hydration"),
-        updateComponent: updateComponent, // Allow updates if necessary for initial render from loaded state
-        selectComponent: (id: string | null) => setDesignState(prev => ({...prev, selectedComponentId: id })), // Allow selection
+        // Provide the actual functions. They should be robust enough to handle
+        // the state, including an empty customComponentTemplates list if still loading.
+        addComponent: addComponent,
+        deleteComponent: deleteComponent,
+        updateComponent: updateComponent,
+        updateComponentPosition: updateComponentPosition,
+        selectComponent: selectComponent,
+        clearDesign: clearDesign,
+        setDesign: setDesign,
+        moveComponent: moveComponent,
+        saveSelectedAsCustomTemplate: saveSelectedAsCustomTemplate,
       }}>
         {children}
       </DesignContext.Provider>
@@ -631,3 +606,5 @@ export const useDesign = (): DesignContextType => {
   }
   return context;
 };
+
+    
