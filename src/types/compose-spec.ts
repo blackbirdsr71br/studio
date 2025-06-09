@@ -63,6 +63,7 @@ export interface BaseComponentProps {
   fontStyle?: 'Normal' | 'Italic';
   textAlign?: 'Left' | 'Center' | 'Right' | 'Justify' | 'Start' | 'End';
   textDecoration?: 'None' | 'Underline' | 'LineThrough';
+  lineHeight?: number; // Added lineHeight
 }
 
 export interface DesignComponent {
@@ -105,6 +106,7 @@ export const getDefaultProperties = (type: ComponentType): BaseComponentProps =>
         fontStyle: 'Normal',
         textAlign: 'Start',
         textDecoration: 'None',
+        lineHeight: 1.4, // Default lineHeight
       };
     case 'Button':
       return { ...common, text: 'Click Me', backgroundColor: '#3F51B5', textColor: '#FFFFFF', padding: 12 };
@@ -157,6 +159,7 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'fontSize', type: 'number', label: 'Font Size (sp)', placeholder: '16', group: 'Appearance' },
     { name: 'textColor', type: 'color', label: 'Text Color', group: 'Appearance' },
     { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '0', group: 'Layout' },
+    { name: 'lineHeight', type: 'number', label: 'Line Height (multiplier)', placeholder: '1.4', group: 'Appearance' },
     { name: 'maxLines', type: 'number', label: 'Max Lines', placeholder: 'e.g., 2', group: 'Content' },
     {
       name: 'textOverflow',

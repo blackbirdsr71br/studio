@@ -16,6 +16,7 @@ export function TextView({ properties }: TextViewProps) {
     fontStyle = 'Normal',
     textAlign = 'Start',
     textDecoration = 'None',
+    lineHeight = 1.4, // Use the new lineHeight property
   } = properties;
   
   const style: React.CSSProperties = {
@@ -24,7 +25,7 @@ export function TextView({ properties }: TextViewProps) {
     padding: `${padding}px`,
     whiteSpace: 'pre-wrap', // To respect newlines in text
     wordBreak: 'break-word',
-    lineHeight: '1.4',
+    lineHeight: lineHeight, // Apply the configurable lineHeight
     display: 'inline-block', // To make padding effective
     fontWeight: fontWeight.toLowerCase() as 'normal' | 'bold', // CSS values
     fontStyle: fontStyle.toLowerCase() as 'normal' | 'italic', // CSS values
