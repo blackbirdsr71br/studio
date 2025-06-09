@@ -120,46 +120,50 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
   };
 
   const handleCopyToClipboard = async () => {
-    if (editableJsonString && !jsonError) { 
-      try {
-        await navigator.clipboard.writeText(editableJsonString);
-        toast({
-          title: "JSON Copied!",
-          description: "Design JSON copied to clipboard.",
-        });
-      } catch (err) {
-        toast({
-          title: "Copy Failed",
-          description: "Could not copy JSON to clipboard.",
-          variant: "destructive",
-        });
-      }
-    } else {
-      toast({ title: "Copy Failed", description: "JSON is invalid or empty.", variant: "destructive" });
+    if (!editableJsonString) {
+        toast({ title: "Copy Failed", description: "JSON is empty.", variant: "destructive" });
+        return;
+    }
+    if (jsonError) {
+        toast({ title: "Copy Failed", description: "JSON contains errors. Please correct them before copying.", variant: "destructive" });
+        return;
+    }
+    try {
+      await navigator.clipboard.writeText(editableJsonString);
+      toast({
+        title: "JSON Copied!",
+        description: "Design JSON copied to clipboard.",
+      });
+    } catch (err) {
+      toast({
+        title: "Copy Failed",
+        description: "Could not copy JSON to clipboard.",
+        variant: "destructive",
+      });
     }
   };
 
   const handleDownloadJson = () => {
-    if (editableJsonString && !jsonError) { 
-      const blob = new Blob([editableJsonString], { type: 'application/json;charset=utf-8' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = 'design_components.json';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(link.href);
-      toast({
-        title: "JSON Downloaded",
-        description: "design_components.json has started downloading.",
-      });
-    } else {
-      toast({
-        title: "Download Failed",
-        description: "JSON is invalid or empty.",
-        variant: "destructive",
-      });
+    if (!editableJsonString) {
+        toast({ title: "Download Failed", description: "JSON is empty.", variant: "destructive" });
+        return;
     }
+    if (jsonError) {
+        toast({ title: "Download Failed", description: "JSON contains errors. Please correct them before downloading.", variant: "destructive" });
+        return;
+    }
+    const blob = new Blob([editableJsonString], { type: 'application/json;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'design_components.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+    toast({
+      title: "JSON Downloaded",
+      description: "design_components.json has started downloading.",
+    });
   };
 
   return (
@@ -198,13 +202,13 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
              </Button>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <Button onClick={handleCopyToClipboard} disabled={isLoading || !!jsonError || !editableJsonString}>
+            <Button onClick={handleCopyToClipboard} disabled={isLoading}>
               <Copy className="mr-2 h-4 w-4" /> Copy
             </Button>
-            <Button onClick={handleDownloadJson} disabled={isLoading || !!jsonError || !editableJsonString}>
+            <Button onClick={handleDownloadJson} disabled={isLoading}>
               <Download className="mr-2 h-4 w-4" /> Download .json
             </Button>
-            <Button onClick={handleSaveChanges} disabled={isLoading || !!jsonError || !editableJsonString}>
+            <Button onClick={handleSaveChanges} disabled={isLoading}>
               <Save className="mr-2 h-4 w-4" /> Save Changes
             </Button>
           </div>
@@ -215,5 +219,4 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
 });
 
 ViewJsonModal.displayName = 'ViewJsonModal';
-
     
