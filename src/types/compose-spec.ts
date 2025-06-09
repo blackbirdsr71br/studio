@@ -47,7 +47,7 @@ export interface BaseComponentProps {
   src?: string;
   "data-ai-hint"?: string;
   elevation?: number; // For Card
-  cornerRadius?: number; // For Card, Box
+  cornerRadius?: number; // For Card, Box, Image
   columns?: number; // For LazyVerticalGrid
   rows?: number; // For LazyHorizontalGrid
   maxLines?: number; // For Text
@@ -117,7 +117,7 @@ export const getDefaultProperties = (type: ComponentType): BaseComponentProps =>
     case 'Button':
       return { ...common, text: 'Click Me', backgroundColor: '#3F51B5', textColor: '#FFFFFF', padding: 12 };
     case 'Image':
-      return { ...common, src: 'https://placehold.co/200x100.png', contentDescription: 'Placeholder Image', width: 200, height: 100, "data-ai-hint": "abstract pattern", contentScale: 'Crop' };
+      return { ...common, src: 'https://placehold.co/200x100.png', contentDescription: 'Placeholder Image', width: 200, height: 100, "data-ai-hint": "abstract pattern", contentScale: 'Crop', cornerRadius: 0 };
     case 'Column':
       return { ...common, children: [], padding: 8, backgroundColor: 'rgba(224, 224, 224, 0.5)', width: 200, height: 200, itemSpacing: 0, verticalArrangement: 'Top', horizontalAlignment: 'Start' };
     case 'Row':
@@ -259,20 +259,21 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'contentDescription', type: 'string', label: 'Content Description', placeholder: 'Image description', group: 'Content' },
     { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '100', group: 'Layout' },
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '100', group: 'Layout' },
-    { name: 'data-ai-hint', type: 'string', label: 'AI Hint (for placeholder)', placeholder: 'e.g. "landscape"', group: 'Content'},
+    { name: 'data-ai-hint', type: 'string', label: 'AI Hint (for placeholder/generation)', placeholder: 'e.g. "landscape sunset"', group: 'Content'},
+    { name: 'cornerRadius', type: 'number', label: 'Corner Radius (dp)', placeholder: '0', group: 'Appearance' },
     {
       name: 'contentScale',
       type: 'enum',
       label: 'Content Scale',
       group: 'Appearance',
       options: [
-        { label: 'Crop', value: 'Crop' },
-        { label: 'Fit', value: 'Fit' },
-        { label: 'Fill Bounds', value: 'FillBounds' },
-        { label: 'Inside', value: 'Inside' },
-        { label: 'None', value: 'None' },
-        { label: 'Fill Width', value: 'FillWidth' },
-        { label: 'Fill Height', value: 'FillHeight' },
+        { label: 'Crop', value: 'Crop' }, // Fills bounds, crops excess
+        { label: 'Fit', value: 'Fit' }, // Fits inside bounds, letter/pillarbox
+        { label: 'Fill Bounds', value: 'FillBounds' }, // Stretches to fill bounds
+        { label: 'Inside', value: 'Inside' }, // Scales down to fit, no upscaling
+        { label: 'None', value: 'None' }, // No scaling
+        { label: 'Fill Width', value: 'FillWidth' }, // Scales to fill width, height adjusts
+        { label: 'Fill Height', value: 'FillHeight' }, // Scales to fill height, width adjusts
       ]
     },
   ],
@@ -473,5 +474,3 @@ export function isContainerType(type: ComponentType | string, customTemplates?: 
   }
   return CONTAINER_TYPES.includes(type as ComponentType);
 }
-
-    

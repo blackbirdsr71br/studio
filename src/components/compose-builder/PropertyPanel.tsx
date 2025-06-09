@@ -1,17 +1,19 @@
 
 'use client';
 
+import React, { useState } from 'react';
 import { useDesign } from '@/contexts/DesignContext';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { propertyDefinitions, type ComponentType, type ComponentProperty, getComponentDisplayName } from '@/types/compose-spec';
 import { PropertyEditor } from './PropertyEditor';
-import { Trash2, Save } from 'lucide-react'; 
+import { Trash2, Save, Sparkles, Loader2 } from 'lucide-react'; 
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ReactNode } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { generateImageFromHintAction } from '@/app/actions';
 
 interface GroupedProperties {
   [groupName: string]: ReactNode[];
@@ -21,6 +23,9 @@ export function PropertyPanel() {
   const { selectedComponentId, getComponentById, updateComponent, deleteComponent, saveSelectedAsCustomTemplate } = useDesign();
   const selectedComponent = selectedComponentId ? getComponentById(selectedComponentId) : null;
   const { toast } = useToast();
+
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
   if (!selectedComponent) {
     return (
@@ -34,10 +39,13 @@ export function PropertyPanel() {
   }
 
   const getDefaultPropertyValue = (propDef: Omit<ComponentProperty, 'value'>) => {
+    // This function needs to be defined before componentPropsDef.forEach loop
     if (propDef.type === 'number') return 0;
     if (propDef.type === 'boolean') return false;
+    if (propDef.type === 'enum' && propDef.options && propDef.options.length > 0) return propDef.options[0].value;
     return '';
   };
+
 
   const componentPropsDef = (propertyDefinitions[selectedComponent.type as ComponentType] || []) as (Omit<ComponentProperty, 'value'> & { group: string })[];
 
@@ -69,6 +77,32 @@ export function PropertyPanel() {
         description: "Custom component name cannot be empty.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleGenerateImage = async () => {
+    if (!selectedComponent || selectedComponent.type !== 'Image' || !selectedComponent.properties['data-ai-hint']) {
+      toast({ title: "Cannot Generate Image", description: "Please select an Image component and provide an AI hint.", variant: "destructive" });
+      return;
+    }
+    setIsGeneratingImage(true);
+    setGenerationError(null);
+    try {
+      const hint = selectedComponent.properties['data-ai-hint'] as string;
+      const result = await generateImageFromHintAction(hint);
+      if (result.imageUrl) {
+        updateComponent(selectedComponent.id, { properties: { src: result.imageUrl } });
+        toast({ title: "Image Generated", description: "Image source has been updated successfully." });
+      } else {
+        setGenerationError(result.error || "An unknown error occurred while generating the image.");
+        toast({ title: "Image Generation Failed", description: result.error || "Unknown error.", variant: "destructive" });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "An unexpected error occurred during image generation.";
+      setGenerationError(message);
+      toast({ title: "Image Generation Error", description: message, variant: "destructive" });
+    } finally {
+      setIsGeneratingImage(false);
     }
   };
 
@@ -138,6 +172,24 @@ export function PropertyPanel() {
               <TabsContent key={group} value={group}>
                 <div className="space-y-4 pt-4">
                   {groupedProperties[group]}
+                   {selectedComponent.type === 'Image' && group === 'Content' && (
+                    <div className="mt-3 pt-3 border-t border-sidebar-border">
+                      <Button
+                        onClick={handleGenerateImage}
+                        disabled={isGeneratingImage || !selectedComponent.properties['data-ai-hint']}
+                        className="w-full"
+                        size="sm"
+                      >
+                        {isGeneratingImage ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Sparkles className="mr-2 h-4 w-4" />
+                        )}
+                        Generate Image from Hint
+                      </Button>
+                      {generationError && <p className="text-xs text-destructive mt-1 text-center">{generationError}</p>}
+                    </div>
+                  )}
                 </div>
               </TabsContent>
             ))}
@@ -147,6 +199,3 @@ export function PropertyPanel() {
     </aside>
   );
 }
-
-    
-

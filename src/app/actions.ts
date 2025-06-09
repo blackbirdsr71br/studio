@@ -1,6 +1,7 @@
 
 'use server';
 import { generateComposeCode, type GenerateComposeCodeInput } from '@/ai/flows/generate-compose-code';
+import { generateImageFromHint, type GenerateImageFromHintInput } from '@/ai/flows/generate-image-from-hint-flow';
 import type { DesignComponent, CustomComponentTemplate } from '@/types/compose-spec';
 import { isContainerType } from '@/types/compose-spec'; 
 import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
@@ -165,3 +166,17 @@ export async function publishToRemoteConfigAction(
   }
 }
 
+export async function generateImageFromHintAction(hint: string): Promise<{ imageUrl: string | null; error?: string }> {
+  if (!hint || hint.trim() === "") {
+    return { imageUrl: null, error: "Hint cannot be empty." };
+  }
+  try {
+    const input: GenerateImageFromHintInput = { hint };
+    const result = await generateImageFromHint(input);
+    return { imageUrl: result.imageUrl };
+  } catch (error) {
+    console.error("Error in generateImageFromHintAction:", error);
+    const message = error instanceof Error ? error.message : "An unknown error occurred during image generation.";
+    return { imageUrl: null, error: message };
+  }
+}
