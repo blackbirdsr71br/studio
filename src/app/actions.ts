@@ -8,6 +8,17 @@ import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
 
 const REMOTE_CONFIG_PARAMETER_KEY = 'COMPOSE_DESIGN_JSON';
 
+// Helper function to remove properties with empty string values
+const cleanEmptyStringProperties = (properties: Record<string, any>): Record<string, any> => {
+  const cleanedProperties = { ...properties };
+  for (const key in cleanedProperties) {
+    if (cleanedProperties[key] === "") {
+      delete cleanedProperties[key];
+    }
+  }
+  return cleanedProperties;
+};
+
 // Interface for the nodes in the AI-specific tree
 interface AiComponentTreeNode {
   id: string;
@@ -30,7 +41,7 @@ const buildComponentTree = (
         id: component.id,
         type: component.type,
         name: component.name,
-        properties: { ...component.properties },
+        properties: cleanEmptyStringProperties({ ...component.properties }), // Clean properties here
       };
 
       // For AI, remove x,y from root components if they are not the absolute root LazyColumn.
@@ -86,7 +97,10 @@ const buildFullComponentTreeForRemoteConfig = (
   return allComponents
     .filter(c => c.parentId === currentParentId)
     .map(c => {
-      const node: FullComponentTreeNodeForRemoteConfig = { ...c };
+      const node: FullComponentTreeNodeForRemoteConfig = { 
+        ...c,
+        properties: cleanEmptyStringProperties({ ...c.properties }) // Clean properties here
+      };
       if (isContainerType(c.type, customComponentTemplates)) {
         node.childrenComponents = buildFullComponentTreeForRemoteConfig(allComponents, customComponentTemplates, c.id);
       }
@@ -97,12 +111,16 @@ const buildFullComponentTreeForRemoteConfig = (
 // This action is now specifically for getting the flat list of components for editing in the modal
 export async function getDesignComponentsAsJsonAction(
   components: DesignComponent[],
-  // customComponentTemplates are not directly used here for filtering, but kept for consistency if needed later
   customComponentTemplates: CustomComponentTemplate[] 
 ): Promise<string> {
   try {
     // Filter out the default root LazyColumn for the JSON editor view
-    const userComponents = components.filter(c => c.id !== DEFAULT_ROOT_LAZY_COLUMN_ID);
+    const userComponents = components
+      .filter(c => c.id !== DEFAULT_ROOT_LAZY_COLUMN_ID)
+      .map(c => ({
+        ...c,
+        properties: cleanEmptyStringProperties({ ...c.properties }) // Clean properties here
+      }));
     return JSON.stringify(userComponents, null, 2);
   } catch (error) {
     console.error("Error generating design components JSON for editor:", error);
@@ -129,6 +147,7 @@ export async function publishToRemoteConfigAction(
 
   try {
     // For Remote Config, we still want the full hierarchical tree structure including the root.
+    // Properties will be cleaned by buildFullComponentTreeForRemoteConfig
     const componentTreeForRemoteConfig = buildFullComponentTreeForRemoteConfig(components, customComponentTemplates);
     const designJsonString = JSON.stringify(componentTreeForRemoteConfig, null, 2);
 
