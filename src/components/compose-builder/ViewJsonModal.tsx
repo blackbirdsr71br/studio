@@ -54,11 +54,11 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
 
   const handleFetchJson = useCallback(async () => {
     setIsLoading(true);
-    setJsonError(null); // Clear previous errors
+    setJsonError(null); 
     try {
       const rootLazyColumn = components.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID);
       if (components.length <= 1 && rootLazyColumn && (!rootLazyColumn.properties.children || rootLazyColumn.properties.children.length === 0)) {
-        validateAndSetJson("[]"); // Validate empty array if no user components
+        validateAndSetJson("[]"); 
       } else {
         const jsonString = await getDesignComponentsAsJsonAction(components, customComponentTemplates);
         validateAndSetJson(jsonString);
@@ -66,7 +66,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to fetch JSON.";
       setEditableJsonString(`// Error fetching JSON:\n// ${errorMessage}`);
-      setJsonError(`Fetch error: ${errorMessage}`); // Set as string for fetch errors
+      setJsonError(`Fetch error: ${errorMessage}`); 
       toast({
         title: "JSON Fetch Failed",
         description: errorMessage,
@@ -87,14 +87,13 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
 
   const handleSaveChanges = () => {
     if (jsonError) {
-      const errorSummary = Array.isArray(jsonError) ? jsonError[0] : "JSON is invalid.";
+      const errorSummary = Array.isArray(jsonError) ? jsonError.join("\n") : "JSON is invalid.";
       toast({ title: "Save Failed", description: `${errorSummary} Please correct errors before saving.`, variant: "destructive" });
       return;
     }
     try {
-      const parsedComponents = JSON.parse(editableJsonString); // Should be safe due to prior validation
+      const parsedComponents = JSON.parse(editableJsonString); 
 
-      // Re-validate with Zod just to be absolutely sure (though jsonError should be null if we reach here)
       const validationResult = ModalJsonSchema.safeParse(parsedComponents);
       if (!validationResult.success) {
           const formattedErrors = validationResult.error.errors.map(
@@ -113,7 +112,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
         toast({ title: "Save Failed", description: result.error || "Could not apply JSON changes.", variant: "destructive" });
         setJsonError(result.error || "Could not apply JSON changes.");
       }
-    } catch (error) { // Catch for JSON.parse if somehow jsonError was cleared but string is bad
+    } catch (error) { 
       const message = error instanceof Error ? error.message : "An error occurred while saving.";
       toast({ title: "Save Failed", description: message, variant: "destructive" });
       setJsonError(message);
@@ -124,9 +123,6 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
     if (jsonError) {
         toast({ title: "Copy Failed", description: "JSON contains errors. Please correct them before copying.", variant: "destructive" });
         return;
-    }
-    if (!editableJsonString) {
-        // Allow copying empty string if that's the content
     }
     try {
       await navigator.clipboard.writeText(editableJsonString);
@@ -148,10 +144,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
         toast({ title: "Download Failed", description: "JSON contains errors. Please correct them before downloading.", variant: "destructive" });
         return;
     }
-    if (!editableJsonString && editableJsonString !== "[]") { // Allow downloading "[]"
-        // Allow downloading empty string if that's the content
-    }
-    const blob = new Blob([editableJsonString], { type: 'application/json;charset=utf-8' });
+    const blob = new Blob([editableJsonString], { type: 'application/json;charset=utf-f8' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = 'design_components.json';
@@ -175,7 +168,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
             Syntax and schema errors will be shown below.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex-grow my-2 flex flex-col min-h-[400px]">
+        <div className="flex-grow my-2 flex flex-col"> {/* Removed min-h-[400px] */}
           <div className="flex flex-col flex-grow rounded-md border overflow-hidden bg-background">
             <CodeMirror
               value={editableJsonString}
@@ -202,7 +195,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
                   <>
                     <div className="flex items-start gap-2 mb-1">
                       <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                      <strong className="flex-1">{jsonError[0]}</strong> {/* "Schema validation failed:" */}
+                      <strong className="flex-1">{jsonError[0]}</strong>
                     </div>
                     <ul className="list-disc list-inside pl-5">
                       {jsonError.slice(1).map((err, index) => (
@@ -213,7 +206,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
                 ) : (
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                    <span className="flex-1 whitespace-pre-wrap leading-relaxed">{jsonError}</span> {/* For string errors like syntax or fetch errors */}
+                    <span className="flex-1 whitespace-pre-wrap leading-relaxed">{jsonError}</span>
                   </div>
                 )}
               </div>
