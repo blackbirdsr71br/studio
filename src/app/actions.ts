@@ -2,6 +2,7 @@
 'use server';
 import { generateComposeCode, type GenerateComposeCodeInput } from '@/ai/flows/generate-compose-code';
 import { generateImageFromHint, type GenerateImageFromHintInput } from '@/ai/flows/generate-image-from-hint-flow';
+import { generateJsonFromComposeCommands, type GenerateJsonFromComposeCommandsInput } from '@/ai/flows/generate-json-from-compose-commands';
 import type { DesignComponent, CustomComponentTemplate, BaseComponentProps } from '@/types/compose-spec';
 import { isContainerType, DEFAULT_ROOT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
@@ -71,7 +72,28 @@ export async function generateJetpackComposeCodeAction(
   customComponentTemplates: CustomComponentTemplate[]
 ): Promise<string> {
   try {
-    const componentTreeForAi = buildComponentTreeForAi(components, customComponentTemplates, null); // Start from root (null parentId)
+    // Filter out the root lazy column if it has no actual user children for code generation
+    const userMeaningfulComponents = components.filter(c => {
+        if (c.id === DEFAULT_ROOT_LAZY_COLUMN_ID) {
+            return c.properties.children && c.properties.children.length > 0;
+        }
+        return true;
+    });
+    
+    let componentTreeForAi;
+    if (userMeaningfulComponents.length === 1 && userMeaningfulComponents[0].id === DEFAULT_ROOT_LAZY_COLUMN_ID) {
+      // If only the root (with children) is left, build tree from its children
+      componentTreeForAi = buildComponentTreeForAi(components, customComponentTemplates, DEFAULT_ROOT_LAZY_COLUMN_ID);
+    } else if (userMeaningfulComponents.length === 0) {
+      return "No user components on the canvas to generate code from.";
+    }
+    else {
+      // Otherwise, build from actual root-level user components (should not happen if parenting is correct)
+      // or if the root was filtered out but other free-floating components exist (also shouldn't happen)
+      componentTreeForAi = buildComponentTreeForAi(userMeaningfulComponents, customComponentTemplates, null);
+    }
+
+
     const designJson = JSON.stringify(componentTreeForAi, null, 2);
 
     const input: GenerateComposeCodeInput = { designJson };
@@ -270,3 +292,19 @@ export async function generateImageFromHintAction(hint: string): Promise<{ image
   }
 }
 
+export async function generateJsonFromTextAction(
+  composeCommands: string
+): Promise<{ designJson?: string; error?: string }> {
+  if (!composeCommands || composeCommands.trim().length < 10) {
+    return { error: "Compose commands input is too short. Please provide more details." };
+  }
+  try {
+    const input: GenerateJsonFromComposeCommandsInput = { composeCommands };
+    const result = await generateJsonFromComposeCommands(input);
+    return { designJson: result.designJson };
+  } catch (error) {
+    console.error("Error in generateJsonFromTextAction:", error);
+    const message = error instanceof Error ? error.message : "An unknown error occurred during JSON generation from text.";
+    return { error: message };
+  }
+}

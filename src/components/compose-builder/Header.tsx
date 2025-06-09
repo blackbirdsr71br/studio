@@ -4,9 +4,10 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/icons/Logo";
-import { Code, Trash2, FileJson, UploadCloud, Loader2 } from "lucide-react";
+import { Code, Trash2, FileJson, UploadCloud, Loader2, Keyboard } from "lucide-react"; // Added Keyboard
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
 import type { ViewJsonModalRef } from "./ViewJsonModal";
+import type { GenerateJsonFromTextModalRef } from "./GenerateJsonFromTextModal"; // Added
 import type { RefObject } from "react";
 import { useDesign } from "@/contexts/DesignContext";
 import {
@@ -21,10 +22,11 @@ import { useToast } from '@/hooks/use-toast';
 interface HeaderProps {
   generateModalRef: RefObject<GenerateCodeModalRef>;
   viewJsonModalRef: RefObject<ViewJsonModalRef>;
+  generateJsonFromTextModalRef: RefObject<GenerateJsonFromTextModalRef>; // Added
 }
 
-export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
-  const { clearDesign, components, customComponentTemplates } = useDesign(); // Added customComponentTemplates
+export function Header({ generateModalRef, viewJsonModalRef, generateJsonFromTextModalRef }: HeaderProps) { // Added generateJsonFromTextModalRef
+  const { clearDesign, components, customComponentTemplates } = useDesign();
   const { toast } = useToast();
   const [isPublishing, setIsPublishing] = useState(false);
 
@@ -40,6 +42,12 @@ export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
     }
   };
 
+  const handleGenerateJsonFromText = () => { // Added handler
+    if (generateJsonFromTextModalRef.current) {
+      generateJsonFromTextModalRef.current.openModal();
+    }
+  };
+
   const handleClearCanvas = () => {
     if (window.confirm("Are you sure you want to clear the canvas? This action cannot be undone.")) {
       clearDesign();
@@ -47,17 +55,16 @@ export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
   };
 
   const handlePublishToRemoteConfig = async () => {
-    if (components.length === 0) {
+    if (components.length === 0 || (components.length === 1 && components[0].id === 'default-root-lazy-column' && (!components[0].properties.children || components[0].properties.children.length === 0))) {
       toast({
         title: "Cannot Publish",
-        description: "There are no components on the canvas to publish.",
+        description: "There are no user-added components on the canvas to publish.",
         variant: "destructive",
       });
       return;
     }
     setIsPublishing(true);
     try {
-      // Pass customComponentTemplates to the action
       const result = await publishToRemoteConfigAction(components, customComponentTemplates);
       if (result.success) {
         toast({
@@ -82,6 +89,10 @@ export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
       setIsPublishing(false);
     }
   };
+  
+  const hasUserComponents = components.some(c => c.id !== 'default-root-lazy-column') || 
+                           (components.find(c => c.id === 'default-root-lazy-column')?.properties.children?.length || 0) > 0;
+
 
   return (
     <header className="h-16 border-b bg-sidebar flex items-center justify-between px-6 shrink-0">
@@ -94,7 +105,7 @@ export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
                 size="icon"
                 variant="outline"
                 onClick={handleClearCanvas}
-                disabled={components.length === 0 || isPublishing}
+                disabled={!hasUserComponents || isPublishing}
                 aria-label="Clear Canvas"
                 className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
               >
@@ -112,7 +123,7 @@ export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
                 size="icon"
                 variant="outline"
                 onClick={handleViewJson}
-                disabled={components.length === 0 || isPublishing}
+                disabled={!hasUserComponents || isPublishing}
                 aria-label="View JSON"
                 className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
               >
@@ -120,7 +131,25 @@ export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>View Design JSON</p>
+              <p>View/Edit Design JSON</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={handleGenerateJsonFromText} // Added onClick
+                disabled={isPublishing} // Can be used even if canvas is empty
+                aria-label="Generate JSON from Text"
+                className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+              >
+                <Keyboard /> 
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Generate UI from Text Commands</p>
             </TooltipContent>
           </Tooltip>
           
@@ -130,7 +159,7 @@ export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
                 size="icon"
                 variant="outline"
                 onClick={handlePublishToRemoteConfig}
-                disabled={components.length === 0 || isPublishing}
+                disabled={!hasUserComponents || isPublishing}
                 aria-label="Publish to Remote Config"
                 className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
               >
@@ -148,7 +177,7 @@ export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
                 size="icon"
                 onClick={handleGenerateCode}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                disabled={components.length === 0 || isPublishing}
+                disabled={!hasUserComponents || isPublishing}
                 aria-label="Generate Jetpack Compose Code"
               >
                 <Code />
