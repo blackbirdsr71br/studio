@@ -473,7 +473,7 @@ export function isContainerType(type: ComponentType | string, customTemplates?: 
         }
       }
     }
-    return false; 
+    return false;
   }
   return CONTAINER_TYPES.includes(type as ComponentType);
 }
@@ -489,7 +489,7 @@ const BaseModalPropertiesSchema = z.object({
   height: z.union([z.literal('wrap_content'), z.literal('match_parent'), z.number().min(0)]).optional(),
   padding: z.number().min(0).optional(),
   contentDescription: z.string().optional(),
-  src: z.string().url("Must be a valid URL").optional(),
+  src: z.string().url("Must be a valid URL for Image src").or(z.string().startsWith("data:image/")).optional(), // Allow data URIs
   "data-ai-hint": z.string().optional(),
   elevation: z.number().min(0).optional(),
   cornerRadius: z.number().min(0).optional(),
@@ -517,8 +517,8 @@ type ModalComponentNodePlain = {
   id: string;
   type: string; // Using string to accommodate custom types like "custom/MyHeader-12345"
   name: string;
-  parentId: string | null;
-  properties: Partial<BaseComponentProps> & { children?: ModalComponentNodePlain[] };
+  parentId: string | null; // parentId in modal JSON refers to parent *within the modal JSON structure*
+  properties?: Partial<BaseComponentProps> & { children?: ModalComponentNodePlain[] };
 };
 
 // Zod schema for a single component node in the modal JSON
@@ -527,14 +527,21 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
     id: z.string().min(1, "Component ID cannot be empty"),
     type: z.string().min(1, "Component type cannot be empty"),
     name: z.string().min(1, "Component name cannot be empty"),
-    parentId: z.string().uuid("Parent ID must be a valid UUID or null if root element of user content.").nullable(), // Assuming IDs are UUID-like or a specific format. Adapt if not.
+    // parentId in the JSON from the modal refers to its parent *within that JSON structure*.
+    // When flattened, DesignContext.overwriteComponents will determine the actual parentId in the global component list.
+    // For top-level items in the modal's JSON array, this parentId from JSON will be the ID of the DEFAULT_ROOT_LAZY_COLUMN.
+    // For nested items, it will be the ID of their JSON parent.
+    parentId: z.string().nullable(), // Can be null for top-level items from user's perspective (children of root canvas)
     properties: BaseModalPropertiesSchema.extend({
       children: z.array(ModalComponentNodeSchema).optional(),
-    }),
-  }).refine(data => { // Example of a custom refinement: If it's an Image, src should ideally be present.
-    if (data.type === 'Image' && !data.properties.src) {
-      // This is a soft requirement, could be a placeholder. For strictness, add error.
-      // For now, just an example, won't add error.
+    }).optional(), // Make the 'properties' object itself optional
+  }).refine(data => {
+    if (data.type === 'Image') {
+      if (data.properties?.src && !z.string().url().or(z.string().startsWith("data:image/")).safeParse(data.properties.src).success) {
+        // This custom refinement is a bit tricky with .optional() on properties.
+        // It might be better to handle this in a superRefine on the BaseModalPropertiesSchema if stricter src validation is needed.
+        // For now, rely on the src validation within BaseModalPropertiesSchema.
+      }
     }
     return true;
   })
