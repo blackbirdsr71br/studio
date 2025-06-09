@@ -2,37 +2,51 @@
 'use server';
 import { generateComposeCode, type GenerateComposeCodeInput } from '@/ai/flows/generate-compose-code';
 import type { DesignComponent } from '@/types/compose-spec';
+import { isContainerType } from '@/types/compose-spec'; // Import the helper
 import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
 
 const REMOTE_CONFIG_PARAMETER_KEY = 'COMPOSE_DESIGN_JSON';
 
+// Interface for the nodes in the AI-specific tree
+interface AiComponentTreeNode {
+  id: string;
+  type: string; // ComponentType or custom type string
+  name: string;
+  properties: Record<string, any>;
+  children?: AiComponentTreeNode[];
+}
+
 // Helper to create a hierarchical structure for the AI
-const buildComponentTree = (components: DesignComponent[], parentId: string | null = null): any[] => {
-  return components
+const buildComponentTree = (allComponents: DesignComponent[], parentId: string | null = null): AiComponentTreeNode[] => {
+  return allComponents
     .filter(component => component.parentId === parentId)
     .map(component => {
-      const treeNode: any = {
+      const node: AiComponentTreeNode = {
         id: component.id,
-        type: component.type,
+        type: component.type, // Use the actual type from DesignComponent
         name: component.name,
-        properties: { ...component.properties }, 
+        properties: { ...component.properties },
       };
-      
-      if (component.type === 'Column' || component.type === 'Row') {
-        treeNode.children = buildComponentTree(components, component.id);
+      // For AI, we only remove x,y from root components later. Children shouldn't have them.
+      // properties are passed as is for now.
+
+      if (isContainerType(component.type)) {
+        node.children = buildComponentTree(allComponents, component.id);
       }
-      return treeNode;
+      return node;
     });
 };
 
 
 export async function generateJetpackComposeCodeAction(components: DesignComponent[]): Promise<string> {
   try {
-    const componentTree = buildComponentTree(components).map(comp => {
-      const { x, y, ...restProperties } = comp.properties;
-      return { ...comp, properties: restProperties };
+    // Build tree starting from root components (parentId === null)
+    const componentTreeForAi = buildComponentTree(components).map(rootCompNode => {
+      // Remove x and y from root component properties before sending to AI
+      const { x, y, ...restProperties } = rootCompNode.properties;
+      return { ...rootCompNode, properties: restProperties };
     });
-    const designJson = JSON.stringify(componentTree, null, 2);
+    const designJson = JSON.stringify(componentTreeForAi, null, 2);
 
     const input: GenerateComposeCodeInput = { designJson };
     const result = await generateComposeCode(input);
@@ -46,16 +60,20 @@ export async function generateJetpackComposeCodeAction(components: DesignCompone
   }
 }
 
+// Interface for the nodes in the full JSON tree (for Remote Config / View JSON)
+interface FullComponentTreeNode extends DesignComponent {
+  childrenComponents?: FullComponentTreeNode[];
+}
+
 export async function getDesignAsJsonAction(components: DesignComponent[]): Promise<string> {
   try {
-    const buildFullComponentTree = (comps: DesignComponent[], pId: string | null = null): any[] => {
-      return comps
-        .filter(c => c.parentId === pId)
+    const buildFullComponentTree = (allComponents: DesignComponent[], currentParentId: string | null = null): FullComponentTreeNode[] => {
+      return allComponents
+        .filter(c => c.parentId === currentParentId)
         .map(c => {
-          const node = { ...c }; 
-          if (c.type === 'Column' || c.type === 'Row') {
-            // @ts-ignore
-            node.childrenComponents = buildFullComponentTree(comps, c.id);
+          const node: FullComponentTreeNode = { ...c }; 
+          if (isContainerType(c.type)) {
+            node.childrenComponents = buildFullComponentTree(allComponents, c.id);
           }
           return node;
         });
@@ -124,3 +142,4 @@ export async function publishToRemoteConfigAction(components: DesignComponent[])
     return { success: false, message: `Error: ${message}` };
   }
 }
+

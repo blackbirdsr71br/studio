@@ -244,4 +244,27 @@ export const isCustomComponentType = (type: string): boolean => {
   return type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX);
 };
 
+export const CONTAINER_TYPES: ReadonlyArray<ComponentType> = [
+  'Column', 'Row', 'Box', 'Card', 
+  'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid'
+];
+
+// Helper function to determine if a component type is a container
+export function isContainerType(type: ComponentType | string, customTemplates?: CustomComponentTemplate[]): boolean {
+  if (isCustomComponentType(type)) {
+    // For custom components, we could check if their template's root component is a container,
+    // or if the template itself is generally expected to hold children.
+    // For simplicity now, if it's custom, we might assume it *can* be a container if it's designed that way.
+    // A more robust check might involve inspecting the template structure if available.
+    // For now, let's assume custom components are not automatically containers unless their type in propertyDefinitions implies it.
+    // However, the visual renderer (ContainerView) often treats them as such if they have children.
+    // The primary use here is for JSON structuring, where the *actual* `children` property matters.
+    // If we are just checking based on its original type (e.g. a custom component *made from* a Column),
+    // that information is in the template. For `buildComponentTree` and `buildFullComponentTree`,
+    // they operate on `DesignComponent` instances, which already have a `type` (base type of the custom instance's root).
+    // So we only need to check the base types.
+    return false; // Custom types themselves aren't base containers, their *constituent parts* might be.
+  }
+  return CONTAINER_TYPES.includes(type as ComponentType);
+}
     
