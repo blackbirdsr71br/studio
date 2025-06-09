@@ -4,7 +4,7 @@
 import type { ReactNode} from 'react';
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { DesignComponent, DesignState, ComponentType, BaseComponentProps, CustomComponentTemplate } from '@/types/compose-spec';
-import { getDefaultProperties, CUSTOM_COMPONENT_TYPE_PREFIX, isCustomComponentType, isContainerType, CONTAINER_TYPES } from '@/types/compose-spec';
+import { getDefaultProperties, CUSTOM_COMPONENT_TYPE_PREFIX, isCustomComponentType, isContainerType } from '@/types/compose-spec';
 import { db } from '@/lib/firebase';
 import { collection, doc, setDoc, getDocs, deleteDoc } from "firebase/firestore";
 
@@ -59,7 +59,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           const data = docSnap.data();
           if (data.templateId && data.name && data.rootComponentId && data.componentTree) {
             templates.push({
-              firestoreId: docSnap.id, // Use docSnap.id as firestoreId
+              firestoreId: docSnap.id, 
               ...data
             } as CustomComponentTemplate);
           } else {
@@ -82,29 +82,79 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   );
 
   const addComponent = useCallback((
-    type: ComponentType | string,
+    type: ComponentType | string, // This is the type the user *dragged*
     parentId: string | null = null,
     dropPosition?: { x: number; y: number }
   ) => {
-    const positionProps = dropPosition
-      ? (parentId && getComponentById(parentId) 
-          ? { x: dropPosition.x - (getComponentById(parentId)?.properties.x || 0), y: dropPosition.y - (getComponentById(parentId)?.properties.y || 0) }
-          : { x: dropPosition.x, y: dropPosition.y }
-        )
-      : { x: 50, y: 50 };
+    setDesignState(prev => {
+      let currentNextId = prev.nextId;
+      let updatedComponentsList = [...prev.components];
+      let finalSelectedId = '';
 
-    if (isCustomComponentType(type)) {
-      const templateId = type;
-      
-      setDesignState(prev => {
+      // Special handling for the very first component added to an empty root canvas
+      if (!parentId && prev.components.filter(c => !c.parentId).length === 0) {
+        const lazyColumnId = `comp-${currentNextId++}`;
+        const lazyColumnComponent: DesignComponent = {
+          id: lazyColumnId,
+          type: 'LazyColumn',
+          name: `Root LazyColumn ${lazyColumnId.split('-')[1]}`,
+          properties: {
+            ...getDefaultProperties('LazyColumn'),
+            x: 0,
+            y: 0,
+            width: 'match_parent',
+            height: 'match_parent',
+            padding: 0, // Fill entire space
+            backgroundColor: 'transparent', // Or a very subtle debug color
+            children: [],
+          },
+          parentId: null,
+        };
+        updatedComponentsList.push(lazyColumnComponent);
+        finalSelectedId = lazyColumnId; // Initially select the LazyColumn
+
+        // Now, add the component the user *actually* dragged as a child of this LazyColumn
+        // unless the user was trying to drag a LazyColumn itself.
+        if (type !== 'LazyColumn' || (type === 'LazyColumn' && prev.components.length > 0) ) { // Ensures if first item IS a LC, it's not nested in another LC
+            const userDraggedComponentId = `comp-${currentNextId++}`;
+            const { x, y, ...defaultPropsForDragged } = getDefaultProperties(type as ComponentType);
+            const userDraggedComponent: DesignComponent = {
+            id: userDraggedComponentId,
+            type: type as ComponentType,
+            name: `${getComponentDisplayName(type as ComponentType)} ${userDraggedComponentId.split('-')[1]}`,
+            properties: defaultPropsForDragged, // x, y are not needed for children of LazyColumn
+            parentId: lazyColumnId,
+            };
+            (lazyColumnComponent.properties.children as string[]).push(userDraggedComponentId);
+            updatedComponentsList.push(userDraggedComponent);
+            finalSelectedId = userDraggedComponentId; // Select the component the user intended to add
+        }
+         return {
+          ...prev,
+          components: updatedComponentsList,
+          selectedComponentId: finalSelectedId,
+          nextId: currentNextId,
+        };
+      }
+      // End special handling for first component
+
+      // Standard component addition logic
+      const positionProps = dropPosition
+        ? (parentId && getComponentById(parentId)
+            ? { x: dropPosition.x - (getComponentById(parentId)?.properties.x || 0), y: dropPosition.y - (getComponentById(parentId)?.properties.y || 0) }
+            : { x: dropPosition.x, y: dropPosition.y }
+          )
+        : { x: 50, y: 50 };
+
+      if (isCustomComponentType(type)) {
+        const templateId = type;
         const template = prev.customComponentTemplates.find(t => t.templateId === templateId);
         if (!template) {
           console.error(`Custom template ${templateId} not found.`);
           return prev;
         }
 
-        let currentNextId = prev.nextId;
-        const finalIdMap: Record<string, string> = {}; 
+        const finalIdMap: Record<string, string> = {};
         const finalNewComponentsBatch: DesignComponent[] = [];
         let finalInstanceRootId = "";
 
@@ -124,42 +174,41 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           newInstanceComp.id = instanceCompId;
           
           if (templateComp.id === template.rootComponentId) {
-            newInstanceComp.name = `${template.name} Instance`; 
+            newInstanceComp.name = `${template.name} Instance`;
             finalInstanceRootId = instanceCompId;
             newInstanceComp.properties.x = positionProps.x;
             newInstanceComp.properties.y = positionProps.y;
-            newInstanceComp.parentId = parentId; // Set the parentId passed to addComponent
+            newInstanceComp.parentId = parentId; 
           } else {
             delete newInstanceComp.properties.x;
             delete newInstanceComp.properties.y;
             if (templateComp.parentId && finalIdMap[templateComp.parentId]) {
               newInstanceComp.parentId = finalIdMap[templateComp.parentId];
             } else {
-              // This component was a root in the template but not *the* root, or its parent is missing
-              // It should not have a parentId linking outside this instance unless it's the main root
-               console.warn(`Orphaned or mis-parented component in custom template instantiation: ${templateComp.id}. Its parent was ${templateComp.parentId}`);
-               newInstanceComp.parentId = null; // Or handle as error
+               console.warn(`Orphaned component in custom template instantiation: ${templateComp.id}.`);
+               newInstanceComp.parentId = null;
             }
           }
 
           if (newInstanceComp.properties.children && Array.isArray(newInstanceComp.properties.children)) {
             newInstanceComp.properties.children = newInstanceComp.properties.children
-              .map(childIdFromTemplate => finalIdMap[childIdFromTemplate]) 
-              .filter(Boolean); 
+              .map(childIdFromTemplate => finalIdMap[childIdFromTemplate])
+              .filter(Boolean);
           }
           finalNewComponentsBatch.push(newInstanceComp);
         });
-
-        let updatedComponents = [...prev.components, ...finalNewComponentsBatch];
+        
+        finalSelectedId = finalInstanceRootId;
+        updatedComponentsList = [...updatedComponentsList, ...finalNewComponentsBatch];
 
         if (parentId && finalInstanceRootId) {
-          const parentCompIndex = updatedComponents.findIndex(c => c.id === parentId);
+          const parentCompIndex = updatedComponentsList.findIndex(c => c.id === parentId);
           if (parentCompIndex !== -1) {
-            const currentParent = updatedComponents[parentCompIndex];
+            const currentParent = updatedComponentsList[parentCompIndex];
             if (isContainerType(currentParent.type, prev.customComponentTemplates)) {
               const existingChildren = currentParent.properties.children || [];
               if (!existingChildren.includes(finalInstanceRootId)) {
-                 updatedComponents[parentCompIndex] = {
+                 updatedComponentsList[parentCompIndex] = {
                   ...currentParent,
                   properties: {
                     ...currentParent.properties,
@@ -170,35 +219,27 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             }
           }
         }
-        return {
-          ...prev,
-          components: updatedComponents,
-          selectedComponentId: finalInstanceRootId,
-          nextId: currentNextId,
-        };
-      });
-
-    } else { 
-      setDesignState(prev => {
-        const newId = `comp-${prev.nextId}`;
+      } else { // Standard base component
+        const newId = `comp-${currentNextId++}`;
+        finalSelectedId = newId;
         const newComponent: DesignComponent = {
           id: newId,
           type: type as ComponentType,
-          name: `${type} ${prev.nextId}`,
+          name: `${getComponentDisplayName(type as ComponentType)} ${newId.split('-')[1]}`,
           properties: {
             ...getDefaultProperties(type as ComponentType),
-            ...positionProps,
+            ...(parentId ? {} : positionProps), // Only apply positionProps if it's a root component
           },
           parentId,
         };
+        updatedComponentsList.push(newComponent);
 
-        let updatedComponentsList = [...prev.components, newComponent];
         if (parentId) {
           const parentCompIndex = updatedComponentsList.findIndex(c => c.id === parentId);
           if (parentCompIndex !== -1) {
             const currentParent = updatedComponentsList[parentCompIndex];
             if (isContainerType(currentParent.type, prev.customComponentTemplates)) {
-              const existingChildren = currentParent.properties.children || [];
+              const existingChildren = Array.isArray(currentParent.properties.children) ? currentParent.properties.children : [];
               if (!existingChildren.includes(newId)) {
                 const updatedParentComp = {
                   ...currentParent,
@@ -207,25 +248,24 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                     children: [...existingChildren, newId],
                   },
                 };
-                // Ensure correct replacement and addition
-                updatedComponentsList = updatedComponentsList.filter(c => c.id !== currentParent.id && c.id !== newId);
-                updatedComponentsList.push(updatedParentComp, newComponent);
+                // Replace parent in the list
+                updatedComponentsList = updatedComponentsList.map(c => c.id === parentId ? updatedParentComp : c);
               }
             }
           }
         }
-        // Filter duplicates just in case, though the logic above should prevent it.
-        const finalUniqueComponents = updatedComponentsList.filter((comp, index, self) => index === self.findIndex(t => t.id === comp.id));
-        
-        return {
-          ...prev,
-          components: finalUniqueComponents,
-          selectedComponentId: newId,
-          nextId: prev.nextId + 1,
-        };
-      });
-    }
-  }, [getComponentById]); // Removed customComponentTemplates as it's accessed via `prev` in setDesignState
+      }
+      // Filter duplicates just in case
+      const finalUniqueComponents = updatedComponentsList.filter((comp, index, self) => index === self.findIndex(t => t.id === comp.id));
+      
+      return {
+        ...prev,
+        components: finalUniqueComponents,
+        selectedComponentId: finalSelectedId,
+        nextId: currentNextId,
+      };
+    });
+  }, [getComponentById]);
 
 
   const saveSelectedAsCustomTemplate = useCallback(async (name: string) => {
@@ -240,7 +280,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const generateTemplateInternalId = (typeStr: string) => `tmpl-${typeStr.toLowerCase().replace(/\s+/g, '-')}-${nextTemplateInternalId++}`;
 
     const cloneAndCollectForTemplate = (originalCompId: string, newTemplateParentId: string | null) => {
-      const originalComp = getComponentById(originalCompId); // Use context's getComponentById
+      const originalComp = getComponentById(originalCompId); 
       if (!originalComp) return;
 
       const templateLocalId = generateTemplateInternalId(originalComp.type);
@@ -250,17 +290,16 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       clonedComp.id = templateLocalId;
       clonedComp.parentId = newTemplateParentId;
       
-      // These are instance-specific, remove for template
       delete clonedComp.properties.x;
       delete clonedComp.properties.y;
 
       if (clonedComp.properties.children && Array.isArray(clonedComp.properties.children)) {
-        const originalChildIds = [...clonedComp.properties.children]; // Iterate over a copy
-        clonedComp.properties.children = []; // Reset for template
+        const originalChildIds = [...clonedComp.properties.children]; 
+        clonedComp.properties.children = []; 
 
         originalChildIds.forEach(childId => {
-          cloneAndCollectForTemplate(childId, templateLocalId); // Pass current clonedComp's ID as parent
-          if (idMap[childId]) { // Ensure child was processed and mapped
+          cloneAndCollectForTemplate(childId, templateLocalId); 
+          if (idMap[childId]) { 
             clonedComp.properties.children!.push(idMap[childId]);
           }
         });
@@ -286,7 +325,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     try {
       if (!db) {
         console.warn("Firestore not initialized. Template saved to local state only.");
-        // Add to local state even if DB fails or is not present
         setDesignState(prev => ({
           ...prev,
           customComponentTemplates: [...prev.customComponentTemplates, { ...newTemplate, firestoreId: `local-${newTemplate.templateId}` }],
@@ -302,13 +340,12 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       }));
     } catch (error) {
       console.error("Error saving custom template to Firestore:", error);
-       // Fallback to local state if Firestore save fails
        setDesignState(prev => ({
         ...prev,
         customComponentTemplates: [...prev.customComponentTemplates, { ...newTemplate, firestoreId: `local-error-${newTemplate.templateId}` }],
       }));
     }
-  }, [designState.selectedComponentId, getComponentById]); // Removed designState.customComponentTemplates
+  }, [designState.selectedComponentId, getComponentById]); 
 
 
   const deleteComponent = useCallback((id: string) => {
@@ -316,40 +353,35 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const componentToDelete = prev.components.find(c => c.id === id);
       if (!componentToDelete) return prev;
 
-      let idsToDelete = [id]; // Default to deleting just the clicked component
+      let idsToDelete = new Set<string>();
+      const queue = [id];
+      
+      while(queue.length > 0) {
+          const currentId = queue.shift()!;
+          if (idsToDelete.has(currentId)) continue;
+          idsToDelete.add(currentId);
 
-      // If it's a container or a custom component, find all its children to delete them too
-      if (isContainerType(componentToDelete.type, prev.customComponentTemplates) || isCustomComponentType(componentToDelete.type)) {
-         const queue = [id]; 
-         const visited = new Set<string>();
-         const allComponentsToDeleteThisRun = new Set<string>(); 
-
-         while(queue.length > 0) {
-            const currentId = queue.shift()!;
-            if (visited.has(currentId)) continue;
-            visited.add(currentId);
-            allComponentsToDeleteThisRun.add(currentId);
-
-            prev.components.forEach(comp => {
-                if (comp.parentId === currentId && !visited.has(comp.id)) {
-                    queue.push(comp.id);
-                }
-            });
-         }
-         idsToDelete = Array.from(allComponentsToDeleteThisRun); 
+          const currentComp = prev.components.find(c => c.id === currentId);
+          if (currentComp && Array.isArray(currentComp.properties.children)) {
+              currentComp.properties.children.forEach(childId => {
+                  if (!idsToDelete.has(childId)) {
+                      queue.push(childId);
+                  }
+              });
+          }
       }
+      
+      const idsToDeleteArray = Array.from(idsToDelete);
+      let components = prev.components.filter(comp => !idsToDeleteArray.includes(comp.id));
 
-      let components = prev.components.filter(comp => !idsToDelete.includes(comp.id));
-
-      // If the deleted component had a parent, remove it from the parent's children array
       if (componentToDelete.parentId) {
         components = components.map(comp => {
-          if (comp.id === componentToDelete.parentId && Array.isArray(comp.properties.children)) { // Added Array.isArray check
+          if (comp.id === componentToDelete.parentId && Array.isArray(comp.properties.children)) { 
             return {
               ...comp,
               properties: {
                 ...comp.properties,
-                children: comp.properties.children.filter(childId => !idsToDelete.includes(childId))
+                children: comp.properties.children.filter(childId => !idsToDeleteArray.includes(childId))
               }
             };
           }
@@ -360,7 +392,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       return {
         ...prev,
         components,
-        selectedComponentId: idsToDelete.includes(prev.selectedComponentId || "") ? null : prev.selectedComponentId,
+        selectedComponentId: idsToDeleteArray.includes(prev.selectedComponentId || "") ? null : prev.selectedComponentId,
       };
     });
   }, []);
@@ -416,7 +448,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         let draggedComponent = {...currentComponents[draggedComponentIndex]};
         const oldParentId = draggedComponent.parentId;
 
-        // Prevent dropping a component onto itself or its children
         if (targetParentId === draggedId) return prev;
         let tempParentCheck = targetParentId;
         while(tempParentCheck) {
@@ -427,40 +458,35 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         draggedComponent.parentId = targetParentId;
         if (targetParentId) { 
-            // Position is relative to parent, clear absolute x/y
             delete draggedComponent.properties.x;
             delete draggedComponent.properties.y;
         } else if (newPosition) { 
              draggedComponent.properties.x = newPosition.x;
              draggedComponent.properties.y = newPosition.y;
         } else if (!targetParentId && (!draggedComponent.properties.hasOwnProperty('x') || !draggedComponent.properties.hasOwnProperty('y'))){
-            // Dropped on canvas without explicit position, ensure it has one
             draggedComponent.properties.x = 50; 
             draggedComponent.properties.y = 50;
         }
 
         currentComponents[draggedComponentIndex] = draggedComponent;
 
-        // Remove from old parent's children list
         if (oldParentId && oldParentId !== targetParentId) {
             const oldParentIndex = currentComponents.findIndex(c => c.id === oldParentId);
             if (oldParentIndex !== -1) {
                 const oldParent = {...currentComponents[oldParentIndex]};
-                if (Array.isArray(oldParent.properties.children)) { // Check if children is an array
+                if (Array.isArray(oldParent.properties.children)) { 
                     oldParent.properties.children = oldParent.properties.children.filter(childId => childId !== draggedId);
                     currentComponents[oldParentIndex] = oldParent;
                 }
             }
         }
 
-        // Add to new parent's children list
         if (targetParentId) {
             const newParentIndex = currentComponents.findIndex(c => c.id === targetParentId);
             if (newParentIndex !== -1) {
                  const newParent = {...currentComponents[newParentIndex]};
-                 if (isContainerType(newParent.type, prev.customComponentTemplates)) { // Check if new parent is a container
-                    let existingChildren = newParent.properties.children || [];
-                    if (!Array.isArray(existingChildren)) existingChildren = []; // Ensure it's an array
+                 if (isContainerType(newParent.type, prev.customComponentTemplates)) { 
+                    let existingChildren = Array.isArray(newParent.properties.children) ? newParent.properties.children : [];
                     if (!existingChildren.includes(draggedId)) {
                          newParent.properties.children = [...existingChildren, draggedId];
                     }
@@ -488,9 +514,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   if (!isClient || isLoadingTemplates) {
-    // Provide a default/loading state for SSR or while templates are loading
-    // This ensures `useDesign` doesn't throw an error immediately
-    // You might want to show a loading indicator in your UI based on `isLoadingTemplates`
     return (
       <DesignContext.Provider value={{
         ...defaultContextValue, 
@@ -498,12 +521,35 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         selectedComponentId: designState.selectedComponentId,
         customComponentTemplates: designState.customComponentTemplates, 
         getComponentById: (id: string) => designState.components.find(comp => comp.id === id) || defaultContextValue.getComponentById(id),
-        updateComponent: updateComponent, // allow updates even while loading if necessary
+        updateComponent: updateComponent, 
       }}>
         {children}
       </DesignContext.Provider>
     );
   }
+  
+  // Helper function to get component display name (similar to compose-spec but usable here)
+  const getComponentDisplayName = (type: ComponentType | string): string => {
+    if (type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
+        const template = designState.customComponentTemplates.find(t => t.templateId === type);
+        return template ? template.name : type.replace(CUSTOM_COMPONENT_TYPE_PREFIX, "");
+    }
+    switch (type as ComponentType) {
+        case 'Text': return 'Text';
+        case 'Button': return 'Button';
+        case 'Image': return 'Image';
+        case 'Column': return 'Column (Layout)';
+        case 'Row': return 'Row (Layout)';
+        case 'Box': return 'Box (Container)';
+        case 'Card': return 'Card (Container)';
+        case 'LazyColumn': return 'Lazy Column';
+        case 'LazyRow': return 'Lazy Row';
+        case 'LazyVerticalGrid': return 'Lazy Vertical Grid';
+        case 'LazyHorizontalGrid': return 'Lazy Horizontal Grid';
+        default: return 'Unknown';
+    }
+  };
+
 
   return (
     <DesignContext.Provider value={{
@@ -527,11 +573,9 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 export const useDesign = (): DesignContextType => {
   const context = useContext(DesignContext);
   if (context === undefined) {
-    // This can happen during SSR or if provider is not set up, provide a safe fallback or throw
-    // console.warn('useDesign context is undefined, returning initial state. Ensure DesignProvider wraps your component.');
-    // return initialDesignState as unknown as DesignContextType; // Or a more specific default
     throw new Error('useDesign must be used within a DesignProvider');
   }
   return context;
 };
 
+    
