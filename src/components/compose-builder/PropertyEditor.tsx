@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ChangeEvent } from 'react';
@@ -15,12 +16,24 @@ interface PropertyEditorProps {
 
 export function PropertyEditor({ property, currentValue, onChange }: PropertyEditorProps) {
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const value = property.type === 'number' ? parseFloat(e.target.value) : e.target.value;
-    if (property.type === 'number' && isNaN(value as number)) {
-      // Allow empty string for numbers to clear input, but don't pass NaN
-      onChange(''); // or some default like 0, or keep previous valid value
+    if (property.type === 'number') {
+      const strValue = e.target.value;
+      if (strValue === '') {
+        // Handle empty string for numbers, perhaps by sending a default or allowing undefined
+        // For now, let's send 0 if cleared, or you might want to send undefined/null
+        // to signify "reset to default" if your backend handles it.
+        // Sending 0 ensures a number is always passed.
+        onChange(0); 
+      } else {
+        const numValue = parseFloat(strValue);
+        if (!isNaN(numValue)) {
+          onChange(numValue);
+        }
+        // If still NaN (e.g., "abc"), do nothing or retain previous value.
+        // The input type="number" should prevent most non-numeric direct typing.
+      }
     } else {
-      onChange(value);
+      onChange(e.target.value);
     }
   };
 
@@ -56,7 +69,7 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
           <Input
             id={id}
             type="number"
-            value={currentValue as number ?? ''} // Allow empty display for undefined/null numbers
+            value={currentValue as number ?? ''} // Display current value, allow empty string for clearing
             onChange={handleInputChange}
             placeholder={property.placeholder}
             className="h-8 text-sm"

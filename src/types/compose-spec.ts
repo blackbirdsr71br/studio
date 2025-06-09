@@ -121,11 +121,11 @@ export const getComponentDisplayName = (type: ComponentType | string, templateNa
   switch (type as ComponentType) {
     case 'Text': return 'Text';
     case 'Button': return 'Button';
-    case 'Column': return 'Column Layout';
-    case 'Row': return 'Row Layout';
+    case 'Column': return 'Column (Layout)';
+    case 'Row': return 'Row (Layout)';
     case 'Image': return 'Image';
-    case 'Box': return 'Box Container';
-    case 'Card': return 'Card Container';
+    case 'Box': return 'Box (Container)';
+    case 'Card': return 'Card (Container)';
     case 'LazyColumn': return 'Lazy Column';
     case 'LazyRow': return 'Lazy Row';
     case 'LazyVerticalGrid': return 'Lazy Vertical Grid';
@@ -255,18 +255,20 @@ export const CONTAINER_TYPES: ReadonlyArray<ComponentType> = [
 // Helper function to determine if a component type is a container
 export function isContainerType(type: ComponentType | string, customTemplates?: CustomComponentTemplate[]): boolean {
   if (isCustomComponentType(type)) {
-    // For custom components, we could check if their template's root component is a container,
-    // or if the template itself is generally expected to hold children.
-    // For simplicity now, if it's custom, we might assume it *can* be a container if it's designed that way.
-    // A more robust check might involve inspecting the template structure if available.
-    // For now, let's assume custom components are not automatically containers unless their type in propertyDefinitions implies it.
-    // However, the visual renderer (ContainerView) often treats them as such if they have children.
-    // The primary use here is for JSON structuring, where the *actual* `children` property matters.
-    // If we are just checking based on its original type (e.g. a custom component *made from* a Column),
-    // that information is in the template. For `buildComponentTree` and `buildFullComponentTree`,
-    // they operate on `DesignComponent` instances, which already have a `type` (base type of the custom instance's root).
-    // So we only need to check the base types.
-    return false; // Custom types themselves aren't base containers, their *constituent parts* might be.
+    // For custom components, we check if their template's root component is a container.
+    // This allows custom components to act as containers if their underlying structure is a container.
+    if (customTemplates) {
+      const template = customTemplates.find(t => t.templateId === type);
+      if (template && template.rootComponentId) {
+        const rootOfTemplate = template.componentTree.find(c => c.id === template.rootComponentId);
+        if (rootOfTemplate) {
+          // Recursively check, but prevent infinite loop for simple cases.
+          // Essentially, a custom component is a container if its root is a base container type.
+          return CONTAINER_TYPES.includes(rootOfTemplate.type as ComponentType);
+        }
+      }
+    }
+    return false; // Default custom components are not containers unless their root is.
   }
   return CONTAINER_TYPES.includes(type as ComponentType);
 }
