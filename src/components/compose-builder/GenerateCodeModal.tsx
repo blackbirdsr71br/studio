@@ -18,7 +18,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
   const [isOpen, setIsOpen] = useState(false);
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { components } = useDesign();
+  const { components, customComponentTemplates } = useDesign(); // Added customComponentTemplates
   const { toast } = useToast();
 
   useImperativeHandle(ref, () => ({
@@ -36,7 +36,8 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
     setIsLoading(true);
     setGeneratedCode(null);
     try {
-      const code = await generateJetpackComposeCodeAction(components);
+      // Pass customComponentTemplates to the action
+      const code = await generateJetpackComposeCodeAction(components, customComponentTemplates);
       setGeneratedCode(code);
     } catch (error) {
       console.error("Error generating code:", error);
@@ -50,7 +51,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
     } finally {
       setIsLoading(false);
     }
-  }, [components, toast]);
+  }, [components, customComponentTemplates, toast]); // Added customComponentTemplates to dependencies
 
   const handleCopyToClipboard = async () => {
     if (generatedCode) {

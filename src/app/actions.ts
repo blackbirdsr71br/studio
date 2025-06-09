@@ -1,8 +1,8 @@
 
 'use server';
 import { generateComposeCode, type GenerateComposeCodeInput } from '@/ai/flows/generate-compose-code';
-import type { DesignComponent } from '@/types/compose-spec';
-import { isContainerType } from '@/types/compose-spec'; // Import the helper
+import type { DesignComponent, CustomComponentTemplate } from '@/types/compose-spec';
+import { isContainerType } from '@/types/compose-spec'; 
 import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
 
 const REMOTE_CONFIG_PARAMETER_KEY = 'COMPOSE_DESIGN_JSON';
@@ -17,34 +17,50 @@ interface AiComponentTreeNode {
 }
 
 // Helper to create a hierarchical structure for the AI
-const buildComponentTree = (allComponents: DesignComponent[], parentId: string | null = null): AiComponentTreeNode[] => {
+const buildComponentTree = (
+  allComponents: DesignComponent[], 
+  customComponentTemplates: CustomComponentTemplate[], 
+  parentId: string | null = null
+): AiComponentTreeNode[] => {
   return allComponents
     .filter(component => component.parentId === parentId)
     .map(component => {
       const node: AiComponentTreeNode = {
         id: component.id,
-        type: component.type, // Use the actual type from DesignComponent
+        type: component.type, 
         name: component.name,
         properties: { ...component.properties },
       };
-      // For AI, we only remove x,y from root components later. Children shouldn't have them.
-      // properties are passed as is for now.
+      
+      // For AI, remove x,y from root components.
+      // For children, x,y are generally not used for layout within Compose containers.
+      if (!parentId) { // Only remove x,y from direct root components for the AI
+        const { x, y, ...restProperties } = node.properties;
+        node.properties = restProperties;
+      } else {
+        // For children inside containers, x & y are usually not relevant for Compose layout
+        delete node.properties.x;
+        delete node.properties.y;
+      }
 
-      if (isContainerType(component.type)) {
-        node.children = buildComponentTree(allComponents, component.id);
+
+      if (isContainerType(component.type, customComponentTemplates)) {
+        node.children = buildComponentTree(allComponents, customComponentTemplates, component.id);
       }
       return node;
     });
 };
 
 
-export async function generateJetpackComposeCodeAction(components: DesignComponent[]): Promise<string> {
+export async function generateJetpackComposeCodeAction(
+  components: DesignComponent[],
+  customComponentTemplates: CustomComponentTemplate[]
+): Promise<string> {
   try {
-    // Build tree starting from root components (parentId === null)
-    const componentTreeForAi = buildComponentTree(components).map(rootCompNode => {
-      // Remove x and y from root component properties before sending to AI
-      const { x, y, ...restProperties } = rootCompNode.properties;
-      return { ...rootCompNode, properties: restProperties };
+    const componentTreeForAi = buildComponentTree(components, customComponentTemplates).map(rootCompNode => {
+      // This mapping ensures x,y are removed only from top-level root components for the AI
+      const { x, y, ...restProperties } = rootCompNode.properties; // x,y might not exist if already removed
+      return { ...rootCompNode, properties: { ...restProperties, ...rootCompNode.properties } }; // Spreading rootCompNode.properties again ensures other props are kept
     });
     const designJson = JSON.stringify(componentTreeForAi, null, 2);
 
@@ -65,20 +81,28 @@ interface FullComponentTreeNode extends DesignComponent {
   childrenComponents?: FullComponentTreeNode[];
 }
 
-export async function getDesignAsJsonAction(components: DesignComponent[]): Promise<string> {
+const buildFullComponentTree = (
+  allComponents: DesignComponent[], 
+  customComponentTemplates: CustomComponentTemplate[], 
+  currentParentId: string | null = null
+): FullComponentTreeNode[] => {
+  return allComponents
+    .filter(c => c.parentId === currentParentId)
+    .map(c => {
+      const node: FullComponentTreeNode = { ...c }; 
+      if (isContainerType(c.type, customComponentTemplates)) {
+        node.childrenComponents = buildFullComponentTree(allComponents, customComponentTemplates, c.id);
+      }
+      return node;
+    });
+};
+
+export async function getDesignAsJsonAction(
+  components: DesignComponent[],
+  customComponentTemplates: CustomComponentTemplate[]
+): Promise<string> {
   try {
-    const buildFullComponentTree = (allComponents: DesignComponent[], currentParentId: string | null = null): FullComponentTreeNode[] => {
-      return allComponents
-        .filter(c => c.parentId === currentParentId)
-        .map(c => {
-          const node: FullComponentTreeNode = { ...c }; 
-          if (isContainerType(c.type)) {
-            node.childrenComponents = buildFullComponentTree(allComponents, c.id);
-          }
-          return node;
-        });
-    };
-    const componentTree = buildFullComponentTree(components);
+    const componentTree = buildFullComponentTree(components, customComponentTemplates);
     return JSON.stringify(componentTree, null, 2);
   } catch (error) {
     console.error("Error generating design JSON:", error);
@@ -89,7 +113,10 @@ export async function getDesignAsJsonAction(components: DesignComponent[]): Prom
   }
 }
 
-export async function publishToRemoteConfigAction(components: DesignComponent[]): Promise<{ success: boolean; message: string; version?: string }> {
+export async function publishToRemoteConfigAction(
+  components: DesignComponent[],
+  customComponentTemplates: CustomComponentTemplate[]
+): Promise<{ success: boolean; message: string; version?: string }> {
   if (!isAdminInitialized()) {
     return { success: false, message: 'Firebase Admin SDK not initialized. Check server logs and FIREBASE_SERVICE_ACCOUNT_JSON.' };
   }
@@ -100,22 +127,18 @@ export async function publishToRemoteConfigAction(components: DesignComponent[])
   }
 
   try {
-    const designJsonString = await getDesignAsJsonAction(components);
+    const designJsonString = await getDesignAsJsonAction(components, customComponentTemplates);
 
-    // Get the current template
     const currentTemplate = await remoteConfig.getTemplate();
     
-    // Update the specific parameter
     currentTemplate.parameters[REMOTE_CONFIG_PARAMETER_KEY] = {
       defaultValue: { value: designJsonString },
       description: 'Jetpack Compose UI design generated by Compose Builder.',
       valueType: 'JSON',
     };
 
-    // Validate the template (optional, but good practice)
     await remoteConfig.validateTemplate(currentTemplate);
     
-    // Publish the updated template
     const updatedTemplate = await remoteConfig.publishTemplate(currentTemplate);
 
     return { 
@@ -130,7 +153,6 @@ export async function publishToRemoteConfigAction(components: DesignComponent[])
     if (error instanceof Error) {
       message = error.message;
     }
-    // Check for common errors
     if (typeof error === 'object' && error !== null && 'errorInfo' in error) {
         const firebaseError = error as { errorInfo?: { code?: string, message?: string }};
         if (firebaseError.errorInfo?.code === 'remoteconfig/template-version-mismatch') {

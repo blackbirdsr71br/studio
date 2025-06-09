@@ -24,7 +24,7 @@ interface HeaderProps {
 }
 
 export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
-  const { clearDesign, components } = useDesign();
+  const { clearDesign, components, customComponentTemplates } = useDesign(); // Added customComponentTemplates
   const { toast } = useToast();
   const [isPublishing, setIsPublishing] = useState(false);
 
@@ -57,7 +57,8 @@ export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
     }
     setIsPublishing(true);
     try {
-      const result = await publishToRemoteConfigAction(components);
+      // Pass customComponentTemplates to the action
+      const result = await publishToRemoteConfigAction(components, customComponentTemplates);
       if (result.success) {
         toast({
           title: "Publish Successful",

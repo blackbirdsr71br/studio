@@ -18,7 +18,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [designJson, setDesignJson] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { components } = useDesign();
+  const { components, customComponentTemplates } = useDesign(); // Added customComponentTemplates
   const { toast } = useToast();
 
   useImperativeHandle(ref, () => ({
@@ -36,7 +36,8 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
     setIsLoading(true);
     setDesignJson(null);
     try {
-      const jsonString = await getDesignAsJsonAction(components);
+      // Pass customComponentTemplates to the action
+      const jsonString = await getDesignAsJsonAction(components, customComponentTemplates);
       setDesignJson(jsonString);
     } catch (error) {
       console.error("Error fetching design JSON:", error);
@@ -50,7 +51,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
     } finally {
       setIsLoading(false);
     }
-  }, [components, toast]);
+  }, [components, customComponentTemplates, toast]); // Added customComponentTemplates to dependencies
 
   const handleCopyToClipboard = async () => {
     if (designJson) {
