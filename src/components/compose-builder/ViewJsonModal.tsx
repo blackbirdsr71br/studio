@@ -33,7 +33,6 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
     setEditableJsonString(jsonStr);
     try {
       const parsedJson = JSON.parse(jsonStr);
-      // If JSON.parse succeeded, attempt schema validation.
       const validationResult = ModalJsonSchema.safeParse(parsedJson);
       if (!validationResult.success) {
         const individualErrors = validationResult.error.errors.map(
@@ -41,9 +40,9 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
         );
         setJsonError(['Schema validation failed:', ...individualErrors]);
       } else {
-        setJsonError(null); // No syntax error, no schema error
+        setJsonError(null); 
       }
-    } catch (error) { // Catch for JSON.parse() errors (syntax errors)
+    } catch (error) { 
       if (error instanceof Error) {
         setJsonError(`Syntax error: ${error.message}`);
       } else {
@@ -169,7 +168,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
           </DialogDescription>
         </DialogHeader>
         <div className="flex-grow my-2 flex flex-col min-h-0"> 
-          <div className="h-[400px] rounded-md border overflow-hidden bg-background">
+          <div className="h-[400px] rounded-md border overflow-auto bg-background">
             <CodeMirror
               value={editableJsonString}
               height="100%"
