@@ -1,3 +1,4 @@
+
 'use client';
 import type { BaseComponentProps } from '@/types/compose-spec';
 
@@ -6,7 +7,16 @@ interface TextViewProps {
 }
 
 export function TextView({ properties }: TextViewProps) {
-  const { text = 'Text', fontSize = 16, textColor = '#000000', padding = 0 } = properties;
+  const {
+    text = 'Text',
+    fontSize = 16,
+    textColor = '#000000',
+    padding = 0,
+    fontWeight = 'Normal',
+    fontStyle = 'Normal',
+    textAlign = 'Start',
+    textDecoration = 'None',
+  } = properties;
   
   const style: React.CSSProperties = {
     fontSize: `${fontSize}px`, // Assuming sp is roughly px for web display
@@ -16,6 +26,10 @@ export function TextView({ properties }: TextViewProps) {
     wordBreak: 'break-word',
     lineHeight: '1.4',
     display: 'inline-block', // To make padding effective
+    fontWeight: fontWeight.toLowerCase() as 'normal' | 'bold', // CSS values
+    fontStyle: fontStyle.toLowerCase() as 'normal' | 'italic', // CSS values
+    textAlign: textAlign.toLowerCase() as 'left' | 'center' | 'right' | 'justify' | 'start' | 'end', // CSS values
+    textDecorationLine: textDecoration === 'LineThrough' ? 'line-through' : textDecoration.toLowerCase(), // CSS values
   };
 
   return (
@@ -24,3 +38,5 @@ export function TextView({ properties }: TextViewProps) {
     </div>
   );
 }
+
+    

@@ -58,6 +58,11 @@ export interface BaseComponentProps {
   reverseLayout?: boolean;
   // Properties for LazyRow (some may overlap, like userScrollEnabled and reverseLayout)
   horizontalArrangementSpacing?: number;
+  // New Text properties
+  fontWeight?: 'Normal' | 'Bold';
+  fontStyle?: 'Normal' | 'Italic';
+  textAlign?: 'Left' | 'Center' | 'Right' | 'Justify' | 'Start' | 'End';
+  textDecoration?: 'None' | 'Underline' | 'LineThrough';
 }
 
 export interface DesignComponent {
@@ -88,7 +93,19 @@ export const getDefaultProperties = (type: ComponentType): BaseComponentProps =>
   const common = { x: 50, y: 50 };
   switch (type) {
     case 'Text':
-      return { ...common, text: 'Sample Text', fontSize: 16, textColor: '#000000', padding: 0, maxLines: undefined, textOverflow: 'Clip' };
+      return {
+        ...common,
+        text: 'Sample Text',
+        fontSize: 16,
+        textColor: '#000000',
+        padding: 0,
+        maxLines: undefined,
+        textOverflow: 'Clip',
+        fontWeight: 'Normal',
+        fontStyle: 'Normal',
+        textAlign: 'Start',
+        textDecoration: 'None',
+      };
     case 'Button':
       return { ...common, text: 'Click Me', backgroundColor: '#3F51B5', textColor: '#FFFFFF', padding: 12 };
     case 'Image':
@@ -150,6 +167,51 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
         { label: 'Clip', value: 'Clip' },
         { label: 'Ellipsis', value: 'Ellipsis' },
         { label: 'Visible', value: 'Visible' },
+      ]
+    },
+    {
+      name: 'fontWeight',
+      type: 'enum',
+      label: 'Font Weight',
+      group: 'Appearance',
+      options: [
+        { label: 'Normal', value: 'Normal' },
+        { label: 'Bold', value: 'Bold' },
+      ]
+    },
+    {
+      name: 'fontStyle',
+      type: 'enum',
+      label: 'Font Style',
+      group: 'Appearance',
+      options: [
+        { label: 'Normal', value: 'Normal' },
+        { label: 'Italic', value: 'Italic' },
+      ]
+    },
+    {
+      name: 'textAlign',
+      type: 'enum',
+      label: 'Text Align',
+      group: 'Appearance',
+      options: [
+        { label: 'Start', value: 'Start' },
+        { label: 'End', value: 'End' },
+        { label: 'Left', value: 'Left' },
+        { label: 'Right', value: 'Right' },
+        { label: 'Center', value: 'Center' },
+        { label: 'Justify', value: 'Justify' },
+      ]
+    },
+    {
+      name: 'textDecoration',
+      type: 'enum',
+      label: 'Text Decoration',
+      group: 'Appearance',
+      options: [
+        { label: 'None', value: 'None' },
+        { label: 'Underline', value: 'Underline' },
+        { label: 'LineThrough', value: 'LineThrough' },
       ]
     },
   ],
@@ -272,3 +334,5 @@ export function isContainerType(type: ComponentType | string, customTemplates?: 
   }
   return CONTAINER_TYPES.includes(type as ComponentType);
 }
+
+    
