@@ -3,7 +3,7 @@
 import { generateComposeCode, type GenerateComposeCodeInput } from '@/ai/flows/generate-compose-code';
 import { generateImageFromHint, type GenerateImageFromHintInput } from '@/ai/flows/generate-image-from-hint-flow';
 import type { DesignComponent, CustomComponentTemplate } from '@/types/compose-spec';
-import { isContainerType } from '@/types/compose-spec';
+import { isContainerType, DEFAULT_ROOT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
 
 const REMOTE_CONFIG_PARAMETER_KEY = 'COMPOSE_DESIGN_JSON';
@@ -33,13 +33,12 @@ const buildComponentTree = (
         properties: { ...component.properties },
       };
 
-      // For AI, remove x,y from root components.
+      // For AI, remove x,y from root components if they are not the absolute root LazyColumn.
       // For children, x,y are generally not used for layout within Compose containers.
-      if (!parentId) { // Only remove x,y from direct root components for the AI
+      if (component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && !parentId) {
         const { x, y, ...restProperties } = node.properties;
         node.properties = restProperties;
-      } else {
-        // For children inside containers, x & y are usually not relevant for Compose layout
+      } else if (parentId) { // For children inside containers
         delete node.properties.x;
         delete node.properties.y;
       }
@@ -58,11 +57,8 @@ export async function generateJetpackComposeCodeAction(
   customComponentTemplates: CustomComponentTemplate[]
 ): Promise<string> {
   try {
-    const componentTreeForAi = buildComponentTree(components, customComponentTemplates).map(rootCompNode => {
-      // This mapping ensures x,y are removed only from top-level root components for the AI
-      const { x, y, ...restProperties } = rootCompNode.properties; // x,y might not exist if already removed
-      return { ...rootCompNode, properties: { ...restProperties, ...rootCompNode.properties } }; // Spreading rootCompNode.properties again ensures other props are kept
-    });
+    // The AI needs the full tree, including the root LazyColumn.
+    const componentTreeForAi = buildComponentTree(components, customComponentTemplates);
     const designJson = JSON.stringify(componentTreeForAi, null, 2);
 
     const input: GenerateComposeCodeInput = { designJson };
@@ -101,12 +97,15 @@ const buildFullComponentTreeForRemoteConfig = (
 // This action is now specifically for getting the flat list of components for editing in the modal
 export async function getDesignComponentsAsJsonAction(
   components: DesignComponent[],
+  // customComponentTemplates are not directly used here for filtering, but kept for consistency if needed later
+  customComponentTemplates: CustomComponentTemplate[] 
 ): Promise<string> {
   try {
-    // Directly stringify the flat list of components
-    return JSON.stringify(components, null, 2);
+    // Filter out the default root LazyColumn for the JSON editor view
+    const userComponents = components.filter(c => c.id !== DEFAULT_ROOT_LAZY_COLUMN_ID);
+    return JSON.stringify(userComponents, null, 2);
   } catch (error) {
-    console.error("Error generating design components JSON:", error);
+    console.error("Error generating design components JSON for editor:", error);
     if (error instanceof Error) {
       return `Error: ${error.message}`;
     }
@@ -129,7 +128,7 @@ export async function publishToRemoteConfigAction(
   }
 
   try {
-    // For Remote Config, we still want the hierarchical tree structure
+    // For Remote Config, we still want the full hierarchical tree structure including the root.
     const componentTreeForRemoteConfig = buildFullComponentTreeForRemoteConfig(components, customComponentTemplates);
     const designJsonString = JSON.stringify(componentTreeForRemoteConfig, null, 2);
 
