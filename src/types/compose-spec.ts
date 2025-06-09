@@ -1,4 +1,6 @@
 
+import { z } from 'zod';
+
 export type ComponentType =
   | 'Text'
   | 'Button'
@@ -42,7 +44,7 @@ export interface BaseComponentProps {
   id?: string;
   x?: number;
   y?: number;
-  children?: string[];
+  children?: string[] | any[]; // any[] for modal JSON, string[] for DesignComponent
   contentDescription?: string;
   src?: string;
   "data-ai-hint"?: string;
@@ -74,9 +76,9 @@ export interface BaseComponentProps {
 
 export interface DesignComponent {
   id: string;
-  type: ComponentType; // Base component type
+  type: ComponentType | string; // Allow string for custom types
   name: string;
-  properties: BaseComponentProps;
+  properties: BaseComponentProps & { children?: string[] }; // DesignComponent uses string[] for children IDs
   parentId?: string | null;
 }
 
@@ -96,7 +98,7 @@ export interface DesignState {
   customComponentTemplates: CustomComponentTemplate[];
 }
 
-export const getDefaultProperties = (type: ComponentType): BaseComponentProps => {
+export const getDefaultProperties = (type: ComponentType | string): BaseComponentProps => {
   const common = { x: 50, y: 50 };
   switch (type) {
     case 'Text':
@@ -159,13 +161,18 @@ export const getDefaultProperties = (type: ComponentType): BaseComponentProps =>
     case 'LazyHorizontalGrid':
       return { ...common, children: [], padding: 8, backgroundColor: 'rgba(240, 240, 200, 0.3)', width: 'match_parent', height: 200, rows: 2, itemSpacing: 0, horizontalArrangement: 'Start', verticalAlignment: 'Top' };
     default:
+      // For custom components, we might not have specific defaults here.
+      // The template itself defines the defaults.
+      if (isCustomComponentType(type)) {
+        return { ...common, children: [] };
+      }
       return common;
   }
 };
 
 export const getComponentDisplayName = (type: ComponentType | string, templateName?: string): string => {
   if (type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
-    return templateName || type.replace(CUSTOM_COMPONENT_TYPE_PREFIX, "");
+    return templateName || type.replace(CUSTOM_COMPONENT_TYPE_PREFIX, "").replace(/-\d+$/, ""); // Clean up potential timestamp
   }
   switch (type as ComponentType) {
     case 'Text': return 'Text';
@@ -457,20 +464,83 @@ export const CONTAINER_TYPES: ReadonlyArray<ComponentType> = [
 // Helper function to determine if a component type is a container
 export function isContainerType(type: ComponentType | string, customTemplates?: CustomComponentTemplate[]): boolean {
   if (isCustomComponentType(type)) {
-    // For custom components, we check if their template's root component is a container.
-    // This allows custom components to act as containers if their underlying structure is a container.
     if (customTemplates) {
       const template = customTemplates.find(t => t.templateId === type);
       if (template && template.rootComponentId) {
         const rootOfTemplate = template.componentTree.find(c => c.id === template.rootComponentId);
         if (rootOfTemplate) {
-          // Recursively check, but prevent infinite loop for simple cases.
-          // Essentially, a custom component is a container if its root is a base container type.
           return CONTAINER_TYPES.includes(rootOfTemplate.type as ComponentType);
         }
       }
     }
-    return false; // Default custom components are not containers unless their root is.
+    return false; 
   }
   return CONTAINER_TYPES.includes(type as ComponentType);
 }
+
+
+// Zod Schemas for Modal JSON Validation
+const BaseModalPropertiesSchema = z.object({
+  text: z.string().optional(),
+  fontSize: z.number().optional(),
+  textColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional(),
+  backgroundColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional(),
+  width: z.union([z.literal('wrap_content'), z.literal('match_parent'), z.number().min(0)]).optional(),
+  height: z.union([z.literal('wrap_content'), z.literal('match_parent'), z.number().min(0)]).optional(),
+  padding: z.number().min(0).optional(),
+  contentDescription: z.string().optional(),
+  src: z.string().url("Must be a valid URL").optional(),
+  "data-ai-hint": z.string().optional(),
+  elevation: z.number().min(0).optional(),
+  cornerRadius: z.number().min(0).optional(),
+  columns: z.number().int().min(1).optional(),
+  rows: z.number().int().min(1).optional(),
+  maxLines: z.number().int().min(1).optional(),
+  textOverflow: z.enum(['Clip', 'Ellipsis', 'Visible']).optional(),
+  contentScale: z.enum(['Crop', 'Fit', 'FillBounds', 'Inside', 'None', 'FillWidth', 'FillHeight']).optional(),
+  itemSpacing: z.number().min(0).optional(),
+  userScrollEnabled: z.boolean().optional(),
+  reverseLayout: z.boolean().optional(),
+  verticalArrangement: z.enum(['Top', 'Bottom', 'Center', 'SpaceAround', 'SpaceBetween', 'SpaceEvenly']).optional(),
+  horizontalAlignment: z.enum(['Start', 'CenterHorizontally', 'End']).optional(),
+  horizontalArrangement: z.enum(['Start', 'End', 'Center', 'SpaceAround', 'SpaceBetween', 'SpaceEvenly']).optional(),
+  verticalAlignment: z.enum(['Top', 'CenterVertically', 'Bottom']).optional(),
+  fontWeight: z.enum(['Normal', 'Bold']).optional(),
+  fontStyle: z.enum(['Normal', 'Italic']).optional(),
+  textAlign: z.enum(['Left', 'Center', 'Right', 'Justify', 'Start', 'End']).optional(),
+  textDecoration: z.enum(['None', 'Underline', 'LineThrough']).optional(),
+  lineHeight: z.number().min(0).optional(),
+}).catchall(z.any()); // Allows unspecified properties, useful for forward compatibility or custom props not in schema
+
+// Define the type for a node in the modal JSON structure, including recursive children
+type ModalComponentNodePlain = {
+  id: string;
+  type: string; // Using string to accommodate custom types like "custom/MyHeader-12345"
+  name: string;
+  parentId: string | null;
+  properties: Partial<BaseComponentProps> & { children?: ModalComponentNodePlain[] };
+};
+
+// Zod schema for a single component node in the modal JSON
+const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =>
+  z.object({
+    id: z.string().min(1, "Component ID cannot be empty"),
+    type: z.string().min(1, "Component type cannot be empty"),
+    name: z.string().min(1, "Component name cannot be empty"),
+    parentId: z.string().uuid("Parent ID must be a valid UUID or null if root element of user content.").nullable(), // Assuming IDs are UUID-like or a specific format. Adapt if not.
+    properties: BaseModalPropertiesSchema.extend({
+      children: z.array(ModalComponentNodeSchema).optional(),
+    }),
+  }).refine(data => { // Example of a custom refinement: If it's an Image, src should ideally be present.
+    if (data.type === 'Image' && !data.properties.src) {
+      // This is a soft requirement, could be a placeholder. For strictness, add error.
+      // For now, just an example, won't add error.
+    }
+    return true;
+  })
+);
+
+// Zod schema for the entire JSON structure in the modal (an array of root-level user components)
+export const ModalJsonSchema = z.array(ModalComponentNodeSchema);
+
+    
