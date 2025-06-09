@@ -17,7 +17,7 @@ interface DesignContextType extends DesignState {
   getComponentById: (id: string) => DesignComponent | undefined;
   clearDesign: () => void;
   setDesign: (newDesign: DesignState) => void; 
-  moveComponent: (draggedId: string, targetId: string | null) => void; 
+  moveComponent: (draggedId: string, targetParentId: string | null, newPosition?: { x: number, y: number}) => void; 
   saveSelectedAsCustomTemplate: (name: string) => void;
 }
 
@@ -369,7 +369,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setDesignState(prev => ({
       ...prev,
       components: prev.components.map(comp =>
-        comp.id === id ? { ...comp, properties: { ...comp.properties, x: position.x, y: position.y } } : comp
+        // Only update x,y if it's a root component (no parentId)
+        (comp.id === id && !comp.parentId) ? { ...comp, properties: { ...comp.properties, x: position.x, y: position.y } } : comp
       ),
     }));
   }, []);
@@ -382,15 +383,39 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setDesignState(newDesign);
   }, []);
 
-  const moveComponent = useCallback((draggedId: string, targetParentId: string | null) => {
+  const moveComponent = useCallback((draggedId: string, targetParentId: string | null, newPosition?: { x: number, y: number}) => {
     setDesignState(prev => {
-        const currentComponents = [...prev.components];
-        const draggedComponent = currentComponents.find(c => c.id === draggedId);
-        if (!draggedComponent) return prev;
+        let currentComponents = [...prev.components];
+        const draggedComponentIndex = currentComponents.findIndex(c => c.id === draggedId);
 
-        // Remove from old parent's children list
-        if (draggedComponent.parentId) {
-            const oldParentIndex = currentComponents.findIndex(c => c.id === draggedComponent.parentId);
+        if (draggedComponentIndex === -1) return prev;
+        
+        let draggedComponent = {...currentComponents[draggedComponentIndex]};
+
+        // Store old parent ID for removal
+        const oldParentId = draggedComponent.parentId;
+
+        // If moving to a new parent, update parentId and clear absolute positioning props
+        if (targetParentId !== oldParentId) {
+            draggedComponent.parentId = targetParentId;
+            if (targetParentId) { // Moving into a container
+                delete draggedComponent.properties.x;
+                delete draggedComponent.properties.y;
+            }
+        }
+        
+        // If moving to root and newPosition is provided, set it
+        if (!targetParentId && newPosition) {
+            draggedComponent.properties.x = newPosition.x;
+            draggedComponent.properties.y = newPosition.y;
+        }
+
+
+        currentComponents[draggedComponentIndex] = draggedComponent;
+
+        // Remove from old parent's children list (if it had one and it's different from new)
+        if (oldParentId && oldParentId !== targetParentId) {
+            const oldParentIndex = currentComponents.findIndex(c => c.id === oldParentId);
             if (oldParentIndex !== -1) {
                 const oldParent = {...currentComponents[oldParentIndex]};
                 if (oldParent.properties.children) {
@@ -400,21 +425,17 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             }
         }
 
-        // Update dragged component's parentId
-        const draggedComponentIndex = currentComponents.findIndex(c => c.id === draggedId);
-        currentComponents[draggedComponentIndex] = { ...draggedComponent, parentId: targetParentId };
-
-
-        // Add to new parent's children list
+        // Add to new parent's children list (if it's a container)
         if (targetParentId) {
             const newParentIndex = currentComponents.findIndex(c => c.id === targetParentId);
             if (newParentIndex !== -1) {
                  const newParent = {...currentComponents[newParentIndex]};
                  if (newParent.type === 'Column' || newParent.type === 'Row' || newParent.type === 'Card' || newParent.type === 'Box' || newParent.type.startsWith('Lazy')) {
-                    newParent.properties.children = [...(newParent.properties.children || []), draggedId];
+                    const childrenSet = new Set(newParent.properties.children || []);
+                    if (!childrenSet.has(draggedId)) { // Avoid duplicates
+                         newParent.properties.children = [...(newParent.properties.children || []), draggedId];
+                    }
                     currentComponents[newParentIndex] = newParent;
-                 } else {
-                     currentComponents[draggedComponentIndex] = { ...draggedComponent, parentId: draggedComponent.parentId };
                  }
             }
         }
@@ -475,6 +496,3 @@ export const useDesign = (): DesignContextType => {
   }
   return context;
 };
-
-
-    
