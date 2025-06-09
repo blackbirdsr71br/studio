@@ -65,7 +65,7 @@ const initialDesignState: DesignState = {
 };
 
 
-// Helper to flatten hierarchical components from modal JSON into DesignComponent list
+// Helper to flatten hierarchical components from modal JSON
 // The modal JSON has children objects nested under parent.properties.children
 const flattenComponentsFromModalJson = (
   modalNodes: any[], // Array of nodes from the modal's JSON (initially, children of DEFAULT_ROOT_LAZY_COLUMN_ID)
@@ -414,60 +414,75 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
 
   const deleteComponent = useCallback((id: string) => {
-     if (id === DEFAULT_ROOT_LAZY_COLUMN_ID) {
-        console.warn("Attempted to delete the default root LazyColumn. Operation prevented.");
-        return;
+    if (id === DEFAULT_ROOT_LAZY_COLUMN_ID) {
+      console.warn("Attempted to delete the default root LazyColumn. Operation prevented.");
+      return;
     }
+
     setDesignState(prev => {
       const componentToDelete = prev.components.find(c => c.id === id);
       if (!componentToDelete) return prev;
 
-      let idsToDelete = new Set<string>();
-      const queue = [id];
+      // 1. Identify all components to delete (including children)
+      const idsToDeleteRecursively = new Set<string>();
+      const queue = [id]; // Start with the component explicitly asked to be deleted
+      while (queue.length > 0) {
+        const currentId = queue.shift()!;
+        if (idsToDeleteRecursively.has(currentId)) continue;
+        idsToDeleteRecursively.add(currentId);
 
-      while(queue.length > 0) {
-          const currentId = queue.shift()!;
-          if (idsToDelete.has(currentId)) continue;
-          idsToDelete.add(currentId);
-
-          const currentComp = prev.components.find(c => c.id === currentId);
-          if (currentComp && Array.isArray(currentComp.properties.children)) {
-              currentComp.properties.children.forEach(childId => {
-                  if (!idsToDelete.has(childId)) {
-                      queue.push(childId);
-                  }
-              });
-          }
+        const currentComp = prev.components.find(c => c.id === currentId);
+        if (currentComp?.properties.children && Array.isArray(currentComp.properties.children)) {
+          currentComp.properties.children.forEach(childId => {
+            if (!idsToDeleteRecursively.has(childId)) {
+              queue.push(childId);
+            }
+          });
+        }
       }
+      const deletedIdsArray = Array.from(idsToDeleteRecursively);
 
-      const idsToDeleteArray = Array.from(idsToDelete);
-      let components = prev.components.filter(comp => !idsToDeleteArray.includes(comp.id));
+      // 2. Filter out the deleted components
+      let remainingComponents = prev.components.filter(comp => !deletedIdsArray.includes(comp.id));
 
-      // Remove deleted components from their parent's children list
-      if (componentToDelete.parentId) {
-        components = components.map(comp => {
-          if (comp.id === componentToDelete.parentId && Array.isArray(comp.properties.children)) {
+      // 3. Update the 'children' array of any remaining parent components
+      remainingComponents = remainingComponents.map(parentCandidate => {
+        if (parentCandidate.properties.children && Array.isArray(parentCandidate.properties.children)) {
+          const updatedChildren = parentCandidate.properties.children.filter(
+            childId => !deletedIdsArray.includes(childId)
+          );
+          // If children array changed, return a new object for this parent
+          if (updatedChildren.length !== parentCandidate.properties.children.length) {
             return {
-              ...comp,
+              ...parentCandidate,
               properties: {
-                ...comp.properties,
-                children: comp.properties.children.filter(childId => childId !== id) // Only remove the direct child ID
-              }
+                ...parentCandidate.properties,
+                children: updatedChildren,
+              },
             };
           }
-          return comp;
-        });
+        }
+        return parentCandidate; // No change to this component's children list
+      });
+
+      // 4. Ensure the default root lazy column is still present
+      let finalComponents = remainingComponents;
+      if (!finalComponents.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID)) {
+        // This case should ideally not be reached if the initial guard works.
+        // If it does, it means the root was part of the deletion, which is problematic.
+        // For robustness, we add a new one, but its children list would be empty.
+        finalComponents.unshift(createDefaultRootLazyColumn());
       }
       
-      // Ensure default root lazy column is still present
-      if (!components.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID)) {
-        components.unshift(createDefaultRootLazyColumn());
-      }
-
+      // 5. Determine the new selected component ID
+      const newSelectedComponentId = deletedIdsArray.includes(prev.selectedComponentId || "")
+        ? DEFAULT_ROOT_LAZY_COLUMN_ID // Select root if selected component or its ancestor was deleted
+        : prev.selectedComponentId;
+      
       return {
         ...prev,
-        components,
-        selectedComponentId: idsToDeleteArray.includes(prev.selectedComponentId || "") ? DEFAULT_ROOT_LAZY_COLUMN_ID : prev.selectedComponentId,
+        components: finalComponents,
+        selectedComponentId: newSelectedComponentId,
       };
     });
   }, []);
@@ -731,17 +746,17 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   if (!isClient) { // SSR or pre-hydration
     const initialContextValue: DesignContextType = {
       ...initialDesignState,
-      addComponent: () => console.warn("DesignContext: addComponent called before client hydration."),
-      deleteComponent: () => console.warn("DesignContext: deleteComponent called before client hydration."),
+      addComponent: () => {}, // No-op until client-side
+      deleteComponent: () => {},
       selectComponent: () => {}, 
-      updateComponent: () => console.warn("DesignContext: updateComponent called before client hydration."),
-      updateComponentPosition: () => console.warn("DesignContext: updateComponentPosition called before client hydration."),
+      updateComponent: () => {},
+      updateComponentPosition: () => {},
       getComponentById: (id: string) => initialDesignState.components.find(comp => comp.id === id),
-      clearDesign: () => console.warn("DesignContext: clearDesign called before client hydration."),
-      setDesign: () => console.warn("DesignContext: setDesign called before client hydration."),
-      overwriteComponents: () => { console.warn("DesignContext: overwriteComponents called before client hydration."); return {success: false, error: "Context not ready."}; },
-      moveComponent: () => console.warn("DesignContext: moveComponent called before client hydration."),
-      saveSelectedAsCustomTemplate: () => console.warn("DesignContext: saveSelectedAsCustomTemplate called before client hydration."),
+      clearDesign: () => {},
+      setDesign: () => {},
+      overwriteComponents: () => { return {success: false, error: "Context not ready."}; },
+      moveComponent: () => {},
+      saveSelectedAsCustomTemplate: () => {},
     };
     return (
       <DesignContext.Provider value={initialContextValue}>
