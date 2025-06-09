@@ -19,6 +19,8 @@ interface GroupedProperties {
   [groupName: string]: ReactNode[];
 }
 
+const PREFERRED_GROUP_ORDER = ['Layout', 'Appearance', 'Content', 'Behavior'];
+
 export function PropertyPanel() {
   const { selectedComponentId, getComponentById, updateComponent, deleteComponent, saveSelectedAsCustomTemplate } = useDesign();
   const selectedComponent = selectedComponentId ? getComponentById(selectedComponentId) : null;
@@ -29,7 +31,7 @@ export function PropertyPanel() {
 
   if (!selectedComponent) {
     return (
-      <aside className="w-56 border-l bg-sidebar p-4 flex flex-col shrink-0">
+      <aside className="w-72 border-l bg-sidebar p-4 flex flex-col shrink-0">
         <h2 className="text-xl font-semibold mb-4 text-sidebar-foreground font-headline">Properties</h2>
         <div className="flex-grow flex items-center justify-center">
           <p className="text-sm text-muted-foreground">Select a component to see its properties.</p>
@@ -39,7 +41,6 @@ export function PropertyPanel() {
   }
 
   const getDefaultPropertyValue = (propDef: Omit<ComponentProperty, 'value'>) => {
-    // This function needs to be defined before componentPropsDef.forEach loop
     if (propDef.type === 'number') return 0;
     if (propDef.type === 'boolean') return false;
     if (propDef.type === 'enum' && propDef.options && propDef.options.length > 0) return propDef.options[0].value;
@@ -114,7 +115,9 @@ export function PropertyPanel() {
     const group = propDef.group || 'General';
     if (!groupedProperties[group]) {
       groupedProperties[group] = [];
-      propertyGroups.push(group);
+      if (!propertyGroups.includes(group)) {
+        propertyGroups.push(group);
+      }
     }
     groupedProperties[group].push(
       <PropertyEditor
@@ -126,10 +129,20 @@ export function PropertyPanel() {
     );
   });
   
+  propertyGroups.sort((a, b) => {
+    const indexA = PREFERRED_GROUP_ORDER.indexOf(a);
+    const indexB = PREFERRED_GROUP_ORDER.indexOf(b);
+
+    if (indexA !== -1 && indexB !== -1) return indexA - indexB; // Both in preferred order
+    if (indexA !== -1) return -1; // Only A is in preferred order
+    if (indexB !== -1) return 1;  // Only B is in preferred order
+    return a.localeCompare(b); // Fallback to alphabetical for non-preferred
+  });
+
   const componentDisplayName = getComponentDisplayName(selectedComponent.type);
 
   return (
-    <aside className="w-56 border-l bg-sidebar p-4 flex flex-col shrink-0">
+    <aside className="w-72 border-l bg-sidebar p-4 flex flex-col shrink-0">
       <div className="flex items-center justify-between mb-1">
          <h2 className="text-lg font-semibold text-sidebar-foreground font-headline truncate mr-2" title={`${selectedComponent.name} (${componentDisplayName})`}>
           {selectedComponent.name}
@@ -161,7 +174,7 @@ export function PropertyPanel() {
           <p className="text-sm text-muted-foreground">No editable properties for this component type.</p>
         ) : (
           <Tabs defaultValue={propertyGroups[0] || 'General'} className="w-full">
-            <TabsList className="grid w-full grid-cols-auto">
+            <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${Math.min(propertyGroups.length, 3)}, minmax(0, 1fr))` }}>
               {propertyGroups.map((group) => (
                 <TabsTrigger key={group} value={group} className="text-xs px-2 py-1.5">
                   {group}
@@ -199,3 +212,4 @@ export function PropertyPanel() {
     </aside>
   );
 }
+
