@@ -10,7 +10,6 @@ import { generateJsonFromTextAction } from '@/app/actions';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Wand2, AlertTriangle } from 'lucide-react';
-import type { ModalJsonSchema } from '@/types/compose-spec'; // For type checking response
 import { Label } from "@/components/ui/label"; 
 
 export interface GenerateJsonFromTextModalRef {
@@ -54,17 +53,16 @@ export const GenerateJsonFromTextModal = forwardRef<GenerateJsonFromTextModalRef
           variant: "destructive",
         });
       } else if (result.designJson) {
-        // The AI returns a string, which should be a parsable JSON array.
         try {
           const parsedComponents = JSON.parse(result.designJson);
-          const overwriteResult = overwriteComponents(parsedComponents); // This function now handles schema validation
+          const overwriteResult = overwriteComponents(parsedComponents); 
 
           if (overwriteResult.success) {
             toast({
               title: "Design Updated!",
               description: "The canvas has been updated based on your commands.",
             });
-            setIsOpen(false); // Close modal on success
+            setIsOpen(false); 
           } else {
             setAiError(overwriteResult.error || "Failed to apply the generated JSON to the canvas.");
             toast({
