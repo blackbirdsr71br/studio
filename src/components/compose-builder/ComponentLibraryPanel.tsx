@@ -40,7 +40,7 @@ export function ComponentLibraryPanel() {
   const { customComponentTemplates } = useDesign();
 
   return (
-    <aside className="w-40 border-r bg-sidebar p-4 flex flex-col shrink-0">
+    <aside className="w-64 border-r bg-sidebar p-4 flex flex-col shrink-0"> {/* Increased width to w-64 */}
       <h2 className="text-xl font-semibold mb-2 text-sidebar-foreground font-headline">Components</h2>
       <TooltipProvider delayDuration={200}>
         <Tabs defaultValue="standard" className="flex-grow flex flex-col min-h-0">
@@ -51,23 +51,27 @@ export function ComponentLibraryPanel() {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="standard" className="flex-grow overflow-hidden">
-            <ScrollArea className="h-full pr-2">
-              {availableBaseComponents.map(({ type, icon }) => (
-                <DraggableComponentItem key={type} type={type} Icon={icon} />
-              ))}
+            <ScrollArea className="h-full pr-3"> {/* Added pr-3 for scrollbar spacing */}
+              <div className="grid grid-cols-2 gap-2"> {/* Added grid for two columns */}
+                {availableBaseComponents.map(({ type, icon }) => (
+                  <DraggableComponentItem key={type} type={type} Icon={icon} />
+                ))}
+              </div>
             </ScrollArea>
           </TabsContent>
           <TabsContent value="custom" className="flex-grow overflow-hidden">
             {customComponentTemplates.length > 0 ? (
-              <ScrollArea className="h-full pr-2">
-                {customComponentTemplates.map((template) => (
-                  <DraggableComponentItem 
-                    key={template.templateId} 
-                    type={template.templateId} 
-                    displayName={template.name}
-                    Icon={BoxSelect} 
-                  />
-                ))}
+              <ScrollArea className="h-full pr-3"> {/* Added pr-3 for scrollbar spacing */}
+                <div className="grid grid-cols-2 gap-2"> {/* Added grid for two columns */}
+                  {customComponentTemplates.map((template) => (
+                    <DraggableComponentItem 
+                      key={template.templateId} 
+                      type={template.templateId} 
+                      displayName={template.name}
+                      Icon={BoxSelect} 
+                    />
+                  ))}
+                </div>
               </ScrollArea>
             ) : (
               <div className="flex items-center justify-center h-full text-xs text-sidebar-foreground/70 text-center p-2">
