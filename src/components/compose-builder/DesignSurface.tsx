@@ -47,7 +47,6 @@ export function DesignSurface() {
         // If a component is dragged from a parent to the surface, it becomes a child of the root lazy column
         // Its x,y are relative to the surface if it becomes a root child.
         // If it was already a root child (parentId === DEFAULT_ROOT_LAZY_COLUMN_ID), its position is updated.
-        // Note: True free-floating components (parentId: null) are not directly supported for user components other than the root itself.
         if (draggedComponent) {
              moveComponent(canvasItem.id, DEFAULT_ROOT_LAZY_COLUMN_ID, { x: dropX, y: dropY });
         }
@@ -62,42 +61,32 @@ export function DesignSurface() {
   dropRef(surfaceRef); 
 
   const handleSurfaceClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Clicking on the surface itself (not a component on it) should select the root canvas
     if (e.target === surfaceRef.current) {
       selectComponent(DEFAULT_ROOT_LAZY_COLUMN_ID);
     }
   };
 
-  // Only the DEFAULT_ROOT_LAZY_COLUMN_ID should be a root component displayed directly on the surface.
-  // All other user-added components will be children of this root column.
   const rootDisplayComponent = components.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID);
 
-  // Placeholder messages based on the state of the root canvas
   let showPlaceholder = false;
   let placeholderText = "";
   if (!rootDisplayComponent || (rootDisplayComponent.properties.children && rootDisplayComponent.properties.children.length === 0)) {
     showPlaceholder = true;
     placeholderText = "Drag components into the Root Canvas";
   }
-  // This case should not happen if root is always present.
-  // else if (components.length === 0) { 
-  //   showPlaceholder = true;
-  //   placeholderText = "Drag components here to start designing";
-  // }
-
 
   return (
     <div
       ref={surfaceRef}
       className={cn(
         "bg-background relative overflow-auto border-2 border-transparent transition-colors duration-200",
-        "w-full h-full", // DesignSurface fills the MobileFrame's screen area
+        "w-full h-full", 
         { 
           'drag-over-surface': isOverSurface && canDropOnSurface,
         }
       )}
       onClick={handleSurfaceClick}
-      id="design-surface" // Keep ID for dnd target identification if needed elsewhere
+      id="design-surface"
     >
       <style jsx global>{`
         .drag-over-surface { 
@@ -105,7 +94,6 @@ export function DesignSurface() {
           background-color: hsl(var(--primary) / 0.1) !important;
         }
         .drag-over-container { 
-          /* Styles for when dragging over a container component */
           outline: 2px dashed hsl(var(--accent));
           background-color: hsla(var(--accent-hsl, 291 64% 42%) / 0.1) !important; 
         }
@@ -128,13 +116,11 @@ export function DesignSurface() {
         .resize-handle.e { cursor: ew-resize; top: 50%; right: -5px; transform: translateY(-50%); }
       `}</style>
       
-      {/* Render the root component. All other components are children of this. */}
       {rootDisplayComponent && (
         <RenderedComponentWrapper key={rootDisplayComponent.id} component={rootDisplayComponent} />
       )}
 
-      {/* Placeholder text for when the root canvas is empty */}
-      {showPlaceholder && (
+      {showPlaceholder && !rootDisplayComponent?.properties?.children?.length && (
          <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground pointer-events-none p-4 text-center">
             <p className="text-lg">{placeholderText}</p>
             <p className="text-xs mt-1">(This is your app screen)</p>

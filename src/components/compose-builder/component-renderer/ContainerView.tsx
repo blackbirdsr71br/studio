@@ -2,52 +2,43 @@
 'use client';
 import type { DesignComponent } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from '../RenderedComponentWrapper';
-import { getComponentDisplayName } from '@/types/compose-spec'; // Import for placeholder
+import { getComponentDisplayName, DEFAULT_ROOT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 
 interface ContainerViewProps {
   component: DesignComponent;
   childrenComponents: DesignComponent[];
-  isRow: boolean; // True for Row-like layouts, False for Column-like
+  isRow: boolean; 
 }
 
 export function ContainerView({ component, childrenComponents, isRow }: ContainerViewProps) {
-  const { type, properties } = component;
+  const { type, properties, id: componentId } = component;
   const {
-    padding = 8,
-    elevation = 2, // Default for Card
-    cornerRadius = 0, // Default for Box, Card will override if set
-    itemSpacing = 0, // Renamed from vertical/horizontalArrangementSpacing
-    // LazyColumn specific
-    verticalArrangement = 'Top',
-    horizontalAlignment = 'Start',
-    // LazyRow specific
-    horizontalArrangement = 'Start', // Note: name collision, Jetpack uses different enums
-    verticalAlignment = 'Top',      // Will need to be careful with which one applies
+    padding = (componentId === DEFAULT_ROOT_LAZY_COLUMN_ID ? 8 : 0), // Default padding 8 for root, 0 for others unless specified
+    elevation = (type === 'Card' ? 2 : 0),
+    cornerRadius = (type === 'Card' ? 8 : (type === 'Box' ? 4 : 0)),
+    itemSpacing = 0,
     reverseLayout = false,
   } = properties;
 
-  // Helper to process dimension values (number, 'match_parent', 'wrap_content')
   const processDimension = (
     dimValue: string | number | undefined,
     defaultValueIfUndefined: string | number
   ): string => {
     if (typeof dimValue === 'number') return `${dimValue}px`;
     if (dimValue === 'match_parent') return '100%';
-    if (dimValue === 'wrap_content') return 'auto'; // 'fit-content' could also be an option
-    if (typeof dimValue === 'string' && dimValue.endsWith('%')) return dimValue; // Allow passing through percentages
-    // Fallback to default if undefined or unrecognized string
+    if (dimValue === 'wrap_content') return 'auto';
+    if (typeof dimValue === 'string' && dimValue.endsWith('%')) return dimValue;
     return typeof defaultValueIfUndefined === 'number' ? `${defaultValueIfUndefined}px` : defaultValueIfUndefined.toString();
   };
 
-  // Determine default width/height based on type before processing
-  let defaultWidth: string | number = 200;
-  let defaultHeight: string | number = isRow ? 100 : 200;
+  let defaultWidth: string | number = 'wrap_content';
+  let defaultHeight: string | number = 'wrap_content';
 
-  if (type === 'LazyColumn' || type === 'LazyVerticalGrid') {
-    defaultWidth = '100%'; // 'match_parent' effectively
-    defaultHeight = 300;
+  if (componentId === DEFAULT_ROOT_LAZY_COLUMN_ID || type === 'LazyColumn' || type === 'LazyVerticalGrid') {
+    defaultWidth = '100%'; 
+    defaultHeight = (componentId === DEFAULT_ROOT_LAZY_COLUMN_ID || type === 'LazyColumn') ? '100%' : 300;
   } else if (type === 'LazyRow' || type === 'LazyHorizontalGrid') {
-    defaultWidth = '100%'; // 'match_parent' effectively
+    defaultWidth = '100%';
     defaultHeight = type === 'LazyRow' ? 120 : 200;
   } else if (type === 'Card') {
     defaultWidth = 200;
@@ -55,8 +46,10 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
   } else if (type === 'Box') {
     defaultWidth = 100;
     defaultHeight = 100;
+  } else if (type === 'Column' || type === 'Row') {
+    defaultWidth = 200; // Default for basic Column/Row
+    defaultHeight = isRow ? 100 : 200;
   }
-
 
   const styleWidth = processDimension(properties.width, defaultWidth);
   const styleHeight = processDimension(properties.height, defaultHeight);
@@ -67,10 +60,15 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
   }
 
   let specificStyles: React.CSSProperties = {
-    overflow: 'hidden', // Default, can be overridden
     borderRadius: `${cornerRadius}px`,
-    gap: `${itemSpacing}px`, // Apply itemSpacing as gap
+    gap: `${itemSpacing}px`,
   };
+
+  // Default overflow for most containers; Lazy types will override.
+  if (componentId !== DEFAULT_ROOT_LAZY_COLUMN_ID && type !== 'LazyColumn' && type !== 'LazyRow' && type !== 'LazyVerticalGrid' && type !== 'LazyHorizontalGrid') {
+     specificStyles.overflow = 'hidden';
+  }
+
 
   switch (type) {
     case 'Card':
@@ -78,10 +76,11 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
       specificStyles.backgroundColor = properties.backgroundColor || '#FFFFFF';
       break;
     case 'LazyColumn':
+    case 'LazyVerticalGrid': // Vertical grids flow like columns for item layout within flex
       flexDirection = reverseLayout ? 'column-reverse' : 'column';
       specificStyles.overflowY = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
-      specificStyles.minHeight = '100px';
-      delete specificStyles.borderRadius; // Lazy lists typically don't have their own border radius
+      specificStyles.minHeight = '100px'; // Minimum scrollable area
+      if (type === 'LazyColumn') delete specificStyles.borderRadius;
 
       // Vertical Arrangement (maps to justify-content for column flex)
       switch (properties.verticalArrangement) {
@@ -100,14 +99,22 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
         case 'End': specificStyles.alignItems = 'flex-end'; break;
         default: specificStyles.alignItems = 'flex-start';
       }
+      if (type === 'LazyVerticalGrid') {
+        flexDirection = 'row'; // Grid items actually flow in rows and wrap
+        specificStyles.flexWrap = 'wrap';
+        // For vertical grid, primary axis is column-like, but items flow row-wise before wrapping.
+        // justifyContent here refers to how items are spaced on the cross-axis (horizontally for each "line" if items wrap).
+        // alignItems refers to how items are aligned on the main-axis (vertically within their "cell").
+        // This needs careful mapping for true grid behavior. For now, use column-like defaults.
+      }
       break;
     case 'LazyRow':
+    case 'LazyHorizontalGrid': // Horizontal grids flow like rows for item layout within flex
       flexDirection = reverseLayout ? 'row-reverse' : 'row';
       specificStyles.overflowX = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
-      specificStyles.minHeight = '80px';
-      delete specificStyles.borderRadius;
+      specificStyles.minHeight = '80px'; // Minimum scrollable area
+      if (type === 'LazyRow') delete specificStyles.borderRadius;
 
-      // Horizontal Arrangement (maps to justify-content for row flex)
       switch (properties.horizontalArrangement) {
           case 'Start': specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
           case 'End': specificStyles.justifyContent = reverseLayout ? 'flex-start' : 'flex-end'; break;
@@ -117,78 +124,99 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
           case 'SpaceEvenly': specificStyles.justifyContent = 'space-evenly'; break;
           default: specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start';
       }
-      // Vertical Alignment (maps to align-items for row flex)
       switch (properties.verticalAlignment) {
           case 'Top': specificStyles.alignItems = 'flex-start'; break;
           case 'CenterVertically': specificStyles.alignItems = 'center'; break;
           case 'Bottom': specificStyles.alignItems = 'flex-end'; break;
           default: specificStyles.alignItems = 'flex-start';
       }
-      break;
-    case 'LazyVerticalGrid':
-      flexDirection = 'row'; // Grids typically use row for main axis then wrap
-      specificStyles.flexWrap = 'wrap';
-      specificStyles.alignContent = 'flex-start'; // How lines are packed
-      specificStyles.overflowY = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
-      specificStyles.minHeight = '100px';
-      delete specificStyles.borderRadius;
-      // TODO: Grid column/row spanning logic would be more complex here for item rendering.
-      // For now, items will flow based on their own sizes.
-      break;
-    case 'LazyHorizontalGrid':
-      flexDirection = 'column'; // For a horizontal grid, items fill column-wise then wrap
-      specificStyles.flexWrap = 'wrap'; // Or 'nowrap' if only one "row" of columns is desired
-      specificStyles.alignContent = 'flex-start';
-      specificStyles.overflowX = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
-      specificStyles.minHeight = '100px';
-      delete specificStyles.borderRadius;
-      // TODO: Similar to VerticalGrid, actual grid behavior is more complex.
+       if (type === 'LazyHorizontalGrid') {
+          flexDirection = 'column'; // Grid items actually flow in columns and wrap
+          specificStyles.flexWrap = 'wrap';
+          specificStyles.height = styleHeight; // Explicit height needed for column-flow wrap
+          // Similar to VerticalGrid, true grid behavior mapping is complex. Using row-like defaults.
+      }
       break;
     case 'Box':
-      // Default container styles are fine
+      // Default is fine
       break;
-    // This also covers custom components that are containers.
-    // Their specific styling comes from their template, but the flex behavior is determined by isRow.
-    default:
-      // No type-specific styles needed beyond what isRow and general props handle.
+    default: // Covers Column, Row, and custom components
+      if (type === 'Column' || (type.startsWith('custom/') && !isRow) ) {
+          // Vertical Arrangement
+          switch (properties.verticalArrangement) {
+            case 'Top': specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
+            case 'Bottom': specificStyles.justifyContent = reverseLayout ? 'flex-start' : 'flex-end'; break;
+            case 'Center': specificStyles.justifyContent = 'center'; break;
+            case 'SpaceAround': specificStyles.justifyContent = 'space-around'; break;
+            case 'SpaceBetween': specificStyles.justifyContent = 'space-between'; break;
+            case 'SpaceEvenly': specificStyles.justifyContent = 'space-evenly'; break;
+            default: specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start';
+          }
+          // Horizontal Alignment
+          switch (properties.horizontalAlignment) {
+            case 'Start': specificStyles.alignItems = 'flex-start'; break;
+            case 'CenterHorizontally': specificStyles.alignItems = 'center'; break;
+            case 'End': specificStyles.alignItems = 'flex-end'; break;
+            default: specificStyles.alignItems = 'flex-start';
+          }
+      } else if (type === 'Row' || (type.startsWith('custom/') && isRow)) {
+           // Horizontal Arrangement
+          switch (properties.horizontalArrangement) {
+              case 'Start': specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
+              case 'End': specificStyles.justifyContent = reverseLayout ? 'flex-start' : 'flex-end'; break;
+              case 'Center': specificStyles.justifyContent = 'center'; break;
+              case 'SpaceAround': specificStyles.justifyContent = 'space-around'; break;
+              case 'SpaceBetween': specificStyles.justifyContent = 'space-between'; break;
+              case 'SpaceEvenly': specificStyles.justifyContent = 'space-evenly'; break;
+              default: specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start';
+          }
+          // Vertical Alignment
+          switch (properties.verticalAlignment) {
+              case 'Top': specificStyles.alignItems = 'flex-start'; break;
+              case 'CenterVertically': specificStyles.alignItems = 'center'; break;
+              case 'Bottom': specificStyles.alignItems = 'flex-end'; break;
+              default: specificStyles.alignItems = 'flex-start';
+          }
+      }
       break;
   }
 
   const baseStyle: React.CSSProperties = {
-    backgroundColor: properties.backgroundColor || (type === 'Card' ? '#FFFFFF' : 'transparent'), // Root canvas (LazyColumn) should be transparent
+    backgroundColor: properties.backgroundColor || (type === 'Card' ? '#FFFFFF' : 'transparent'),
     padding: `${padding}px`,
     width: styleWidth,
     height: styleHeight,
     display: 'flex',
     flexDirection: flexDirection,
-    // gap is now set in specificStyles
-    border: component.id === 'default-root-lazy-column' ? 'none' : '1px dashed hsl(var(--border))', // No border for root canvas
-    position: 'relative',
-    minWidth: component.id === 'default-root-lazy-column' ? '100%' : '60px',
-    minHeight: component.id === 'default-root-lazy-column' ? '100%' : '60px',
+    border: componentId === DEFAULT_ROOT_LAZY_COLUMN_ID ? 'none' : '1px dashed hsl(var(--border) / 0.3)',
+    position: 'relative', // Important for children positioning and drop targets
+    minWidth: (componentId === DEFAULT_ROOT_LAZY_COLUMN_ID || properties.width === 'match_parent' ) ? '100%' : (properties.width === 'wrap_content' ? 'auto' : '60px'),
+    minHeight: (componentId === DEFAULT_ROOT_LAZY_COLUMN_ID || properties.height === 'match_parent') ? '100%' : (properties.height === 'wrap_content' ? 'auto' : '60px'),
+    boxSizing: 'border-box', // Ensure padding and border are included in width/height
     ...specificStyles,
   };
   
-  if (component.id === 'default-root-lazy-column') {
-    baseStyle.backgroundColor = properties.backgroundColor || 'transparent'; // Ensure root is transparent or its specified color
+  if (componentId === DEFAULT_ROOT_LAZY_COLUMN_ID) {
+    baseStyle.backgroundColor = properties.backgroundColor || 'transparent';
+    baseStyle.overflowY = 'auto'; // Ensure root is always scrollable if content exceeds
+    baseStyle.overflowX = 'hidden';
   }
-
 
   const placeholderText = `Drop components into this ${getComponentDisplayName(type)}`;
 
   return (
-    <div style={baseStyle} className="select-none component-container" data-container-id={component.id}>
-      {childrenComponents.length === 0 && (
-        <div className="flex flex-col items-center justify-center text-muted-foreground text-xs h-full pointer-events-none p-2 text-center">
+    <div style={baseStyle} className="select-none component-container" data-container-id={component.id} data-container-type={type}>
+      {childrenComponents.length === 0 && componentId !== DEFAULT_ROOT_LAZY_COLUMN_ID && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground/70 text-xs pointer-events-none p-2 text-center leading-tight">
           {placeholderText}
           {(type === 'LazyVerticalGrid' && properties.columns) && <span className="mt-1 text-xxs opacity-70">({properties.columns} columns)</span>}
           {(type === 'LazyHorizontalGrid' && properties.rows) && <span className="mt-1 text-xxs opacity-70">({properties.rows} rows)</span>}
         </div>
       )}
+      {/* If it's the root canvas and it's empty, DesignSurface will show a different placeholder */}
       {childrenComponents.map(child => (
         <RenderedComponentWrapper key={child.id} component={child} />
       ))}
     </div>
   );
 }
-
