@@ -9,6 +9,9 @@ import { generateJetpackComposeCodeAction } from '@/app/actions';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Copy, Download } from 'lucide-react';
+import CodeMirror from '@uiw/react-codemirror';
+import { java as javaLang } from '@codemirror/lang-java'; // Using java for Kotlin-like syntax
+import { githubLight } from '@uiw/codemirror-theme-github';
 
 export interface GenerateCodeModalRef {
   openModal: () => void;
@@ -16,27 +19,38 @@ export interface GenerateCodeModalRef {
 
 export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [generatedCode, setGeneratedCode] = useState<string>(""); // Initialize with empty string
   const [isLoading, setIsLoading] = useState(false);
-  const { components, customComponentTemplates } = useDesign(); // Added customComponentTemplates
+  const { components, customComponentTemplates } = useDesign();
   const { toast } = useToast();
 
   useImperativeHandle(ref, () => ({
     openModal: () => {
       setIsOpen(true);
-      handleGenerateCode();
+      if (components.length > 0 && (!components.find(c => c.id === 'default-root-lazy-column') || (components.find(c => c.id === 'default-root-lazy-column')?.properties.children?.length || 0) > 0)) {
+        handleGenerateCode();
+      } else {
+        setGeneratedCode("No user components on the canvas to generate code from.");
+      }
     }
   }));
 
+  const handleCodeChange = useCallback((value: string) => {
+    setGeneratedCode(value);
+  }, []);
+
   const handleGenerateCode = useCallback(async () => {
-    if (components.length === 0) {
-      setGeneratedCode("No components on the canvas to generate code from.");
+    const userComponentsExist = components.some(c => c.id !== 'default-root-lazy-column') || 
+                               (components.find(c => c.id === 'default-root-lazy-column')?.properties.children?.length || 0) > 0;
+
+    if (!userComponentsExist) {
+      setGeneratedCode("No user components on the canvas to generate code from.");
+      setIsLoading(false);
       return;
     }
     setIsLoading(true);
-    setGeneratedCode(null);
+    setGeneratedCode(""); // Clear previous code
     try {
-      // Pass customComponentTemplates to the action
       const code = await generateJetpackComposeCodeAction(components, customComponentTemplates);
       setGeneratedCode(code);
     } catch (error) {
@@ -51,7 +65,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
     } finally {
       setIsLoading(false);
     }
-  }, [components, customComponentTemplates, toast]); // Added customComponentTemplates to dependencies
+  }, [components, customComponentTemplates, toast]);
 
   const handleCopyToClipboard = async () => {
     if (generatedCode) {
@@ -93,6 +107,10 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
       });
     }
   };
+  
+  const userComponentsExist = components.some(c => c.id !== 'default-root-lazy-column') || 
+                           (components.find(c => c.id === 'default-root-lazy-column')?.properties.children?.length || 0) > 0;
+
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -100,32 +118,37 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
         <DialogHeader>
           <DialogTitle className="font-headline">Generated Jetpack Compose Code</DialogTitle>
           <DialogDescription>
-            Copy or download the code below to use in your Android project.
+            Edit, copy, or download the code below to use in your Android project.
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="flex-grow my-4 rounded-md border bg-muted/30">
-          <pre className="p-4 text-sm font-code whitespace-pre-wrap break-all min-h-[200px]">
-            {isLoading && (
-              <div className="flex items-center justify-center h-full">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <span className="ml-2">Generating code...</span>
-              </div>
-            )}
-            {!isLoading && generatedCode}
-            {!isLoading && !generatedCode && components.length > 0 && (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                    Click "Regenerate" to get code.
-                </div>
-            )}
-             {!isLoading && !generatedCode && components.length === 0 && (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                    Add components to the canvas to generate code.
-                </div>
-            )}
-          </pre>
-        </ScrollArea>
+        <div className="flex-grow my-4 rounded-md border bg-muted/30 overflow-hidden min-h-[300px]">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-2">Generating code...</span>
+            </div>
+          ) : (
+            <CodeMirror
+              value={generatedCode}
+              height="100%" 
+              extensions={[javaLang()]}
+              theme={githubLight}
+              onChange={handleCodeChange}
+              className="text-sm flex-grow h-full"
+              basicSetup={{
+                lineNumbers: true,
+                foldGutter: true,
+                autocompletion: true,
+                highlightActiveLine: true,
+                highlightActiveLineGutter: true,
+                bracketMatching: true,
+                closeBrackets: true,
+              }}
+            />
+          )}
+        </div>
         <DialogFooter className="sm:justify-between flex-wrap gap-2">
-          <Button variant="outline" onClick={() => { handleGenerateCode(); }} disabled={isLoading || components.length === 0}>
+          <Button variant="outline" onClick={handleGenerateCode} disabled={isLoading || !userComponentsExist}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Regenerate
           </Button>
