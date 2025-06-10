@@ -24,7 +24,7 @@ export function MobileFrame({ children, className }: MobileFrameProps) {
   return (
     <div
       className={cn(
-        "bg-neutral-900 rounded-[44px] shadow-xl mx-auto my-auto flex flex-col",
+        "bg-neutral-800 rounded-[44px] shadow-xl mx-auto my-auto flex flex-col", // Changed from bg-neutral-900
         className
       )}
       style={{
@@ -35,7 +35,7 @@ export function MobileFrame({ children, className }: MobileFrameProps) {
     >
       {/* Top speaker/sensor bar */}
       <div 
-        className="w-28 mx-auto bg-neutral-950 rounded-b-xl shrink-0"
+        className="w-28 mx-auto bg-neutral-900 rounded-b-xl shrink-0" // Changed from bg-neutral-950
         style={{ 
           height: `${SPEAKER_BAR_HEIGHT}px`,
           marginBottom: `${SPEAKER_BAR_MARGIN_BOTTOM}px`
