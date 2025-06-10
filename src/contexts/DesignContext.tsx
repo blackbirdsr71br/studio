@@ -527,10 +527,10 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const clearDesign = useCallback(() => {
     const newRootLazyColumn = createDefaultRootLazyColumn();
     setDesignState(prev => ({
+        ...prev, 
         components: [newRootLazyColumn],
         selectedComponentId: newRootLazyColumn.id,
         nextId: 1,
-        customComponentTemplates: prev.customComponentTemplates,
     }));
   }, []);
 
