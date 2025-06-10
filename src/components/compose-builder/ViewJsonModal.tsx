@@ -11,10 +11,11 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Copy, Download, Save, RefreshCw, AlertTriangle } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
 import { json } from '@codemirror/lang-json';
-import { githubLight } from '@uiw/codemirror-theme-github';
+import { githubLight, githubDark } from '@uiw/codemirror-theme-github'; // Import githubDark
 import type { DesignComponent } from '@/types/compose-spec';
 import { ModalJsonSchema, DEFAULT_ROOT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 import { ZodError } from 'zod';
+import { useTheme } from '@/contexts/ThemeContext'; // Import useTheme
 
 
 export interface ViewJsonModalRef {
@@ -28,6 +29,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
   const [isLoading, setIsLoading] = useState(false);
   const { components, customComponentTemplates, overwriteComponents } = useDesign();
   const { toast } = useToast();
+  const { resolvedTheme } = useTheme(); // Get resolved theme
 
   const validateAndSetJson = useCallback((jsonStr: string) => {
     setEditableJsonString(jsonStr);
@@ -173,7 +175,8 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
               value={editableJsonString}
               height="100%"
               className="text-xs" 
-              extensions={[json(), githubLight]}
+              extensions={[json()]}
+              theme={resolvedTheme === 'dark' ? githubDark : githubLight} // Apply theme
               onChange={(value) => validateAndSetJson(value)}
               editable={!isLoading}
               basicSetup={{
@@ -239,3 +242,6 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
 ViewJsonModal.displayName = 'ViewJsonModal';
     
 
+
+
+    
