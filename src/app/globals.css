@@ -56,22 +56,22 @@ body {
 
   .dark {
     --background: 220 13% 10%; /* Dark cool grey */
-    --foreground: 220 10% 90%; /* Light cool grey */
+    --foreground: 0 0% 98%; /* White */
 
     --card: 220 13% 12%; /* Slightly lighter dark cool grey for cards */
-    --card-foreground: 220 10% 90%;
+    --card-foreground: 0 0% 98%; /* White */
 
     --popover: 220 13% 12%; /* Consistent with card */
-    --popover-foreground: 220 10% 90%;
+    --popover-foreground: 0 0% 98%; /* White */
 
     --primary: 260 70% 65%; /* Vibrant violet/blue */
     --primary-foreground: 260 70% 15%; /* Darker text for primary contrast */
 
     --secondary: 220 10% 20%; /* Medium-dark cool grey */
-    --secondary-foreground: 220 10% 80%; /* Lighter text for secondary contrast */
+    --secondary-foreground: 0 0% 90%; /* Very light grey */
 
     --muted: 220 10% 25%; /* Slightly lighter medium-dark cool grey */
-    --muted-foreground: 220 10% 55%; /* Muted cool grey text */
+    --muted-foreground: 0 0% 65%; /* Lighter grey */
 
     --accent: 300 70% 65%; /* Vibrant magenta/pink */
     --accent-foreground: 300 70% 15%; /* Darker text for accent contrast */
@@ -91,7 +91,7 @@ body {
 
     /* Sidebar specific colors for dark theme */
     --sidebar-background: 220 13% 14%; /* Darker sidebar background */
-    --sidebar-foreground: 220 10% 85%; /* Light sidebar text */
+    --sidebar-foreground: 0 0% 95%; /* Off-white sidebar text */
     --sidebar-primary: 260 70% 65%; /* Consistent with main primary */
     --sidebar-primary-foreground: 260 70% 15%;
     --sidebar-accent: 300 70% 65%; /* Consistent with main accent */
