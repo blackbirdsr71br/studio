@@ -3,11 +3,10 @@
 
 import { DraggableComponentItem } from "./DraggableComponentItem";
 import type { ComponentType } from "@/types/compose-spec";
-import { CUSTOM_COMPONENT_TYPE_PREFIX } from "@/types/compose-spec";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useDesign } from '@/contexts/DesignContext';
-import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Type, 
   Image as ImageIcon, 
@@ -42,36 +41,42 @@ export function ComponentLibraryPanel() {
 
   return (
     <aside className="w-40 border-r bg-sidebar p-4 flex flex-col shrink-0">
-      <h2 className="text-xl font-semibold mb-4 text-sidebar-foreground font-headline">Components</h2>
+      <h2 className="text-xl font-semibold mb-2 text-sidebar-foreground font-headline">Components</h2>
       <TooltipProvider delayDuration={200}>
-        <ScrollArea className="flex-grow">
-          <div className="pr-2">
-            <p className="text-xs text-sidebar-foreground/70 mb-1">Standard</p>
-            {availableBaseComponents.map(({ type, icon }) => (
-              <DraggableComponentItem key={type} type={type} Icon={icon} />
-            ))}
-            
-            {customComponentTemplates.length > 0 && (
-              <>
-                <Separator className="my-3 bg-sidebar-border" />
-                <p className="text-xs text-sidebar-foreground/70 mb-1">Custom</p>
+        <Tabs defaultValue="standard" className="flex-grow flex flex-col min-h-0">
+          <TabsList className="grid w-full grid-cols-2 mb-2 h-auto">
+            <TabsTrigger value="standard" className="text-xs px-1 py-1.5">Standard</TabsTrigger>
+            <TabsTrigger value="custom" disabled={customComponentTemplates.length === 0} className="text-xs px-1 py-1.5">
+              Custom ({customComponentTemplates.length})
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="standard" className="flex-grow overflow-hidden">
+            <ScrollArea className="h-full pr-2">
+              {availableBaseComponents.map(({ type, icon }) => (
+                <DraggableComponentItem key={type} type={type} Icon={icon} />
+              ))}
+            </ScrollArea>
+          </TabsContent>
+          <TabsContent value="custom" className="flex-grow overflow-hidden">
+            {customComponentTemplates.length > 0 ? (
+              <ScrollArea className="h-full pr-2">
                 {customComponentTemplates.map((template) => (
                   <DraggableComponentItem 
                     key={template.templateId} 
-                    type={template.templateId} // Pass templateId as type
-                    displayName={template.name} // Pass name for tooltip
-                    Icon={BoxSelect} // Generic icon for custom components
+                    type={template.templateId} 
+                    displayName={template.name}
+                    Icon={BoxSelect} 
                   />
                 ))}
-              </>
+              </ScrollArea>
+            ) : (
+              <div className="flex items-center justify-center h-full text-xs text-sidebar-foreground/70 text-center p-2">
+                No custom components saved yet. Select a component on the canvas and use the "Save" icon in the properties panel to create one.
+              </div>
             )}
-          </div>
-        </ScrollArea>
+          </TabsContent>
+        </Tabs>
       </TooltipProvider>
     </aside>
   );
 }
-
-    
-
-    
