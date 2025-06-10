@@ -32,30 +32,35 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     itemSpacing = 0,
     reverseLayout = false,
     backgroundColor: containerBackgroundColor, 
-    contentColor: explicitContentColor, // New explicit content color
+    contentColor: explicitContentColor, 
     borderWidth, 
     borderColor, 
   } = properties;
 
   const processDimension = (
     dimValue: string | number | undefined,
-    defaultValueIfUndefined: string | number
+    defaultValueIfUndefined: string | number,
+    isInnerDimension = false // Added flag for children where 'match_parent' might mean something different or isn't directly applicable
   ): string => {
     if (typeof dimValue === 'number') return `${dimValue}px`;
-    if (dimValue === 'match_parent') return '100%';
+    if (dimValue === 'match_parent') return isInnerDimension ? '100%' : '100%'; // For top-level wrapper, 100% is fine.
     if (dimValue === 'wrap_content') return 'auto';
-    if (typeof dimValue === 'string' && dimValue.endsWith('%')) return dimValue;
-    return typeof defaultValueIfUndefined === 'number' ? `${defaultValueIfUndefined}px` : defaultValueIfUndefined.toString();
+    if (typeof dimValue === 'string' && dimValue.endsWith('%')) return dimValue; // Allow percentage strings directly
+    
+    // Fallback for default values
+    if (typeof defaultValueIfUndefined === 'number') return `${defaultValueIfUndefined}px`;
+    return defaultValueIfUndefined.toString();
   };
+  
 
   let defaultWidth: string | number = 'wrap_content';
   let defaultHeight: string | number = 'wrap_content';
 
   if (componentId === DEFAULT_ROOT_LAZY_COLUMN_ID || type === 'LazyColumn' || type === 'LazyVerticalGrid') {
-    defaultWidth = '100%'; 
-    defaultHeight = (componentId === DEFAULT_ROOT_LAZY_COLUMN_ID || type === 'LazyColumn') ? '100%' : 300;
+    defaultWidth = 'match_parent'; 
+    defaultHeight = (componentId === DEFAULT_ROOT_LAZY_COLUMN_ID || type === 'LazyColumn') ? 'match_parent' : 300;
   } else if (type === 'LazyRow' || type === 'LazyHorizontalGrid') {
-    defaultWidth = '100%';
+    defaultWidth = 'match_parent';
     defaultHeight = type === 'LazyRow' ? 120 : 200;
   } else if (type === 'Card') {
     defaultWidth = 200;
@@ -93,7 +98,6 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     gap: `${itemSpacing}px`,
   };
   
-  // Handle content color for Card (and potentially other containers in future)
   if (type === 'Card') {
     if (explicitContentColor && typeof explicitContentColor === 'string' && explicitContentColor.trim() !== '') {
       (specificStyles as any)['--effective-foreground-color'] = explicitContentColor;
@@ -101,9 +105,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
       const contrastingColor = getContrastingTextColor(containerBackgroundColor);
       (specificStyles as any)['--effective-foreground-color'] = contrastingColor;
     }
-    // If neither explicitContentColor nor backgroundColor is set, TextView will fall back to theme foreground
   } else if (containerBackgroundColor && typeof containerBackgroundColor === 'string' && containerBackgroundColor !== 'transparent') {
-    // For other containers, always use contrasting color if background is set
     const contrastingColor = getContrastingTextColor(containerBackgroundColor);
     (specificStyles as any)['--effective-foreground-color'] = contrastingColor;
   }
@@ -116,7 +118,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
   switch (type) {
     case 'Card':
       specificStyles.boxShadow = `0 ${elevation}px ${elevation * 1.5}px rgba(0,0,0,0.1), 0 ${elevation/2}px ${elevation/2}px rgba(0,0,0,0.06)`;
-      specificStyles.backgroundColor = containerBackgroundColor || '#FFFFFF'; // Default Card background
+      specificStyles.backgroundColor = containerBackgroundColor || '#FFFFFF'; 
       if (typeof borderWidth === 'number' && borderWidth > 0 && borderColor) {
         specificStyles.border = `${borderWidth}px solid ${borderColor}`;
       } else {
@@ -191,7 +193,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     case 'Box':
       specificStyles.backgroundColor = containerBackgroundColor || 'transparent';
       break;
-    default: // Covers Column, Row, and custom components
+    default: 
       specificStyles.backgroundColor = containerBackgroundColor || 'transparent';
       if (type === 'Column' || (isCustomComponentType(type) && !isRow) ) {
           switch (properties.verticalArrangement) {
@@ -253,6 +255,8 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
 
   const placeholderText = `Drop components into this ${getComponentDisplayName(type, customComponentTemplates.find(t => t.templateId === type)?.name)}`;
 
+  const isWeightedContainer = type === 'Row' || type === 'Column';
+
   return (
     <div style={baseStyle} className="select-none component-container" data-container-id={component.id} data-container-type={type}>
       {childrenComponents.length === 0 && componentId !== DEFAULT_ROOT_LAZY_COLUMN_ID && (
@@ -262,9 +266,23 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
           {(type === 'LazyHorizontalGrid' && properties.rows) && <span className="mt-1 text-xxs opacity-70">({properties.rows} rows)</span>}
         </div>
       )}
-      {childrenComponents.map(child => (
-        <RenderedComponentWrapper key={child.id} component={child} />
-      ))}
+      {childrenComponents.map(child => {
+        let childSpecificStyle: React.CSSProperties = {};
+        if (isWeightedContainer && child.properties.layoutWeight && child.properties.layoutWeight > 0) {
+            childSpecificStyle.flexGrow = child.properties.layoutWeight;
+            childSpecificStyle.flexShrink = 1; // Default shrink behavior for weighted items
+            childSpecificStyle.flexBasis = '0%'; // Important for weight to work correctly
+             // If weight is applied, explicit width/height on the child might conflict or be ignored by flexbox.
+            // Depending on desired behavior, you might want to not set width/height here if weight is active,
+            // or let flexbox manage it. For Compose's Modifier.weight, width/height on the weighted item are usually ignored for that axis.
+            if (flexDirection === 'row') delete childSpecificStyle.width; else delete childSpecificStyle.height;
+        }
+        return (
+          <div key={child.id} style={childSpecificStyle} className="flex"> {/* Wrapper div for flex properties */}
+            <RenderedComponentWrapper component={child} />
+          </div>
+        );
+      })}
     </div>
   );
 }

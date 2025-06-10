@@ -55,6 +55,18 @@ const prompt = ai.definePrompt({
   The code should be ready to be copy and pasted into an Android project.
   Do not include a full composable code including imports and package names, only the composable definition with @Composable annotation.
 
+  Modifier Rules:
+  - If a component has a 'width' property:
+    - If 'width' is "match_parent", use Modifier.fillMaxWidth().
+    - If 'width' is "wrap_content", use Modifier.wrapContentWidth().
+    - If 'width' is a number, use Modifier.width(X.dp).
+  - If a component has a 'height' property:
+    - If 'height' is "match_parent", use Modifier.fillMaxHeight().
+    - If 'height' is "wrap_content", use Modifier.wrapContentHeight().
+    - If 'height' is a number, use Modifier.height(X.dp).
+  - If a component has a 'layoutWeight' property greater than 0, use Modifier.weight(Xf). For example, if layoutWeight is 1, use Modifier.weight(1f).
+  - If a component has a 'padding' property greater than 0, use Modifier.padding(X.dp).
+
   When a component (like Card, Box, Image) has 'cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft' properties, apply them using a Modifier.clip(RoundedCornerShape(...)) with individual corner sizes. For example:
   Modifier.clip(RoundedCornerShape(
     topStart = properties.cornerRadiusTopLeft.dp,
@@ -65,13 +77,13 @@ const prompt = ai.definePrompt({
   If all four corner radius properties are present and equal, you can use the simpler Modifier.clip(RoundedCornerShape(size = X.dp)). This clip modifier should be applied for the shape of the component.
 
   For Card components, ensure you use the standard Card parameters:
-  - Use the 'elevation' property from the JSON for the 'elevation' parameter of the Card (e.g., elevation = properties.elevation.dp).
-  - Use the 'backgroundColor' property from the JSON for the 'backgroundColor' parameter (e.g., backgroundColor = Color(android.graphics.Color.parseColor(properties.backgroundColor))).
-  - Use the 'contentColor' property from the JSON for the 'contentColor' parameter if it is provided (e.g., contentColor = Color(android.graphics.Color.parseColor(properties.contentColor))). If 'contentColor' is not provided in the JSON, omit this parameter from the Card composable call to let Jetpack Compose use its default behavior (contentColorFor(backgroundColor)).
+  - Use the 'elevation' property from the JSON for the 'elevation' parameter of the Card (e.g., elevation = CardDefaults.cardElevation(defaultElevation = properties.elevation.dp)).
+  - Use the 'backgroundColor' property from the JSON for the 'colors' parameter using CardDefaults.cardColors(containerColor = Color(android.graphics.Color.parseColor(properties.backgroundColor))).
+  - Use the 'contentColor' property from the JSON for the 'colors' parameter if it is provided (e.g., CardDefaults.cardColors(containerColor = ..., contentColor = Color(android.graphics.Color.parseColor(properties.contentColor)))). If 'contentColor' is not provided in the JSON, omit this specific contentColor from CardDefaults.cardColors to let Jetpack Compose use its default behavior (contentColorFor(backgroundColor)).
   - For the 'shape' parameter, use RoundedCornerShape based on the 'cornerRadius...' properties. If all four 'cornerRadius...' properties are present and equal to X, use 'shape = RoundedCornerShape(size = X.dp)'. Otherwise, if individual corner radii are provided, create a RoundedCornerShape with those specific values (e.g., shape = RoundedCornerShape(topStart = properties.cornerRadiusTopLeft.dp, ...)).
   - If the Card component has a 'borderWidth' property greater than 0 and a 'borderColor' property, apply a border using the 'border' parameter with 'BorderStroke'. Convert the hex 'borderColor' to a Compose Color. For example:
     border = BorderStroke(width = properties.borderWidth.dp, color = Color(android.graphics.Color.parseColor(properties.borderColor)))
-    Remember to import androidx.compose.foundation.BorderStroke and android.graphics.Color if you use this.
+    Remember to import androidx.compose.foundation.BorderStroke, android.graphics.Color, androidx.compose.material3.CardDefaults if you use this.
 `,
 });
 

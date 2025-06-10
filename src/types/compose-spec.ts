@@ -38,9 +38,10 @@ export interface BaseComponentProps {
   fontSize?: number;
   textColor?: string;
   backgroundColor?: string;
-  contentColor?: string; // Added for explicit content color control
+  contentColor?: string; 
   width?: 'wrap_content' | 'match_parent' | number;
   height?: 'wrap_content' | 'match_parent' | number;
+  layoutWeight?: number; // Added for Modifier.weight()
   padding?: number;
   id?: string;
   x?: number;
@@ -105,25 +106,27 @@ export interface DesignState {
 }
 
 export const getDefaultProperties = (type: ComponentType | string): BaseComponentProps => {
-  const common = { x: 50, y: 50 };
+  const common = { x: 50, y: 50, layoutWeight: 0 };
   switch (type) {
     case 'Text':
       return {
         ...common,
         text: 'Sample Text',
         fontSize: 16,
-        textColor: undefined, // Default to undefined to inherit theme color
+        textColor: undefined, 
         padding: 0,
+        width: 'wrap_content',
+        height: 'wrap_content',
         maxLines: undefined,
         textOverflow: 'Clip',
         fontWeight: 'Normal',
         fontStyle: 'Normal',
         textAlign: 'Start',
         textDecoration: 'None',
-        lineHeight: 1.4, // Default lineHeight
+        lineHeight: 1.4, 
       };
     case 'Button':
-      return { ...common, text: 'Click Me', backgroundColor: '#3F51B5', textColor: undefined, padding: 12 };
+      return { ...common, text: 'Click Me', backgroundColor: '#3F51B5', textColor: undefined, padding: 12, width: 'wrap_content', height: 'wrap_content' };
     case 'Image':
       return { ...common, src: 'https://placehold.co/300x200.png', contentDescription: 'Placeholder Image', width: 200, height: 100, "data-ai-hint": "abstract pattern", contentScale: 'Crop', cornerRadiusTopLeft: 0, cornerRadiusTopRight: 0, cornerRadiusBottomRight: 0, cornerRadiusBottomLeft: 0 };
     case 'Column':
@@ -167,12 +170,10 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
     case 'LazyHorizontalGrid':
       return { ...common, children: [], padding: 8, backgroundColor: 'rgba(240, 240, 200, 0.3)', width: 'match_parent', height: 200, rows: 2, itemSpacing: 0, horizontalArrangement: 'Start', verticalAlignment: 'Top' };
     default:
-      // For custom components, we might not have specific defaults here.
-      // The template itself defines the defaults.
       if (isCustomComponentType(type)) {
-        return { ...common, children: [] };
+        return { ...common, children: [], width: 'wrap_content', height: 'wrap_content' };
       }
-      return common;
+      return {...common, width: 'wrap_content', height: 'wrap_content' };
   }
 };
 
@@ -196,12 +197,19 @@ export const getComponentDisplayName = (type: ComponentType | string, templateNa
   }
 };
 
+const commonLayoutProperties: (Omit<ComponentProperty, 'value'>)[] = [
+    { name: 'width', type: 'string', label: 'Width (dp, match_parent, wrap_content)', placeholder: 'e.g., 100, match_parent', group: 'Layout' },
+    { name: 'height', type: 'string', label: 'Height (dp, match_parent, wrap_content)', placeholder: 'e.g., 100, wrap_content', group: 'Layout' },
+    { name: 'layoutWeight', type: 'number', label: 'Layout Weight', placeholder: '0 (no weight)', group: 'Layout' },
+    { name: 'padding', type: 'number', label: 'Padding (All Sides, dp)', placeholder: '0', group: 'Layout' },
+];
+
 export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty, 'value'>)[]> = {
   Text: [
+    ...commonLayoutProperties,
     { name: 'text', type: 'string', label: 'Text Content', placeholder: 'Enter text', group: 'Content' },
     { name: 'fontSize', type: 'number', label: 'Font Size (sp)', placeholder: '16', group: 'Appearance' },
     { name: 'textColor', type: 'color', label: 'Text Color', group: 'Appearance' },
-    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '0', group: 'Layout' },
     { name: 'lineHeight', type: 'number', label: 'Line Height (multiplier)', placeholder: '1.4', group: 'Appearance' },
     { name: 'maxLines', type: 'number', label: 'Max Lines', placeholder: 'e.g., 2', group: 'Content' },
     {
@@ -262,16 +270,15 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     },
   ],
   Button: [
+    ...commonLayoutProperties,
     { name: 'text', type: 'string', label: 'Button Text', placeholder: 'Button', group: 'Content' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'textColor', type: 'color', label: 'Text Color', group: 'Appearance' },
-    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '12', group: 'Layout' },
   ],
   Image: [
+    ...commonLayoutProperties,
     { name: 'src', type: 'string', label: 'Image URL', placeholder: 'https://example.com/image.png', group: 'Content' },
     { name: 'contentDescription', type: 'string', label: 'Content Description', placeholder: 'Image description', group: 'Content' },
-    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '100', group: 'Layout' },
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '100', group: 'Layout' },
     { name: 'data-ai-hint', type: 'string', label: 'AI Hint (for placeholder/generation)', placeholder: 'e.g. "landscape sunset"', group: 'Content'},
     { name: 'cornerRadiusTopLeft', type: 'number', label: 'Corner Radius TL (dp)', placeholder: '0', group: 'Appearance' },
     { name: 'cornerRadiusTopRight', type: 'number', label: 'Corner Radius TR (dp)', placeholder: '0', group: 'Appearance' },
@@ -283,21 +290,19 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
       label: 'Content Scale',
       group: 'Appearance',
       options: [
-        { label: 'Crop', value: 'Crop' }, // Fills bounds, crops excess
-        { label: 'Fit', value: 'Fit' }, // Fits inside bounds, letter/pillarbox
-        { label: 'Fill Bounds', value: 'FillBounds' }, // Stretches to fill bounds
-        { label: 'Inside', value: 'Inside' }, // Scales down to fit, no upscaling
-        { label: 'None', value: 'None' }, // No scaling
-        { label: 'Fill Width', value: 'FillWidth' }, // Scales to fill width, height adjusts
-        { label: 'Fill Height', value: 'FillHeight' }, // Scales to fill height, width adjusts
+        { label: 'Crop', value: 'Crop' }, 
+        { label: 'Fit', value: 'Fit' }, 
+        { label: 'Fill Bounds', value: 'FillBounds' }, 
+        { label: 'Inside', value: 'Inside' }, 
+        { label: 'None', value: 'None' }, 
+        { label: 'Fill Width', value: 'FillWidth' }, 
+        { label: 'Fill Height', value: 'FillHeight' }, 
       ]
     },
   ],
   Column: [
-    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8', group: 'Layout' },
+    ...commonLayoutProperties,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '200', group: 'Layout' },
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '200', group: 'Layout' },
     { name: 'itemSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' },
     {
       name: 'verticalArrangement', type: 'enum', label: 'Vertical Arrangement', group: 'Layout',
@@ -314,10 +319,8 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     },
   ],
   Row: [
-    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8', group: 'Layout' },
+    ...commonLayoutProperties,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '200', group: 'Layout' },
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '100', group: 'Layout' },
     { name: 'itemSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' },
     {
       name: 'horizontalArrangement', type: 'enum', label: 'Horizontal Arrangement', group: 'Layout',
@@ -334,34 +337,28 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     },
   ],
   Box: [
-    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '0', group: 'Layout' },
+    ...commonLayoutProperties,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'cornerRadiusTopLeft', type: 'number', label: 'Corner Radius TL (dp)', placeholder: '0', group: 'Appearance' },
     { name: 'cornerRadiusTopRight', type: 'number', label: 'Corner Radius TR (dp)', placeholder: '0', group: 'Appearance' },
     { name: 'cornerRadiusBottomRight', type: 'number', label: 'Corner Radius BR (dp)', placeholder: '0', group: 'Appearance' },
     { name: 'cornerRadiusBottomLeft', type: 'number', label: 'Corner Radius BL (dp)', placeholder: '0', group: 'Appearance' },
-    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '100', group: 'Layout' },
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '100', group: 'Layout' },
   ],
   Card: [
-    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '16', group: 'Layout' },
+    ...commonLayoutProperties,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color', group: 'Appearance' },
     { name: 'cornerRadiusTopLeft', type: 'number', label: 'Corner Radius TL (dp)', placeholder: '8', group: 'Appearance' },
     { name: 'cornerRadiusTopRight', type: 'number', label: 'Corner Radius TR (dp)', placeholder: '8', group: 'Appearance' },
     { name: 'cornerRadiusBottomRight', type: 'number', label: 'Corner Radius BR (dp)', placeholder: '8', group: 'Appearance' },
     { name: 'cornerRadiusBottomLeft', type: 'number', label: 'Corner Radius BL (dp)', placeholder: '8', group: 'Appearance' },
-    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '200', group: 'Layout' },
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '150', group: 'Layout' },
     { name: 'elevation', type: 'number', label: 'Elevation (dp)', placeholder: '2', group: 'Appearance' },
     { name: 'borderWidth', type: 'number', label: 'Border Width (dp)', placeholder: '0', group: 'Appearance' },
     { name: 'borderColor', type: 'color', label: 'Border Color', group: 'Appearance' },
   ],
   LazyColumn: [
-    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8', group: 'Layout' },
+    ...commonLayoutProperties,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '300', group: 'Layout' }, // Default might be 'match_parent' in logic
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '300', group: 'Layout' }, // Default might be 'match_parent' in logic
     { name: 'itemSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' },
     {
       name: 'verticalArrangement',
@@ -392,10 +389,8 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'reverseLayout', type: 'boolean', label: 'Reverse Layout', group: 'Behavior' },
   ],
   LazyRow: [
-    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8', group: 'Layout' },
+    ...commonLayoutProperties,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '300', group: 'Layout' },
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '120', group: 'Layout' },
     { name: 'itemSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' },
     {
       name: 'horizontalArrangement',
@@ -426,10 +421,8 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'reverseLayout', type: 'boolean', label: 'Reverse Layout', group: 'Behavior' },
   ],
   LazyVerticalGrid: [
-    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8', group: 'Layout' },
+    ...commonLayoutProperties,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '300', group: 'Layout' },
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '300', group: 'Layout' },
     { name: 'columns', type: 'number', label: 'Number of Columns', placeholder: '2', group: 'Layout' },
     { name: 'itemSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' },
     {
@@ -447,10 +440,8 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     },
   ],
   LazyHorizontalGrid: [
-    { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8', group: 'Layout' },
+    ...commonLayoutProperties,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '300', group: 'Layout' },
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '200', group: 'Layout' },
     { name: 'rows', type: 'number', label: 'Number of Rows', placeholder: '2', group: 'Layout' },
     { name: 'itemSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' },
      {
@@ -506,6 +497,7 @@ const BaseModalPropertiesSchema = z.object({
   contentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional().or(z.literal(undefined)),
   width: z.union([z.literal('wrap_content'), z.literal('match_parent'), z.number().min(0)]).optional(),
   height: z.union([z.literal('wrap_content'), z.literal('match_parent'), z.number().min(0)]).optional(),
+  layoutWeight: z.number().min(0).optional(),
   padding: z.number().min(0).optional(),
   contentDescription: z.string().optional(),
   src: z.string().url("Must be a valid URL for Image src").or(z.string().startsWith("data:image/")).optional(), // Allow data URIs
@@ -534,42 +526,32 @@ const BaseModalPropertiesSchema = z.object({
   textAlign: z.enum(['Left', 'Center', 'Right', 'Justify', 'Start', 'End']).optional(),
   textDecoration: z.enum(['None', 'Underline', 'LineThrough']).optional(),
   lineHeight: z.number().min(0).optional(),
-}).catchall(z.any()); // Allows unspecified properties, useful for forward compatibility or custom props not in schema
+}).catchall(z.any()); 
 
-// Define the type for a node in the modal JSON structure, including recursive children
 type ModalComponentNodePlain = {
   id: string;
-  type: string; // Using string to accommodate custom types like "custom/MyHeader-12345"
+  type: string; 
   name: string;
-  parentId: string | null; // parentId in modal JSON refers to parent *within the modal JSON structure*
+  parentId: string | null; 
   properties?: Partial<BaseComponentProps> & { children?: ModalComponentNodePlain[] };
 };
 
-// Zod schema for a single component node in the modal JSON
 const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =>
   z.object({
     id: z.string().min(1, "Component ID cannot be empty"),
     type: z.string().min(1, "Component type cannot be empty"),
     name: z.string().min(1, "Component name cannot be empty"),
-    // parentId in the JSON from the modal refers to its parent *within that JSON structure*.
-    // When flattened, DesignContext.overwriteComponents will determine the actual parentId in the global component list.
-    // For top-level items in the modal's JSON array, this parentId from JSON will be the ID of the DEFAULT_ROOT_LAZY_COLUMN.
-    // For nested items, it will be the ID of their JSON parent.
-    parentId: z.string().nullable(), // Can be null for top-level items from user's perspective (children of root canvas)
+    parentId: z.string().nullable(), 
     properties: BaseModalPropertiesSchema.extend({
       children: z.array(ModalComponentNodeSchema).optional(),
-    }).optional(), // Make the 'properties' object itself optional
+    }).optional(), 
   }).refine(data => {
     if (data.type === 'Image') {
       if (data.properties?.src && !z.string().url().or(z.string().startsWith("data:image/")).safeParse(data.properties.src).success) {
-        // This custom refinement is a bit tricky with .optional() on properties.
-        // It might be better to handle this in a superRefine on the BaseModalPropertiesSchema if stricter src validation is needed.
-        // For now, rely on the src validation within BaseModalPropertiesSchema.
       }
     }
     return true;
   })
 );
 
-// Zod schema for the entire JSON structure in the modal (an array of root-level user components)
 export const ModalJsonSchema = z.array(ModalComponentNodeSchema);

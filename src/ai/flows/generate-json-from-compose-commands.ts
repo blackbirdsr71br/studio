@@ -31,11 +31,8 @@ const GenerateJsonFromComposeCommandsOutputSchema = z.object({
       (data) => {
         try {
           const parsed = JSON.parse(data);
-          // Attempt to validate against the ModalJsonSchema
-          // Note: ModalJsonSchema expects an array of nodes.
           return ModalJsonSchema.safeParse(parsed).success;
         } catch (e) {
-          // If JSON.parse fails, it's not valid JSON.
           return false;
         }
       },
@@ -56,7 +53,6 @@ export async function generateJsonFromComposeCommands(
 const availableComponentTypes: (ComponentType | 'Scaffold' | 'TopAppBar')[] = [
   'Text', 'Button', 'Column', 'Row', 'Image', 'Box', 'Card',
   'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid',
-  // Common Android/Compose terms that might appear, map them or instruct to use Box/Column/Row
   'Scaffold', 'TopAppBar'
 ];
 
@@ -78,9 +74,9 @@ The output JSON must be an array of component objects. Each component object mus
 Available component types: ${availableComponentTypes.join(', ')}.
 Recognized properties include (but are not limited to):
 - For Text: text (string), fontSize (number), textColor (hex string, e.g., "#FF0000")
-- For Image: src (string URL, use "https://placehold.co/100x100.png" if a resource is mentioned but not a URL), contentDescription (string), width (number), height (number)
+- For Image: src (string URL, use "https://placehold.co/100x100.png" if a resource is mentioned but not a URL), contentDescription (string), width (number, "match_parent", or "wrap_content"), height (number, "match_parent", or "wrap_content")
 - For Button: text (string), backgroundColor (hex string), textColor (hex string)
-- For Containers (Column, Row, Box, Card, Lazy*): padding (number), backgroundColor (hex string), width (number or "match_parent" or "wrap_content"), height (number or "match_parent" or "wrap_content"), itemSpacing (number for Lazy layouts).
+- For Containers (Column, Row, Box, Card, Lazy*): padding (number), backgroundColor (hex string), width (number, "match_parent", or "wrap_content"), height (number, "match_parent", or "wrap_content"), itemSpacing (number for Lazy layouts), layoutWeight (number, e.g., 1 for Modifier.weight(1f)).
   - For Card: elevation (number), cornerRadiusTopLeft (number), cornerRadiusTopRight (number), cornerRadiusBottomRight (number), cornerRadiusBottomLeft (number), borderWidth (number), borderColor (hex string), contentColor (hex string).
   - For LazyVerticalGrid: columns (number).
   - For LazyHorizontalGrid: rows (number).
@@ -89,9 +85,12 @@ Mapping common Modifiers:
 - Modifier.padding(X.dp) -> "padding": X
 - Modifier.fillMaxWidth() -> "width": "match_parent"
 - Modifier.fillMaxHeight() -> "height": "match_parent"
+- Modifier.wrapContentWidth() -> "width": "wrap_content"
+- Modifier.wrapContentHeight() -> "height": "wrap_content"
 - Modifier.width(X.dp) -> "width": X
 - Modifier.height(X.dp) -> "height": X
-- Modifier.background(Color.SomeColor) -> "backgroundColor": "#CorrespondingHex" (e.g., Color.Red -> "#FF0000", Color.Blue -> "#0000FF", Color.Green -> "#008000", Color.White -> "#FFFFFF", Color.Black -> "#000000", Color.Gray -> "#808080"). If an unknown color, use a sensible default like "#CCCCCC".
+- Modifier.weight(Xf) or .weight(X.toFloat()) -> "layoutWeight": X (e.g., Modifier.weight(1f) -> "layoutWeight": 1)
+- Modifier.background(Color.SomeColor) -> "backgroundColor": "#CorrespondingHex" (e.g., Color.Red -> "#FF0000"). If an unknown color, use a sensible default like "#CCCCCC".
 - Modifier.clip(RoundedCornerShape(X.dp)) or .clip(RoundedCornerShape(topLeft = X.dp, ...)) -> "cornerRadiusTopLeft": X, "cornerRadiusTopRight": X, etc. (apply to all four if one value, or individual if specified)
 - Text alignment (e.g., TextAlign.Center) -> "textAlign": "Center" (for Text properties)
 - Card's border parameter: e.g., border = BorderStroke(width = X.dp, color = Color.SomeColor) -> "borderWidth": X, "borderColor": "#CorrespondingHex"
@@ -102,13 +101,13 @@ If a component type like 'Scaffold' or 'TopAppBar' is mentioned, try to represen
 
 Example Input:
 \`\`\`
-Column(modifier = Modifier.padding(16.dp)) {
-    Text("Welcome!", fontSize = 20.sp, color = Color.Blue)
+Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
+    Text("Welcome!", fontSize = 20.sp, color = Color.Blue, modifier = Modifier.weight(1f))
     Card(modifier = Modifier.clip(RoundedCornerShape(8.dp)), border = BorderStroke(1.dp, Color.Gray), contentColor = Color.DarkGray) {
         Image(imageResource = "logo.png", contentDescription = "App Logo", modifier = Modifier.height(50.dp))
     }
 }
-Button(text = "Submit")
+Button(text = "Submit", modifier = Modifier.width(120.dp))
 \`\`\`
 
 Example Output JSON (stringified):
@@ -121,6 +120,7 @@ Example Output JSON (stringified):
     "parentId": "${DEFAULT_ROOT_LAZY_COLUMN_ID}",
     "properties": {
       "padding": 16,
+      "width": "match_parent",
       "children": [
         {
           "id": "comp-2",
@@ -130,7 +130,8 @@ Example Output JSON (stringified):
           "properties": {
             "text": "Welcome!",
             "fontSize": 20,
-            "textColor": "#0000FF"
+            "textColor": "#0000FF",
+            "layoutWeight": 1
           }
         },
         {
@@ -170,7 +171,8 @@ Example Output JSON (stringified):
     "name": "Button 5",
     "parentId": "${DEFAULT_ROOT_LAZY_COLUMN_ID}",
     "properties": {
-      "text": "Submit"
+      "text": "Submit",
+      "width": 120
     }
   }
 ]
@@ -197,7 +199,6 @@ const generateJsonFromComposeCommandsFlow = ai.defineFlow(
     if (!output) {
       throw new Error('AI did not return a response or the response was empty.');
     }
-    // The output.designJson is already validated by the schema's refine function.
     return output;
   }
 );
