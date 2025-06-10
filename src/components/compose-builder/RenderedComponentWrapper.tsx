@@ -11,7 +11,7 @@ import { ContainerView } from './component-renderer/ContainerView';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDrag, useDrop, type XYCoord } from 'react-dnd';
 import { ItemTypes } from '@/lib/dnd-types';
-import { isContainerType, DEFAULT_ROOT_LAZY_COLUMN_ID } from '@/types/compose-spec';
+import { isContainerType, DEFAULT_ROOT_LAZY_COLUMN_ID, isCustomComponentType } from '@/types/compose-spec';
 
 interface RenderedComponentWrapperProps {
   component: DesignComponent;
@@ -99,17 +99,6 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
 
   drag(drop(ref));
 
-  // Position state is only relevant for top-level, non-root components (which are not currently supported for user components)
-  // The root component (DEFAULT_ROOT_LAZY_COLUMN_ID) fills the space and its children are laid out by flex/grid.
-  // For now, x/y in properties are mainly for potential future 'absolute' positioning within a Box, not for surface placement.
-  // const [position, setPosition] = useState({ x: component.properties.x || 0, y: component.properties.y || 0 });
-  // useEffect(() => {
-  //   if (!component.parentId && component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID) { // Only for true free-floating, non-root
-  //     setPosition({ x: component.properties.x || 0, y: component.properties.y || 0 });
-  //   }
-  // }, [component.properties.x, component.properties.y, component.parentId, component.id]);
-
-
   const isSelected = component.id === selectedComponentId;
 
   const handleClick = (e: React.MouseEvent) => {
@@ -134,7 +123,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       startY: event.clientY,
       initialWidth: rect.width,
       initialHeight: rect.height,
-      initialCompX: component.properties.x || 0, // These are less relevant for non-absolute positioned children
+      initialCompX: component.properties.x || 0, 
       initialCompY: component.properties.y || 0,
     });
   }, [component.id, component.properties.x, component.properties.y, selectComponent]);
@@ -148,11 +137,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
 
       let newWidth = resizeDetails.initialWidth;
       let newHeight = resizeDetails.initialHeight;
-      // Positional changes during resize are complex for flex/grid children and typically not desired.
-      // Width/height updates are more standard.
-      // let newX = resizeDetails.initialCompX; 
-      // let newY = resizeDetails.initialCompY;
-
+      
       if (resizeDetails.handle.includes('e')) newWidth = resizeDetails.initialWidth + dx;
       if (resizeDetails.handle.includes('w')) newWidth = resizeDetails.initialWidth - dx;
       if (resizeDetails.handle.includes('s')) newHeight = resizeDetails.initialHeight + dy;
@@ -189,7 +174,6 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
 
 
   const renderSpecificComponent = () => {
-    // Children are resolved here based on IDs from component.properties.children
     const childrenComponents = (component.properties.children || [])
       .map(id => getComponentById(id))
       .filter(Boolean) as DesignComponent[];
@@ -205,13 +189,13 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       case 'Column':
       case 'Box':
       case 'Card':
-      case 'LazyColumn': // This includes the DEFAULT_ROOT_LAZY_COLUMN_ID
+      case 'LazyColumn': 
         return <ContainerView component={component} childrenComponents={childrenComponents} isRow={false} />;
 
       case 'Row':
       case 'LazyRow':
-      case 'LazyVerticalGrid': // Grids are row-based for flex layout
-      case 'LazyHorizontalGrid': // Horizontal grids are column-based for flex layout, handled by isRow in ContainerView
+      case 'LazyVerticalGrid': 
+      case 'LazyHorizontalGrid': 
         return <ContainerView component={component} childrenComponents={childrenComponents} isRow={['Row', 'LazyRow', 'LazyVerticalGrid'].includes(component.type)} />;
       
       default:
@@ -227,13 +211,10 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     }
   };
   
-  // Style for the wrapper div. Root component fills space, others are relative or sized by props.
   const wrapperStyle: React.CSSProperties = {
     transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
     width: component.properties.width === 'match_parent' ? '100%' : component.properties.width === 'wrap_content' ? 'auto' : `${component.properties.width}px`,
     height: component.properties.height === 'match_parent' ? '100%' : component.properties.height === 'wrap_content' ? 'auto' : `${component.properties.height}px`,
-    // If component has a parent, its positioning is handled by the parent's flex/grid layout.
-    // The root component (DEFAULT_ROOT_LAZY_COLUMN_ID) is special-cased to fill.
     position: component.id === DEFAULT_ROOT_LAZY_COLUMN_ID || component.parentId ? 'relative' : 'absolute',
     left: component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && !component.parentId ? `${component.properties.x || 0}px` : undefined,
     top: component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && !component.parentId ? `${component.properties.y || 0}px` : undefined,
@@ -242,7 +223,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
   if (component.id === DEFAULT_ROOT_LAZY_COLUMN_ID) {
       wrapperStyle.width = '100%';
       wrapperStyle.height = '100%';
-      wrapperStyle.overflow = 'hidden'; // Root canvas should contain its scrollable content
+      wrapperStyle.overflow = 'hidden'; 
   }
 
 
@@ -250,20 +231,25 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     ? 'drag-over-container'
     : '';
 
-  const showResizeHandles = isSelected && component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && component.properties.width !== 'match_parent' && component.properties.height !== 'match_parent' && typeof component.properties.width === 'number' && typeof component.properties.height === 'number';
+  const showResizeHandles = isSelected && 
+                          component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && 
+                          component.properties.width !== 'match_parent' && 
+                          component.properties.height !== 'match_parent' && 
+                          typeof component.properties.width === 'number' && 
+                          typeof component.properties.height === 'number';
 
   return (
     <div
       ref={ref}
       style={wrapperStyle}
       className={cn(
-        'p-0.5 border border-transparent hover:border-primary/50', // Minimal padding for selection outline
+        'p-0.5 border border-transparent hover:border-primary/50', 
         {
           'ring-2 ring-primary ring-offset-1 shadow-lg !border-primary': isSelected && component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID,
           'opacity-50': isDragging,
           'cursor-grab': !isResizing && component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID,
           'cursor-grabbing': isDragging,
-          'overflow-hidden': component.type === 'Image' || component.type === 'Card', // Ensure these clip content
+          'overflow-hidden': component.type === 'Image' || component.type === 'Card', 
         },
         containerDropTargetStyle
       )}
@@ -286,3 +272,6 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     </div>
   );
 }
+
+
+    

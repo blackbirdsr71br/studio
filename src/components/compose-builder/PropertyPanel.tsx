@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { useDesign } from '@/contexts/DesignContext';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { propertyDefinitions, type ComponentType, type ComponentProperty, getComponentDisplayName } from '@/types/compose-spec';
+import { propertyDefinitions, type ComponentType, type ComponentProperty, getComponentDisplayName, DEFAULT_ROOT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 import { PropertyEditor } from './PropertyEditor';
 import { Trash2, Save, Sparkles, Loader2 } from 'lucide-react'; 
 import { Input } from '../ui/input';
@@ -65,6 +65,14 @@ export function PropertyPanel() {
   };
 
   const handleSaveAsCustom = () => {
+    if (selectedComponentId === DEFAULT_ROOT_LAZY_COLUMN_ID) {
+      toast({
+        title: "Cannot Save Root",
+        description: "The root canvas cannot be saved as a custom component.",
+        variant: "destructive",
+      });
+      return;
+    }
     const name = window.prompt("Enter a name for your custom component:", selectedComponent.name);
     if (name && name.trim() !== "") {
       saveSelectedAsCustomTemplate(name.trim());
@@ -140,6 +148,8 @@ export function PropertyPanel() {
   });
 
   const componentDisplayName = getComponentDisplayName(selectedComponent.type);
+  const canSaveAsCustom = selectedComponentId !== DEFAULT_ROOT_LAZY_COLUMN_ID;
+
 
   return (
     <aside className="w-72 border-l bg-sidebar p-4 flex flex-col shrink-0">
@@ -148,10 +158,12 @@ export function PropertyPanel() {
           {selectedComponent.name}
         </h2>
         <div className="flex items-center">
-          <Button variant="ghost" size="icon" onClick={handleSaveAsCustom} className="text-sidebar-primary hover:bg-primary/10 h-7 w-7" aria-label="Save as custom component">
-            <Save className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={handleDelete} className="text-destructive hover:bg-destructive/10 h-7 w-7" aria-label="Delete component">
+          {canSaveAsCustom && (
+            <Button variant="ghost" size="icon" onClick={handleSaveAsCustom} className="text-sidebar-primary hover:bg-primary/10 h-7 w-7" aria-label="Save as custom component">
+              <Save className="h-4 w-4" />
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" onClick={handleDelete} className="text-destructive hover:bg-destructive/10 h-7 w-7" aria-label="Delete component" disabled={selectedComponentId === DEFAULT_ROOT_LAZY_COLUMN_ID}>
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
@@ -166,6 +178,7 @@ export function PropertyPanel() {
           value={selectedComponent.name} 
           onChange={handleNameChange}
           className="h-8 text-sm mt-1.5"
+          disabled={selectedComponentId === DEFAULT_ROOT_LAZY_COLUMN_ID}
         />
       </div>
 
@@ -213,3 +226,6 @@ export function PropertyPanel() {
   );
 }
 
+
+
+    
