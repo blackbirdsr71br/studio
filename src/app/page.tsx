@@ -23,9 +23,9 @@ export default function ComposeBuilderPage() {
     <DndProvider backend={HTML5Backend}>
       <DesignProvider>
         <div className="flex flex-col h-screen overflow-hidden bg-background">
-          <Header 
-            generateModalRef={generateModalRef} 
-            viewJsonModalRef={viewJsonModalRef} 
+          <Header
+            generateModalRef={generateModalRef}
+            viewJsonModalRef={viewJsonModalRef}
             generateJsonFromTextModalRef={generateJsonFromTextModalRef} // Added
           />
           <div className="flex flex-row flex-grow overflow-hidden">
