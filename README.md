@@ -1,5 +1,3 @@
-# Firebase Studio
+# Compose Builder
 
-This is a NextJS starter in Firebase Studio.
-
-To get started, take a look at src/app/page.tsx.
+UI designer, genera componentes y crea codigo jetpack compose, genera json para configurar server driven remote UI
