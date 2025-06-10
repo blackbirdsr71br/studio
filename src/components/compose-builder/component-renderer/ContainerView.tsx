@@ -117,6 +117,13 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     gap: `${itemSpacing}px`,
   };
   
+  // Apply overflow: hidden if any corner radius is set, except for the root canvas
+  if (componentId !== DEFAULT_ROOT_LAZY_COLUMN_ID && 
+      (cornerRadiusTopLeft > 0 || cornerRadiusTopRight > 0 || cornerRadiusBottomLeft > 0 || cornerRadiusBottomRight > 0)) {
+    specificStyles.overflow = 'hidden';
+  }
+
+
   if (type === 'Card') {
     if (explicitContentColor && typeof explicitContentColor === 'string' && explicitContentColor.trim() !== '') {
       (specificStyles as any)['--effective-foreground-color'] = explicitContentColor;
@@ -130,10 +137,6 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
   }
 
 
-  if (componentId !== DEFAULT_ROOT_LAZY_COLUMN_ID && type !== 'LazyColumn' && type !== 'LazyRow' && type !== 'LazyVerticalGrid' && type !== 'LazyHorizontalGrid') {
-     specificStyles.overflow = 'hidden';
-  }
-
   switch (type) {
     case 'Card':
       specificStyles.boxShadow = `0 ${elevation}px ${elevation * 1.5}px rgba(0,0,0,0.1), 0 ${elevation/2}px ${elevation/2}px rgba(0,0,0,0.06)`;
@@ -141,7 +144,6 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
       if (typeof borderWidth === 'number' && borderWidth > 0 && borderColor) {
         specificStyles.border = `${borderWidth}px solid ${borderColor}`;
       } else {
-        // For consistency, if not a border from properties, use the default dashed border for non-root, non-lazy components
          specificStyles.border = (componentId === DEFAULT_ROOT_LAZY_COLUMN_ID || type.startsWith('Lazy')) ? 'none' : '1px dashed hsl(var(--border) / 0.3)';
       }
       break;
@@ -150,13 +152,9 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
       flexDirection = reverseLayout ? 'column-reverse' : 'column';
       specificStyles.overflowY = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
       specificStyles.minHeight = '100px'; 
-      if (type === 'LazyColumn') {
-        delete specificStyles.borderTopLeftRadius;
-        delete specificStyles.borderTopRightRadius;
-        delete specificStyles.borderBottomRightRadius;
-        delete specificStyles.borderBottomLeftRadius;
-      }
-
+      // For LazyColumn, radii are generally not applied to the scroll container itself unless specifically designed
+      // but if they are, overflow:hidden (added above) will clip.
+      
       switch (properties.verticalArrangement) {
         case 'Top': specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
         case 'Bottom': specificStyles.justifyContent = reverseLayout ? 'flex-start' : 'flex-end'; break;
@@ -182,12 +180,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
       flexDirection = reverseLayout ? 'row-reverse' : 'row';
       specificStyles.overflowX = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
       specificStyles.minHeight = '80px'; 
-       if (type === 'LazyRow') {
-        delete specificStyles.borderTopLeftRadius;
-        delete specificStyles.borderTopRightRadius;
-        delete specificStyles.borderBottomRightRadius;
-        delete specificStyles.borderBottomLeftRadius;
-      }
+      // Similarly for LazyRow, radii are not typical for the scroll container itself.
 
       switch (properties.horizontalArrangement) {
           case 'Start': specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
@@ -271,6 +264,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     baseStyle.overflowX = 'hidden';
     baseStyle.width = '100%';
     baseStyle.height = '100%';
+    delete baseStyle.overflow; // Ensure root canvas is scrollable and not hidden
   }
 
   const placeholderText = `Drop components into this ${getComponentDisplayName(type, customComponentTemplates.find(t => t.templateId === type)?.name)}`;
@@ -309,3 +303,4 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     </div>
   );
 }
+

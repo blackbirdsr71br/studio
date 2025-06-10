@@ -240,7 +240,10 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
   if (component.id === DEFAULT_ROOT_LAZY_COLUMN_ID) {
       wrapperStyle.width = '100%';
       wrapperStyle.height = '100%';
-      wrapperStyle.overflow = 'hidden'; 
+      // DEFAULT_ROOT_LAZY_COLUMN_ID manages its own overflow (scrolling) via ContainerView
+  } else if (component.type === 'Image' || component.type === 'Card' || (component.properties.cornerRadiusTopLeft || 0) > 0 || (component.properties.cornerRadiusTopRight || 0) > 0 || (component.properties.cornerRadiusBottomLeft || 0) > 0 || (component.properties.cornerRadiusBottomRight || 0) > 0) {
+    // Apply overflow hidden if it's an Image, Card, or has any corner radius for other components
+    wrapperStyle.overflow = 'hidden';
   }
 
 
@@ -264,7 +267,6 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
           'opacity-50': isDragging,
           'cursor-grab': !isResizing && component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID,
           'cursor-grabbing': isDragging,
-          'overflow-hidden': component.type === 'Image' || component.type === 'Card', 
         },
         containerDropTargetStyle
       )}
@@ -287,3 +289,4 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     </div>
   );
 }
+
