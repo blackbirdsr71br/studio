@@ -19,21 +19,10 @@ export interface GenerateCodeModalRef {
 
 export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [generatedCode, setGeneratedCode] = useState<string>(""); // Initialize with empty string
+  const [generatedCode, setGeneratedCode] = useState<string>(""); 
   const [isLoading, setIsLoading] = useState(false);
   const { components, customComponentTemplates } = useDesign();
   const { toast } = useToast();
-
-  useImperativeHandle(ref, () => ({
-    openModal: () => {
-      setIsOpen(true);
-      if (components.length > 0 && (!components.find(c => c.id === 'default-root-lazy-column') || (components.find(c => c.id === 'default-root-lazy-column')?.properties.children?.length || 0) > 0)) {
-        handleGenerateCode();
-      } else {
-        setGeneratedCode("No user components on the canvas to generate code from.");
-      }
-    }
-  }));
 
   const handleCodeChange = useCallback((value: string) => {
     setGeneratedCode(value);
@@ -49,7 +38,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
       return;
     }
     setIsLoading(true);
-    setGeneratedCode(""); // Clear previous code
+    setGeneratedCode(""); // Clear previous code before generating new
     try {
       const code = await generateJetpackComposeCodeAction(components, customComponentTemplates);
       setGeneratedCode(code);
@@ -66,6 +55,29 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
       setIsLoading(false);
     }
   }, [components, customComponentTemplates, toast]);
+
+  useImperativeHandle(ref, () => ({
+    openModal: () => {
+      setIsOpen(true);
+      const userComponentsExist = components.some(c => c.id !== 'default-root-lazy-column') || 
+                                 (components.find(c => c.id === 'default-root-lazy-column')?.properties.children?.length || 0) > 0;
+
+      if (userComponentsExist) {
+        // If generatedCode is empty or is a placeholder/error message, then generate new code.
+        // Otherwise, keep the existing (potentially edited) code.
+        if (!generatedCode || generatedCode.startsWith("// Error") || generatedCode.startsWith("No user components on the canvas")) {
+          handleGenerateCode(); 
+        } else {
+          // Valid code (potentially with user edits) already exists, don't regenerate.
+          setIsLoading(false); // Ensure loading state is off
+        }
+      } else {
+        // No components, set placeholder message
+        setGeneratedCode("No user components on the canvas to generate code from.");
+        setIsLoading(false); // Ensure loading state is off
+      }
+    }
+  }));
 
   const handleCopyToClipboard = async () => {
     if (generatedCode) {
@@ -108,9 +120,9 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
     }
   };
   
-  const userComponentsExist = components.some(c => c.id !== 'default-root-lazy-column') || 
-                           (components.find(c => c.id === 'default-root-lazy-column')?.properties.children?.length || 0) > 0;
-
+  const canPerformActions = !isLoading && generatedCode && !generatedCode.startsWith("// Error") && !generatedCode.startsWith("No components");
+  const userComponentsExistForRegeneration = components.some(c => c.id !== 'default-root-lazy-column') || 
+                                           (components.find(c => c.id === 'default-root-lazy-column')?.properties.children?.length || 0) > 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -148,15 +160,15 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
           )}
         </div>
         <DialogFooter className="sm:justify-between flex-wrap gap-2">
-          <Button variant="outline" onClick={handleGenerateCode} disabled={isLoading || !userComponentsExist}>
-            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+          <Button variant="outline" onClick={handleGenerateCode} disabled={isLoading || !userComponentsExistForRegeneration}>
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Regenerate
           </Button>
           <div className="flex gap-2">
-            <Button onClick={handleCopyToClipboard} disabled={isLoading || !generatedCode || generatedCode.startsWith("// Error") || generatedCode.startsWith("No components")}>
+            <Button onClick={handleCopyToClipboard} disabled={!canPerformActions}>
               <Copy className="mr-2 h-4 w-4" /> Copy
             </Button>
-            <Button onClick={handleDownloadCode} disabled={isLoading || !generatedCode || generatedCode.startsWith("// Error") || generatedCode.startsWith("No components")}>
+            <Button onClick={handleDownloadCode} disabled={!canPerformActions}>
               <Download className="mr-2 h-4 w-4" /> Download .kt
             </Button>
           </div>
