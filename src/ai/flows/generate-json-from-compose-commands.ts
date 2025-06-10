@@ -76,13 +76,15 @@ Recognized properties include (but are not limited to):
 - For Text: text (string), fontSize (number), textColor (hex string, e.g., "#FF0000")
 - For Image: src (string URL, use "https://placehold.co/100x100.png" if a resource is mentioned but not a URL), contentDescription (string), width (number, "match_parent", or "wrap_content"), height (number, "match_parent", or "wrap_content")
 - For Button: text (string), backgroundColor (hex string), textColor (hex string)
-- For Containers (Column, Row, Box, Card, Lazy*): padding (number), backgroundColor (hex string), width (number, "match_parent", or "wrap_content"), height (number, "match_parent", or "wrap_content"), itemSpacing (number for Lazy layouts), layoutWeight (number, e.g., 1 for Modifier.weight(1f)).
+- For Containers (Column, Row, Box, Card, Lazy*): padding (number, for all sides), paddingTop (number), paddingBottom (number), paddingStart (number), paddingEnd (number), backgroundColor (hex string), width (number, "match_parent", or "wrap_content"), height (number, "match_parent", or "wrap_content"), itemSpacing (number for Lazy layouts), layoutWeight (number, e.g., 1 for Modifier.weight(1f)).
   - For Card: elevation (number), cornerRadiusTopLeft (number), cornerRadiusTopRight (number), cornerRadiusBottomRight (number), cornerRadiusBottomLeft (number), borderWidth (number), borderColor (hex string), contentColor (hex string).
   - For LazyVerticalGrid: columns (number).
   - For LazyHorizontalGrid: rows (number).
 
 Mapping common Modifiers:
-- Modifier.padding(X.dp) -> "padding": X
+- Modifier.padding(X.dp) -> "padding": X (all sides)
+- Modifier.padding(horizontal = X.dp, vertical = Y.dp) -> "paddingStart": X, "paddingEnd": X, "paddingTop": Y, "paddingBottom": Y
+- Modifier.padding(start = A.dp, top = B.dp, end = C.dp, bottom = D.dp) -> "paddingStart": A, "paddingTop": B, "paddingEnd": C, "paddingBottom": D (map defined values)
 - Modifier.fillMaxWidth() -> "width": "match_parent"
 - Modifier.fillMaxHeight() -> "height": "match_parent"
 - Modifier.wrapContentWidth() -> "width": "wrap_content"
@@ -104,10 +106,10 @@ Example Input:
 Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
     Text("Welcome!", fontSize = 20.sp, color = Color.Blue, modifier = Modifier.weight(1f))
     Card(modifier = Modifier.clip(RoundedCornerShape(8.dp)), border = BorderStroke(1.dp, Color.Gray), contentColor = Color.DarkGray) {
-        Image(imageResource = "logo.png", contentDescription = "App Logo", modifier = Modifier.height(50.dp))
+        Image(imageResource = "logo.png", contentDescription = "App Logo", modifier = Modifier.height(50.dp).padding(start = 4.dp, end = 4.dp))
     }
 }
-Button(text = "Submit", modifier = Modifier.width(120.dp))
+Button(text = "Submit", modifier = Modifier.width(120.dp).padding(horizontal = 10.dp))
 \`\`\`
 
 Example Output JSON (stringified):
@@ -156,7 +158,9 @@ Example Output JSON (stringified):
                 "properties": {
                   "src": "https://placehold.co/100x50.png",
                   "contentDescription": "App Logo",
-                  "height": 50
+                  "height": 50,
+                  "paddingStart": 4,
+                  "paddingEnd": 4
                 }
               }
             ]
@@ -172,7 +176,9 @@ Example Output JSON (stringified):
     "parentId": "${DEFAULT_ROOT_LAZY_COLUMN_ID}",
     "properties": {
       "text": "Submit",
-      "width": 120
+      "width": 120,
+      "paddingStart": 10,
+      "paddingEnd": 10
     }
   }
 ]
@@ -180,6 +186,7 @@ Example Output JSON (stringified):
 Ensure all top-level components in the user's input have their "parentId" set to "${DEFAULT_ROOT_LAZY_COLUMN_ID}". Child components' "parentId" should be the "id" of their direct container in the input.
 Generate unique, sequential "id" values (e.g., "comp-1", "comp-2", ...).
 Generate descriptive "name" values (e.g., "Text 1", "Column 2", ...).
+If only Modifier.padding(X.dp) is used, set the "padding" property. If specific sides like Modifier.padding(start=Y.dp) are used, set "paddingStart", "paddingTop", etc. accordingly.
 
 User's Jetpack Compose Commands:
 \`\`\`
@@ -202,3 +209,5 @@ const generateJsonFromComposeCommandsFlow = ai.defineFlow(
     return output;
   }
 );
+
+    

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { propertyDefinitions, type ComponentType, type ComponentProperty, getComponentDisplayName, DEFAULT_ROOT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 import { PropertyEditor } from './PropertyEditor';
-import { Trash2, Save, Sparkles, Loader2 } from 'lucide-react'; 
+import { Trash2, Save, Sparkles, Loader2 } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -42,6 +42,10 @@ export function PropertyPanel() {
   }
 
   const getDefaultPropertyValue = (propDef: Omit<ComponentProperty, 'value'>) => {
+    // For new individual padding properties, default to undefined if not explicitly set in component.properties
+    if (['paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd'].includes(propDef.name)) {
+        return selectedComponent.properties[propDef.name] ?? ''; // Show empty if undefined
+    }
     if (propDef.type === 'number') return 0;
     if (propDef.type === 'boolean') return false;
     if (propDef.type === 'enum' && propDef.options && propDef.options.length > 0) return propDef.options[0].value;
@@ -51,7 +55,13 @@ export function PropertyPanel() {
   const componentPropsDef = (propertyDefinitions[selectedComponent.type as ComponentType] || []) as (Omit<ComponentProperty, 'value'> & { group: string })[];
 
   const handlePropertyChange = (propName: string, value: string | number | boolean) => {
-    updateComponent(selectedComponent.id, { properties: { [propName]: value } });
+    // Handle empty string for optional numbers by setting to undefined
+    let actualValue = value;
+    const propDefinition = componentPropsDef.find(p => p.name === propName);
+    if (propDefinition?.type === 'number' && value === '') {
+      actualValue = undefined as any; // Or null, depending on how you want to represent "unset"
+    }
+    updateComponent(selectedComponent.id, { properties: { [propName]: actualValue } });
   };
 
   const handleNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,7 +90,7 @@ export function PropertyPanel() {
         title: "Custom Component Saved",
         description: `"${name.trim()}" added to the component library.`,
       });
-    } else if (name !== null) { 
+    } else if (name !== null) {
       toast({
         title: "Save Failed",
         description: "Custom component name cannot be empty.",
@@ -118,24 +128,6 @@ export function PropertyPanel() {
   const groupedProperties: GroupedProperties = {};
   const propertyGroups: string[] = [];
 
-  componentPropsDef.forEach((propDef) => {
-    const group = propDef.group || 'General';
-    if (!groupedProperties[group]) {
-      groupedProperties[group] = [];
-      if (!propertyGroups.includes(group)) {
-        propertyGroups.push(group);
-      }
-    }
-    groupedProperties[group].push(
-      <PropertyEditor
-        key={propDef.name}
-        property={propDef}
-        currentValue={selectedComponent.properties[propDef.name] ?? getDefaultPropertyValue(propDef)}
-        onChange={(value) => handlePropertyChange(propDef.name, value)}
-      />
-    );
-  });
-
   // Special handling for "Corner Radius (All)" for relevant components
   if (['Image', 'Box', 'Card'].includes(selectedComponent.type)) {
     const {
@@ -145,11 +137,11 @@ export function PropertyPanel() {
         cornerRadiusBottomLeft,
     } = selectedComponent.properties;
 
-    const allCornersHaveValue = 
-        cornerRadiusTopLeft !== undefined &&
-        cornerRadiusTopRight !== undefined &&
-        cornerRadiusBottomRight !== undefined &&
-        cornerRadiusBottomLeft !== undefined;
+    const allCornersHaveValue =
+        typeof cornerRadiusTopLeft === 'number' &&
+        typeof cornerRadiusTopRight === 'number' &&
+        typeof cornerRadiusBottomRight === 'number' &&
+        typeof cornerRadiusBottomLeft === 'number';
 
     const allCornersAreEqual =
         allCornersHaveValue &&
@@ -157,22 +149,31 @@ export function PropertyPanel() {
         cornerRadiusTopLeft === cornerRadiusBottomRight &&
         cornerRadiusTopLeft === cornerRadiusBottomLeft;
 
-    const allCornersValue = allCornersAreEqual ? (cornerRadiusTopLeft ?? '') : ''; 
+    const allCornersValue = allCornersAreEqual ? (cornerRadiusTopLeft ?? '') : '';
 
-    const handleAllCornersChange = (value: string | number | boolean) => {
-        const strValue = String(value);
-        const numValue = parseFloat(strValue);
-
-        if (strValue === '' || ( !isNaN(numValue) && numValue >= 0)) {
-            const finalValue = strValue === '' ? 0 : numValue; // Default to 0 if cleared
-            updateComponent(selectedComponent.id, {
+    const handleAllCornersChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const strValue = event.target.value;
+        if (strValue === '') {
+             updateComponent(selectedComponent.id, {
                 properties: {
-                    cornerRadiusTopLeft: finalValue,
-                    cornerRadiusTopRight: finalValue,
-                    cornerRadiusBottomRight: finalValue,
-                    cornerRadiusBottomLeft: finalValue,
+                    cornerRadiusTopLeft: undefined,
+                    cornerRadiusTopRight: undefined,
+                    cornerRadiusBottomRight: undefined,
+                    cornerRadiusBottomLeft: undefined,
                 },
             });
+        } else {
+            const numValue = parseFloat(strValue);
+            if (!isNaN(numValue) && numValue >= 0) {
+                updateComponent(selectedComponent.id, {
+                    properties: {
+                        cornerRadiusTopLeft: numValue,
+                        cornerRadiusTopRight: numValue,
+                        cornerRadiusBottomRight: numValue,
+                        cornerRadiusBottomLeft: numValue,
+                    },
+                });
+            }
         }
     };
 
@@ -184,8 +185,8 @@ export function PropertyPanel() {
                 id="prop-cornerRadiusAll"
                 type="number"
                 value={allCornersValue}
-                onChange={(e) => handleAllCornersChange(e.target.value)}
-                placeholder="Mixed"
+                onChange={handleAllCornersChange}
+                placeholder={allCornersHaveValue && !allCornersAreEqual ? "Mixed" : "e.g., 8"}
                 className="h-8 text-sm"
             />
         </div>
@@ -199,17 +200,45 @@ export function PropertyPanel() {
             propertyGroups.push('Appearance');
         }
     }
-    groupedProperties['Appearance'].unshift(allCornersEditor);
+    groupedProperties['Appearance'].push(allCornersEditor);
   }
-  
+
+
+  componentPropsDef.forEach((propDef) => {
+    const group = propDef.group || 'General';
+    if (!groupedProperties[group]) {
+      groupedProperties[group] = [];
+      if (!propertyGroups.includes(group)) {
+        propertyGroups.push(group);
+      }
+    }
+    // For individual padding properties, ensure they show empty if undefined
+    let currentValue = selectedComponent.properties[propDef.name];
+    if (['paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd'].includes(propDef.name) && currentValue === undefined) {
+        currentValue = '';
+    } else {
+        currentValue = currentValue ?? getDefaultPropertyValue(propDef);
+    }
+
+    groupedProperties[group].push(
+      <PropertyEditor
+        key={propDef.name}
+        property={propDef}
+        currentValue={currentValue}
+        onChange={(value) => handlePropertyChange(propDef.name, value)}
+      />
+    );
+  });
+
+
   propertyGroups.sort((a, b) => {
     const indexA = PREFERRED_GROUP_ORDER.indexOf(a);
     const indexB = PREFERRED_GROUP_ORDER.indexOf(b);
 
-    if (indexA !== -1 && indexB !== -1) return indexA - indexB; 
-    if (indexA !== -1) return -1; 
-    if (indexB !== -1) return 1;  
-    return a.localeCompare(b); 
+    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+    if (indexA !== -1) return -1;
+    if (indexB !== -1) return 1;
+    return a.localeCompare(b);
   });
 
   const componentDisplayName = getComponentDisplayName(selectedComponent.type);
@@ -233,13 +262,13 @@ export function PropertyPanel() {
         </div>
       </div>
       <p className="text-xs text-muted-foreground mb-3 -mt-1">{componentDisplayName}</p>
-      
+
       <div className="mb-4">
         <Label htmlFor="componentName" className="text-xs">Instance Name</Label>
-        <Input 
+        <Input
           id="componentName"
-          type="text" 
-          value={selectedComponent.name} 
+          type="text"
+          value={selectedComponent.name}
           onChange={handleNameChange}
           className="h-8 text-sm mt-1.5"
           disabled={selectedComponentId === DEFAULT_ROOT_LAZY_COLUMN_ID}
@@ -289,3 +318,5 @@ export function PropertyPanel() {
     </aside>
   );
 }
+
+    

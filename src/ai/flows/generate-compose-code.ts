@@ -65,7 +65,16 @@ const prompt = ai.definePrompt({
     - If 'height' is "wrap_content", use Modifier.wrapContentHeight().
     - If 'height' is a number, use Modifier.height(X.dp).
   - If a component has a 'layoutWeight' property greater than 0, use Modifier.weight(Xf). For example, if layoutWeight is 1, use Modifier.weight(1f).
-  - If a component has a 'padding' property greater than 0, use Modifier.padding(X.dp).
+
+  - Padding:
+    - Determine effective padding for each side:
+      effectiveTop = properties.paddingTop (if defined) ?? properties.padding (if defined) ?? 0
+      effectiveBottom = properties.paddingBottom (if defined) ?? properties.padding (if defined) ?? 0
+      effectiveStart = properties.paddingStart (if defined) ?? properties.padding (if defined) ?? 0
+      effectiveEnd = properties.paddingEnd (if defined) ?? properties.padding (if defined) ?? 0
+    - If all effective paddings (top, bottom, start, end) are equal AND this common value is not 0, use Modifier.padding(all = commonValue.dp).
+    - Otherwise, if any effective padding is not 0, use Modifier.padding(start = effectiveStart.dp, top = effectiveTop.dp, end = effectiveEnd.dp, bottom = effectiveBottom.dp). Omit sides from the call if their effective padding is 0 (e.g., if only top is non-zero, use Modifier.padding(top = effectiveTop.dp)).
+    - If all effective paddings are 0, do not add a padding modifier.
 
   When a component (like Card, Box, Image) has 'cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft' properties, apply them using a Modifier.clip(RoundedCornerShape(...)) with individual corner sizes. For example:
   Modifier.clip(RoundedCornerShape(
@@ -98,3 +107,5 @@ const generateComposeCodeFlow = ai.defineFlow(
     return output!;
   }
 );
+
+    
