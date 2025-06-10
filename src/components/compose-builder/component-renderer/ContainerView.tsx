@@ -32,6 +32,8 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     itemSpacing = 0,
     reverseLayout = false,
     backgroundColor: containerBackgroundColor, // Renamed for clarity
+    borderWidth, // New for Card
+    borderColor, // New for Card
   } = properties;
 
   const processDimension = (
@@ -105,6 +107,12 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     case 'Card':
       specificStyles.boxShadow = `0 ${elevation}px ${elevation * 1.5}px rgba(0,0,0,0.1), 0 ${elevation/2}px ${elevation/2}px rgba(0,0,0,0.06)`;
       specificStyles.backgroundColor = containerBackgroundColor || '#FFFFFF';
+      if (typeof borderWidth === 'number' && borderWidth > 0 && borderColor) {
+        specificStyles.border = `${borderWidth}px solid ${borderColor}`;
+      } else {
+        // Ensure border is not applied from default if not specified
+        specificStyles.border = componentId === DEFAULT_ROOT_LAZY_COLUMN_ID ? 'none' : '1px dashed hsl(var(--border) / 0.3)';
+      }
       break;
     case 'LazyColumn':
     case 'LazyVerticalGrid': 
@@ -219,7 +227,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     height: styleHeight,
     display: 'flex',
     flexDirection: flexDirection,
-    border: componentId === DEFAULT_ROOT_LAZY_COLUMN_ID ? 'none' : '1px dashed hsl(var(--border) / 0.3)',
+    border: componentId === DEFAULT_ROOT_LAZY_COLUMN_ID || type === 'Card' ? specificStyles.border : '1px dashed hsl(var(--border) / 0.3)',
     position: 'relative', 
     minWidth: (componentId === DEFAULT_ROOT_LAZY_COLUMN_ID || properties.width === 'match_parent' ) ? '100%' : (properties.width === 'wrap_content' ? 'auto' : '60px'),
     minHeight: (componentId === DEFAULT_ROOT_LAZY_COLUMN_ID || properties.height === 'match_parent') ? '100%' : (properties.height === 'wrap_content' ? 'auto' : '60px'),

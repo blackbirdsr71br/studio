@@ -53,6 +53,8 @@ export interface BaseComponentProps {
   cornerRadiusTopRight?: number;
   cornerRadiusBottomRight?: number;
   cornerRadiusBottomLeft?: number;
+  borderWidth?: number; // For Card border
+  borderColor?: string; // For Card border
   columns?: number; // For LazyVerticalGrid
   rows?: number; // For LazyHorizontalGrid
   maxLines?: number; // For Text
@@ -130,7 +132,7 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
     case 'Box':
       return { ...common, children: [], padding: 0, backgroundColor: 'rgba(220, 220, 220, 0.3)', width: 100, height: 100, cornerRadiusTopLeft: 4, cornerRadiusTopRight: 4, cornerRadiusBottomRight: 4, cornerRadiusBottomLeft: 4 };
     case 'Card':
-      return { ...common, children: [], padding: 16, backgroundColor: '#FFFFFF', width: 200, height: 150, elevation: 2, cornerRadiusTopLeft: 8, cornerRadiusTopRight: 8, cornerRadiusBottomRight: 8, cornerRadiusBottomLeft: 8 };
+      return { ...common, children: [], padding: 16, backgroundColor: '#FFFFFF', width: 200, height: 150, elevation: 2, cornerRadiusTopLeft: 8, cornerRadiusTopRight: 8, cornerRadiusBottomRight: 8, cornerRadiusBottomLeft: 8, borderWidth: 0, borderColor: '#000000' };
     case 'LazyColumn':
       return {
         ...common,
@@ -343,13 +345,15 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
   Card: [
     { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '16', group: 'Layout' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    { name: 'cornerRadiusTopLeft', type: 'number', label: 'Corner Radius TL (dp)', placeholder: '0', group: 'Appearance' },
-    { name: 'cornerRadiusTopRight', type: 'number', label: 'Corner Radius TR (dp)', placeholder: '0', group: 'Appearance' },
-    { name: 'cornerRadiusBottomRight', type: 'number', label: 'Corner Radius BR (dp)', placeholder: '0', group: 'Appearance' },
-    { name: 'cornerRadiusBottomLeft', type: 'number', label: 'Corner Radius BL (dp)', placeholder: '0', group: 'Appearance' },
+    { name: 'cornerRadiusTopLeft', type: 'number', label: 'Corner Radius TL (dp)', placeholder: '8', group: 'Appearance' },
+    { name: 'cornerRadiusTopRight', type: 'number', label: 'Corner Radius TR (dp)', placeholder: '8', group: 'Appearance' },
+    { name: 'cornerRadiusBottomRight', type: 'number', label: 'Corner Radius BR (dp)', placeholder: '8', group: 'Appearance' },
+    { name: 'cornerRadiusBottomLeft', type: 'number', label: 'Corner Radius BL (dp)', placeholder: '8', group: 'Appearance' },
     { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '200', group: 'Layout' },
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '150', group: 'Layout' },
     { name: 'elevation', type: 'number', label: 'Elevation (dp)', placeholder: '2', group: 'Appearance' },
+    { name: 'borderWidth', type: 'number', label: 'Border Width (dp)', placeholder: '0', group: 'Appearance' },
+    { name: 'borderColor', type: 'color', label: 'Border Color', group: 'Appearance' },
   ],
   LazyColumn: [
     { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '8', group: 'Layout' },
@@ -508,6 +512,8 @@ const BaseModalPropertiesSchema = z.object({
   cornerRadiusTopRight: z.number().min(0).optional(),
   cornerRadiusBottomRight: z.number().min(0).optional(),
   cornerRadiusBottomLeft: z.number().min(0).optional(),
+  borderWidth: z.number().min(0).optional(),
+  borderColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional(),
   columns: z.number().int().min(1).optional(),
   rows: z.number().int().min(1).optional(),
   maxLines: z.number().int().min(1).optional(),
@@ -564,5 +570,3 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
 
 // Zod schema for the entire JSON structure in the modal (an array of root-level user components)
 export const ModalJsonSchema = z.array(ModalComponentNodeSchema);
-
-

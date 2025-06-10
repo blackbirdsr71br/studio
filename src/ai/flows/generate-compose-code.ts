@@ -63,6 +63,10 @@ const prompt = ai.definePrompt({
     bottomStart = properties.cornerRadiusBottomLeft.dp
   ))
   If all four corner radius properties are present and equal, you can use the simpler Modifier.clip(RoundedCornerShape(size = X.dp)).
+
+  If a Card component has a 'borderWidth' property greater than 0 and a 'borderColor' property, apply a border using 'BorderStroke'. Convert the hex 'borderColor' to a Compose Color. For example:
+  border = BorderStroke(width = properties.borderWidth.dp, color = Color(android.graphics.Color.parseColor(properties.borderColor)))
+  Remember to import androidx.compose.foundation.BorderStroke and android.graphics.Color if you use this.
 `,
 });
 
