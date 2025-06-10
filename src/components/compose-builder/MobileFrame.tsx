@@ -2,6 +2,7 @@
 'use client';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { useTheme } from '@/contexts/ThemeContext'; // Import useTheme
 
 interface MobileFrameProps {
   children: ReactNode;
@@ -21,10 +22,16 @@ const FRAME_WIDTH = SCREEN_WIDTH_TARGET + (FRAME_BODY_PADDING * 2);
 const FRAME_HEIGHT = SCREEN_HEIGHT_TARGET + (FRAME_BODY_PADDING * 2) + SPEAKER_BAR_HEIGHT + SPEAKER_BAR_MARGIN_BOTTOM;
 
 export function MobileFrame({ children, className }: MobileFrameProps) {
+  const { resolvedTheme } = useTheme();
+
+  const frameBodyColor = resolvedTheme === 'dark' ? 'bg-neutral-300' : 'bg-neutral-900';
+  const speakerBarColor = resolvedTheme === 'dark' ? 'bg-neutral-400' : 'bg-neutral-950';
+
   return (
     <div
       className={cn(
-        "bg-neutral-800 rounded-[44px] shadow-xl mx-auto my-auto flex flex-col", // Changed from bg-neutral-900
+        "rounded-[44px] shadow-xl mx-auto my-auto flex flex-col",
+        frameBodyColor,
         className
       )}
       style={{
@@ -35,7 +42,10 @@ export function MobileFrame({ children, className }: MobileFrameProps) {
     >
       {/* Top speaker/sensor bar */}
       <div 
-        className="w-28 mx-auto bg-neutral-900 rounded-b-xl shrink-0" // Changed from bg-neutral-950
+        className={cn(
+          "w-28 mx-auto rounded-b-xl shrink-0",
+          speakerBarColor
+        )}
         style={{ 
           height: `${SPEAKER_BAR_HEIGHT}px`,
           marginBottom: `${SPEAKER_BAR_MARGIN_BOTTOM}px`
