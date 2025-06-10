@@ -49,7 +49,6 @@ export interface BaseComponentProps {
   src?: string;
   "data-ai-hint"?: string;
   elevation?: number; // For Card
-  // cornerRadius?: number; // For Card, Box, Image - REMOVED
   cornerRadiusTopLeft?: number;
   cornerRadiusTopRight?: number;
   cornerRadiusBottomRight?: number;
@@ -110,7 +109,7 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
         ...common,
         text: 'Sample Text',
         fontSize: 16,
-        textColor: '#000000',
+        textColor: undefined, // Default to undefined to inherit theme color
         padding: 0,
         maxLines: undefined,
         textOverflow: 'Clip',
@@ -496,7 +495,7 @@ export function isContainerType(type: ComponentType | string, customTemplates?: 
 const BaseModalPropertiesSchema = z.object({
   text: z.string().optional(),
   fontSize: z.number().optional(),
-  textColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional(),
+  textColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional().or(z.literal(undefined)), // Allow undefined
   backgroundColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional(),
   width: z.union([z.literal('wrap_content'), z.literal('match_parent'), z.number().min(0)]).optional(),
   height: z.union([z.literal('wrap_content'), z.literal('match_parent'), z.number().min(0)]).optional(),
@@ -565,3 +564,4 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
 
 // Zod schema for the entire JSON structure in the modal (an array of root-level user components)
 export const ModalJsonSchema = z.array(ModalComponentNodeSchema);
+

@@ -10,7 +10,7 @@ export function TextView({ properties }: TextViewProps) {
   const {
     text = 'Text',
     fontSize = 16,
-    textColor = '#000000',
+    textColor, // Do not provide a default here, let it be undefined
     padding = 0,
     fontWeight = 'Normal',
     fontStyle = 'Normal',
@@ -21,7 +21,6 @@ export function TextView({ properties }: TextViewProps) {
   
   const style: React.CSSProperties = {
     fontSize: `${fontSize}px`, // Assuming sp is roughly px for web display
-    color: textColor,
     padding: `${padding}px`,
     whiteSpace: 'pre-wrap', // To respect newlines in text
     wordBreak: 'break-word',
@@ -32,6 +31,11 @@ export function TextView({ properties }: TextViewProps) {
     textAlign: textAlign.toLowerCase() as 'left' | 'center' | 'right' | 'justify' | 'start' | 'end', // CSS values
     textDecorationLine: textDecoration === 'LineThrough' ? 'line-through' : textDecoration.toLowerCase(), // CSS values
   };
+
+  // Only apply color if textColor is explicitly defined in properties
+  if (textColor !== undefined) {
+    style.color = textColor;
+  }
 
   return (
     <div style={style} className="select-none">
