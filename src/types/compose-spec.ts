@@ -120,9 +120,9 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
         lineHeight: 1.4, // Default lineHeight
       };
     case 'Button':
-      return { ...common, text: 'Click Me', backgroundColor: '#3F51B5', textColor: '#FFFFFF', padding: 12 };
+      return { ...common, text: 'Click Me', backgroundColor: '#3F51B5', textColor: undefined, padding: 12 };
     case 'Image':
-      return { ...common, src: 'https://placehold.co/200x100.png', contentDescription: 'Placeholder Image', width: 200, height: 100, "data-ai-hint": "abstract pattern", contentScale: 'Crop', cornerRadiusTopLeft: 0, cornerRadiusTopRight: 0, cornerRadiusBottomRight: 0, cornerRadiusBottomLeft: 0 };
+      return { ...common, src: 'https://placehold.co/300x200.png', contentDescription: 'Placeholder Image', width: 200, height: 100, "data-ai-hint": "abstract pattern", contentScale: 'Crop', cornerRadiusTopLeft: 0, cornerRadiusTopRight: 0, cornerRadiusBottomRight: 0, cornerRadiusBottomLeft: 0 };
     case 'Column':
       return { ...common, children: [], padding: 8, backgroundColor: 'rgba(224, 224, 224, 0.5)', width: 200, height: 200, itemSpacing: 0, verticalArrangement: 'Top', horizontalAlignment: 'Start' };
     case 'Row':
@@ -564,4 +564,5 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
 
 // Zod schema for the entire JSON structure in the modal (an array of root-level user components)
 export const ModalJsonSchema = z.array(ModalComponentNodeSchema);
+
 
