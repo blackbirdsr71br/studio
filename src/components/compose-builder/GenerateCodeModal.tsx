@@ -9,7 +9,7 @@ import { generateJetpackComposeCodeAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Copy, Download } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
-import { java as javaLang } from '@codemirror/lang-java'; // Using java for Kotlin-like syntax
+import { java as javaLang } from '@codemirror/lang-java';
 import { githubLight } from '@uiw/codemirror-theme-github';
 
 export interface GenerateCodeModalRef {
@@ -37,7 +37,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
       return;
     }
     setIsLoading(true);
-    setGeneratedCode(""); // Clear previous code before generating new
+    setGeneratedCode(""); 
     try {
       const code = await generateJetpackComposeCodeAction(components, customComponentTemplates);
       setGeneratedCode(code);
@@ -62,18 +62,14 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
                                  (components.find(c => c.id === 'default-root-lazy-column')?.properties.children?.length || 0) > 0;
 
       if (userComponentsExist) {
-        // If generatedCode is empty or is a placeholder/error message, then generate new code.
-        // Otherwise, keep the existing (potentially edited) code.
         if (!generatedCode || generatedCode.startsWith("// Error") || generatedCode.startsWith("No user components on the canvas")) {
           handleGenerateCode(); 
         } else {
-          // Valid code (potentially with user edits) already exists, don't regenerate.
-          setIsLoading(false); // Ensure loading state is off
+          setIsLoading(false); 
         }
       } else {
-        // No components, set placeholder message
         setGeneratedCode("No user components on the canvas to generate code from.");
-        setIsLoading(false); // Ensure loading state is off
+        setIsLoading(false); 
       }
     }
   }));
@@ -132,7 +128,8 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
             Edit, copy, or download the code below to use in your Android project.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex-grow my-4 rounded-md border bg-muted/30 overflow-hidden min-h-[300px]">
+        {/* This div is the flex child that grows and shrinks. CodeMirror should fill this. */}
+        <div className="flex-grow my-4 rounded-md border bg-muted/30 overflow-hidden min-h-[300px] relative">
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -145,7 +142,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
               extensions={[javaLang()]}
               theme={githubLight}
               onChange={handleCodeChange}
-              className="text-sm flex-grow h-full"
+              className="text-sm h-full" // Removed flex-grow, h-full should suffice
               basicSetup={{
                 lineNumbers: true,
                 foldGutter: true,
