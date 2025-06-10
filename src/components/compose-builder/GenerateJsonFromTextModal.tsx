@@ -135,4 +135,3 @@ export const GenerateJsonFromTextModal = forwardRef<GenerateJsonFromTextModalRef
 });
 
 GenerateJsonFromTextModal.displayName = 'GenerateJsonFromTextModal';
-
