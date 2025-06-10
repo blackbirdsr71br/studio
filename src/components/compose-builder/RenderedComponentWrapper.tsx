@@ -223,7 +223,13 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
         if (component.type.startsWith("custom/")) {
            const template = customComponentTemplates.find(t => t.templateId === component.type);
            if (template) {
-             return <ContainerView component={component} childrenComponents={children} isRow={false} />;
+             // For custom components, we treat their root as a container for rendering purposes if it's a container type
+             // The specific layout (row/column) depends on the template's root component type.
+             // This might need refinement if custom components can have non-container roots but still accept children.
+             // For now, assume if it has children, its root behaves like a container.
+             const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
+             const isTemplateRootRowLike = rootTemplateComponent ? ['Row', 'LazyRow', 'LazyHorizontalGrid'].includes(rootTemplateComponent.type) : false;
+             return <ContainerView component={component} childrenComponents={children} isRow={isTemplateRootRowLike} />;
            }
         }
         return <div className="p-2 border border-dashed border-red-500">Unknown: {component.type}</div>;

@@ -147,22 +147,32 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     case 'Box':
       // Default container styles are fine
       break;
+    // This also covers custom components that are containers.
+    // Their specific styling comes from their template, but the flex behavior is determined by isRow.
+    default:
+      // No type-specific styles needed beyond what isRow and general props handle.
+      break;
   }
 
   const baseStyle: React.CSSProperties = {
-    backgroundColor: properties.backgroundColor || (type === 'Card' ? '#FFFFFF' : 'rgba(200, 200, 200, 0.2)'), // Softer default BG
+    backgroundColor: properties.backgroundColor || (type === 'Card' ? '#FFFFFF' : 'transparent'), // Root canvas (LazyColumn) should be transparent
     padding: `${padding}px`,
     width: styleWidth,
     height: styleHeight,
     display: 'flex',
     flexDirection: flexDirection,
     // gap is now set in specificStyles
-    border: '1px dashed hsl(var(--border))',
+    border: component.id === 'default-root-lazy-column' ? 'none' : '1px dashed hsl(var(--border))', // No border for root canvas
     position: 'relative',
-    minWidth: '60px', // Slightly larger min size
-    minHeight: '60px',
+    minWidth: component.id === 'default-root-lazy-column' ? '100%' : '60px',
+    minHeight: component.id === 'default-root-lazy-column' ? '100%' : '60px',
     ...specificStyles,
   };
+  
+  if (component.id === 'default-root-lazy-column') {
+    baseStyle.backgroundColor = properties.backgroundColor || 'transparent'; // Ensure root is transparent or its specified color
+  }
+
 
   const placeholderText = `Drop components into this ${getComponentDisplayName(type)}`;
 
