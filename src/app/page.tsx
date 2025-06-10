@@ -11,13 +11,11 @@ import { DesignSurface } from '@/components/compose-builder/DesignSurface';
 import { PropertyPanel } from '@/components/compose-builder/PropertyPanel';
 import { GenerateCodeModal, type GenerateCodeModalRef } from '@/components/compose-builder/GenerateCodeModal';
 import { ViewJsonModal, type ViewJsonModalRef } from '@/components/compose-builder/ViewJsonModal';
-import { GenerateJsonFromTextModal, type GenerateJsonFromTextModalRef } from '@/components/compose-builder/GenerateJsonFromTextModal'; // Added
 import { MobileFrame } from '@/components/compose-builder/MobileFrame';
 
 export default function ComposeBuilderPage() {
   const generateModalRef = useRef<GenerateCodeModalRef>(null);
   const viewJsonModalRef = useRef<ViewJsonModalRef>(null);
-  const generateJsonFromTextModalRef = useRef<GenerateJsonFromTextModalRef>(null); // Added
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -26,7 +24,6 @@ export default function ComposeBuilderPage() {
           <Header
             generateModalRef={generateModalRef}
             viewJsonModalRef={viewJsonModalRef}
-            generateJsonFromTextModalRef={generateJsonFromTextModalRef} // Added
           />
           <div className="flex flex-row flex-grow overflow-hidden">
             <ComponentLibraryPanel />
@@ -40,7 +37,6 @@ export default function ComposeBuilderPage() {
         </div>
         <GenerateCodeModal ref={generateModalRef} />
         <ViewJsonModal ref={viewJsonModalRef} />
-        <GenerateJsonFromTextModal ref={generateJsonFromTextModalRef} /> {/* Added */}
       </DesignProvider>
     </DndProvider>
   );

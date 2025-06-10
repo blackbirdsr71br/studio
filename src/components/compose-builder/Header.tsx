@@ -4,10 +4,9 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/icons/Logo";
-import { Code, Trash2, FileJson, UploadCloud, Loader2, Keyboard } from "lucide-react"; // Added Keyboard
+import { Code, Trash2, FileJson, UploadCloud, Loader2 } from "lucide-react";
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
 import type { ViewJsonModalRef } from "./ViewJsonModal";
-import type { GenerateJsonFromTextModalRef } from "./GenerateJsonFromTextModal"; // Added
 import type { RefObject } from "react";
 import { useDesign } from "@/contexts/DesignContext";
 import {
@@ -22,10 +21,9 @@ import { useToast } from '@/hooks/use-toast';
 interface HeaderProps {
   generateModalRef: RefObject<GenerateCodeModalRef>;
   viewJsonModalRef: RefObject<ViewJsonModalRef>;
-  generateJsonFromTextModalRef: RefObject<GenerateJsonFromTextModalRef>; // Added
 }
 
-export function Header({ generateModalRef, viewJsonModalRef, generateJsonFromTextModalRef }: HeaderProps) { // Added generateJsonFromTextModalRef
+export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
   const { clearDesign, components, customComponentTemplates } = useDesign();
   const { toast } = useToast();
   const [isPublishing, setIsPublishing] = useState(false);
@@ -39,12 +37,6 @@ export function Header({ generateModalRef, viewJsonModalRef, generateJsonFromTex
   const handleViewJson = () => {
     if (viewJsonModalRef.current) {
       viewJsonModalRef.current.openModal();
-    }
-  };
-
-  const handleGenerateJsonFromText = () => { // Added handler
-    if (generateJsonFromTextModalRef.current) {
-      generateJsonFromTextModalRef.current.openModal();
     }
   };
 
@@ -132,24 +124,6 @@ export function Header({ generateModalRef, viewJsonModalRef, generateJsonFromTex
             </TooltipTrigger>
             <TooltipContent>
               <p>View/Edit Design JSON</p>
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="outline"
-                onClick={handleGenerateJsonFromText} // Added onClick
-                disabled={isPublishing} // Can be used even if canvas is empty
-                aria-label="Generate JSON from Text"
-                className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
-              >
-                <Keyboard /> 
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Generate UI from Text Commands</p>
             </TooltipContent>
           </Tooltip>
           
