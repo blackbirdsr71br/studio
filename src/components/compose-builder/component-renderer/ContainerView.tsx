@@ -31,9 +31,10 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     cornerRadiusBottomLeft = defaultRadiusForType(type),
     itemSpacing = 0,
     reverseLayout = false,
-    backgroundColor: containerBackgroundColor, // Renamed for clarity
-    borderWidth, // New for Card
-    borderColor, // New for Card
+    backgroundColor: containerBackgroundColor, 
+    contentColor: explicitContentColor, // New explicit content color
+    borderWidth, 
+    borderColor, 
   } = properties;
 
   const processDimension = (
@@ -92,9 +93,18 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     gap: `${itemSpacing}px`,
   };
   
-  if (containerBackgroundColor && typeof containerBackgroundColor === 'string' && containerBackgroundColor !== 'transparent') {
+  // Handle content color for Card (and potentially other containers in future)
+  if (type === 'Card') {
+    if (explicitContentColor && typeof explicitContentColor === 'string' && explicitContentColor.trim() !== '') {
+      (specificStyles as any)['--effective-foreground-color'] = explicitContentColor;
+    } else if (containerBackgroundColor && typeof containerBackgroundColor === 'string' && containerBackgroundColor !== 'transparent') {
+      const contrastingColor = getContrastingTextColor(containerBackgroundColor);
+      (specificStyles as any)['--effective-foreground-color'] = contrastingColor;
+    }
+    // If neither explicitContentColor nor backgroundColor is set, TextView will fall back to theme foreground
+  } else if (containerBackgroundColor && typeof containerBackgroundColor === 'string' && containerBackgroundColor !== 'transparent') {
+    // For other containers, always use contrasting color if background is set
     const contrastingColor = getContrastingTextColor(containerBackgroundColor);
-    // Cast to any because CSS custom properties are not strictly typed in React.CSSProperties
     (specificStyles as any)['--effective-foreground-color'] = contrastingColor;
   }
 
@@ -106,11 +116,10 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
   switch (type) {
     case 'Card':
       specificStyles.boxShadow = `0 ${elevation}px ${elevation * 1.5}px rgba(0,0,0,0.1), 0 ${elevation/2}px ${elevation/2}px rgba(0,0,0,0.06)`;
-      specificStyles.backgroundColor = containerBackgroundColor || '#FFFFFF';
+      specificStyles.backgroundColor = containerBackgroundColor || '#FFFFFF'; // Default Card background
       if (typeof borderWidth === 'number' && borderWidth > 0 && borderColor) {
         specificStyles.border = `${borderWidth}px solid ${borderColor}`;
       } else {
-        // Ensure border is not applied from default if not specified
         specificStyles.border = componentId === DEFAULT_ROOT_LAZY_COLUMN_ID ? 'none' : '1px dashed hsl(var(--border) / 0.3)';
       }
       break;
@@ -120,7 +129,6 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
       specificStyles.overflowY = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
       specificStyles.minHeight = '100px'; 
       if (type === 'LazyColumn') {
-        // LazyColumn doesn't typically have its own rounded corners, children might.
         delete specificStyles.borderTopLeftRadius;
         delete specificStyles.borderTopRightRadius;
         delete specificStyles.borderBottomRightRadius;
@@ -239,6 +247,8 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     baseStyle.backgroundColor = containerBackgroundColor || 'transparent'; 
     baseStyle.overflowY = 'auto'; 
     baseStyle.overflowX = 'hidden';
+    baseStyle.width = '100%';
+    baseStyle.height = '100%';
   }
 
   const placeholderText = `Drop components into this ${getComponentDisplayName(type, customComponentTemplates.find(t => t.templateId === type)?.name)}`;

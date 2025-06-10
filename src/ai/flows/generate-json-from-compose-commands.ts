@@ -81,7 +81,7 @@ Recognized properties include (but are not limited to):
 - For Image: src (string URL, use "https://placehold.co/100x100.png" if a resource is mentioned but not a URL), contentDescription (string), width (number), height (number)
 - For Button: text (string), backgroundColor (hex string), textColor (hex string)
 - For Containers (Column, Row, Box, Card, Lazy*): padding (number), backgroundColor (hex string), width (number or "match_parent" or "wrap_content"), height (number or "match_parent" or "wrap_content"), itemSpacing (number for Lazy layouts).
-  - For Card: elevation (number), cornerRadiusTopLeft (number), cornerRadiusTopRight (number), cornerRadiusBottomRight (number), cornerRadiusBottomLeft (number), borderWidth (number), borderColor (hex string).
+  - For Card: elevation (number), cornerRadiusTopLeft (number), cornerRadiusTopRight (number), cornerRadiusBottomRight (number), cornerRadiusBottomLeft (number), borderWidth (number), borderColor (hex string), contentColor (hex string).
   - For LazyVerticalGrid: columns (number).
   - For LazyHorizontalGrid: rows (number).
 
@@ -95,6 +95,7 @@ Mapping common Modifiers:
 - Modifier.clip(RoundedCornerShape(X.dp)) or .clip(RoundedCornerShape(topLeft = X.dp, ...)) -> "cornerRadiusTopLeft": X, "cornerRadiusTopRight": X, etc. (apply to all four if one value, or individual if specified)
 - Text alignment (e.g., TextAlign.Center) -> "textAlign": "Center" (for Text properties)
 - Card's border parameter: e.g., border = BorderStroke(width = X.dp, color = Color.SomeColor) -> "borderWidth": X, "borderColor": "#CorrespondingHex"
+- Card's contentColor parameter: e.g., contentColor = Color.SomeColor -> "contentColor": "#CorrespondingHex"
 
 onClick handlers or complex logic within composables should generally be ignored for the JSON structure, focus on visual properties.
 If a component type like 'Scaffold' or 'TopAppBar' is mentioned, try to represent its main content area using a 'Column' or 'Box'.
@@ -103,7 +104,7 @@ Example Input:
 \`\`\`
 Column(modifier = Modifier.padding(16.dp)) {
     Text("Welcome!", fontSize = 20.sp, color = Color.Blue)
-    Card(modifier = Modifier.clip(RoundedCornerShape(8.dp)), border = BorderStroke(1.dp, Color.Gray)) {
+    Card(modifier = Modifier.clip(RoundedCornerShape(8.dp)), border = BorderStroke(1.dp, Color.Gray), contentColor = Color.DarkGray) {
         Image(imageResource = "logo.png", contentDescription = "App Logo", modifier = Modifier.height(50.dp))
     }
 }
@@ -144,6 +145,7 @@ Example Output JSON (stringified):
             "cornerRadiusBottomLeft": 8,
             "borderWidth": 1,
             "borderColor": "#808080",
+            "contentColor": "#A9A9A9",
             "children": [
               {
                 "id": "comp-4",

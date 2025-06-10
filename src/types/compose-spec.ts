@@ -38,6 +38,7 @@ export interface BaseComponentProps {
   fontSize?: number;
   textColor?: string;
   backgroundColor?: string;
+  contentColor?: string; // Added for explicit content color control
   width?: 'wrap_content' | 'match_parent' | number;
   height?: 'wrap_content' | 'match_parent' | number;
   padding?: number;
@@ -132,7 +133,7 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
     case 'Box':
       return { ...common, children: [], padding: 0, backgroundColor: 'rgba(220, 220, 220, 0.3)', width: 100, height: 100, cornerRadiusTopLeft: 4, cornerRadiusTopRight: 4, cornerRadiusBottomRight: 4, cornerRadiusBottomLeft: 4 };
     case 'Card':
-      return { ...common, children: [], padding: 16, backgroundColor: '#FFFFFF', width: 200, height: 150, elevation: 2, cornerRadiusTopLeft: 8, cornerRadiusTopRight: 8, cornerRadiusBottomRight: 8, cornerRadiusBottomLeft: 8, borderWidth: 0, borderColor: '#000000' };
+      return { ...common, children: [], padding: 16, backgroundColor: '#FFFFFF', contentColor: undefined, width: 200, height: 150, elevation: 2, cornerRadiusTopLeft: 8, cornerRadiusTopRight: 8, cornerRadiusBottomRight: 8, cornerRadiusBottomLeft: 8, borderWidth: 0, borderColor: '#000000' };
     case 'LazyColumn':
       return {
         ...common,
@@ -345,6 +346,7 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
   Card: [
     { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '16', group: 'Layout' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'contentColor', type: 'color', label: 'Content Color', group: 'Appearance' },
     { name: 'cornerRadiusTopLeft', type: 'number', label: 'Corner Radius TL (dp)', placeholder: '8', group: 'Appearance' },
     { name: 'cornerRadiusTopRight', type: 'number', label: 'Corner Radius TR (dp)', placeholder: '8', group: 'Appearance' },
     { name: 'cornerRadiusBottomRight', type: 'number', label: 'Corner Radius BR (dp)', placeholder: '8', group: 'Appearance' },
@@ -501,6 +503,7 @@ const BaseModalPropertiesSchema = z.object({
   fontSize: z.number().optional(),
   textColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional().or(z.literal(undefined)), // Allow undefined
   backgroundColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional(),
+  contentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional().or(z.literal(undefined)),
   width: z.union([z.literal('wrap_content'), z.literal('match_parent'), z.number().min(0)]).optional(),
   height: z.union([z.literal('wrap_content'), z.literal('match_parent'), z.number().min(0)]).optional(),
   padding: z.number().min(0).optional(),

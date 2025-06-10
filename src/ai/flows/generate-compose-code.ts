@@ -67,11 +67,11 @@ const prompt = ai.definePrompt({
   For Card components, ensure you use the standard Card parameters:
   - Use the 'elevation' property from the JSON for the 'elevation' parameter of the Card (e.g., elevation = properties.elevation.dp).
   - Use the 'backgroundColor' property from the JSON for the 'backgroundColor' parameter (e.g., backgroundColor = Color(android.graphics.Color.parseColor(properties.backgroundColor))).
+  - Use the 'contentColor' property from the JSON for the 'contentColor' parameter if it is provided (e.g., contentColor = Color(android.graphics.Color.parseColor(properties.contentColor))). If 'contentColor' is not provided in the JSON, omit this parameter from the Card composable call to let Jetpack Compose use its default behavior (contentColorFor(backgroundColor)).
   - For the 'shape' parameter, use RoundedCornerShape based on the 'cornerRadius...' properties. If all four 'cornerRadius...' properties are present and equal to X, use 'shape = RoundedCornerShape(size = X.dp)'. Otherwise, if individual corner radii are provided, create a RoundedCornerShape with those specific values (e.g., shape = RoundedCornerShape(topStart = properties.cornerRadiusTopLeft.dp, ...)).
   - If the Card component has a 'borderWidth' property greater than 0 and a 'borderColor' property, apply a border using the 'border' parameter with 'BorderStroke'. Convert the hex 'borderColor' to a Compose Color. For example:
     border = BorderStroke(width = properties.borderWidth.dp, color = Color(android.graphics.Color.parseColor(properties.borderColor)))
     Remember to import androidx.compose.foundation.BorderStroke and android.graphics.Color if you use this.
-  - 'contentColor' is typically handled by contentColorFor(backgroundColor) by default in Compose or through LocalContentColor. You generally do not need to set 'contentColor' explicitly on the Card itself.
 `,
 });
 
