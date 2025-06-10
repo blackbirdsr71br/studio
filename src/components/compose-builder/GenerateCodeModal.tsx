@@ -10,7 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Copy, Download } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
 import { java as javaLang } from '@codemirror/lang-java';
-import { githubLight } from '@uiw/codemirror-theme-github';
+import { githubLight, githubDark } from '@uiw/codemirror-theme-github';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export interface GenerateCodeModalRef {
   openModal: () => void;
@@ -22,6 +23,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
   const [isLoading, setIsLoading] = useState(false);
   const { components, customComponentTemplates } = useDesign();
   const { toast } = useToast();
+  const { resolvedTheme } = useTheme();
 
   const handleCodeChange = useCallback((value: string) => {
     setGeneratedCode(value);
@@ -128,7 +130,6 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
             Edit, copy, or download the code below to use in your Android project.
           </DialogDescription>
         </DialogHeader>
-        {/* This div is the flex child that grows and shrinks. CodeMirror should fill this. */}
         <div className="flex-grow my-4 rounded-md border bg-muted/30 overflow-hidden min-h-[300px] relative">
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
@@ -140,9 +141,9 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
               value={generatedCode}
               height="100%" 
               extensions={[javaLang()]}
-              theme={githubLight}
+              theme={resolvedTheme === 'dark' ? githubDark : githubLight}
               onChange={handleCodeChange}
-              className="text-sm h-full" // Removed flex-grow, h-full should suffice
+              className="text-sm h-full" 
               basicSetup={{
                 lineNumbers: true,
                 foldGutter: true,
