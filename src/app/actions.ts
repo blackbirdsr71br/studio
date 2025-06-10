@@ -9,11 +9,11 @@ import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
 
 const REMOTE_CONFIG_PARAMETER_KEY = 'COMPOSE_DESIGN_JSON';
 
-// Helper function to remove properties with empty string values
-const cleanEmptyStringProperties = (properties: Record<string, any>): Record<string, any> => {
+// Helper function to remove properties with empty string or null values
+const cleanEmptyOrNullProperties = (properties: Record<string, any>): Record<string, any> => {
   const cleanedProperties = { ...properties };
   for (const key in cleanedProperties) {
-    if (cleanedProperties[key] === "") {
+    if (cleanedProperties[key] === "" || cleanedProperties[key] === null) {
       delete cleanedProperties[key];
     }
   }
@@ -38,7 +38,7 @@ const buildComponentTreeForAi = (
   return allComponents
     .filter(component => component.parentId === parentId)
     .map(component => {
-      let nodeProperties = cleanEmptyStringProperties({ ...component.properties });
+      let nodeProperties = cleanEmptyOrNullProperties({ ...component.properties });
 
       // For AI tree, x/y only relevant for top-level (null parentId) non-default-root components
       if (component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && !parentId) {
@@ -123,7 +123,7 @@ const buildFullComponentTreeForRemoteConfig = (
     .filter(c => c.parentId === currentParentId)
     .map(c => {
       const componentDataCopy = { ...c };
-      componentDataCopy.properties = cleanEmptyStringProperties({ ...c.properties });
+      componentDataCopy.properties = cleanEmptyOrNullProperties({ ...c.properties });
 
       const node: FullComponentTreeNodeForRemoteConfig = {
         ...componentDataCopy
@@ -177,8 +177,8 @@ const buildComponentTreeForModalJson = (
       //    We don't want the ID array in the modal JSON's properties if we're putting objects there.
       const { children: _childIdArrayFromProps, ...otherProperties } = componentBaseProperties;
 
-      // 3. Clean empty strings from the remaining otherProperties
-      const cleanedOtherProperties = cleanEmptyStringProperties(otherProperties);
+      // 3. Clean empty strings and nulls from the remaining otherProperties
+      const cleanedOtherProperties = cleanEmptyOrNullProperties(otherProperties);
 
       const node: ModalJsonNode = {
         id: component.id,
