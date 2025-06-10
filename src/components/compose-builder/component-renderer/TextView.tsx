@@ -10,31 +10,33 @@ export function TextView({ properties }: TextViewProps) {
   const {
     text = 'Text',
     fontSize = 16,
-    textColor, // Do not provide a default here, let it be undefined
+    textColor, 
     padding = 0,
     fontWeight = 'Normal',
     fontStyle = 'Normal',
     textAlign = 'Start',
     textDecoration = 'None',
-    lineHeight = 1.4, // Use the new lineHeight property
+    lineHeight = 1.4, 
   } = properties;
   
   const style: React.CSSProperties = {
-    fontSize: `${fontSize}px`, // Assuming sp is roughly px for web display
+    fontSize: `${fontSize}px`,
     padding: `${padding}px`,
-    whiteSpace: 'pre-wrap', // To respect newlines in text
+    whiteSpace: 'pre-wrap', 
     wordBreak: 'break-word',
-    lineHeight: lineHeight, // Apply the configurable lineHeight
-    display: 'inline-block', // To make padding effective
-    fontWeight: fontWeight.toLowerCase() as 'normal' | 'bold', // CSS values
-    fontStyle: fontStyle.toLowerCase() as 'normal' | 'italic', // CSS values
-    textAlign: textAlign.toLowerCase() as 'left' | 'center' | 'right' | 'justify' | 'start' | 'end', // CSS values
-    textDecorationLine: textDecoration === 'LineThrough' ? 'line-through' : textDecoration.toLowerCase(), // CSS values
+    lineHeight: lineHeight, 
+    display: 'inline-block', 
+    fontWeight: fontWeight.toLowerCase() as 'normal' | 'bold', 
+    fontStyle: fontStyle.toLowerCase() as 'normal' | 'italic', 
+    textAlign: textAlign.toLowerCase() as 'left' | 'center' | 'right' | 'justify' | 'start' | 'end', 
+    textDecorationLine: textDecoration === 'LineThrough' ? 'line-through' : textDecoration.toLowerCase(),
   };
 
-  // Only apply color if textColor is explicitly defined in properties
   if (textColor !== undefined) {
     style.color = textColor;
+  } else {
+    // Try to use the CSS variable set by parent, or fall back to global theme foreground
+    style.color = 'var(--effective-foreground-color, hsl(var(--foreground)))';
   }
 
   return (
@@ -43,5 +45,3 @@ export function TextView({ properties }: TextViewProps) {
     </div>
   );
 }
-
-    

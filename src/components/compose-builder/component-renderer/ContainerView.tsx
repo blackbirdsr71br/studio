@@ -4,6 +4,7 @@ import type { DesignComponent } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from '../RenderedComponentWrapper';
 import { getComponentDisplayName, DEFAULT_ROOT_LAZY_COLUMN_ID, isCustomComponentType } from '@/types/compose-spec';
 import { useDesign } from '@/contexts/DesignContext';
+import { getContrastingTextColor } from '@/lib/utils';
 
 interface ContainerViewProps {
   component: DesignComponent;
@@ -30,6 +31,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     cornerRadiusBottomLeft = defaultRadiusForType(type),
     itemSpacing = 0,
     reverseLayout = false,
+    backgroundColor: containerBackgroundColor, // Renamed for clarity
   } = properties;
 
   const processDimension = (
@@ -87,6 +89,13 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     borderBottomLeftRadius: `${cornerRadiusBottomLeft}px`,
     gap: `${itemSpacing}px`,
   };
+  
+  if (containerBackgroundColor && typeof containerBackgroundColor === 'string' && containerBackgroundColor !== 'transparent') {
+    const contrastingColor = getContrastingTextColor(containerBackgroundColor);
+    // Cast to any because CSS custom properties are not strictly typed in React.CSSProperties
+    (specificStyles as any)['--effective-foreground-color'] = contrastingColor;
+  }
+
 
   if (componentId !== DEFAULT_ROOT_LAZY_COLUMN_ID && type !== 'LazyColumn' && type !== 'LazyRow' && type !== 'LazyVerticalGrid' && type !== 'LazyHorizontalGrid') {
      specificStyles.overflow = 'hidden';
@@ -95,7 +104,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
   switch (type) {
     case 'Card':
       specificStyles.boxShadow = `0 ${elevation}px ${elevation * 1.5}px rgba(0,0,0,0.1), 0 ${elevation/2}px ${elevation/2}px rgba(0,0,0,0.06)`;
-      specificStyles.backgroundColor = properties.backgroundColor || '#FFFFFF';
+      specificStyles.backgroundColor = containerBackgroundColor || '#FFFFFF';
       break;
     case 'LazyColumn':
     case 'LazyVerticalGrid': 
@@ -164,9 +173,10 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
       }
       break;
     case 'Box':
-      // Box specific styles if any, already handled by default corner radius logic.
+      specificStyles.backgroundColor = containerBackgroundColor || 'transparent';
       break;
     default: // Covers Column, Row, and custom components
+      specificStyles.backgroundColor = containerBackgroundColor || 'transparent';
       if (type === 'Column' || (isCustomComponentType(type) && !isRow) ) {
           switch (properties.verticalArrangement) {
             case 'Top': specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
@@ -204,7 +214,6 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
   }
 
   const baseStyle: React.CSSProperties = {
-    backgroundColor: properties.backgroundColor || (type === 'Card' ? '#FFFFFF' : 'transparent'),
     padding: `${padding}px`,
     width: styleWidth,
     height: styleHeight,
@@ -219,7 +228,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
   };
   
   if (componentId === DEFAULT_ROOT_LAZY_COLUMN_ID) {
-    baseStyle.backgroundColor = properties.backgroundColor || 'transparent'; 
+    baseStyle.backgroundColor = containerBackgroundColor || 'transparent'; 
     baseStyle.overflowY = 'auto'; 
     baseStyle.overflowX = 'hidden';
   }

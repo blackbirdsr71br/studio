@@ -1,21 +1,29 @@
 'use client';
 import type { BaseComponentProps } from '@/types/compose-spec';
+import { getContrastingTextColor } from '@/lib/utils';
 
 interface ButtonViewProps {
   properties: BaseComponentProps;
 }
 
 export function ButtonView({ properties }: ButtonViewProps) {
-  const { text = 'Button', backgroundColor = '#3F51B5', textColor = '#FFFFFF', fontSize = 14, padding = 8 } = properties;
+  const { text = 'Button', backgroundColor = '#3F51B5', textColor, fontSize = 14, padding = 8 } = properties;
+  
+  let effectiveTextColor;
+  if (textColor && textColor.trim() !== '') {
+    effectiveTextColor = textColor;
+  } else {
+    effectiveTextColor = getContrastingTextColor(backgroundColor);
+  }
   
   const style: React.CSSProperties = {
     backgroundColor,
-    color: textColor,
+    color: effectiveTextColor,
     fontSize: `${fontSize}px`,
-    padding: `${padding}px ${padding*1.5}px`, // More horizontal padding for buttons
+    padding: `${padding}px ${padding*1.5}px`, 
     borderRadius: '4px',
     border: 'none',
-    cursor: 'default', // Not clickable on canvas
+    cursor: 'default', 
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
