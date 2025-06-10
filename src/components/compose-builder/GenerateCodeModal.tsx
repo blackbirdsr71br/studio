@@ -6,7 +6,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { useDesign } from '@/contexts/DesignContext';
 import { generateJetpackComposeCodeAction } from '@/app/actions';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Copy, Download } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
