@@ -39,14 +39,10 @@ export function DesignSurface() {
 
       if (itemType === ItemTypes.COMPONENT_LIBRARY_ITEM) {
         const libItem = item as LibraryItem;
-        // Components dropped directly on the surface are parented to the root lazy column
         addComponent(libItem.type, DEFAULT_ROOT_LAZY_COLUMN_ID, { x: dropX, y: dropY });
       } else if (itemType === ItemTypes.CANVAS_COMPONENT_ITEM) {
         const canvasItem = item as CanvasItem;
         const draggedComponent = getComponentById(canvasItem.id);
-        // If a component is dragged from a parent to the surface, it becomes a child of the root lazy column
-        // Its x,y are relative to the surface if it becomes a root child.
-        // If it was already a root child (parentId === DEFAULT_ROOT_LAZY_COLUMN_ID), its position is updated.
         if (draggedComponent) {
              moveComponent(canvasItem.id, DEFAULT_ROOT_LAZY_COLUMN_ID, { x: dropX, y: dropY });
         }
@@ -70,16 +66,18 @@ export function DesignSurface() {
 
   let showPlaceholder = false;
   let placeholderText = "";
+
   if (!rootDisplayComponent || (rootDisplayComponent.properties.children && rootDisplayComponent.properties.children.length === 0)) {
     showPlaceholder = true;
     placeholderText = "Drag components into the Root Canvas";
   }
 
+
   return (
     <div
       ref={surfaceRef}
       className={cn(
-        "bg-background relative overflow-auto border-2 border-transparent transition-colors duration-200",
+        "bg-background relative border-2 border-transparent transition-colors duration-200", // Removed overflow-auto
         "w-full h-full", 
         { 
           'drag-over-surface': isOverSurface && canDropOnSurface,
@@ -120,7 +118,7 @@ export function DesignSurface() {
         <RenderedComponentWrapper key={rootDisplayComponent.id} component={rootDisplayComponent} />
       )}
 
-      {showPlaceholder && !rootDisplayComponent?.properties?.children?.length && (
+      {showPlaceholder && (
          <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground pointer-events-none p-4 text-center">
             <p className="text-lg">{placeholderText}</p>
             <p className="text-xs mt-1">(This is your app screen)</p>
