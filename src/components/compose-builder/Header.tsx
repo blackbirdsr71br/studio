@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/icons/Logo";
-import { Code, Trash2, FileJson, UploadCloud, Loader2 } from "lucide-react";
+import { Code, Trash2, FileJson, UploadCloud, Loader2, Cog as SettingsIcon } from "lucide-react";
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
 import type { ViewJsonModalRef } from "./ViewJsonModal";
 import type { RefObject } from "react";
@@ -15,6 +15,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { SettingsPanelContent } from "./SettingsPanelContent";
 import { publishToRemoteConfigAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 
@@ -144,6 +146,29 @@ export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
               <p>Publish to Remote Config</p>
             </TooltipContent>
           </Tooltip>
+
+          <Popover>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    aria-label="Settings"
+                    className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  >
+                    <SettingsIcon />
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>Settings</p>
+              </TooltipContent>
+            </Tooltip>
+            <PopoverContent className="w-auto p-0 mr-2" align="end">
+              <SettingsPanelContent />
+            </PopoverContent>
+          </Popover>
 
           <Tooltip>
             <TooltipTrigger asChild>
