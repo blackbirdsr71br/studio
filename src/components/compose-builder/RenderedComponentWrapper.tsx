@@ -30,6 +30,23 @@ type HandleType = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
 const MIN_DIMENSION = 20; // Minimum width/height in pixels
 
+// Helper function to check if a value is a number or a string representing a number
+const isNumericValue = (value: any): boolean => {
+  if (value === null || value === undefined || typeof value === 'boolean') {
+    return false;
+  }
+  if (typeof value === 'number' && !isNaN(value)) {
+    return true;
+  }
+  if (typeof value === 'string' && value.trim() !== '') {
+    // Ensure it's not one of the keywords before attempting to parse as number
+    if (value === 'match_parent' || value === 'wrap_content') return false;
+    return !isNaN(Number(value));
+  }
+  return false;
+};
+
+
 export function RenderedComponentWrapper({ component }: RenderedComponentWrapperProps) {
   const { selectedComponentId, selectComponent, getComponentById, addComponent, moveComponent, updateComponent, customComponentTemplates } = useDesign();
   const ref = useRef<HTMLDivElement>(null);
@@ -147,8 +164,8 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       newHeight = Math.max(newHeight, MIN_DIMENSION);
 
       const updatedProps: Record<string, any> = {
-        width: Math.round(newWidth),
-        height: Math.round(newHeight),
+        width: Math.round(newWidth), // Stored as number
+        height: Math.round(newHeight), // Stored as number
       };
       
       updateComponent(component.id, { properties: updatedProps });
@@ -213,8 +230,8 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
   
   const wrapperStyle: React.CSSProperties = {
     transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
-    width: component.properties.width === 'match_parent' ? '100%' : component.properties.width === 'wrap_content' ? 'auto' : `${component.properties.width}px`,
-    height: component.properties.height === 'match_parent' ? '100%' : component.properties.height === 'wrap_content' ? 'auto' : `${component.properties.height}px`,
+    width: component.properties.width === 'match_parent' ? '100%' : component.properties.width === 'wrap_content' ? 'auto' : (isNumericValue(component.properties.width) ? `${component.properties.width}px` : 'auto'),
+    height: component.properties.height === 'match_parent' ? '100%' : component.properties.height === 'wrap_content' ? 'auto' : (isNumericValue(component.properties.height) ? `${component.properties.height}px` : 'auto'),
     position: component.id === DEFAULT_ROOT_LAZY_COLUMN_ID || component.parentId ? 'relative' : 'absolute',
     left: component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && !component.parentId ? `${component.properties.x || 0}px` : undefined,
     top: component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && !component.parentId ? `${component.properties.y || 0}px` : undefined,
@@ -231,12 +248,10 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     ? 'drag-over-container'
     : '';
 
-  const showResizeHandles = isSelected && 
-                          component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && 
-                          component.properties.width !== 'match_parent' && 
-                          component.properties.height !== 'match_parent' && 
-                          typeof component.properties.width === 'number' && 
-                          typeof component.properties.height === 'number';
+  const showResizeHandles = isSelected &&
+                          component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID &&
+                          isNumericValue(component.properties.width) &&
+                          isNumericValue(component.properties.height);
 
   return (
     <div
@@ -272,6 +287,3 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     </div>
   );
 }
-
-
-    

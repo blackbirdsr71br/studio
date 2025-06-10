@@ -12,6 +12,23 @@ interface ContainerViewProps {
   isRow: boolean; 
 }
 
+// Helper function to check if a value is a number or a string representing a number
+const isNumericString = (value: any): boolean => {
+  if (value === null || value === undefined || typeof value === 'boolean') {
+    return false;
+  }
+  if (typeof value === 'number' && !isNaN(value)) {
+    return true; // It's a number
+  }
+  if (typeof value === 'string' && value.trim() !== '') {
+    // Ensure it's not one of the keywords before attempting to parse as number
+    if (value === 'match_parent' || value === 'wrap_content') return false;
+    return !isNaN(Number(value)); // It's a string that can be converted to a number
+  }
+  return false;
+};
+
+
 export function ContainerView({ component, childrenComponents, isRow }: ContainerViewProps) {
   const { type, properties, id: componentId } = component;
   const { customComponentTemplates } = useDesign(); 
@@ -40,15 +57,17 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
   const processDimension = (
     dimValue: string | number | undefined,
     defaultValueIfUndefined: string | number,
-    isInnerDimension = false // Added flag for children where 'match_parent' might mean something different or isn't directly applicable
+    isInnerDimension = false 
   ): string => {
     if (typeof dimValue === 'number') return `${dimValue}px`;
-    if (dimValue === 'match_parent') return isInnerDimension ? '100%' : '100%'; // For top-level wrapper, 100% is fine.
+    if (dimValue === 'match_parent') return '100%'; 
     if (dimValue === 'wrap_content') return 'auto';
-    if (typeof dimValue === 'string' && dimValue.endsWith('%')) return dimValue; // Allow percentage strings directly
+    if (typeof dimValue === 'string' && isNumericString(dimValue)) return `${Number(dimValue)}px`; // Handle numeric strings
+    if (typeof dimValue === 'string' && dimValue.endsWith('%')) return dimValue; 
     
-    // Fallback for default values
     if (typeof defaultValueIfUndefined === 'number') return `${defaultValueIfUndefined}px`;
+    if (defaultValueIfUndefined === 'match_parent') return '100%';
+    if (defaultValueIfUndefined === 'wrap_content') return 'auto';
     return defaultValueIfUndefined.toString();
   };
   
@@ -122,7 +141,8 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
       if (typeof borderWidth === 'number' && borderWidth > 0 && borderColor) {
         specificStyles.border = `${borderWidth}px solid ${borderColor}`;
       } else {
-        specificStyles.border = componentId === DEFAULT_ROOT_LAZY_COLUMN_ID ? 'none' : '1px dashed hsl(var(--border) / 0.3)';
+        // For consistency, if not a border from properties, use the default dashed border for non-root, non-lazy components
+         specificStyles.border = (componentId === DEFAULT_ROOT_LAZY_COLUMN_ID || type.startsWith('Lazy')) ? 'none' : '1px dashed hsl(var(--border) / 0.3)';
       }
       break;
     case 'LazyColumn':
@@ -237,10 +257,10 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     height: styleHeight,
     display: 'flex',
     flexDirection: flexDirection,
-    border: componentId === DEFAULT_ROOT_LAZY_COLUMN_ID || type === 'Card' ? specificStyles.border : '1px dashed hsl(var(--border) / 0.3)',
+    border: (componentId === DEFAULT_ROOT_LAZY_COLUMN_ID || type.startsWith('Lazy') || type === 'Card') ? specificStyles.border : '1px dashed hsl(var(--border) / 0.3)',
     position: 'relative', 
-    minWidth: (componentId === DEFAULT_ROOT_LAZY_COLUMN_ID || properties.width === 'match_parent' ) ? '100%' : (properties.width === 'wrap_content' ? 'auto' : '60px'),
-    minHeight: (componentId === DEFAULT_ROOT_LAZY_COLUMN_ID || properties.height === 'match_parent') ? '100%' : (properties.height === 'wrap_content' ? 'auto' : '60px'),
+    minWidth: (componentId === DEFAULT_ROOT_LAZY_COLUMN_ID || properties.width === 'match_parent' ) ? '100%' : (properties.width === 'wrap_content' || !isNumericString(properties.width) ? 'auto' : '60px'),
+    minHeight: (componentId === DEFAULT_ROOT_LAZY_COLUMN_ID || properties.height === 'match_parent') ? '100%' : (properties.height === 'wrap_content' || !isNumericString(properties.height) ? 'auto' : '60px'),
     boxSizing: 'border-box', 
     ...specificStyles,
   };
@@ -270,15 +290,18 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
         let childSpecificStyle: React.CSSProperties = {};
         if (isWeightedContainer && child.properties.layoutWeight && child.properties.layoutWeight > 0) {
             childSpecificStyle.flexGrow = child.properties.layoutWeight;
-            childSpecificStyle.flexShrink = 1; // Default shrink behavior for weighted items
-            childSpecificStyle.flexBasis = '0%'; // Important for weight to work correctly
-             // If weight is applied, explicit width/height on the child might conflict or be ignored by flexbox.
-            // Depending on desired behavior, you might want to not set width/height here if weight is active,
-            // or let flexbox manage it. For Compose's Modifier.weight, width/height on the weighted item are usually ignored for that axis.
-            if (flexDirection === 'row') delete childSpecificStyle.width; else delete childSpecificStyle.height;
+            childSpecificStyle.flexShrink = 1; 
+            childSpecificStyle.flexBasis = '0%'; 
+            if (flexDirection === 'row') {
+                // If weighted in a row, width is controlled by weight, height can be set
+                childSpecificStyle.width = 'auto'; // or processDimension for child.properties.width if you want to allow fixed width too
+            } else { // Column
+                // If weighted in a column, height is controlled by weight, width can be set
+                childSpecificStyle.height = 'auto'; // or processDimension for child.properties.height
+            }
         }
         return (
-          <div key={child.id} style={childSpecificStyle} className="flex"> {/* Wrapper div for flex properties */}
+          <div key={child.id} style={childSpecificStyle} className="flex"> 
             <RenderedComponentWrapper component={child} />
           </div>
         );
