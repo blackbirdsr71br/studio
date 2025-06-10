@@ -55,26 +55,26 @@ body {
   }
 
   .dark {
-    --background: 220 13% 10%; /* Dark cool grey */
+    --background: 220 10% 15%; /* Dark cool grey - Updated for canvas */
     --foreground: 0 0% 98%; /* White */
 
-    --card: 220 13% 12%; /* Slightly lighter dark cool grey for cards */
+    --card: 220 13% 12%; /* Slightly lighter dark cool grey for cards - will be darker than new background */
     --card-foreground: 0 0% 98%; /* White */
 
-    --popover: 220 13% 12%; /* Consistent with card */
+    --popover: 220 13% 12%; /* Consistent with card - will be darker than new background */
     --popover-foreground: 0 0% 98%; /* White */
 
     --primary: 260 70% 65%; /* Vibrant violet/blue */
-    --primary-foreground: 260 70% 15%; /* Darker text for primary contrast */
+    --primary-foreground: 0 0% 98%; /* Updated primary-foreground for better contrast on new primary */
 
-    --secondary: 220 10% 20%; /* Medium-dark cool grey */
+    --secondary: 220 10% 20%; /* Medium-dark cool grey - will be lighter than new background */
     --secondary-foreground: 0 0% 90%; /* Very light grey */
 
-    --muted: 220 10% 25%; /* Slightly lighter medium-dark cool grey */
+    --muted: 220 10% 25%; /* Slightly lighter medium-dark cool grey - will be lighter than new background */
     --muted-foreground: 0 0% 65%; /* Lighter grey */
 
     --accent: 300 70% 65%; /* Vibrant magenta/pink */
-    --accent-foreground: 300 70% 15%; /* Darker text for accent contrast */
+    --accent-foreground: 0 0% 98%; /* Updated accent-foreground for better contrast */
 
     --destructive: 0 70% 55%; /* Adjusted destructive red for dark theme */
     --destructive-foreground: 0 0% 98%; /* Light text on destructive */
@@ -93,9 +93,9 @@ body {
     --sidebar-background: 220 13% 14%; /* Darker sidebar background */
     --sidebar-foreground: 0 0% 95%; /* Off-white sidebar text */
     --sidebar-primary: 260 70% 65%; /* Consistent with main primary */
-    --sidebar-primary-foreground: 260 70% 15%;
+    --sidebar-primary-foreground: 0 0% 98%;
     --sidebar-accent: 300 70% 65%; /* Consistent with main accent */
-    --sidebar-accent-foreground: 300 70% 15%;
+    --sidebar-accent-foreground: 0 0% 98%;
     --sidebar-border: 220 10% 22%; /* Consistent with input background */
     --sidebar-ring: 260 70% 65%; /* Consistent with main ring */
   }
