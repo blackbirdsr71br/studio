@@ -2,8 +2,8 @@
 'use client';
 
 import type { ComponentType } from "@/types/compose-spec";
-import { getComponentDisplayName, isCustomComponentType } from "@/types/compose-spec";
-import { GripVertical } from "lucide-react";
+import { getComponentDisplayName } from "@/types/compose-spec";
+// GripVertical removed as it's no longer used in the new design
 import type { Icon as LucideIcon } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useDrag } from 'react-dnd';
@@ -25,7 +25,7 @@ export function DraggableComponentItem({ type, Icon, displayName }: DraggableCom
     }),
   }));
 
-  const nameForTooltip = displayName || getComponentDisplayName(type);
+  const nameForDisplay = displayName || getComponentDisplayName(type);
 
   return (
     <Tooltip>
@@ -33,20 +33,20 @@ export function DraggableComponentItem({ type, Icon, displayName }: DraggableCom
         <div
           ref={drag} 
           className={cn(
-            "flex items-center p-0.5 mb-2 border border-sidebar bg-card rounded-md shadow-sm hover:shadow-md cursor-grab transition-all duration-150 ease-in-out active:cursor-grabbing hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+            "flex flex-col items-center p-2 mb-2 border border-sidebar-border bg-card rounded-md shadow-sm hover:shadow-md cursor-grab transition-all duration-150 ease-in-out active:cursor-grabbing hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group", // Added 'group' for hover effects on children
             isDragging && "opacity-50 cursor-grabbing"
           )}
-          aria-label={`Drag to add ${nameForTooltip} component`}
+          aria-label={`Drag to add ${nameForDisplay} component`}
         >
-          <GripVertical className="h-[30px] w-[30px] text-sidebar-foreground opacity-70" />
-          <Icon className="h-[30px] w-[30px] text-sidebar-primary ml-1" />
+          <Icon className="h-7 w-7 text-sidebar-primary mb-1" /> {/* Icon (image) */}
+          <p className="text-xs text-center text-sidebar-foreground group-hover:text-sidebar-accent-foreground break-words w-full px-1">
+            {nameForDisplay} {/* Text below */}
+          </p>
         </div>
       </TooltipTrigger>
       <TooltipContent side="right" align="center">
-        <p>{nameForTooltip}</p>
+        <p>{nameForDisplay}</p>
       </TooltipContent>
     </Tooltip>
   );
 }
-
-    
