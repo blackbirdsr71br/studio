@@ -5,7 +5,6 @@ import { RenderedComponentWrapper } from '../RenderedComponentWrapper';
 import { getComponentDisplayName, DEFAULT_ROOT_LAZY_COLUMN_ID, isCustomComponentType } from '@/types/compose-spec';
 import { useDesign } from '@/contexts/DesignContext';
 
-
 interface ContainerViewProps {
   component: DesignComponent;
   childrenComponents: DesignComponent[];
@@ -14,12 +13,21 @@ interface ContainerViewProps {
 
 export function ContainerView({ component, childrenComponents, isRow }: ContainerViewProps) {
   const { type, properties, id: componentId } = component;
-  const { customComponentTemplates } = useDesign(); // For checking root of custom component template
+  const { customComponentTemplates } = useDesign(); 
+
+  const defaultRadiusForType = (currentType: DesignComponent['type']) => {
+    if (currentType === 'Card') return 8;
+    if (currentType === 'Box') return 4;
+    return 0;
+  };
 
   const {
     padding = (componentId === DEFAULT_ROOT_LAZY_COLUMN_ID ? 8 : 0),
     elevation = (type === 'Card' ? 2 : 0),
-    cornerRadius = (type === 'Card' ? 8 : (type === 'Box' ? 4 : 0)),
+    cornerRadiusTopLeft = defaultRadiusForType(type),
+    cornerRadiusTopRight = defaultRadiusForType(type),
+    cornerRadiusBottomRight = defaultRadiusForType(type),
+    cornerRadiusBottomLeft = defaultRadiusForType(type),
     itemSpacing = 0,
     reverseLayout = false,
   } = properties;
@@ -58,13 +66,11 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     if (template) {
         const rootTemplateComp = template.componentTree.find(c => c.id === template.rootComponentId);
         if (rootTemplateComp) {
-            // Use defaults from the template's root component properties if available
             defaultWidth = rootTemplateComp.properties.width || 'wrap_content';
             defaultHeight = rootTemplateComp.properties.height || 'wrap_content';
         }
     }
   }
-
 
   const styleWidth = processDimension(properties.width, defaultWidth);
   const styleHeight = processDimension(properties.height, defaultHeight);
@@ -75,14 +81,16 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
   }
 
   let specificStyles: React.CSSProperties = {
-    borderRadius: `${cornerRadius}px`,
+    borderTopLeftRadius: `${cornerRadiusTopLeft}px`,
+    borderTopRightRadius: `${cornerRadiusTopRight}px`,
+    borderBottomRightRadius: `${cornerRadiusBottomRight}px`,
+    borderBottomLeftRadius: `${cornerRadiusBottomLeft}px`,
     gap: `${itemSpacing}px`,
   };
 
   if (componentId !== DEFAULT_ROOT_LAZY_COLUMN_ID && type !== 'LazyColumn' && type !== 'LazyRow' && type !== 'LazyVerticalGrid' && type !== 'LazyHorizontalGrid') {
      specificStyles.overflow = 'hidden';
   }
-
 
   switch (type) {
     case 'Card':
@@ -94,7 +102,13 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
       flexDirection = reverseLayout ? 'column-reverse' : 'column';
       specificStyles.overflowY = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
       specificStyles.minHeight = '100px'; 
-      if (type === 'LazyColumn') delete specificStyles.borderRadius;
+      if (type === 'LazyColumn') {
+        // LazyColumn doesn't typically have its own rounded corners, children might.
+        delete specificStyles.borderTopLeftRadius;
+        delete specificStyles.borderTopRightRadius;
+        delete specificStyles.borderBottomRightRadius;
+        delete specificStyles.borderBottomLeftRadius;
+      }
 
       switch (properties.verticalArrangement) {
         case 'Top': specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
@@ -121,7 +135,12 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
       flexDirection = reverseLayout ? 'row-reverse' : 'row';
       specificStyles.overflowX = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
       specificStyles.minHeight = '80px'; 
-      if (type === 'LazyRow') delete specificStyles.borderRadius;
+       if (type === 'LazyRow') {
+        delete specificStyles.borderTopLeftRadius;
+        delete specificStyles.borderTopRightRadius;
+        delete specificStyles.borderBottomRightRadius;
+        delete specificStyles.borderBottomLeftRadius;
+      }
 
       switch (properties.horizontalArrangement) {
           case 'Start': specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
@@ -145,6 +164,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
       }
       break;
     case 'Box':
+      // Box specific styles if any, already handled by default corner radius logic.
       break;
     default: // Covers Column, Row, and custom components
       if (type === 'Column' || (isCustomComponentType(type) && !isRow) ) {
@@ -199,7 +219,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
   };
   
   if (componentId === DEFAULT_ROOT_LAZY_COLUMN_ID) {
-    baseStyle.backgroundColor = properties.backgroundColor || 'transparent'; // Ensure root matches context
+    baseStyle.backgroundColor = properties.backgroundColor || 'transparent'; 
     baseStyle.overflowY = 'auto'; 
     baseStyle.overflowX = 'hidden';
   }
@@ -221,6 +241,3 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     </div>
   );
 }
-
-
-    

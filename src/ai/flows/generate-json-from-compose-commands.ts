@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Converts Jetpack Compose-like text commands into a structured JSON representation of the UI design.
@@ -80,7 +81,7 @@ Recognized properties include (but are not limited to):
 - For Image: src (string URL, use "https://placehold.co/100x100.png" if a resource is mentioned but not a URL), contentDescription (string), width (number), height (number)
 - For Button: text (string), backgroundColor (hex string), textColor (hex string)
 - For Containers (Column, Row, Box, Card, Lazy*): padding (number), backgroundColor (hex string), width (number or "match_parent" or "wrap_content"), height (number or "match_parent" or "wrap_content"), itemSpacing (number for Lazy layouts).
-  - For Card: elevation (number), cornerRadius (number).
+  - For Card: elevation (number), cornerRadiusTopLeft (number), cornerRadiusTopRight (number), cornerRadiusBottomRight (number), cornerRadiusBottomLeft (number).
   - For LazyVerticalGrid: columns (number).
   - For LazyHorizontalGrid: rows (number).
 
@@ -91,6 +92,7 @@ Mapping common Modifiers:
 - Modifier.width(X.dp) -> "width": X
 - Modifier.height(X.dp) -> "height": X
 - Modifier.background(Color.SomeColor) -> "backgroundColor": "#CorrespondingHex" (e.g., Color.Red -> "#FF0000", Color.Blue -> "#0000FF", Color.Green -> "#008000", Color.White -> "#FFFFFF", Color.Black -> "#000000", Color.Gray -> "#808080"). If an unknown color, use a sensible default like "#CCCCCC".
+- Modifier.clip(RoundedCornerShape(X.dp)) or .clip(RoundedCornerShape(topLeft = X.dp, ...)) -> "cornerRadiusTopLeft": X, "cornerRadiusTopRight": X, etc. (apply to all four if one value, or individual if specified)
 - Text alignment (e.g., TextAlign.Center) -> "textAlign": "Center" (for Text properties)
 
 onClick handlers or complex logic within composables should generally be ignored for the JSON structure, focus on visual properties.
@@ -100,7 +102,9 @@ Example Input:
 \`\`\`
 Column(modifier = Modifier.padding(16.dp)) {
     Text("Welcome!", fontSize = 20.sp, color = Color.Blue)
-    Image(imageResource = "logo.png", contentDescription = "App Logo", modifier = Modifier.height(50.dp))
+    Card(modifier = Modifier.clip(RoundedCornerShape(8.dp))) {
+        Image(imageResource = "logo.png", contentDescription = "App Logo", modifier = Modifier.height(50.dp))
+    }
 }
 Button(text = "Submit")
 \`\`\`
@@ -129,22 +133,36 @@ Example Output JSON (stringified):
         },
         {
           "id": "comp-3",
-          "type": "Image",
-          "name": "Image 3",
+          "type": "Card",
+          "name": "Card 3",
           "parentId": "comp-1",
           "properties": {
-            "src": "https://placehold.co/100x50.png",
-            "contentDescription": "App Logo",
-            "height": 50
+            "cornerRadiusTopLeft": 8,
+            "cornerRadiusTopRight": 8,
+            "cornerRadiusBottomRight": 8,
+            "cornerRadiusBottomLeft": 8,
+            "children": [
+              {
+                "id": "comp-4",
+                "type": "Image",
+                "name": "Image 4",
+                "parentId": "comp-3",
+                "properties": {
+                  "src": "https://placehold.co/100x50.png",
+                  "contentDescription": "App Logo",
+                  "height": 50
+                }
+              }
+            ]
           }
         }
       ]
     }
   },
   {
-    "id": "comp-4",
+    "id": "comp-5",
     "type": "Button",
-    "name": "Button 4",
+    "name": "Button 5",
     "parentId": "${DEFAULT_ROOT_LAZY_COLUMN_ID}",
     "properties": {
       "text": "Submit"

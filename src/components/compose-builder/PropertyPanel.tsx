@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ReactNode } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { generateImageFromHintAction } from '@/app/actions';
+import { Separator } from '../ui/separator';
 
 interface GroupedProperties {
   [groupName: string]: ReactNode[];
@@ -46,7 +47,6 @@ export function PropertyPanel() {
     if (propDef.type === 'enum' && propDef.options && propDef.options.length > 0) return propDef.options[0].value;
     return '';
   };
-
 
   const componentPropsDef = (propertyDefinitions[selectedComponent.type as ComponentType] || []) as (Omit<ComponentProperty, 'value'> & { group: string })[];
 
@@ -115,7 +115,6 @@ export function PropertyPanel() {
     }
   };
 
-
   const groupedProperties: GroupedProperties = {};
   const propertyGroups: string[] = [];
 
@@ -136,20 +135,85 @@ export function PropertyPanel() {
       />
     );
   });
+
+  // Special handling for "Corner Radius (All)" for relevant components
+  if (['Image', 'Box', 'Card'].includes(selectedComponent.type)) {
+    const {
+        cornerRadiusTopLeft,
+        cornerRadiusTopRight,
+        cornerRadiusBottomRight,
+        cornerRadiusBottomLeft,
+    } = selectedComponent.properties;
+
+    const allCornersHaveValue = 
+        cornerRadiusTopLeft !== undefined &&
+        cornerRadiusTopRight !== undefined &&
+        cornerRadiusBottomRight !== undefined &&
+        cornerRadiusBottomLeft !== undefined;
+
+    const allCornersAreEqual =
+        allCornersHaveValue &&
+        cornerRadiusTopLeft === cornerRadiusTopRight &&
+        cornerRadiusTopLeft === cornerRadiusBottomRight &&
+        cornerRadiusTopLeft === cornerRadiusBottomLeft;
+
+    const allCornersValue = allCornersAreEqual ? (cornerRadiusTopLeft ?? '') : ''; 
+
+    const handleAllCornersChange = (value: string | number | boolean) => {
+        const strValue = String(value);
+        const numValue = parseFloat(strValue);
+
+        if (strValue === '' || ( !isNaN(numValue) && numValue >= 0)) {
+            const finalValue = strValue === '' ? 0 : numValue; // Default to 0 if cleared
+            updateComponent(selectedComponent.id, {
+                properties: {
+                    cornerRadiusTopLeft: finalValue,
+                    cornerRadiusTopRight: finalValue,
+                    cornerRadiusBottomRight: finalValue,
+                    cornerRadiusBottomLeft: finalValue,
+                },
+            });
+        }
+    };
+
+    const allCornersEditor = (
+      <React.Fragment key="cornerRadiusAllFragment">
+        <div className="space-y-1.5">
+            <Label htmlFor="prop-cornerRadiusAll" className="text-xs font-semibold">Corner Radius (All dp)</Label>
+            <Input
+                id="prop-cornerRadiusAll"
+                type="number"
+                value={allCornersValue}
+                onChange={(e) => handleAllCornersChange(e.target.value)}
+                placeholder="Mixed"
+                className="h-8 text-sm"
+            />
+        </div>
+        <Separator className="my-3 bg-sidebar-border/50" />
+      </React.Fragment>
+    );
+
+    if (!groupedProperties['Appearance']) {
+        groupedProperties['Appearance'] = [];
+        if (!propertyGroups.includes('Appearance')) {
+            propertyGroups.push('Appearance');
+        }
+    }
+    groupedProperties['Appearance'].unshift(allCornersEditor);
+  }
   
   propertyGroups.sort((a, b) => {
     const indexA = PREFERRED_GROUP_ORDER.indexOf(a);
     const indexB = PREFERRED_GROUP_ORDER.indexOf(b);
 
-    if (indexA !== -1 && indexB !== -1) return indexA - indexB; // Both in preferred order
-    if (indexA !== -1) return -1; // Only A is in preferred order
-    if (indexB !== -1) return 1;  // Only B is in preferred order
-    return a.localeCompare(b); // Fallback to alphabetical for non-preferred
+    if (indexA !== -1 && indexB !== -1) return indexA - indexB; 
+    if (indexA !== -1) return -1; 
+    if (indexB !== -1) return 1;  
+    return a.localeCompare(b); 
   });
 
   const componentDisplayName = getComponentDisplayName(selectedComponent.type);
   const canSaveAsCustom = selectedComponentId !== DEFAULT_ROOT_LAZY_COLUMN_ID;
-
 
   return (
     <aside className="w-72 border-l bg-sidebar p-4 flex flex-col shrink-0">
@@ -225,7 +289,3 @@ export function PropertyPanel() {
     </aside>
   );
 }
-
-
-
-    

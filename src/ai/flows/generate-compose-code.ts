@@ -43,7 +43,7 @@ const prompt = ai.definePrompt({
   name: 'generateComposeCodePrompt',
   input: {schema: GenerateComposeCodeInputSchema},
   output: {schema: GenerateComposeCodeOutputSchema},
-  prompt: `You are a skilled Jetpack Compose developer. Generate Jetpack Compose code based on the following JSON representation of the UI design:
+  prompt: `You are a skilled Jetpack Compose developer. Generate Jetpack Compose code based on the following JSON representation of the UI design.
 
   Design JSON:
   \`\`\`json
@@ -54,6 +54,15 @@ const prompt = ai.definePrompt({
   Do not include any comments unless they are necessary to explain complex logic.
   The code should be ready to be copy and pasted into an Android project.
   Do not include a full composable code including imports and package names, only the composable definition with @Composable annotation.
+
+  When a component (like Card, Box, Image) has 'cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft' properties, apply them using a Modifier.clip(RoundedCornerShape(...)) with individual corner sizes. For example:
+  Modifier.clip(RoundedCornerShape(
+    topStart = properties.cornerRadiusTopLeft.dp,
+    topEnd = properties.cornerRadiusTopRight.dp,
+    bottomEnd = properties.cornerRadiusBottomRight.dp,
+    bottomStart = properties.cornerRadiusBottomLeft.dp
+  ))
+  If all four corner radius properties are present and equal, you can use the simpler Modifier.clip(RoundedCornerShape(size = X.dp)).
 `,
 });
 

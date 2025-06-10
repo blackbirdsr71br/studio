@@ -49,7 +49,11 @@ export interface BaseComponentProps {
   src?: string;
   "data-ai-hint"?: string;
   elevation?: number; // For Card
-  cornerRadius?: number; // For Card, Box, Image
+  // cornerRadius?: number; // For Card, Box, Image - REMOVED
+  cornerRadiusTopLeft?: number;
+  cornerRadiusTopRight?: number;
+  cornerRadiusBottomRight?: number;
+  cornerRadiusBottomLeft?: number;
   columns?: number; // For LazyVerticalGrid
   rows?: number; // For LazyHorizontalGrid
   maxLines?: number; // For Text
@@ -119,15 +123,15 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
     case 'Button':
       return { ...common, text: 'Click Me', backgroundColor: '#3F51B5', textColor: '#FFFFFF', padding: 12 };
     case 'Image':
-      return { ...common, src: 'https://placehold.co/200x100.png', contentDescription: 'Placeholder Image', width: 200, height: 100, "data-ai-hint": "abstract pattern", contentScale: 'Crop', cornerRadius: 0 };
+      return { ...common, src: 'https://placehold.co/200x100.png', contentDescription: 'Placeholder Image', width: 200, height: 100, "data-ai-hint": "abstract pattern", contentScale: 'Crop', cornerRadiusTopLeft: 0, cornerRadiusTopRight: 0, cornerRadiusBottomRight: 0, cornerRadiusBottomLeft: 0 };
     case 'Column':
       return { ...common, children: [], padding: 8, backgroundColor: 'rgba(224, 224, 224, 0.5)', width: 200, height: 200, itemSpacing: 0, verticalArrangement: 'Top', horizontalAlignment: 'Start' };
     case 'Row':
       return { ...common, children: [], padding: 8, backgroundColor: 'rgba(224, 224, 224, 0.5)', width: 200, height: 100, itemSpacing: 0, horizontalArrangement: 'Start', verticalAlignment: 'Top' };
     case 'Box':
-      return { ...common, children: [], padding: 0, backgroundColor: 'rgba(220, 220, 220, 0.3)', width: 100, height: 100, cornerRadius: 4 };
+      return { ...common, children: [], padding: 0, backgroundColor: 'rgba(220, 220, 220, 0.3)', width: 100, height: 100, cornerRadiusTopLeft: 4, cornerRadiusTopRight: 4, cornerRadiusBottomRight: 4, cornerRadiusBottomLeft: 4 };
     case 'Card':
-      return { ...common, children: [], padding: 16, backgroundColor: '#FFFFFF', width: 200, height: 150, elevation: 2, cornerRadius: 8 };
+      return { ...common, children: [], padding: 16, backgroundColor: '#FFFFFF', width: 200, height: 150, elevation: 2, cornerRadiusTopLeft: 8, cornerRadiusTopRight: 8, cornerRadiusBottomRight: 8, cornerRadiusBottomLeft: 8 };
     case 'LazyColumn':
       return {
         ...common,
@@ -267,7 +271,10 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '100', group: 'Layout' },
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '100', group: 'Layout' },
     { name: 'data-ai-hint', type: 'string', label: 'AI Hint (for placeholder/generation)', placeholder: 'e.g. "landscape sunset"', group: 'Content'},
-    { name: 'cornerRadius', type: 'number', label: 'Corner Radius (dp)', placeholder: '0', group: 'Appearance' },
+    { name: 'cornerRadiusTopLeft', type: 'number', label: 'Corner Radius TL (dp)', placeholder: '0', group: 'Appearance' },
+    { name: 'cornerRadiusTopRight', type: 'number', label: 'Corner Radius TR (dp)', placeholder: '0', group: 'Appearance' },
+    { name: 'cornerRadiusBottomRight', type: 'number', label: 'Corner Radius BR (dp)', placeholder: '0', group: 'Appearance' },
+    { name: 'cornerRadiusBottomLeft', type: 'number', label: 'Corner Radius BL (dp)', placeholder: '0', group: 'Appearance' },
     {
       name: 'contentScale',
       type: 'enum',
@@ -327,14 +334,20 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
   Box: [
     { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '0', group: 'Layout' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    { name: 'cornerRadius', type: 'number', label: 'Corner Radius (dp)', placeholder: '4', group: 'Appearance' },
+    { name: 'cornerRadiusTopLeft', type: 'number', label: 'Corner Radius TL (dp)', placeholder: '0', group: 'Appearance' },
+    { name: 'cornerRadiusTopRight', type: 'number', label: 'Corner Radius TR (dp)', placeholder: '0', group: 'Appearance' },
+    { name: 'cornerRadiusBottomRight', type: 'number', label: 'Corner Radius BR (dp)', placeholder: '0', group: 'Appearance' },
+    { name: 'cornerRadiusBottomLeft', type: 'number', label: 'Corner Radius BL (dp)', placeholder: '0', group: 'Appearance' },
     { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '100', group: 'Layout' },
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '100', group: 'Layout' },
   ],
   Card: [
     { name: 'padding', type: 'number', label: 'Padding (dp)', placeholder: '16', group: 'Layout' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    { name: 'cornerRadius', type: 'number', label: 'Corner Radius (dp)', placeholder: '8', group: 'Appearance' },
+    { name: 'cornerRadiusTopLeft', type: 'number', label: 'Corner Radius TL (dp)', placeholder: '0', group: 'Appearance' },
+    { name: 'cornerRadiusTopRight', type: 'number', label: 'Corner Radius TR (dp)', placeholder: '0', group: 'Appearance' },
+    { name: 'cornerRadiusBottomRight', type: 'number', label: 'Corner Radius BR (dp)', placeholder: '0', group: 'Appearance' },
+    { name: 'cornerRadiusBottomLeft', type: 'number', label: 'Corner Radius BL (dp)', placeholder: '0', group: 'Appearance' },
     { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '200', group: 'Layout' },
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '150', group: 'Layout' },
     { name: 'elevation', type: 'number', label: 'Elevation (dp)', placeholder: '2', group: 'Appearance' },
@@ -492,7 +505,10 @@ const BaseModalPropertiesSchema = z.object({
   src: z.string().url("Must be a valid URL for Image src").or(z.string().startsWith("data:image/")).optional(), // Allow data URIs
   "data-ai-hint": z.string().optional(),
   elevation: z.number().min(0).optional(),
-  cornerRadius: z.number().min(0).optional(),
+  cornerRadiusTopLeft: z.number().min(0).optional(),
+  cornerRadiusTopRight: z.number().min(0).optional(),
+  cornerRadiusBottomRight: z.number().min(0).optional(),
+  cornerRadiusBottomLeft: z.number().min(0).optional(),
   columns: z.number().int().min(1).optional(),
   rows: z.number().int().min(1).optional(),
   maxLines: z.number().int().min(1).optional(),
@@ -549,7 +565,3 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
 
 // Zod schema for the entire JSON structure in the modal (an array of root-level user components)
 export const ModalJsonSchema = z.array(ModalComponentNodeSchema);
-
-    
-
-    
