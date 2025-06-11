@@ -4,9 +4,10 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/icons/Logo";
-import { Code, Trash2, FileJson, UploadCloud, Loader2, Cog as SettingsIcon } from "lucide-react";
+import { Code, Trash2, FileJson, UploadCloud, Loader2, Cog as SettingsIcon, Palette } from "lucide-react"; // Added Palette
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
 import type { ViewJsonModalRef } from "./ViewJsonModal";
+import type { ThemeEditorModalRef } from "./ThemeEditorModal"; // Import new modal ref type
 import type { RefObject } from "react";
 import { useDesign } from "@/contexts/DesignContext";
 import {
@@ -23,9 +24,10 @@ import { useToast } from '@/hooks/use-toast';
 interface HeaderProps {
   generateModalRef: RefObject<GenerateCodeModalRef>;
   viewJsonModalRef: RefObject<ViewJsonModalRef>;
+  themeEditorModalRef: RefObject<ThemeEditorModalRef>; // Add prop for theme editor modal
 }
 
-export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
+export function Header({ generateModalRef, viewJsonModalRef, themeEditorModalRef }: HeaderProps) {
   const { clearDesign, components, customComponentTemplates } = useDesign();
   const { toast } = useToast();
   const [isPublishing, setIsPublishing] = useState(false);
@@ -39,6 +41,12 @@ export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
   const handleViewJson = () => {
     if (viewJsonModalRef.current) {
       viewJsonModalRef.current.openModal();
+    }
+  };
+
+  const handleOpenThemeEditor = () => { // Function to open theme editor
+    if (themeEditorModalRef.current) {
+      themeEditorModalRef.current.openModal();
     }
   };
 
@@ -147,6 +155,23 @@ export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
             </TooltipContent>
           </Tooltip>
 
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={handleOpenThemeEditor} // Call to open theme editor modal
+                aria-label="Edit App Theme"
+                className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              >
+                <Palette />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Edit App Theme</p>
+            </TooltipContent>
+          </Tooltip>
+
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -162,7 +187,7 @@ export function Header({ generateModalRef, viewJsonModalRef }: HeaderProps) {
                 </PopoverTrigger>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                <p>Settings</p>
+                <p>Interface Theme Settings</p> {/* Updated tooltip */}
               </TooltipContent>
             </Tooltip>
             <PopoverContent className="w-auto p-0 mr-2" align="end">
