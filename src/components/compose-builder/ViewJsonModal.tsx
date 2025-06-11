@@ -4,42 +4,52 @@
 import React, { useState, useImperativeHandle, forwardRef, useCallback, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-// Textarea was removed when tabs were removed in a previous step by user, so not re-adding.
-// Tabs components were also removed.
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDesign } from '@/contexts/DesignContext';
-import { getDesignComponentsAsJsonAction, generateCustomCommandJsonAction } from '@/app/actions'; // generateCustomCommandJsonAction is likely unused now
+import {
+  getDesignComponentsAsJsonAction,
+  generateCustomCommandJsonAction,
+  convertCanvasToCustomJsonAction
+} from '@/app/actions';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Copy, Download, Save, RefreshCw, AlertTriangle, Wand2 } from 'lucide-react'; // Wand2 might be unused
+import { Loader2, Copy, Download, Save, RefreshCw, AlertTriangle, Wand2, Palette } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
 import { json as jsonLang } from '@codemirror/lang-json';
 import { githubLight, githubDark } from '@uiw/codemirror-theme-github';
-import { ModalJsonSchema, DEFAULT_ROOT_LAZY_COLUMN_ID } from '@/types/compose-spec';
+import { ModalJsonSchema, DEFAULT_ROOT_LAZY_COLUMN_ID, type DesignComponent, type CustomComponentTemplate } from '@/types/compose-spec';
 import { useTheme } from '@/contexts/ThemeContext';
 
 export interface ViewJsonModalRef {
   openModal: () => void;
 }
 
-// If there are no tabs, this constant might not be used unless activeTab state is still present for future use.
-const DESIGN_CANVAS_JSON_TAB = "designCanvasJson"; 
+const DESIGN_CANVAS_JSON_TAB = "designCanvasJson";
+const GENERATE_COMMAND_JSON_TAB = "generateCommandJson";
+const EXPORT_CUSTOM_JSON_TAB = "exportCustomJson";
 
 
 export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
-  // activeTab state might be vestigial if there's only one view now.
-  // Let's assume it was intended to be kept for the single view's logic or potential future re-introduction of tabs.
   const [activeTab, setActiveTab] = useState<string>(DESIGN_CANVAS_JSON_TAB);
 
+  // State for Design Canvas JSON tab
   const [designJsonString, setDesignJsonString] = useState<string>("");
   const [isLoadingDesignJson, setIsLoadingDesignJson] = useState(false);
   const [designJsonError, setDesignJsonError] = useState<string | string[] | null>(null);
 
-  // State for "Generate Command JSON" tab (likely unused if tab was removed)
-  // const [commandInputText, setCommandInputText] = useState<string>("");
-  // const [generatedCommandJson, setGeneratedCommandJson] = useState<string>("");
-  // const [isGeneratingCommandJson, setIsGeneratingCommandJson] = useState(false);
-  // const [commandGenerationError, setCommandGenerationError] = useState<string | null>(null);
+  // State for Generate Command JSON tab
+  const [commandInputText, setCommandInputText] = useState<string>("");
+  const [generatedCommandJson, setGeneratedCommandJson] = useState<string>("");
+  const [isGeneratingCommandJson, setIsGeneratingCommandJson] = useState(false);
+  const [commandGenerationError, setCommandGenerationError] = useState<string | string[] | null>(null);
+
+  // State for Export Custom JSON tab
+  const [generatedExportJsonString, setGeneratedExportJsonString] = useState<string>("");
+  const [isGeneratingExportJson, setIsGeneratingExportJson] = useState(false);
+  const [exportJsonGenerationError, setExportJsonGenerationError] = useState<string | string[] | null>(null);
+
 
   const { components, customComponentTemplates, overwriteComponents } = useDesign();
   const { toast } = useToast();
@@ -73,7 +83,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
     try {
       const rootLazyColumn = components.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID);
       if (components.length <= 1 && rootLazyColumn && (!rootLazyColumn.properties.children || rootLazyColumn.properties.children.length === 0)) {
-        validateAndSetDesignJson("[]");
+        validateAndSetDesignJson("[]"); // Valid empty array
       } else {
         const fetchedJsonString = await getDesignComponentsAsJsonAction(components, customComponentTemplates);
         validateAndSetDesignJson(fetchedJsonString);
@@ -82,7 +92,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
       console.error("Error fetching design JSON:", fetchError);
       const errorMessage = fetchError instanceof Error ? fetchError.message : "Failed to fetch design JSON.";
       setDesignJsonString(`// Error fetching JSON:\n// ${errorMessage}`);
-      setDesignJsonError(`Fetch error: ${errorMessage}`);
+      setDesignJsonError([`Fetch error: ${errorMessage}`]);
       toast({
         title: "JSON Fetch Failed",
         description: errorMessage,
@@ -93,39 +103,94 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
     }
   }, [components, customComponentTemplates, toast, validateAndSetDesignJson]);
 
+
+  const handleGenerateCommandJson = async () => {
+    if (!commandInputText.trim()) {
+      setCommandGenerationError(["Input commands cannot be empty."]);
+      return;
+    }
+    setIsGeneratingCommandJson(true);
+    setGeneratedCommandJson("");
+    setCommandGenerationError(null);
+    try {
+      const result = await generateCustomCommandJsonAction(commandInputText);
+      if (result.commandJson) {
+        try {
+            JSON.parse(result.commandJson); // Validate if it's JSON
+            setGeneratedCommandJson(result.commandJson);
+        } catch (parseError) {
+            setCommandGenerationError(["AI returned invalid JSON."]);
+            setGeneratedCommandJson(result.commandJson); // Show the invalid JSON for debugging
+        }
+      } else {
+        setCommandGenerationError([result.error || "AI did not return JSON."]);
+      }
+    } catch (error) {
+      console.error("Error generating command JSON:", error);
+      const message = error instanceof Error ? error.message : "An unknown error occurred.";
+      setCommandGenerationError([`Generation error: ${message}`]);
+    } finally {
+      setIsGeneratingCommandJson(false);
+    }
+  };
+
+  const handleGenerateExportJson = async () => {
+    setIsGeneratingExportJson(true);
+    setGeneratedExportJsonString("");
+    setExportJsonGenerationError(null);
+    try {
+      const result = await convertCanvasToCustomJsonAction(components, customComponentTemplates);
+      if (result.customJsonString) {
+        try {
+            JSON.parse(result.customJsonString); // Validate
+            setGeneratedExportJsonString(result.customJsonString);
+        } catch (parseError) {
+            setExportJsonGenerationError(["AI returned invalid JSON for export."]);
+            setGeneratedExportJsonString(result.customJsonString); // Show invalid for debug
+        }
+      } else {
+        setExportJsonGenerationError([result.error || "AI did not return JSON for export."]);
+      }
+    } catch (error) {
+        console.error("Error generating export JSON:", error);
+        const message = error instanceof Error ? error.message : "An unknown error occurred.";
+        setExportJsonGenerationError([`Generation error: ${message}`]);
+    } finally {
+        setIsGeneratingExportJson(false);
+    }
+  };
+
+
   useImperativeHandle(ref, () => ({
     openModal: () => {
       setIsOpen(true);
-      // setActiveTab(DESIGN_CANVAS_JSON_TAB); // Remains if activeTab state is kept
+      setActiveTab(DESIGN_CANVAS_JSON_TAB);
       if (designJsonString === "" || designJsonString.startsWith("// Error") || designJsonError) {
         handleFetchDesignJson();
       } else {
-        validateAndSetDesignJson(designJsonString); // Re-validate on open
+        validateAndSetDesignJson(designJsonString);
       }
-      // Reset states for other potential tabs if they were to be re-added
-      // setCommandInputText("");
-      // setGeneratedCommandJson("");
-      // setCommandGenerationError(null);
+      setCommandInputText("");
+      setGeneratedCommandJson("");
+      setCommandGenerationError(null);
+      setGeneratedExportJsonString("");
+      setExportJsonGenerationError(null);
     }
   }));
   
   useEffect(() => {
-    // This effect handles fetching/re-validating when the modal opens or activeTab (if used) changes
-    if (isOpen && activeTab === DESIGN_CANVAS_JSON_TAB) { // Assuming activeTab logic remains for the single view
+    if (isOpen && activeTab === DESIGN_CANVAS_JSON_TAB) {
         if (designJsonString === "" || designJsonString.startsWith("// Error") || designJsonError) {
              handleFetchDesignJson();
         } else {
-            // If already open and JSON is present, re-validate it.
-            // This can be useful if an external action could have invalidated it.
-            // Or, simply trust the JSON if it was valid on open.
-            // For safety, re-validating or ensuring it's still the current state is good.
-            // The original logic in openModal already called validateAndSetDesignJson.
+            validateAndSetDesignJson(designJsonString);
         }
     }
   }, [isOpen, activeTab, designJsonString, handleFetchDesignJson, designJsonError, validateAndSetDesignJson]);
 
 
   const handleSaveChangesToCanvas = () => {
+    if (activeTab !== DESIGN_CANVAS_JSON_TAB) return; 
     if (designJsonError) {
       const errorSummary = Array.isArray(designJsonError) ? designJsonError.slice(0,5).join("\n") : "Design JSON is invalid.";
       toast({
@@ -145,7 +210,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
         });
         setIsOpen(false);
       } else {
-        setDesignJsonError(result.error || "Could not apply JSON changes.");
+        setDesignJsonError(result.error ? [result.error] : ["Could not apply JSON changes."]);
         toast({
           title: "Save Failed",
           description: result.error || "Could not apply JSON changes.",
@@ -155,7 +220,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
     } catch (e) {
       console.error("Error saving design JSON:", e);
       const message = e instanceof Error ? e.message : "An error occurred while saving.";
-      setDesignJsonError(message);
+      setDesignJsonError([message]);
       toast({
         title: "Save Failed",
         description: message,
@@ -164,19 +229,23 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
     }
   };
 
-  // handleGenerateCommandJson and related states/elements would be removed if tabs are fully removed.
-  // For now, commenting them out to match the "single tab" view.
-  /*
-  const handleGenerateCommandJson = async () => {
-    // ... logic for command JSON generation
-  };
-  */
 
   const handleCopyToClipboard = async () => {
-    let contentToCopy = designJsonString; // Assuming only one JSON view
-    let currentError = designJsonError;
+    let contentToCopy = "";
+    let currentError: string | string[] | null = null;
 
-    if (currentError) { 
+    if (activeTab === DESIGN_CANVAS_JSON_TAB) {
+      contentToCopy = designJsonString;
+      currentError = designJsonError;
+    } else if (activeTab === GENERATE_COMMAND_JSON_TAB) {
+      contentToCopy = generatedCommandJson;
+      currentError = commandGenerationError;
+    } else if (activeTab === EXPORT_CUSTOM_JSON_TAB) {
+      contentToCopy = generatedExportJsonString;
+      currentError = exportJsonGenerationError;
+    }
+
+    if (currentError) {
         toast({
             title: "Copy Failed",
             description: "JSON contains errors. Please correct them before copying.",
@@ -204,9 +273,23 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
   };
 
   const handleDownloadJson = () => {
-    let contentToDownload = designJsonString; // Assuming only one JSON view
-    let currentError = designJsonError;
-    let filename = "design_canvas.json";
+    let contentToDownload = "";
+    let currentError: string | string[] | null = null;
+    let filename = "data.json";
+
+    if (activeTab === DESIGN_CANVAS_JSON_TAB) {
+      contentToDownload = designJsonString;
+      currentError = designJsonError;
+      filename = "design_canvas.json";
+    } else if (activeTab === GENERATE_COMMAND_JSON_TAB) {
+      contentToDownload = generatedCommandJson;
+      currentError = commandGenerationError;
+      filename = "command_ui.json";
+    } else if (activeTab === EXPORT_CUSTOM_JSON_TAB) {
+      contentToDownload = generatedExportJsonString;
+      currentError = exportJsonGenerationError;
+      filename = "exported_custom_format.json";
+    }
     
     if (currentError) {
         toast({
@@ -238,31 +321,48 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
     }
   };
   
-  const isLoading = isLoadingDesignJson; // Simplified if only one loading state
-  const canPerformActions = !isLoading && designJsonString && !designJsonString.startsWith("// Error");
+  const isLoading = isLoadingDesignJson || isGeneratingCommandJson || isGeneratingExportJson;
+  const canPerformActions = !isLoading && 
+    (activeTab === DESIGN_CANVAS_JSON_TAB ? (designJsonString && !designJsonString.startsWith("// Error")) :
+     activeTab === GENERATE_COMMAND_JSON_TAB ? (generatedCommandJson && !generatedCommandJson.startsWith("// Error")) :
+     activeTab === EXPORT_CUSTOM_JSON_TAB ? (generatedExportJsonString && !generatedExportJsonString.startsWith("// Error")) :
+     false);
   
   const hasUserComponentsOnCanvas = components.some(c => c.id !== DEFAULT_ROOT_LAZY_COLUMN_ID) || 
                                  (components.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID)?.properties.children?.length || 0) > 0;
+
+  const showSaveToCanvasButton = activeTab === DESIGN_CANVAS_JSON_TAB;
+  const showRefreshCanvasJsonButton = activeTab === DESIGN_CANVAS_JSON_TAB;
+
+  const currentError = activeTab === DESIGN_CANVAS_JSON_TAB ? designJsonError :
+                       activeTab === GENERATE_COMMAND_JSON_TAB ? commandGenerationError :
+                       activeTab === EXPORT_CUSTOM_JSON_TAB ? exportJsonGenerationError : null;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-3xl max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="font-headline">View/Edit Design JSON</DialogTitle>
+          <DialogTitle className="font-headline">View/Generate JSON</DialogTitle>
           <DialogDescription>
-            Inspect or modify the JSON representation of your design.
+            Inspect or generate JSON representations of UI designs.
           </DialogDescription>
         </DialogHeader>
 
-        {/* Single view for Design Canvas JSON */}
-        <div className="flex-grow flex flex-col min-h-0 my-2">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
+          <TabsList className="grid w-full grid-cols-3 mb-2 h-auto">
+            <TabsTrigger value={DESIGN_CANVAS_JSON_TAB} className="text-xs px-1 py-1.5">Design Canvas JSON</TabsTrigger>
+            <TabsTrigger value={GENERATE_COMMAND_JSON_TAB} className="text-xs px-1 py-1.5">Generate Command JSON</TabsTrigger>
+            <TabsTrigger value={EXPORT_CUSTOM_JSON_TAB} className="text-xs px-1 py-1.5">Export Custom JSON</TabsTrigger>
+          </TabsList>
+
+          {/* Tab 1: Design Canvas JSON */}
+          <TabsContent value={DESIGN_CANVAS_JSON_TAB} className="flex-grow flex flex-col min-h-0 outline-none ring-0">
             <div className="flex-grow rounded-md border overflow-auto bg-background min-h-[250px] relative">
-              {isLoadingDesignJson ? (
+              {isLoadingDesignJson && (
                 <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <span className="ml-2">Fetching JSON...</span>
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" /><span className="ml-2">Fetching JSON...</span>
                 </div>
-              ) : null}
+              )}
               <CodeMirror
                 value={designJsonString}
                 height="100%"
@@ -274,44 +374,111 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
                 basicSetup={{ lineNumbers: true, foldGutter: true, autocompletion: true, highlightActiveLine: true, highlightActiveLineGutter: true, bracketMatching: true, closeBrackets: true }}
               />
             </div>
-            {designJsonError && (
-              <ScrollArea className="mt-1 mb-1 max-h-20">
-                <div className="p-2 text-xs text-destructive-foreground bg-destructive rounded-md">
-                  {Array.isArray(designJsonError) ? (
-                    <>
-                      <div className="flex items-start gap-1.5 mb-0.5"><AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" /><strong className="flex-1">{designJsonError[0]}</strong></div>
-                      <ul className="list-disc list-inside pl-4">{designJsonError.slice(1).map((err, index) => (<li key={index} className="whitespace-pre-wrap leading-relaxed text-xxs">{err}</li>))}</ul>
-                    </>
-                  ) : (
-                    <div className="flex items-start gap-1.5"><AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" /><span className="flex-1 whitespace-pre-wrap leading-relaxed">{designJsonError}</span></div>
-                  )}
+          </TabsContent>
+
+          {/* Tab 2: Generate Command JSON */}
+          <TabsContent value={GENERATE_COMMAND_JSON_TAB} className="flex-grow flex flex-col min-h-0 space-y-2 outline-none ring-0">
+            <Textarea
+              value={commandInputText}
+              onChange={(e) => setCommandInputText(e.target.value)}
+              placeholder="Enter Jetpack Compose-like commands here... e.g., Card { Text(\"Hello\") }"
+              className="text-sm min-h-[100px] max-h-[150px] flex-shrink-0"
+            />
+            <Button onClick={handleGenerateCommandJson} disabled={isGeneratingCommandJson || !commandInputText.trim()} size="sm" className="self-start">
+              {isGeneratingCommandJson ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+              Generate JSON from Commands
+            </Button>
+            <div className="flex-grow rounded-md border overflow-auto bg-background min-h-[150px] relative">
+              {isGeneratingCommandJson && (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" /><span className="ml-2">Generating JSON...</span>
                 </div>
-              </ScrollArea>
+              )}
+              <CodeMirror
+                value={generatedCommandJson}
+                height="100%"
+                className="text-sm h-full"
+                extensions={[jsonLang()]}
+                theme={resolvedTheme === 'dark' ? githubDark : githubLight}
+                onChange={setGeneratedCommandJson} 
+                editable={!isGeneratingCommandJson}
+                basicSetup={{ lineNumbers: true, foldGutter: true, autocompletion: true, highlightActiveLine: true, highlightActiveLineGutter: true, bracketMatching: true, closeBrackets: true }}
+              />
+            </div>
+          </TabsContent>
+
+           {/* Tab 3: Export Custom JSON from Canvas */}
+          <TabsContent value={EXPORT_CUSTOM_JSON_TAB} className="flex-grow flex flex-col min-h-0 space-y-2 outline-none ring-0">
+            <Button onClick={handleGenerateExportJson} disabled={isGeneratingExportJson || !hasUserComponentsOnCanvas} size="sm" className="self-start">
+              {isGeneratingExportJson ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Palette className="mr-2 h-4 w-4" />}
+              Generate Custom JSON from Canvas
+            </Button>
+             {!hasUserComponentsOnCanvas && (
+                <p className="text-xs text-muted-foreground text-center py-1">Add components to the canvas to enable generation.</p>
             )}
-        </div>
+            <div className="flex-grow rounded-md border overflow-auto bg-background min-h-[200px] relative">
+              {isGeneratingExportJson && (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" /><span className="ml-2">Generating JSON...</span>
+                </div>
+              )}
+              <CodeMirror
+                value={generatedExportJsonString}
+                height="100%"
+                className="text-sm h-full"
+                extensions={[jsonLang()]}
+                theme={resolvedTheme === 'dark' ? githubDark : githubLight}
+                onChange={setGeneratedExportJsonString} 
+                editable={!isGeneratingExportJson}
+                basicSetup={{ lineNumbers: true, foldGutter: true, autocompletion: true, highlightActiveLine: true, highlightActiveLineGutter: true, bracketMatching: true, closeBrackets: true }}
+              />
+            </div>
+          </TabsContent>
+        </Tabs>
+        
+        {currentError && (
+            <ScrollArea className="mt-1 mb-1 max-h-20">
+            <div className="p-2 text-xs text-destructive-foreground bg-destructive rounded-md">
+                {Array.isArray(currentError) ? (
+                <>
+                    <div className="flex items-start gap-1.5 mb-0.5"><AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" /><strong className="flex-1">{currentError[0]}</strong></div>
+                    <ul className="list-disc list-inside pl-4">{currentError.slice(1).map((err, index) => (<li key={index} className="whitespace-pre-wrap leading-relaxed text-xxs">{err}</li>))}</ul>
+                </>
+                ) : (
+                <div className="flex items-start gap-1.5"><AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" /><span className="flex-1 whitespace-pre-wrap leading-relaxed">{currentError}</span></div>
+                )}
+            </div>
+            </ScrollArea>
+        )}
         
         <DialogFooter className="sm:justify-between flex-wrap gap-2 pt-3">
-          <Button 
-            variant="outline" 
-            onClick={handleFetchDesignJson} 
-            disabled={isLoading || !hasUserComponentsOnCanvas}
-          >
-            {isLoadingDesignJson ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-            Refresh Canvas JSON
-          </Button>
+          <div>
+            {showRefreshCanvasJsonButton && (
+              <Button 
+                variant="outline" 
+                onClick={handleFetchDesignJson} 
+                disabled={isLoadingDesignJson || !hasUserComponentsOnCanvas}
+              >
+                {isLoadingDesignJson ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                Refresh Canvas JSON
+              </Button>
+            )}
+          </div>
           <div className="flex gap-2 flex-wrap">
-            <Button onClick={handleCopyToClipboard} disabled={!canPerformActions || !!designJsonError}>
+            <Button onClick={handleCopyToClipboard} disabled={!canPerformActions || !!currentError}>
               <Copy className="mr-2 h-4 w-4" /> Copy
             </Button>
-            <Button onClick={handleDownloadJson} disabled={!canPerformActions || !!designJsonError}>
+            <Button onClick={handleDownloadJson} disabled={!canPerformActions || !!currentError}>
               <Download className="mr-2 h-4 w-4" /> Download .json
             </Button>
-            <Button 
-              onClick={handleSaveChangesToCanvas} 
-              disabled={!canPerformActions || !!designJsonError}
-            >
-              <Save className="mr-2 h-4 w-4" /> Save Changes to Canvas
-            </Button>
+            {showSaveToCanvasButton && (
+              <Button 
+                onClick={handleSaveChangesToCanvas} 
+                disabled={!canPerformActions || !!designJsonError} 
+              >
+                <Save className="mr-2 h-4 w-4" /> Save Changes to Canvas
+              </Button>
+            )}
           </div>
         </DialogFooter>
       </DialogContent>
@@ -320,4 +487,6 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
 });
 
 ViewJsonModal.displayName = 'ViewJsonModal';
+    
+
     
