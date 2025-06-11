@@ -8,29 +8,89 @@ import { useDesign } from '@/contexts/DesignContext';
 import { getDesignComponentsAsJsonAction } from '@/app/actions';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Copy, Download, Save, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Loader2, Copy, Download, Save, RefreshCw, AlertTriangle, Edit3, Users } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
 import { json as jsonLang } from '@codemirror/lang-json';
 import { githubLight, githubDark } from '@uiw/codemirror-theme-github';
 import { ModalJsonSchema, DEFAULT_ROOT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 import { useTheme } from '@/contexts/ThemeContext';
-
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 export interface ViewJsonModalRef {
   openModal: () => void;
 }
 
+const userCardTemplate = (initials: string, username: string, email: string) => ({
+  "card": {
+    "modifier": {
+      "base": {
+        "fillMaxWidth": true,
+        "padding": { "all": 16 },
+        "clickId": "view_profile"
+      }
+    },
+    "children": [
+      {
+        "row": {
+          "modifier": { "verticalAlignment": "center" },
+          "children": [
+            {
+              "box": {
+                "modifier": {
+                  "base": { "size": 64, "background": { "color": "#EEEEEE", "shape": "circle" } },
+                  "contentAlignment": "center"
+                },
+                "children": [
+                  { "text": { "content": initials, "fontSize": 24, "fontWeight": "bold", "color": "#666666" } }
+                ]
+              }
+            },
+            { "spacer": { "width": 16, "height": 0 } },
+            {
+              "column": {
+                "children": [
+                  { "text": { "content": username, "fontSize": 18, "fontWeight": "bold" } },
+                  { "text": { "content": email, "fontSize": 14, "color": "#666666" } }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+});
+
+
 export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [jsonString, setJsonString] = useState<string>("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [jsonError, setJsonError] = useState<string | string[] | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("editDesignJson");
+
+  // State for "Edit Design JSON" tab
+  const [designJsonString, setDesignJsonString] = useState<string>("");
+  const [isFetchingDesignJson, setIsFetchingDesignJson] = useState(false);
+  const [designJsonError, setDesignJsonError] = useState<string | string[] | null>(null);
+
+  // State for "User Card JSON Generator" tab
+  const [initialsInput, setInitialsInput] = useState<string>("JD");
+  const [usernameInput, setUsernameInput] = useState<string>("John Doe");
+  const [emailInput, setEmailInput] = useState<string>("john.doe@example.com");
+  const [userCardJsonOutput, setUserCardJsonOutput] = useState<string>(
+    JSON.stringify(userCardTemplate("JD", "John Doe", "john.doe@example.com"), null, 2)
+  );
+  const [isGeneratingUserCard, setIsGeneratingUserCard] = useState(false); // Placeholder for potential async ops
+  const [userCardJsonError, setUserCardJsonError] = useState<string | null>(null);
+
+
   const { components, customComponentTemplates, overwriteComponents } = useDesign();
   const { toast } = useToast();
   const { resolvedTheme } = useTheme();
 
-  const validateAndSetJson = useCallback((newJsonString: string) => {
-    setJsonString(newJsonString);
+
+  const validateAndSetDesignJson = useCallback((newJsonString: string) => {
+    setDesignJsonString(newJsonString);
     try {
       const parsedJson = JSON.parse(newJsonString);
       const validationResult = ModalJsonSchema.safeParse(parsedJson);
@@ -38,70 +98,63 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
         const individualErrors = validationResult.error.errors.map(
           (err) => `Path "${err.path.join('.')}": ${err.message}`
         );
-        setJsonError(['Schema validation failed:', ...individualErrors]);
+        setDesignJsonError(['Schema validation failed:', ...individualErrors]);
       } else {
-        setJsonError(null);
+        setDesignJsonError(null);
       }
     } catch (error) {
       if (error instanceof Error) {
-        setJsonError(`Syntax error: ${error.message}`);
+        setDesignJsonError(`Syntax error: ${error.message}`);
       } else {
-        setJsonError("Invalid JSON syntax. Check for missing commas, brackets, etc.");
+        setDesignJsonError("Invalid JSON syntax. Check for missing commas, brackets, etc.");
       }
     }
   }, []);
-  
 
-  const handleFetchJson = useCallback(async () => {
-    setIsLoading(true);
-    setJsonError(null);
+  const handleFetchDesignJson = useCallback(async () => {
+    setIsFetchingDesignJson(true);
+    setDesignJsonError(null);
     try {
-      // Check if there are any user-added components (excluding the default root)
-      // or if the default root has children.
       const rootLazyColumn = components.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID);
       if (components.length <= 1 && rootLazyColumn && (!rootLazyColumn.properties.children || rootLazyColumn.properties.children.length === 0)) {
-        // If only the default root lazy column exists and it has no children, show an empty array.
-        validateAndSetJson("[]");
+        validateAndSetDesignJson("[]");
       } else {
         const fetchedJsonString = await getDesignComponentsAsJsonAction(components, customComponentTemplates);
-        validateAndSetJson(fetchedJsonString);
+        validateAndSetDesignJson(fetchedJsonString);
       }
     } catch (error) {
-      console.error("Error fetching JSON:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to fetch JSON.";
-      setJsonString(`// Error fetching JSON:\n// ${errorMessage}`);
-      setJsonError(`Fetch error: ${errorMessage}`);
+      console.error("Error fetching design JSON:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to fetch design JSON.";
+      setDesignJsonString(`// Error fetching design JSON:\n// ${errorMessage}`);
+      setDesignJsonError(`Fetch error: ${errorMessage}`);
       toast({
-        title: "JSON Fetch Failed",
+        title: "Design JSON Fetch Failed",
         description: errorMessage,
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsFetchingDesignJson(false);
     }
-  }, [components, customComponentTemplates, toast, validateAndSetJson]);
+  }, [components, customComponentTemplates, toast, validateAndSetDesignJson]);
 
   useImperativeHandle(ref, () => ({
     openModal: () => {
       setIsOpen(true);
-      // Fetch or re-fetch JSON when modal opens or if it's empty/error state
-      // This ensures the JSON is current if changes were made outside the modal.
-      handleFetchJson();
+      if (activeTab === "editDesignJson") {
+        handleFetchDesignJson();
+      }
     }
   }));
   
-  // If modal is opened and the JSON string is still empty or shows an error, fetch it.
-  // This handles the case where the modal might have been closed with an error or empty state.
   useEffect(() => {
-    if (isOpen && (jsonString === "" || jsonString.startsWith("// Error"))) {
-      handleFetchJson();
+    if (isOpen && activeTab === "editDesignJson" && (designJsonString === "" || designJsonString.startsWith("// Error"))) {
+      handleFetchDesignJson();
     }
-  }, [isOpen, jsonString, handleFetchJson]);
+  }, [isOpen, activeTab, designJsonString, handleFetchDesignJson]);
 
-
-  const handleSaveChanges = () => {
-    if (jsonError) {
-      const errorSummary = Array.isArray(jsonError) ? jsonError.slice(0,5).join("\n") : "JSON is invalid.";
+  const handleSaveChangesToCanvas = () => {
+    if (activeTab !== "editDesignJson" || designJsonError) {
+      const errorSummary = Array.isArray(designJsonError) ? designJsonError.slice(0,5).join("\n") : "JSON is invalid.";
       toast({
         title: "Save Failed",
         description: `${errorSummary} Please correct errors.`,
@@ -110,10 +163,8 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
       return;
     }
     try {
-      const parsedComponents = JSON.parse(jsonString);
-      // Schema is validated by validateAndSetJson, but we can re-parse here to be sure
-      // or rely on the fact that jsonError would be set if it's invalid.
-      const result = overwriteComponents(parsedComponents); // ModalJsonSchema.parse(parsedComponents) would re-validate
+      const parsedComponents = JSON.parse(designJsonString);
+      const result = overwriteComponents(parsedComponents);
       if (result.success) {
         toast({
           title: "Changes Saved",
@@ -121,7 +172,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
         });
         setIsOpen(false); 
       } else {
-        setJsonError(result.error || "Could not apply JSON changes.");
+        setDesignJsonError(result.error || "Could not apply JSON changes.");
         toast({
           title: "Save Failed",
           description: result.error || "Could not apply JSON changes.",
@@ -129,9 +180,9 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
         });
       }
     } catch (error) {
-      console.error("Error saving JSON:", error);
+      console.error("Error saving design JSON:", error);
       const message = error instanceof Error ? error.message : "An error occurred while saving.";
-      setJsonError(message);
+      setDesignJsonError(message);
       toast({
         title: "Save Failed",
         description: message,
@@ -140,8 +191,52 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
     }
   };
 
+  const handleGenerateUserCardJson = () => {
+    setIsGeneratingUserCard(true);
+    setUserCardJsonError(null);
+    try {
+      const generated = userCardTemplate(initialsInput, usernameInput, emailInput);
+      const jsonStr = JSON.stringify(generated, null, 2);
+      setUserCardJsonOutput(jsonStr);
+      // Basic validation for the generated string
+      JSON.parse(jsonStr); // Will throw if not valid JSON
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to generate valid JSON from template.";
+        setUserCardJsonError(message);
+        toast({ title: "Generation Error", description: message, variant: "destructive" });
+    } finally {
+        setIsGeneratingUserCard(false);
+    }
+  };
+
+  const validateUserCardJson = useCallback((newJsonString: string) => {
+    setUserCardJsonOutput(newJsonString);
+    try {
+      JSON.parse(newJsonString);
+      setUserCardJsonError(null);
+    } catch (error) {
+      if (error instanceof Error) {
+        setUserCardJsonError(`Syntax error: ${error.message}`);
+      } else {
+        setUserCardJsonError("Invalid JSON syntax.");
+      }
+    }
+  }, []);
+
+
   const handleCopyToClipboard = async () => {
-    if (jsonError) {
+    let contentToCopy = "";
+    let errorState: string | string[] | null = null;
+
+    if (activeTab === "editDesignJson") {
+      contentToCopy = designJsonString;
+      errorState = designJsonError;
+    } else if (activeTab === "userCardGenerator") {
+      contentToCopy = userCardJsonOutput;
+      errorState = userCardJsonError;
+    }
+
+    if (errorState) {
         toast({
             title: "Copy Failed",
             description: "JSON contains errors. Please correct them before copying.",
@@ -149,9 +244,9 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
         });
         return;
     }
-    if (jsonString) {
+    if (contentToCopy) {
       try {
-        await navigator.clipboard.writeText(jsonString);
+        await navigator.clipboard.writeText(contentToCopy);
         toast({
           title: "JSON Copied!",
           description: "JSON copied to clipboard.",
@@ -167,7 +262,21 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
   };
 
   const handleDownloadJson = () => {
-     if (jsonError) {
+    let contentToDownload = "";
+    let errorState: string | string[] | null = null;
+    let filename = "data.json";
+
+    if (activeTab === "editDesignJson") {
+      contentToDownload = designJsonString;
+      errorState = designJsonError;
+      filename = "design_components.json";
+    } else if (activeTab === "userCardGenerator") {
+      contentToDownload = userCardJsonOutput;
+      errorState = userCardJsonError;
+      filename = "user_card.json";
+    }
+    
+    if (errorState) {
         toast({
             title: "Download Failed",
             description: "JSON contains errors. Please correct them before downloading.",
@@ -175,18 +284,19 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
         });
         return;
     }
-    if (jsonString && !jsonString.startsWith("// Error")) {
-      const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8' });
+
+    if (contentToDownload && !contentToDownload.startsWith("// Error")) {
+      const blob = new Blob([contentToDownload], { type: 'application/json;charset=utf-8' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = 'design_components.json';
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(link.href);
       toast({
         title: "JSON Downloaded",
-        description: "design_components.json has started downloading.",
+        description: `${filename} has started downloading.`,
       });
     } else {
       toast({
@@ -197,77 +307,147 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
     }
   };
   
-  const canPerformActions = !isLoading && jsonString && !jsonString.startsWith("// Error");
+  const isLoadingCurrentTab = (activeTab === "editDesignJson" && isFetchingDesignJson) || (activeTab === "userCardGenerator" && isGeneratingUserCard);
+  const currentTabJsonContent = activeTab === "editDesignJson" ? designJsonString : userCardJsonOutput;
+  const currentTabError = activeTab === "editDesignJson" ? designJsonError : userCardJsonError;
+  const canPerformActionsOnCurrentJson = !isLoadingCurrentTab && currentTabJsonContent && !currentTabJsonContent.startsWith("// Error");
+
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if(open) handleFetchJson(); }}>
-      <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col">
+    <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if(open && activeTab === "editDesignJson") handleFetchDesignJson(); }}>
+      <DialogContent className="sm:max-w-3xl max-h-[85vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="font-headline">View/Edit Design JSON</DialogTitle>
+          <DialogTitle className="font-headline">JSON Editor / Generator</DialogTitle>
           <DialogDescription>
-            Edit the JSON representation of your design components. Changes will update the canvas.
+            View/edit the design JSON or generate specific JSON structures.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex-grow my-4 rounded-md border overflow-auto bg-background min-h-[300px]">
-            <CodeMirror
-                value={jsonString}
-                height="100%"
-                className="text-xs h-full"
-                extensions={[jsonLang()]}
-                theme={resolvedTheme === 'dark' ? githubDark : githubLight}
-                onChange={(value) => validateAndSetJson(value)}
-                editable={!isLoading}
-                basicSetup={{
-                    lineNumbers: true,
-                    foldGutter: true,
-                    autocompletion: true,
-                    highlightActiveLine: true,
-                    highlightActiveLineGutter: true,
-                    bracketMatching: true,
-                    closeBrackets: true,
-                }}
-            />
-        </div>
-        
-        {jsonError && (
-            <ScrollArea className="mt-1 mb-2 max-h-28">
-              <div className="p-3 text-xs text-destructive-foreground bg-destructive rounded-md">
-                {Array.isArray(jsonError) ? (
-                  <>
-                    <div className="flex items-start gap-2 mb-1">
-                      <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                      <strong className="flex-1">{jsonError[0]}</strong>
-                    </div>
-                    <ul className="list-disc list-inside pl-5">
-                      {jsonError.slice(1).map((err, index) => (
-                        <li key={index} className="whitespace-pre-wrap leading-relaxed">{err}</li>
-                      ))}
-                    </ul>
-                  </>
-                ) : (
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                    <span className="flex-1 whitespace-pre-wrap leading-relaxed">{jsonError}</span>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-          )}
 
-        <DialogFooter className="sm:justify-between flex-wrap gap-2">
-          <Button variant="outline" onClick={handleFetchJson} disabled={isLoading}>
-            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-            Refresh
+        <Tabs value={activeTab} onValueChange={(value) => {
+            setActiveTab(value);
+            if (value === "editDesignJson") {
+                handleFetchDesignJson(); // Refresh design JSON when switching to its tab
+            }
+        }} className="flex-grow flex flex-col min-h-0">
+          <TabsList className="grid w-full grid-cols-2 mb-2 h-auto">
+            <TabsTrigger value="editDesignJson" className="text-xs px-1 py-1.5">
+              <Edit3 className="mr-1.5 h-3.5 w-3.5" /> Edit Design JSON
+            </TabsTrigger>
+            <TabsTrigger value="userCardGenerator" className="text-xs px-1 py-1.5">
+              <Users className="mr-1.5 h-3.5 w-3.5" /> User Card Generator
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="editDesignJson" className="flex-grow flex flex-col min-h-0 relative">
+            <div className="flex-grow my-1 rounded-md border overflow-auto bg-background min-h-[200px] md:min-h-[300px]">
+                <CodeMirror
+                    value={designJsonString}
+                    height="100%"
+                    className="text-xs h-full"
+                    extensions={[jsonLang()]}
+                    theme={resolvedTheme === 'dark' ? githubDark : githubLight}
+                    onChange={validateAndSetDesignJson}
+                    editable={!isFetchingDesignJson}
+                    basicSetup={{
+                        lineNumbers: true, foldGutter: true, autocompletion: true,
+                        highlightActiveLine: true, highlightActiveLineGutter: true,
+                        bracketMatching: true, closeBrackets: true,
+                    }}
+                />
+            </div>
+            {designJsonError && (
+                <ScrollArea className="mt-1 mb-1 max-h-24">
+                  <div className="p-2 text-xs text-destructive-foreground bg-destructive rounded-md">
+                    {Array.isArray(designJsonError) ? (
+                      <>
+                        <div className="flex items-start gap-1.5 mb-0.5">
+                          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" />
+                          <strong className="flex-1">{designJsonError[0]}</strong>
+                        </div>
+                        <ul className="list-disc list-inside pl-4">
+                          {designJsonError.slice(1).map((err, index) => (
+                            <li key={index} className="whitespace-pre-wrap leading-relaxed text-xxs">{err}</li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : (
+                      <div className="flex items-start gap-1.5">
+                        <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" />
+                        <span className="flex-1 whitespace-pre-wrap leading-relaxed">{designJsonError}</span>
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              )}
+          </TabsContent>
+          
+          <TabsContent value="userCardGenerator" className="flex-grow flex flex-col min-h-0 relative">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3 p-1">
+              <div className="space-y-1">
+                <Label htmlFor="initialsInput" className="text-xs">Initials</Label>
+                <Input id="initialsInput" value={initialsInput} onChange={(e) => setInitialsInput(e.target.value)} placeholder="JD" className="h-8 text-sm"/>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="usernameInput" className="text-xs">Username</Label>
+                <Input id="usernameInput" value={usernameInput} onChange={(e) => setUsernameInput(e.target.value)} placeholder="John Doe" className="h-8 text-sm"/>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="emailInput" className="text-xs">Email</Label>
+                <Input id="emailInput" type="email" value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="john.doe@example.com" className="h-8 text-sm"/>
+              </div>
+            </div>
+            <Button onClick={handleGenerateUserCardJson} disabled={isGeneratingUserCard} size="sm" className="mb-2 w-full md:w-auto self-center">
+              {isGeneratingUserCard ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Edit3 className="mr-2 h-4 w-4" />}
+              Generate User Card JSON
+            </Button>
+            <div className="flex-grow my-1 rounded-md border overflow-auto bg-background min-h-[150px] md:min-h-[250px]">
+                 <CodeMirror
+                    value={userCardJsonOutput}
+                    height="100%"
+                    className="text-xs h-full"
+                    extensions={[jsonLang()]}
+                    theme={resolvedTheme === 'dark' ? githubDark : githubLight}
+                    onChange={validateUserCardJson}
+                    editable={!isGeneratingUserCard}
+                     basicSetup={{
+                        lineNumbers: true, foldGutter: true, autocompletion: true,
+                        highlightActiveLine: true, highlightActiveLineGutter: true,
+                        bracketMatching: true, closeBrackets: true,
+                    }}
+                />
+            </div>
+            {userCardJsonError && (
+              <div className="mt-1 mb-1 p-2 text-xs text-destructive-foreground bg-destructive rounded-md flex items-start gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" />
+                <span className="flex-1 whitespace-pre-wrap leading-relaxed">{userCardJsonError}</span>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+        
+        <DialogFooter className="sm:justify-between flex-wrap gap-2 pt-3">
+          <Button 
+            variant="outline" 
+            onClick={handleFetchDesignJson} 
+            disabled={isLoadingCurrentTab || activeTab !== "editDesignJson"}
+            className={activeTab !== "editDesignJson" ? 'invisible' : ''}
+          >
+            {isFetchingDesignJson ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            Refresh Design
           </Button>
           <div className="flex gap-2 flex-wrap">
-            <Button onClick={handleCopyToClipboard} disabled={!canPerformActions}>
-              <Copy className="mr-2 h-4 w-4" /> Copy
+            <Button onClick={handleCopyToClipboard} disabled={!canPerformActionsOnCurrentJson || !!currentTabError}>
+              <Copy className="mr-2 h-4 w-4" /> Copy JSON
             </Button>
-            <Button onClick={handleDownloadJson} disabled={!canPerformActions}>
+            <Button onClick={handleDownloadJson} disabled={!canPerformActionsOnCurrentJson || !!currentTabError}>
               <Download className="mr-2 h-4 w-4" /> Download .json
             </Button>
-            <Button onClick={handleSaveChanges} disabled={!canPerformActions || !!jsonError}>
-              <Save className="mr-2 h-4 w-4" /> Save Changes
+            <Button 
+              onClick={handleSaveChangesToCanvas} 
+              disabled={!canPerformActionsOnCurrentJson || !!designJsonError || activeTab !== "editDesignJson"}
+              className={activeTab !== "editDesignJson" ? 'hidden' : ''}
+            >
+              <Save className="mr-2 h-4 w-4" /> Save to Canvas
             </Button>
           </div>
         </DialogFooter>
@@ -278,3 +458,4 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
 
 ViewJsonModal.displayName = 'ViewJsonModal';
     
+
