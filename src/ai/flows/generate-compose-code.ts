@@ -93,6 +93,76 @@ const prompt = ai.definePrompt({
   - If the Card component has a 'borderWidth' property greater than 0 and a 'borderColor' property, apply a border using the 'border' parameter with 'BorderStroke'. Convert the hex 'borderColor' to a Compose Color. For example:
     border = BorderStroke(width = properties.borderWidth.dp, color = Color(android.graphics.Color.parseColor(properties.borderColor)))
     Remember to import androidx.compose.foundation.BorderStroke, android.graphics.Color, androidx.compose.material3.CardDefaults if you use this.
+
+Intelligent List Handling for LazyColumn and LazyRow:
+- This applies ONLY to LazyColumn and LazyRow components.
+- When a LazyColumn or LazyRow contains multiple child components (2 or more) that are structurally identical (same type, same nested structure, and most properties are the same), you should optimize the code generation.
+- Instead of repeating the Composable for each identical item, you MUST:
+    1. Define a simple data class (e.g., \`data class ListItemData(val text: String, val imageUrl: String?, ...other_dynamic_props)\`) to represent the varying parts of the repeated item. Name the fields of the data class semantically based on what they represent (e.g., \`title\`, \`imageUrl\`, \`description\`).
+    2. Create a new Composable function (e.g., \`@Composable fun MyListItem(item: ListItemData) { ... }\`) that renders one instance of the repeated component, using the fields from \`item\`. This function should encapsulate the common structure and modifiers of the repeated item.
+    3. In the main Composable (or where the LazyColumn/LazyRow is defined), prepare a \`List<ListItemData>\` by extracting the dynamic values from the JSON for each repeated item.
+    4. Use \`itemsIndexed(itemsList) { index, item -> MyListItem(item) }\` or \`items(itemsList) { item -> MyListItem(item) }\` within the LazyColumn/LazyRow to render the list. Prefer \`itemsIndexed\` if the index is needed within \`MyListItem\`, otherwise use \`items\`.
+- Identifying Dynamic Properties:
+    - Look for properties that change from one repeated item to the next.
+    - For Text components, the \`text\` property is often dynamic.
+    - For Image components, the \`src\` property (image URL) is often dynamic. The \`contentDescription\` might also be dynamic or derived from other dynamic text.
+    - For Button components, the \`text\` property is often dynamic.
+    - Other properties (like \`backgroundColor\` or a specific \`padding\` value) might be dynamic if they vary consistently across the repeated items.
+- Example:
+  If the JSON shows a LazyColumn with three Cards that are structurally identical but have different text and image sources:
+  Card 1: { type: "Card", properties: { ..., children: [ { type: "Text", properties: { text: "Item 1 Title" } }, { type: "Image", properties: { src: "image1.png" } } ] } }
+  Card 2: { type: "Card", properties: { ..., children: [ { type: "Text", properties: { text: "Item 2 Title" } }, { type: "Image", properties: { src: "image2.png" } } ] } }
+  Card 3: { type: "Card", properties: { ..., children: [ { type: "Text", properties: { text: "Item 3 Title" } }, { type: "Image", properties: { src: "image3.png" } } ] } }
+  (Assume other Card properties like elevation, backgroundColor, padding are the same for all three)
+
+  The generated code should look something like this:
+  \`\`\`kotlin
+  // Main Composable containing the LazyColumn
+  @Composable
+  fun MyScreen() {
+      data class MyItemData(val title: String, val imageUrl: String)
+      val items = listOf(
+          MyItemData("Item 1 Title", "image1.png"),
+          MyItemData("Item 2 Title", "image2.png"),
+          MyItemData("Item 3 Title", "image3.png")
+      )
+
+      LazyColumn(
+          // ... modifiers for LazyColumn from JSON ...
+      ) {
+          items(items) { itemData ->
+              MyListItemComposable(item = itemData)
+          }
+      }
+  }
+
+  // Composable for a single list item
+  @Composable
+  fun MyListItemComposable(item: MyItemData) {
+      Card(
+          // ... common Card modifiers and properties from JSON ...
+          // e.g., modifier = Modifier.padding(8.dp), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+      ) {
+          Column(modifier = Modifier.padding(16.dp)) { // Example inner structure
+              Text(
+                  text = item.title,
+                  // ... common Text modifiers/properties ...
+              )
+              Image(
+                  painter = प्रतिमा.core.painter.rememberAsyncImagePainter(item.imageUrl), // Use rememberAsyncImagePainter for URLs
+                  contentDescription = "Image for \${item.title}", // Or a more generic description
+                  modifier = Modifier.size(64.dp) // Example common Image modifier
+                  // ... other common Image modifiers/properties ...
+              )
+          }
+      }
+  }
+  \`\`\`
+- Focus on sequences of 2 or more structurally identical items.
+- If the items are not sufficiently similar or the pattern is too complex to confidently extract a data class and item Composable, fall back to generating individual Composables for each child directly within the LazyColumn/LazyRow.
+- The generated item Composable (e.g., \`MyListItemComposable\`) should correctly use all relevant common modifiers and properties from the JSON structure of one ofr the repeated items, parameterizing only the dynamic parts identified.
+- When generating \`contentDescription\` for images inside list items, try to make it dynamic if possible (e.g., based on a text property of the item) or use a generic but descriptive placeholder.
+- If a Button's action/onClick is relevant and varies, this is more complex; for now, assume onClick handlers are not part of this dynamic generation for lists.
 `,
 });
 
@@ -107,5 +177,7 @@ const generateComposeCodeFlow = ai.defineFlow(
     return output!;
   }
 );
+
+    
 
     
