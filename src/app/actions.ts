@@ -6,6 +6,11 @@ import { generateJsonFromComposeCommands, type GenerateJsonFromComposeCommandsIn
 import type { DesignComponent, CustomComponentTemplate, BaseComponentProps } from '@/types/compose-spec';
 import { isContainerType, DEFAULT_ROOT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
+import { promises as fs } from 'fs';
+import path from 'path';
+import { hexToHslCssString } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+
 
 const REMOTE_CONFIG_PARAMETER_KEY = 'COMPOSE_DESIGN_JSON';
 
@@ -306,5 +311,69 @@ export async function generateJsonFromTextAction(
     console.error("Error in generateJsonFromTextAction:", error);
     const message = error instanceof Error ? error.message : "An unknown error occurred during JSON generation from text.";
     return { error: message };
+  }
+}
+
+
+export interface GlobalThemeColorsInput {
+  lightBackground: string; // hex
+  lightForeground: string; // hex
+  lightPrimary: string;    // hex
+  lightAccent: string;     // hex
+  darkBackground: string;  // hex
+  darkForeground: string;  // hex
+  darkPrimary: string;     // hex
+  darkAccent: string;      // hex
+}
+
+export async function updateGlobalStylesheetAction(
+  themeColors: GlobalThemeColorsInput
+): Promise<{ success: boolean; error?: string }> {
+  const globalsCssPath = path.join(process.cwd(), 'src', 'app', 'globals.css');
+
+  try {
+    let cssContent = await fs.readFile(globalsCssPath, 'utf-8');
+
+    const conversions: { hex: string, cssVar: string, section?: 'light' | 'dark' }[] = [
+      { hex: themeColors.lightBackground, cssVar: '--background', section: 'light' },
+      { hex: themeColors.lightForeground, cssVar: '--foreground', section: 'light' },
+      { hex: themeColors.lightPrimary,    cssVar: '--primary',    section: 'light' },
+      { hex: themeColors.lightAccent,     cssVar: '--accent',     section: 'light' },
+      { hex: themeColors.darkBackground,  cssVar: '--background', section: 'dark' },
+      { hex: themeColors.darkForeground,  cssVar: '--foreground', section: 'dark' },
+      { hex: themeColors.darkPrimary,     cssVar: '--primary',    section: 'dark' },
+      { hex: themeColors.darkAccent,      cssVar: '--accent',     section: 'dark' },
+    ];
+
+    for (const { hex, cssVar, section } of conversions) {
+      const hslString = hexToHslCssString(hex);
+      if (!hslString) {
+        console.warn(`Invalid HEX color '${hex}' for ${cssVar} in ${section} theme. Skipping update for this variable.`);
+        continue;
+      }
+
+      let regex;
+      if (section === 'light') {
+        // Matches: --variable: HSL_VALUE; (within :root)
+        regex = new RegExp(`(:root\\s*{[^}]*${cssVar}\\s*:\\s*)[0-9]+\\s+[0-9]+%\\s+[0-9]+%(\\s*;[^}]*})`, 's');
+      } else { // dark
+        // Matches: --variable: HSL_VALUE; (within .dark)
+        regex = new RegExp(`(\\.dark\\s*{[^}]*${cssVar}\\s*:\\s*)[0-9]+\\s+[0-9]+%\\s+[0-9]+%(\\s*;[^}]*})`, 's');
+      }
+      
+      if (cssContent.match(regex)) {
+        cssContent = cssContent.replace(regex, `$1${hslString}$2`);
+      } else {
+        console.warn(`CSS variable ${cssVar} not found for ${section} theme in globals.css using pattern. It might need manual update or regex adjustment.`);
+      }
+    }
+
+    await fs.writeFile(globalsCssPath, cssContent, 'utf-8');
+    return { success: true };
+
+  } catch (error) {
+    console.error('Error updating globals.css:', error);
+    const message = error instanceof Error ? error.message : 'An unknown error occurred.';
+    return { success: false, error: `Failed to update stylesheet: ${message}` };
   }
 }
