@@ -10,7 +10,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { ModalJsonSchema, DEFAULT_ROOT_LAZY_COLUMN_ID, type ComponentType } from '@/types/compose-spec'; // Assuming ModalJsonSchema is exported and can be used for validation reference
+import { ModalJsonSchema, DEFAULT_ROOT_LAZY_COLUMN_ID, type ComponentType } from '@/types/compose-spec';
 
 const GenerateJsonFromComposeCommandsInputSchema = z.object({
   composeCommands: z
@@ -20,7 +20,6 @@ const GenerateJsonFromComposeCommandsInputSchema = z.object({
 });
 export type GenerateJsonFromComposeCommandsInput = z.infer<typeof GenerateJsonFromComposeCommandsInputSchema>;
 
-// The output is a string, which itself should be a parsable JSON conforming to ModalJsonSchema
 const GenerateJsonFromComposeCommandsOutputSchema = z.object({
   designJson: z
     .string()
@@ -75,10 +74,10 @@ The output JSON must be an array of component objects. Each component object mus
 Available component types: ${availableComponentTypes.join(', ')}.
 Recognized properties include (but are not limited to):
 - For Text: text (string), fontSize (number), textColor (hex string, e.g., "#FF0000")
-- For Image: src (string URL, use "https://placehold.co/100x100.png" if a resource is mentioned but not a URL), contentDescription (string), width (number, "match_parent", or "wrap_content"), height (number, "match_parent", or "wrap_content")
-- For Button: text (string), backgroundColor (hex string), textColor (hex string)
+- For Image: src (string URL, use "https://placehold.co/100x100.png" if a resource is mentioned but not a URL), contentDescription (string), width (number, "match_parent", or "wrap_content"), height (number, "match_parent", or "wrap_content"), fillMaxWidth (boolean), fillMaxHeight (boolean)
+- For Button: text (string), backgroundColor (hex string), textColor (hex string), fillMaxWidth (boolean), fillMaxHeight (boolean)
 - For Spacer: width (number), height (number), layoutWeight (number). If only width is specified, assume it's a horizontal spacer. If only height is specified, assume it's a vertical spacer.
-- For Containers (Column, Row, Box, Card, Lazy*): padding (number, for all sides), paddingTop (number), paddingBottom (number), paddingStart (number), paddingEnd (number), backgroundColor (hex string), width (number, "match_parent", or "wrap_content"), height (number, "match_parent", or "wrap_content"), itemSpacing (number for Lazy layouts), layoutWeight (number, e.g., 1 for Modifier.weight(1f)).
+- For Containers (Column, Row, Box, Card, Lazy*): padding (number, for all sides), paddingTop (number), paddingBottom (number), paddingStart (number), paddingEnd (number), backgroundColor (hex string), width (number, "match_parent", or "wrap_content"), height (number, "match_parent", or "wrap_content"), itemSpacing (number for Lazy layouts), layoutWeight (number, e.g., 1 for Modifier.weight(1f)), fillMaxWidth (boolean), fillMaxHeight (boolean).
   - For Card: elevation (number), cornerRadiusTopLeft (number), cornerRadiusTopRight (number), cornerRadiusBottomRight (number), cornerRadiusBottomLeft (number), borderWidth (number), borderColor (hex string), contentColor (hex string).
   - For LazyVerticalGrid: columns (number).
   - For LazyHorizontalGrid: rows (number).
@@ -87,12 +86,16 @@ Mapping common Modifiers:
 - Modifier.padding(X.dp) -> "padding": X (all sides)
 - Modifier.padding(horizontal = X.dp, vertical = Y.dp) -> "paddingStart": X, "paddingEnd": X, "paddingTop": Y, "paddingBottom": Y
 - Modifier.padding(start = A.dp, top = B.dp, end = C.dp, bottom = D.dp) -> "paddingStart": A, "paddingTop": B, "paddingEnd": C, "paddingBottom": D (map defined values)
-- Modifier.fillMaxWidth() -> "width": "match_parent"
-- Modifier.fillMaxHeight() -> "height": "match_parent"
-- Modifier.wrapContentWidth() -> "width": "wrap_content"
-- Modifier.wrapContentHeight() -> "height": "wrap_content"
-- Modifier.width(X.dp) -> "width": X
-- Modifier.height(X.dp) -> "height": X
+- Modifier.fillMaxWidth() -> "fillMaxWidth": true (this takes precedence over 'width': 'match_parent')
+- Modifier.fillMaxHeight() -> "fillMaxHeight": true (this takes precedence over 'height': 'match_parent')
+- If 'fillMaxWidth' is true, do not set 'width': 'match_parent'.
+- If 'fillMaxHeight' is true, do not set 'height': 'match_parent'.
+- If 'fillMaxWidth' is false or absent, and user says 'width = match_parent', then use "width": "match_parent".
+- If 'fillMaxHeight' is false or absent, and user says 'height = match_parent', then use "height": "match_parent".
+- Modifier.wrapContentWidth() -> "width": "wrap_content" (ensure "fillMaxWidth": false or absent)
+- Modifier.wrapContentHeight() -> "height": "wrap_content" (ensure "fillMaxHeight": false or absent)
+- Modifier.width(X.dp) -> "width": X (ensure "fillMaxWidth": false or absent)
+- Modifier.height(X.dp) -> "height": X (ensure "fillMaxHeight": false or absent)
 - Modifier.weight(Xf) or .weight(X.toFloat()) -> "layoutWeight": X (e.g., Modifier.weight(1f) -> "layoutWeight": 1)
 - Modifier.background(Color.SomeColor) -> "backgroundColor": "#CorrespondingHex" (e.g., Color.Red -> "#FF0000"). If an unknown color, use a sensible default like "#CCCCCC".
 - Modifier.clip(RoundedCornerShape(X.dp)) or .clip(RoundedCornerShape(topLeft = X.dp, ...)) -> "cornerRadiusTopLeft": X, "cornerRadiusTopRight": X, etc. (apply to all four if one value, or individual if specified)
@@ -125,7 +128,7 @@ Example Output JSON (stringified):
     "parentId": "${DEFAULT_ROOT_LAZY_COLUMN_ID}",
     "properties": {
       "padding": 16,
-      "width": "match_parent",
+      "fillMaxWidth": true,
       "children": [
         {
           "id": "comp-2",
@@ -189,6 +192,7 @@ Example Output JSON (stringified):
     "properties": {
       "text": "Submit",
       "width": 120,
+      "fillMaxWidth": false,
       "paddingStart": 10,
       "paddingEnd": 10
     }
@@ -221,5 +225,3 @@ const generateJsonFromComposeCommandsFlow = ai.defineFlow(
     return output;
   }
 );
-
-    

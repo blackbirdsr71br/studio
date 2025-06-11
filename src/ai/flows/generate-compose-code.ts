@@ -56,11 +56,13 @@ const prompt = ai.definePrompt({
   Do not include a full composable code including imports and package names, only the composable definition with @Composable annotation.
 
   Modifier Rules:
-  - If a component has a 'width' property:
+  - If a component has a 'fillMaxWidth' property set to true, use Modifier.fillMaxWidth().
+  - Else if a component has a 'width' property:
     - If 'width' is "match_parent", use Modifier.fillMaxWidth().
     - If 'width' is "wrap_content", use Modifier.wrapContentWidth().
     - If 'width' is a number, use Modifier.width(X.dp).
-  - If a component has a 'height' property:
+  - If a component has a 'fillMaxHeight' property set to true, use Modifier.fillMaxHeight().
+  - Else if a component has a 'height' property:
     - If 'height' is "match_parent", use Modifier.fillMaxHeight().
     - If 'height' is "wrap_content", use Modifier.wrapContentHeight().
     - If 'height' is a number, use Modifier.height(X.dp).
@@ -95,10 +97,12 @@ const prompt = ai.definePrompt({
     Remember to import androidx.compose.foundation.BorderStroke, android.graphics.Color, androidx.compose.material3.CardDefaults if you use this.
 
   For Spacer components:
-  - Use Spacer(modifier = Modifier.width(X.dp)) if only width is significant.
-  - Use Spacer(modifier = Modifier.height(Y.dp)) if only height is significant.
-  - Use Spacer(modifier = Modifier.width(X.dp).height(Y.dp)) if both are significant.
-  - If a Spacer has a 'layoutWeight' property > 0, use Spacer(modifier = Modifier.weight(Wf)). If it also has width/height, include them, e.g., Spacer(Modifier.weight(1f).fillMaxWidth()) or Spacer(Modifier.weight(1f).height(0.dp)) if it's meant to fill flexible space.
+  - If 'layoutWeight' property > 0: Use Spacer(modifier = Modifier.weight(Wf)). If it also has specific width/height and these are not meant to be overridden by weight (e.g. a weighted spacer that also clears a minimum space), include them: Spacer(Modifier.weight(Wf).width(X.dp).height(Y.dp)). If it's a flexible spacer meant to consume space, often width/height can be 0.dp or fillMaxWidth/Height if it's the *only* weighted element in a Row/Column with defined size: e.g., Spacer(Modifier.weight(1f).fillMaxWidth()).
+  - Else (no layoutWeight):
+    - If width > 0 and height > 0: Spacer(modifier = Modifier.width(X.dp).height(Y.dp)).
+    - If width > 0 and height is 0 or undefined: Spacer(modifier = Modifier.width(X.dp)).
+    - If height > 0 and width is 0 or undefined: Spacer(modifier = Modifier.height(Y.dp)).
+    - If both are 0 or undefined (and no weight): Spacer(Modifier.size(0.dp)) or omit if not meaningful.
 
 Intelligent List Handling for LazyColumn and LazyRow:
 - This applies ONLY to LazyColumn and LazyRow components.
@@ -183,5 +187,3 @@ const generateComposeCodeFlow = ai.defineFlow(
     return output!;
   }
 );
-
-    

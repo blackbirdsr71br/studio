@@ -28,11 +28,7 @@ const GenerateCustomCommandJsonOutputSchema = z.object({
     .refine(
       (data) => {
         try {
-          // Basic validation: is it parsable JSON?
           JSON.parse(data);
-          // Further validation could check if the root key matches a component type,
-          // or if "modifier" and "children" (if applicable) exist.
-          // For now, just ensuring it's JSON is a good first step.
           return true;
         } catch (e) {
           return false;
@@ -62,7 +58,7 @@ The output JSON MUST strictly follow this structure:
 The root of the JSON object should be a single key, which is the lowercase name of the main component type described in the commands (e.g., "card", "text", "column", "spacer").
 This root component object must contain:
 - A "modifier" object. This "modifier" object should have a "base" object for common modifiers. Component-specific modifiers can be placed directly under "modifier" or within "base" if appropriate.
-- Component-specific properties (e.g., "content" for Text, "text" for Button, "width"/"height" for Spacer).
+- Component-specific properties (e.g., "content" for Text, "text" for Button, "width"/"height" for Spacer if not using fill modifiers).
 - If the component is a container (like Column, Row, Card, Box), it should have a "children" array. Each element in "children" must be an object structured in the same way (e.g., { "text": { "modifier": {...}, "content": "Hello" } }). Spacers do not have children.
 
 Example of the target JSON structure for a Card containing a Row, which in turn contains a Box, a Spacer, and a Text:
@@ -138,8 +134,10 @@ Example of the target JSON structure for a Card containing a Row, which in turn 
 \`\`\`
 
 Modifier mapping examples (apply these within the "modifier.base" or component-specific modifier objects):
-- Modifier.fillMaxWidth() -> "fillMaxWidth": true
-- Modifier.fillMaxHeight() -> "fillMaxHeight": true
+- Modifier.fillMaxWidth() -> "fillMaxWidth": true (in modifier.base)
+- Modifier.fillMaxHeight() -> "fillMaxHeight": true (in modifier.base)
+- If "fillMaxWidth": true is set, do NOT also set a "width" property at the component level or in the modifier.
+- If "fillMaxHeight": true is set, do NOT also set a "height" property at the component level or in the modifier.
 - Modifier.padding(X.dp) -> "padding": { "all": X }
 - Modifier.padding(horizontal = X.dp, vertical = Y.dp) -> "padding": { "horizontal": X, "vertical": Y }
 - Modifier.size(X.dp) -> "size": X
@@ -151,9 +149,10 @@ Modifier mapping examples (apply these within the "modifier.base" or component-s
 Properties mapping examples:
 - Text("Hello", fontSize = 20.sp, fontWeight = FontWeight.Bold) -> "text": { "modifier": { "base": {} }, "content": "Hello", "fontSize": 20, "fontWeight": "bold" }
 - Button(onClick = { ... }) { Text("Submit") } -> "button": { "modifier": { "base": {} }, "text": "Submit", "clickId": "some_button_click" } (generate a placeholder clickId if an onClick is present)
-- Spacer(Modifier.width(16.dp)) -> "spacer": { "modifier": { "base": {} }, "width": 16, "height": 0 } (if height is not specified, default to 0 for horizontal spacer)
-- Spacer(Modifier.height(16.dp)) -> "spacer": { "modifier": { "base": {} }, "width": 0, "height": 16 } (if width is not specified, default to 0 for vertical spacer)
-- Spacer(Modifier.weight(1f)) -> "spacer": { "modifier": { "base": { "weight": 1 } }, "width": 0, "height": 0 } (for flexible spacer, default width/height to 0 or sensible values)
+- Spacer(Modifier.width(16.dp)) -> "spacer": { "modifier": { "base": {} }, "width": 16, "height": 0 } (if height is not specified, default to 0 for horizontal spacer, assuming no fillMaxHeight)
+- Spacer(Modifier.height(16.dp)) -> "spacer": { "modifier": { "base": {} }, "width": 0, "height": 16 } (if width is not specified, default to 0 for vertical spacer, assuming no fillMaxWidth)
+- Spacer(Modifier.weight(1f)) -> "spacer": { "modifier": { "base": { "weight": 1 } }, "width": 0, "height": 0 } (for flexible spacer, default width/height to 0 or sensible values if not filling)
+- If a component like Spacer is meant to fill width due to Modifier.fillMaxWidth(), then "spacer": { "modifier": { "base": { "fillMaxWidth": true } } } (omit "width" property). Same for height.
 
 Focus on representing the visual structure and properties. Simple onClick handlers can be represented by a "clickId" string property.
 Ensure the output is a single JSON object where the key is the main component type (lowercase).
@@ -176,12 +175,9 @@ const generateCustomCommandJsonFlow = ai.defineFlow(
     if (!output) {
       throw new Error('AI did not return a response or the response was empty.');
     }
-    // Ensure the output is a string. If the model directly returns an object, stringify it.
     if (typeof output.commandJson === 'object') {
        return { commandJson: JSON.stringify(output.commandJson, null, 2) };
     }
     return output;
   }
 );
-
-    

@@ -15,7 +15,8 @@ import type { ReactNode } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { generateImageFromHintAction } from '@/app/actions';
 import { Separator } from '../ui/separator';
-import type { ImageSourceModalRef } from './ImageSourceModal'; // Import the new modal ref
+import type { ImageSourceModalRef } from './ImageSourceModal';
+import { Switch } from '../ui/switch';
 
 interface GroupedProperties {
   [groupName: string]: ReactNode[];
@@ -31,7 +32,7 @@ export function PropertyPanel() {
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const imageSourceModalRef = useRef<ImageSourceModalRef>(null); // Ref for the new modal
+  const imageSourceModalRef = useRef<ImageSourceModalRef>(null);
 
 
   if (!selectedComponent) {
@@ -41,14 +42,9 @@ export function PropertyPanel() {
         <div className="flex-grow flex items-center justify-center">
           <p className="text-sm text-muted-foreground">Select a component to see its properties.</p>
         </div>
-        {/* Render ImageSourceModal here but keep it hidden until opened by ref. Or render it in page.tsx if preferred. */}
-        {/* <ImageSourceModal ref={imageSourceModalRef} onImageSelect={handleImageFromModal} /> */}
       </aside>
     );
   }
-  // The modal should be rendered at a higher level (e.g., page.tsx) to be globally accessible.
-  // We'll assume it's passed via props or context if needed directly here, or opened via a global modal system.
-  // For now, we'll just call the ref if it exists.
 
   const getDefaultPropertyValue = (propDef: Omit<ComponentProperty, 'value'>) => {
     if (['paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd'].includes(propDef.name)) {
@@ -68,7 +64,18 @@ export function PropertyPanel() {
     if (propDefinition?.type === 'number' && value === '') {
       actualValue = undefined as any; 
     }
-    updateComponent(selectedComponent.id, { properties: { [propName]: actualValue } });
+    
+    const updates: Partial<BaseComponentProps> = { [propName]: actualValue };
+
+    // If fillMaxWidth is being set to true, ensure width is not a number (set to wrap_content or similar)
+    if (propName === 'fillMaxWidth' && actualValue === true) {
+      // updates.width = 'match_parent'; // Or 'wrap_content', depending on desired default when un-filling
+    }
+    if (propName === 'fillMaxHeight' && actualValue === true) {
+      // updates.height = 'match_parent';
+    }
+    
+    updateComponent(selectedComponent.id, { properties: updates });
   };
 
   const handleNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -143,7 +150,6 @@ export function PropertyPanel() {
       };
       reader.readAsDataURL(file);
     }
-    // Reset file input to allow selecting the same file again
     if(event.target) event.target.value = "";
   };
 
@@ -155,19 +161,12 @@ export function PropertyPanel() {
   };
   
   const openImageSourceModal = () => {
-    // This function will be called to open the modal.
-    // The actual modal opening logic might be in page.tsx if passing down a ref like:
-    // selectedComponent.imageSourceModalRefFromPage?.current?.openModal(handleImageFromModal);
-    // For now, if you have a direct ref to the modal in this component (less ideal for deeply nested):
-    if (imageSourceModalRef.current) { // Ensure this ref is correctly passed and initialized
+    if (imageSourceModalRef.current) {
         imageSourceModalRef.current.openModal(handleImageFromModal, selectedComponent?.properties.src as string || '');
     } else {
-        // Fallback or warning if the modal ref isn't available
-        console.warn("ImageSourceModal ref not available in PropertyPanel. Modal should be managed at a higher level or ref passed correctly.");
-        // Potentially, this modal trigger should be in page.tsx and pass down the selected image URL
+        console.warn("ImageSourceModal ref not available in PropertyPanel.");
     }
   };
-
 
   const groupedProperties: GroupedProperties = {};
   const propertyGroups: string[] = [];
@@ -213,6 +212,11 @@ export function PropertyPanel() {
     } else {
         currentValue = currentValue ?? getDefaultPropertyValue(propDef);
     }
+    
+    // Disable width/height input if corresponding fillMaxWidth/Height is true
+    const isDisabled = 
+      (propDef.name === 'width' && selectedComponent.properties.fillMaxWidth) ||
+      (propDef.name === 'height' && selectedComponent.properties.fillMaxHeight);
 
     const editorElement = (
       <PropertyEditor
@@ -222,8 +226,26 @@ export function PropertyPanel() {
         onChange={(value) => handlePropertyChange(propDef.name, value)}
       />
     );
+    
+    // For boolean (Switch), wrap with Label for alignment
+    if (propDef.type === 'boolean') {
+       groupedProperties[group].push(
+         <div key={`${propDef.name}-div`} className="flex items-center justify-between py-1">
+           <Label htmlFor={`prop-${propDef.name}`} className="text-xs">{propDef.label}</Label>
+           {editorElement} {/* PropertyEditor itself returns the Switch for boolean */}
+         </div>
+       );
+    } else if (propDef.name === 'width' || propDef.name === 'height') {
+      // For width and height, render them only if their fill counterpart is false
+      const shouldShow = propDef.name === 'width' ? !selectedComponent.properties.fillMaxWidth : !selectedComponent.properties.fillMaxHeight;
+      if (shouldShow) {
+        groupedProperties[group].push(editorElement);
+      }
+    }
+    else {
+       groupedProperties[group].push(editorElement);
+    }
 
-    groupedProperties[group].push(editorElement);
 
     if (propDef.name === 'src' && selectedComponent.type === 'Image') {
       const imageButtons = (
@@ -289,9 +311,10 @@ export function PropertyPanel() {
             </TabsList>
             {propertyGroups.map((group) => (
               <TabsContent key={group} value={group}>
-                <div className="space-y-4 pt-4">
+                <div className="space-y-3 pt-4">
                   {groupedProperties[group]}
-                   {selectedComponent.type === 'Image' && group === 'Content' && !groupedProperties[group].find(el => (el as React.ReactElement)?.key === 'src-buttons') /*Ensure AI hint generator is not duplicated if src-buttons are added*/ && (
+                   {selectedComponent.type === 'Image' && group === 'Content' && !groupedProperties[group].find(el => (el as React.ReactElement)?.key === 'src-buttons') 
+                   && (
                     <div className="mt-3 pt-3 border-t border-sidebar-border">
                       <Button onClick={handleGenerateImage} disabled={isGeneratingImage || !selectedComponent.properties['data-ai-hint']} className="w-full" size="sm" >
                         {isGeneratingImage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}

@@ -28,9 +28,8 @@ interface DraggedLibraryItem {
 
 type HandleType = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
-const MIN_DIMENSION = 20; // Minimum width/height in pixels
+const MIN_DIMENSION = 20;
 
-// Helper function to check if a value is a number or a string representing a number
 const isNumericValue = (value: any): boolean => {
   if (value === null || value === undefined || typeof value === 'boolean') {
     return false;
@@ -39,7 +38,6 @@ const isNumericValue = (value: any): boolean => {
     return true;
   }
   if (typeof value === 'string' && value.trim() !== '') {
-    // Ensure it's not one of the keywords before attempting to parse as number
     if (value === 'match_parent' || value === 'wrap_content') return false;
     return !isNaN(Number(value));
   }
@@ -78,11 +76,9 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       if (!isContainerType(component.type, customComponentTemplates)) {
         return false;
       }
-      // Prevent dropping a component onto itself
       if (monitor.getItemType() === ItemTypes.CANVAS_COMPONENT_ITEM && (item as DraggedCanvasItem).id === component.id) {
         return false;
       }
-      // Prevent dropping a component into one of its own children (circular dependency)
       if (monitor.getItemType() === ItemTypes.CANVAS_COMPONENT_ITEM) {
         let currentParentId = component.parentId;
         while(currentParentId) {
@@ -103,13 +99,13 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
         addComponent(libraryItem.type, component.id);
       } else if (itemTypeFromMonitor === ItemTypes.CANVAS_COMPONENT_ITEM) {
         const canvasItem = item as CanvasItem;
-        if (canvasItem.id !== component.id) { // Check if not dropping onto itself
+        if (canvasItem.id !== component.id) {
           moveComponent(canvasItem.id, component.id);
         }
       }
     },
     collect: (monitor) => ({
-      isOver: monitor.isOver({ shallow: true }), // shallow ensures only direct drop targets react
+      isOver: monitor.isOver({ shallow: true }),
       canDrop: monitor.canDrop(),
     }),
   }), [component.id, component.type, component.parentId, addComponent, moveComponent, customComponentTemplates, getComponentById, isContainerType]);
@@ -119,7 +115,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
   const isSelected = component.id === selectedComponentId;
 
   const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent click from bubbling to parent components or the surface
+    e.stopPropagation();
     selectComponent(component.id);
   };
 
@@ -164,8 +160,10 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       newHeight = Math.max(newHeight, MIN_DIMENSION);
 
       const updatedProps: Record<string, any> = {
-        width: Math.round(newWidth), // Stored as number
-        height: Math.round(newHeight), // Stored as number
+        width: Math.round(newWidth),
+        height: Math.round(newHeight),
+        fillMaxWidth: false, // Resizing implies specific dimensions
+        fillMaxHeight: false,
       };
       
       updateComponent(component.id, { properties: updatedProps });
@@ -221,7 +219,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
             style={{
               width: isNumericValue(component.properties.width) ? `${component.properties.width}px` : '8px',
               height: isNumericValue(component.properties.height) ? `${component.properties.height}px` : '8px',
-              flexShrink: 0, // Prevent spacer from shrinking if in a tight flex container
+              flexShrink: 0,
             }}
             className="select-none"
           />
@@ -240,10 +238,18 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     }
   };
   
+  const getDimensionValue = (propValue: any, fillValue: boolean | undefined): string => {
+    if (fillValue) return '100%';
+    if (propValue === 'match_parent') return '100%';
+    if (propValue === 'wrap_content') return 'auto';
+    if (isNumericValue(propValue)) return `${propValue}px`;
+    return 'auto'; // Fallback for undefined or other non-numeric strings
+  };
+  
   const wrapperStyle: React.CSSProperties = {
     transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
-    width: component.properties.width === 'match_parent' ? '100%' : component.properties.width === 'wrap_content' ? 'auto' : (isNumericValue(component.properties.width) ? `${component.properties.width}px` : 'auto'),
-    height: component.properties.height === 'match_parent' ? '100%' : component.properties.height === 'wrap_content' ? 'auto' : (isNumericValue(component.properties.height) ? `${component.properties.height}px` : 'auto'),
+    width: getDimensionValue(component.properties.width, component.properties.fillMaxWidth),
+    height: getDimensionValue(component.properties.height, component.properties.fillMaxHeight),
     position: component.id === DEFAULT_ROOT_LAZY_COLUMN_ID || component.parentId ? 'relative' : 'absolute',
     left: component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && !component.parentId ? `${component.properties.x || 0}px` : undefined,
     top: component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && !component.parentId ? `${component.properties.y || 0}px` : undefined,
@@ -260,15 +266,27 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     wrapperStyle.borderBottomLeftRadius = `${component.properties.cornerRadiusBottomLeft || 0}px`;
   }
 
-
   const containerDropTargetStyle = isContainerType(component.type, customComponentTemplates) && isOver && canDrop 
     ? 'drag-over-container'
     : '';
 
   const showResizeHandles = isSelected &&
                           component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID &&
+                          !component.properties.fillMaxWidth && // Don't show width handles if fillMaxWidth
+                          !component.properties.fillMaxHeight && // Don't show height handles if fillMaxHeight
                           isNumericValue(component.properties.width) &&
                           isNumericValue(component.properties.height);
+  
+  const showHorizontalResizeHandles = isSelected &&
+                                component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID &&
+                                !component.properties.fillMaxWidth &&
+                                isNumericValue(component.properties.width);
+
+  const showVerticalResizeHandles = isSelected &&
+                              component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID &&
+                              !component.properties.fillMaxHeight &&
+                              isNumericValue(component.properties.height);
+
 
   return (
     <div
@@ -279,8 +297,8 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
         {
           'ring-2 ring-primary ring-offset-2 shadow-lg': isSelected && component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID,
           'opacity-50': isDragging,
-          'cursor-grab': !isResizing && component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && component.type !== 'Spacer', // Spacer shouldn't be grab-cursor
-          'cursor-default': component.type === 'Spacer', // Spacer should have default cursor
+          'cursor-grab': !isResizing && component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && component.type !== 'Spacer',
+          'cursor-default': component.type === 'Spacer',
           'cursor-grabbing': isDragging,
         },
         containerDropTargetStyle
@@ -290,19 +308,19 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       data-component-type={component.type}
     >
       {renderSpecificComponent()}
-      {showResizeHandles && component.type !== 'Spacer' && ( // Spacers should not have resize handles by default
+      {component.type !== 'Spacer' && (
         <>
-          {(['nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w'] as HandleType[]).map(handle => (
-            <div
-              key={handle}
-              className={`resize-handle ${handle}`}
-              onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle)}
-            />
+          {showVerticalResizeHandles && showHorizontalResizeHandles && (['nw', 'ne', 'sw', 'se'] as HandleType[]).map(handle => (
+            <div key={handle} className={`resize-handle ${handle}`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle)} />
+          ))}
+          {showVerticalResizeHandles && (['n', 's'] as HandleType[]).map(handle => (
+            <div key={handle} className={`resize-handle ${handle}`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle)} />
+          ))}
+          {showHorizontalResizeHandles && (['e', 'w'] as HandleType[]).map(handle => (
+            <div key={handle} className={`resize-handle ${handle}`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle)} />
           ))}
         </>
       )}
     </div>
   );
 }
-
-    

@@ -13,9 +13,8 @@ export type ComponentType =
   | 'LazyRow'
   | 'LazyVerticalGrid'
   | 'LazyHorizontalGrid'
-  | 'Spacer'; // Added Spacer
+  | 'Spacer';
 
-// Added to distinguish custom component types in the library
 export const CUSTOM_COMPONENT_TYPE_PREFIX = "custom/";
 export const DEFAULT_ROOT_LAZY_COLUMN_ID = 'default-root-lazy-column';
 
@@ -26,11 +25,11 @@ export interface ComponentPropertyOption {
 export interface ComponentProperty {
   name:string;
   type: 'string' | 'number' | 'color' | 'boolean' | 'enum';
-  value: string | number | boolean; // Default value for the definition
-  options?: ComponentPropertyOption[]; // For enum type
+  value: string | number | boolean;
+  options?: ComponentPropertyOption[];
   label: string;
   placeholder?: string;
-  group: 'Layout' | 'Appearance' | 'Content' | 'Behavior'; // Added group for tabbing
+  group: 'Layout' | 'Appearance' | 'Content' | 'Behavior';
 }
 
 export interface BaseComponentProps {
@@ -40,10 +39,12 @@ export interface BaseComponentProps {
   textColor?: string;
   backgroundColor?: string;
   contentColor?: string;
-  width?: 'wrap_content' | 'match_parent' | number | string; // Allow string for '100dp' etc from user input
-  height?: 'wrap_content' | 'match_parent' | number | string; // Allow string for '100dp' etc from user input
+  width?: 'wrap_content' | 'match_parent' | number | string;
+  height?: 'wrap_content' | 'match_parent' | number | string;
+  fillMaxWidth?: boolean;
+  fillMaxHeight?: boolean;
   layoutWeight?: number;
-  padding?: number; // All sides padding
+  padding?: number;
   paddingTop?: number;
   paddingBottom?: number;
   paddingStart?: number;
@@ -51,34 +52,29 @@ export interface BaseComponentProps {
   id?: string;
   x?: number;
   y?: number;
-  children?: string[] | any[]; // any[] for modal JSON, string[] for DesignComponent
+  children?: string[] | any[];
   contentDescription?: string;
   src?: string;
   "data-ai-hint"?: string;
-  elevation?: number; // For Card
+  elevation?: number;
   cornerRadiusTopLeft?: number;
   cornerRadiusTopRight?: number;
   cornerRadiusBottomRight?: number;
   cornerRadiusBottomLeft?: number;
-  borderWidth?: number; // For Card border
-  borderColor?: string; // For Card border
-  columns?: number; // For LazyVerticalGrid
-  rows?: number; // For LazyHorizontalGrid
-  maxLines?: number; // For Text
-  textOverflow?: 'Clip' | 'Ellipsis' | 'Visible'; // For Text
-  contentScale?: 'Crop' | 'Fit' | 'FillBounds' | 'Inside' | 'None' | 'FillWidth' | 'FillHeight'; // For Image
-  // Properties for LazyColumn / LazyRow
+  borderWidth?: number;
+  borderColor?: string;
+  columns?: number;
+  rows?: number;
+  maxLines?: number;
+  textOverflow?: 'Clip' | 'Ellipsis' | 'Visible';
+  contentScale?: 'Crop' | 'Fit' | 'FillBounds' | 'Inside' | 'None' | 'FillWidth' | 'FillHeight';
   itemSpacing?: number;
   userScrollEnabled?: boolean;
   reverseLayout?: boolean;
-  // New LazyColumn specific layout properties
   verticalArrangement?: 'Top' | 'Bottom' | 'Center' | 'SpaceAround' | 'SpaceBetween' | 'SpaceEvenly';
   horizontalAlignment?: 'Start' | 'CenterHorizontally' | 'End';
-  // New LazyRow specific layout properties
   horizontalArrangement?: 'Start' | 'End' | 'Center' | 'SpaceAround' | 'SpaceBetween' | 'SpaceEvenly';
   verticalAlignment?: 'Top' | 'CenterVertically' | 'Bottom';
-
-  // New Text properties
   fontWeight?: 'Normal' | 'Bold';
   fontStyle?: 'Normal' | 'Italic';
   textAlign?: 'Left' | 'Center' | 'Right' | 'Justify' | 'Start' | 'End';
@@ -88,17 +84,17 @@ export interface BaseComponentProps {
 
 export interface DesignComponent {
   id: string;
-  type: ComponentType | string; // Allow string for custom types
+  type: ComponentType | string;
   name: string;
-  properties: BaseComponentProps & { children?: string[] }; // DesignComponent uses string[] for children IDs
+  properties: BaseComponentProps & { children?: string[] };
   parentId?: string | null;
 }
 
 export interface CustomComponentTemplate {
-  firestoreId?: string; // Firestore document ID
-  templateId: string; // e.g., "custom/MyHeader" - acts as its type
-  name: string; // User-friendly name, e.g., "My Header"
-  rootComponentId: string; // The ID of the root component within this template's componentTree
+  firestoreId?: string;
+  templateId: string;
+  name: string;
+  rootComponentId: string;
   componentTree: DesignComponent[];
 }
 
@@ -112,7 +108,8 @@ export interface DesignState {
 export const getDefaultProperties = (type: ComponentType | string): BaseComponentProps => {
   const common = {
     x: 50, y: 50, layoutWeight: 0,
-    padding: undefined, paddingTop: undefined, paddingBottom: undefined, paddingStart: undefined, paddingEnd: undefined
+    padding: undefined, paddingTop: undefined, paddingBottom: undefined, paddingStart: undefined, paddingEnd: undefined,
+    fillMaxWidth: false, fillMaxHeight: false,
   };
   switch (type) {
     case 'Text':
@@ -121,7 +118,7 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
         text: 'Sample Text',
         fontSize: 16,
         textColor: undefined,
-        padding: 0, // Default "all sides" padding for Text
+        padding: 0,
         width: 'wrap_content',
         height: 'wrap_content',
         maxLines: undefined,
@@ -138,7 +135,7 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
         text: 'Click Me',
         backgroundColor: '#3F51B5',
         textColor: undefined,
-        padding: 12, // Default "all sides" padding for Button
+        padding: 12,
         width: 'wrap_content',
         height: 'wrap_content'
       };
@@ -152,13 +149,13 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
         "data-ai-hint": "abstract pattern",
         contentScale: 'Crop',
         cornerRadiusTopLeft: 0, cornerRadiusTopRight: 0, cornerRadiusBottomRight: 0, cornerRadiusBottomLeft: 0,
-        padding: 0, // Default "all sides" padding for Image
+        padding: 0,
       };
     case 'Column':
       return {
         ...common,
         children: [],
-        padding: 8, // Default "all sides" padding
+        padding: 8,
         backgroundColor: 'rgba(224, 224, 224, 0.5)',
         width: 200, height: 200, itemSpacing: 0,
         verticalArrangement: 'Top', horizontalAlignment: 'Start'
@@ -167,7 +164,7 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
       return {
         ...common,
         children: [],
-        padding: 8, // Default "all sides" padding
+        padding: 8,
         backgroundColor: 'rgba(224, 224, 224, 0.5)',
         width: 200, height: 100, itemSpacing: 0,
         horizontalArrangement: 'Start', verticalAlignment: 'Top'
@@ -176,7 +173,7 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
       return {
         ...common,
         children: [],
-        padding: 0, // Default "all sides" padding
+        padding: 0,
         backgroundColor: 'rgba(220, 220, 220, 0.3)',
         width: 100, height: 100,
         cornerRadiusTopLeft: 4, cornerRadiusTopRight: 4, cornerRadiusBottomRight: 4, cornerRadiusBottomLeft: 4
@@ -185,7 +182,7 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
       return {
         ...common,
         children: [],
-        padding: 16, // Default "all sides" padding
+        padding: 16,
         backgroundColor: '#FFFFFF', contentColor: undefined,
         width: 200, height: 150, elevation: 2,
         cornerRadiusTopLeft: 8, cornerRadiusTopRight: 8, cornerRadiusBottomRight: 8, cornerRadiusBottomLeft: 8,
@@ -195,7 +192,7 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
       return {
         ...common,
         children: [],
-        padding: 8, // Default "all sides" padding
+        padding: 8,
         backgroundColor: 'rgba(200, 240, 200, 0.3)',
         width: 'match_parent', height: 300, itemSpacing: 0,
         userScrollEnabled: true, reverseLayout: false,
@@ -205,7 +202,7 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
       return {
         ...common,
         children: [],
-        padding: 8, // Default "all sides" padding
+        padding: 8,
         backgroundColor: 'rgba(200, 200, 240, 0.3)',
         width: 'match_parent', height: 120, itemSpacing: 0,
         userScrollEnabled: true, reverseLayout: false,
@@ -215,7 +212,7 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
       return {
         ...common,
         children: [],
-        padding: 8, // Default "all sides" padding
+        padding: 8,
         backgroundColor: 'rgba(240, 200, 200, 0.3)',
         width: 'match_parent', height: 300, columns: 2, itemSpacing: 0,
         verticalArrangement: 'Top', horizontalAlignment: 'Start'
@@ -224,29 +221,29 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
       return {
         ...common,
         children: [],
-        padding: 8, // Default "all sides" padding
+        padding: 8,
         backgroundColor: 'rgba(240, 240, 200, 0.3)',
         width: 'match_parent', height: 200, rows: 2, itemSpacing: 0,
         horizontalArrangement: 'Start', verticalAlignment: 'Top'
       };
-    case 'Spacer': // Added Spacer default properties
+    case 'Spacer':
       return {
         ...common,
         width: 8,
         height: 8,
-        layoutWeight: 0, // Spacers can also have weight
+        layoutWeight: 0,
       };
     default:
       if (isCustomComponentType(type)) {
-        return { ...common, children: [], width: 'wrap_content', height: 'wrap_content', padding: 0 };
+        return { ...common, children: [], width: 'wrap_content', height: 'wrap_content', padding: 0, fillMaxWidth: false, fillMaxHeight: false };
       }
-      return {...common, width: 'wrap_content', height: 'wrap_content', padding: 0 };
+      return {...common, width: 'wrap_content', height: 'wrap_content', padding: 0, fillMaxWidth: false, fillMaxHeight: false };
   }
 };
 
 export const getComponentDisplayName = (type: ComponentType | string, templateName?: string): string => {
   if (type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
-    return templateName || type.replace(CUSTOM_COMPONENT_TYPE_PREFIX, "").replace(/-\d+$/, ""); // Clean up potential timestamp
+    return templateName || type.replace(CUSTOM_COMPONENT_TYPE_PREFIX, "").replace(/-\d+$/, "");
   }
   switch (type as ComponentType) {
     case 'Text': return 'Text';
@@ -260,13 +257,15 @@ export const getComponentDisplayName = (type: ComponentType | string, templateNa
     case 'LazyRow': return 'Lazy Row';
     case 'LazyVerticalGrid': return 'Lazy Vertical Grid';
     case 'LazyHorizontalGrid': return 'Lazy Horizontal Grid';
-    case 'Spacer': return 'Spacer'; // Added Spacer display name
+    case 'Spacer': return 'Spacer';
     default: return 'Unknown';
   }
 };
 
 const commonLayoutProperties: (Omit<ComponentProperty, 'value'>)[] = [
+    { name: 'fillMaxWidth', type: 'boolean', label: 'Fill Max Width', group: 'Layout' },
     { name: 'width', type: 'string', label: 'Width (dp, match_parent, wrap_content)', placeholder: 'e.g., 100, match_parent', group: 'Layout' },
+    { name: 'fillMaxHeight', type: 'boolean', label: 'Fill Max Height', group: 'Layout' },
     { name: 'height', type: 'string', label: 'Height (dp, match_parent, wrap_content)', placeholder: 'e.g., 100, wrap_content', group: 'Layout' },
     { name: 'layoutWeight', type: 'number', label: 'Layout Weight', placeholder: '0 (no weight)', group: 'Layout' },
     { name: 'padding', type: 'number', label: 'Padding (All Sides, dp)', placeholder: 'e.g., 8', group: 'Layout' },
@@ -530,14 +529,13 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
       ]
     },
   ],
-  Spacer: [ // Added Spacer property definitions
+  Spacer: [
     { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '8', group: 'Layout' },
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '8', group: 'Layout' },
     { name: 'layoutWeight', type: 'number', label: 'Layout Weight', placeholder: '0 (no weight)', group: 'Layout' },
   ],
 };
 
-// Helper to check if a type string is for a custom component
 export const isCustomComponentType = (type: string): boolean => {
   return type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX);
 };
@@ -547,9 +545,8 @@ export const CONTAINER_TYPES: ReadonlyArray<ComponentType> = [
   'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid'
 ];
 
-// Helper function to determine if a component type is a container
 export function isContainerType(type: ComponentType | string, customTemplates?: CustomComponentTemplate[]): boolean {
-  if (type === 'Spacer') return false; // Spacer is not a container
+  if (type === 'Spacer') return false;
   if (isCustomComponentType(type)) {
     if (customTemplates) {
       const template = customTemplates.find(t => t.templateId === type);
@@ -565,8 +562,6 @@ export function isContainerType(type: ComponentType | string, customTemplates?: 
   return CONTAINER_TYPES.includes(type as ComponentType);
 }
 
-
-// Zod Schemas for Modal JSON Validation
 const BaseModalPropertiesSchema = z.object({
   text: z.string().optional(),
   fontSize: z.number().optional(),
@@ -575,6 +570,8 @@ const BaseModalPropertiesSchema = z.object({
   contentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional().or(z.literal(undefined)),
   width: z.union([z.literal('wrap_content'), z.literal('match_parent'), z.number().min(0), z.string()]).optional(),
   height: z.union([z.literal('wrap_content'), z.literal('match_parent'), z.number().min(0), z.string()]).optional(),
+  fillMaxWidth: z.boolean().optional(),
+  fillMaxHeight: z.boolean().optional(),
   layoutWeight: z.number().min(0).optional(),
   padding: z.number().min(0).optional(),
   paddingTop: z.number().min(0).optional(),
@@ -632,16 +629,12 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
       if (data.properties?.src && !z.string().url().or(z.string().startsWith("data:image/")).safeParse(data.properties.src).success) {
       }
     }
-    // Spacer specific validation for Modal JSON: must have width or height if not weighted.
     if (data.type === 'Spacer') {
         const props = data.properties || {};
         const hasWeight = typeof props.layoutWeight === 'number' && props.layoutWeight > 0;
         const hasWidth = typeof props.width === 'number' && props.width > 0;
         const hasHeight = typeof props.height === 'number' && props.height > 0;
         if (!hasWeight && !hasWidth && !hasHeight) {
-            // This refine is a bit tricky with Zod an optional properties.
-            // For now, the generation logic will ensure sensible defaults.
-            // A more robust validation here might require making width/height conditionally required.
         }
     }
     return true;
@@ -649,5 +642,3 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
 );
 
 export const ModalJsonSchema = z.array(ModalComponentNodeSchema);
-
-    
