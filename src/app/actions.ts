@@ -3,6 +3,7 @@
 import { generateComposeCode, type GenerateComposeCodeInput } from '@/ai/flows/generate-compose-code';
 import { generateImageFromHint, type GenerateImageFromHintInput } from '@/ai/flows/generate-image-from-hint-flow';
 import { generateJsonFromComposeCommands, type GenerateJsonFromComposeCommandsInput } from '@/ai/flows/generate-json-from-compose-commands';
+import { generateCustomCommandJson, type GenerateCustomCommandJsonInput } from '@/ai/flows/generate-custom-command-json'; // New import
 import type { DesignComponent, CustomComponentTemplate, BaseComponentProps } from '@/types/compose-spec';
 import { isContainerType, DEFAULT_ROOT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
@@ -314,6 +315,23 @@ export async function generateJsonFromTextAction(
   }
 }
 
+export async function generateCustomCommandJsonAction(
+  commands: string
+): Promise<{ commandJson?: string; error?: string }> {
+  if (!commands || commands.trim().length < 10) {
+    return { error: "Input commands are too short. Please provide more details." };
+  }
+  try {
+    const input: GenerateCustomCommandJsonInput = { commands };
+    const result = await generateCustomCommandJson(input);
+    return { commandJson: result.commandJson };
+  } catch (error) {
+    console.error("Error in generateCustomCommandJsonAction:", error);
+    const message = error instanceof Error ? error.message : "An unknown error occurred during custom command JSON generation.";
+    return { error: message };
+  }
+}
+
 
 export interface GlobalThemeColorsInput {
   lightBackground: string; // hex
@@ -377,3 +395,5 @@ export async function updateGlobalStylesheetAction(
     return { success: false, error: `Failed to update stylesheet: ${message}` };
   }
 }
+
+    
