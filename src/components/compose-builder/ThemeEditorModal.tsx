@@ -17,7 +17,7 @@ const initialThemeColors: GlobalThemeColorsInput = {
   lightForeground: "#0A0A0A",
   lightPrimary: "#3F51B5",
   lightAccent: "#9C27B0",
-  darkBackground: "#262B33",
+  darkBackground: "#262B33", // Updated as per previous request for a darker canvas
   darkForeground: "#FAFAFA",
   darkPrimary: "#A3AFFF",
   darkAccent: "#E0B0FF",
@@ -127,7 +127,7 @@ export const ThemeEditorModal = forwardRef<ThemeEditorModalRef, {}>((props, ref)
           </DialogDescription>
         </DialogHeader>
         
-        <ScrollArea className="flex-grow my-4 pr-3">
+        <ScrollArea className="flex-grow min-h-0 my-4 pr-3"> {/* Added min-h-0 for robust flex scroll */}
           <div className="space-y-4">
             <div>
               <h4 className="text-sm font-medium mb-2 text-foreground">Light Theme</h4>
