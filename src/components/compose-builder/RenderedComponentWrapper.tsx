@@ -272,8 +272,8 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
 
   const showResizeHandles = isSelected &&
                           component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID &&
-                          !component.properties.fillMaxWidth && // Don't show width handles if fillMaxWidth
-                          !component.properties.fillMaxHeight && // Don't show height handles if fillMaxHeight
+                          !component.properties.fillMaxWidth && 
+                          !component.properties.fillMaxHeight && 
                           isNumericValue(component.properties.width) &&
                           isNumericValue(component.properties.height);
   
@@ -295,7 +295,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       className={cn(
         'p-0.5 border border-transparent hover:border-primary/50', 
         {
-          'ring-2 ring-primary ring-offset-2 shadow-lg': isSelected && component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID,
+          'ring-2 ring-primary ring-offset-4 shadow-lg': isSelected && component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID,
           'opacity-50': isDragging,
           'cursor-grab': !isResizing && component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && component.type !== 'Spacer',
           'cursor-default': component.type === 'Spacer',
