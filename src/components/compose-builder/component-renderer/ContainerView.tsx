@@ -60,9 +60,13 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
   // Determine effective padding for each side
   const defaultAllSidesPadding = (componentId === DEFAULT_ROOT_LAZY_COLUMN_ID ? 8 : (type === 'Card' ? 16 : 0));
   const effectivePaddingTop = paddingTop ?? padding ?? defaultAllSidesPadding;
-  const effectivePaddingBottom = paddingBottom ?? padding ?? defaultAllSidesPadding;
+  let effectivePaddingBottom = paddingBottom ?? padding ?? defaultAllSidesPadding;
   const effectivePaddingStart = paddingStart ?? padding ?? defaultAllSidesPadding;
   const effectivePaddingEnd = paddingEnd ?? padding ?? defaultAllSidesPadding;
+
+  if (componentId === DEFAULT_ROOT_LAZY_COLUMN_ID) {
+    effectivePaddingBottom += 60; // Add extra space at the bottom of the root canvas
+  }
 
 
   const processDimension = (
@@ -291,9 +295,9 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
             childSpecificStyle.flexShrink = 1;
             childSpecificStyle.flexBasis = '0%';
             if (flexDirection === 'row') {
-                childSpecificStyle.width = 'auto';
+                childSpecificStyle.width = 'auto'; // Let flex-basis and flex-grow determine width
             } else {
-                childSpecificStyle.height = 'auto';
+                childSpecificStyle.height = 'auto'; // Let flex-basis and flex-grow determine height
             }
         }
         return (
