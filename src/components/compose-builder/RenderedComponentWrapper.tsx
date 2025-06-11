@@ -102,7 +102,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
         const libraryItem = item as DraggedLibraryItem;
         addComponent(libraryItem.type, component.id);
       } else if (itemTypeFromMonitor === ItemTypes.CANVAS_COMPONENT_ITEM) {
-        const canvasItem = item as DraggedCanvasItem;
+        const canvasItem = item as CanvasItem;
         if (canvasItem.id !== component.id) { // Check if not dropping onto itself
           moveComponent(canvasItem.id, component.id);
         }
@@ -215,6 +215,18 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       case 'LazyHorizontalGrid': 
         return <ContainerView component={component} childrenComponents={childrenComponents} isRow={['Row', 'LazyRow', 'LazyVerticalGrid'].includes(component.type)} />;
       
+      case 'Spacer':
+        return (
+          <div
+            style={{
+              width: isNumericValue(component.properties.width) ? `${component.properties.width}px` : '8px',
+              height: isNumericValue(component.properties.height) ? `${component.properties.height}px` : '8px',
+              flexShrink: 0, // Prevent spacer from shrinking if in a tight flex container
+            }}
+            className="select-none"
+          />
+        );
+
       default:
         if (isCustomComponentType(component.type)) {
            const template = customComponentTemplates.find(t => t.templateId === component.type);
@@ -267,7 +279,8 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
         {
           'ring-2 ring-primary ring-offset-2 shadow-lg': isSelected && component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID,
           'opacity-50': isDragging,
-          'cursor-grab': !isResizing && component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID,
+          'cursor-grab': !isResizing && component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && component.type !== 'Spacer', // Spacer shouldn't be grab-cursor
+          'cursor-default': component.type === 'Spacer', // Spacer should have default cursor
           'cursor-grabbing': isDragging,
         },
         containerDropTargetStyle
@@ -277,7 +290,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       data-component-type={component.type}
     >
       {renderSpecificComponent()}
-      {showResizeHandles && (
+      {showResizeHandles && component.type !== 'Spacer' && ( // Spacers should not have resize handles by default
         <>
           {(['nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w'] as HandleType[]).map(handle => (
             <div
@@ -292,3 +305,4 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
   );
 }
 
+    

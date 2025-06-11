@@ -12,7 +12,8 @@ export type ComponentType =
   | 'LazyColumn'
   | 'LazyRow'
   | 'LazyVerticalGrid'
-  | 'LazyHorizontalGrid';
+  | 'LazyHorizontalGrid'
+  | 'Spacer'; // Added Spacer
 
 // Added to distinguish custom component types in the library
 export const CUSTOM_COMPONENT_TYPE_PREFIX = "custom/";
@@ -228,6 +229,13 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
         width: 'match_parent', height: 200, rows: 2, itemSpacing: 0,
         horizontalArrangement: 'Start', verticalAlignment: 'Top'
       };
+    case 'Spacer': // Added Spacer default properties
+      return {
+        ...common,
+        width: 8,
+        height: 8,
+        layoutWeight: 0, // Spacers can also have weight
+      };
     default:
       if (isCustomComponentType(type)) {
         return { ...common, children: [], width: 'wrap_content', height: 'wrap_content', padding: 0 };
@@ -252,6 +260,7 @@ export const getComponentDisplayName = (type: ComponentType | string, templateNa
     case 'LazyRow': return 'Lazy Row';
     case 'LazyVerticalGrid': return 'Lazy Vertical Grid';
     case 'LazyHorizontalGrid': return 'Lazy Horizontal Grid';
+    case 'Spacer': return 'Spacer'; // Added Spacer display name
     default: return 'Unknown';
   }
 };
@@ -521,6 +530,11 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
       ]
     },
   ],
+  Spacer: [ // Added Spacer property definitions
+    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '8', group: 'Layout' },
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '8', group: 'Layout' },
+    { name: 'layoutWeight', type: 'number', label: 'Layout Weight', placeholder: '0 (no weight)', group: 'Layout' },
+  ],
 };
 
 // Helper to check if a type string is for a custom component
@@ -535,6 +549,7 @@ export const CONTAINER_TYPES: ReadonlyArray<ComponentType> = [
 
 // Helper function to determine if a component type is a container
 export function isContainerType(type: ComponentType | string, customTemplates?: CustomComponentTemplate[]): boolean {
+  if (type === 'Spacer') return false; // Spacer is not a container
   if (isCustomComponentType(type)) {
     if (customTemplates) {
       const template = customTemplates.find(t => t.templateId === type);
@@ -616,6 +631,18 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
     if (data.type === 'Image') {
       if (data.properties?.src && !z.string().url().or(z.string().startsWith("data:image/")).safeParse(data.properties.src).success) {
       }
+    }
+    // Spacer specific validation for Modal JSON: must have width or height if not weighted.
+    if (data.type === 'Spacer') {
+        const props = data.properties || {};
+        const hasWeight = typeof props.layoutWeight === 'number' && props.layoutWeight > 0;
+        const hasWidth = typeof props.width === 'number' && props.width > 0;
+        const hasHeight = typeof props.height === 'number' && props.height > 0;
+        if (!hasWeight && !hasWidth && !hasHeight) {
+            // This refine is a bit tricky with Zod an optional properties.
+            // For now, the generation logic will ensure sensible defaults.
+            // A more robust validation here might require making width/height conditionally required.
+        }
     }
     return true;
   })

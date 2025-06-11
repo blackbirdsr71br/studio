@@ -23,7 +23,7 @@ const GenerateCustomCommandJsonOutputSchema = z.object({
   commandJson: z
     .string()
     .describe(
-      'A JSON string representing the UI in the custom command format. The root key should be the lowercase name of the main component (e.g., "card", "column").'
+      'A JSON string representing the UI in the custom command format. The root key should be the lowercase name of the main component (e.g., "card", "column", "spacer").'
     )
     .refine(
       (data) => {
@@ -59,13 +59,13 @@ const prompt = ai.definePrompt({
   prompt: `You are an expert Jetpack Compose to JSON UI converter. Your task is to transform Jetpack Compose-like text commands into a specific JSON format.
 
 The output JSON MUST strictly follow this structure:
-The root of the JSON object should be a single key, which is the lowercase name of the main component type described in the commands (e.g., "card", "text", "column").
+The root of the JSON object should be a single key, which is the lowercase name of the main component type described in the commands (e.g., "card", "text", "column", "spacer").
 This root component object must contain:
 - A "modifier" object. This "modifier" object should have a "base" object for common modifiers. Component-specific modifiers can be placed directly under "modifier" or within "base" if appropriate.
-- Component-specific properties (e.g., "content" for Text, "text" for Button).
-- If the component is a container (like Column, Row, Card, Box), it should have a "children" array. Each element in "children" must be an object structured in the same way (e.g., { "text": { "modifier": {...}, "content": "Hello" } }).
+- Component-specific properties (e.g., "content" for Text, "text" for Button, "width"/"height" for Spacer).
+- If the component is a container (like Column, Row, Card, Box), it should have a "children" array. Each element in "children" must be an object structured in the same way (e.g., { "text": { "modifier": {...}, "content": "Hello" } }). Spacers do not have children.
 
-Example of the target JSON structure for a Card containing a Row, which in turn contains a Box and a Text:
+Example of the target JSON structure for a Card containing a Row, which in turn contains a Box, a Spacer, and a Text:
 \`\`\`json
 {
   "card": {
@@ -139,6 +139,7 @@ Example of the target JSON structure for a Card containing a Row, which in turn 
 
 Modifier mapping examples (apply these within the "modifier.base" or component-specific modifier objects):
 - Modifier.fillMaxWidth() -> "fillMaxWidth": true
+- Modifier.fillMaxHeight() -> "fillMaxHeight": true
 - Modifier.padding(X.dp) -> "padding": { "all": X }
 - Modifier.padding(horizontal = X.dp, vertical = Y.dp) -> "padding": { "horizontal": X, "vertical": Y }
 - Modifier.size(X.dp) -> "size": X
@@ -150,6 +151,9 @@ Modifier mapping examples (apply these within the "modifier.base" or component-s
 Properties mapping examples:
 - Text("Hello", fontSize = 20.sp, fontWeight = FontWeight.Bold) -> "text": { "modifier": { "base": {} }, "content": "Hello", "fontSize": 20, "fontWeight": "bold" }
 - Button(onClick = { ... }) { Text("Submit") } -> "button": { "modifier": { "base": {} }, "text": "Submit", "clickId": "some_button_click" } (generate a placeholder clickId if an onClick is present)
+- Spacer(Modifier.width(16.dp)) -> "spacer": { "modifier": { "base": {} }, "width": 16, "height": 0 } (if height is not specified, default to 0 for horizontal spacer)
+- Spacer(Modifier.height(16.dp)) -> "spacer": { "modifier": { "base": {} }, "width": 0, "height": 16 } (if width is not specified, default to 0 for vertical spacer)
+- Spacer(Modifier.weight(1f)) -> "spacer": { "modifier": { "base": { "weight": 1 } }, "width": 0, "height": 0 } (for flexible spacer, default width/height to 0 or sensible values)
 
 Focus on representing the visual structure and properties. Simple onClick handlers can be represented by a "clickId" string property.
 Ensure the output is a single JSON object where the key is the main component type (lowercase).

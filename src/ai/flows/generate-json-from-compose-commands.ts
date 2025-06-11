@@ -50,9 +50,9 @@ export async function generateJsonFromComposeCommands(
   return generateJsonFromComposeCommandsFlow(input);
 }
 
-const availableComponentTypes: (ComponentType | 'Scaffold' | 'TopAppBar')[] = [
+const availableComponentTypes: (ComponentType | 'Scaffold' | 'TopAppBar' | 'Spacer')[] = [
   'Text', 'Button', 'Column', 'Row', 'Image', 'Box', 'Card',
-  'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid',
+  'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid', 'Spacer',
   'Scaffold', 'TopAppBar'
 ];
 
@@ -64,18 +64,20 @@ const prompt = ai.definePrompt({
   prompt: `You are an expert Jetpack Compose to JSON UI converter. Your task is to transform Jetpack Compose-like text commands into a specific JSON format.
 The output JSON must be an array of component objects. Each component object must have the following structure:
 - "id": A unique string identifier (e.g., "comp-1", "comp-2").
-- "type": A string indicating the component type (e.g., "Text", "Column", "Image").
-- "name": A user-friendly name for the component (e.g., "Main Title Text", "User Profile Card").
+- "type": A string indicating the component type (e.g., "Text", "Column", "Image", "Spacer").
+- "name": A user-friendly name for the component (e.g., "Main Title Text", "User Profile Card", "Vertical Spacer").
 - "parentId": The "id" of the parent component. For components that are at the top level of the user's described layout, this MUST be "${DEFAULT_ROOT_LAZY_COLUMN_ID}".
 - "properties": An object containing specific attributes for the component.
   - For container components (like Column, Row, Box, Card, LazyColumn, LazyRow, LazyVerticalGrid, LazyHorizontalGrid), "properties" can include a "children" array.
   - The "children" array within "properties" should contain the full JSON objects of its child components, NOT just their IDs.
+  - For Spacer: width (number), height (number). If a weight is implied, set layoutWeight.
 
 Available component types: ${availableComponentTypes.join(', ')}.
 Recognized properties include (but are not limited to):
 - For Text: text (string), fontSize (number), textColor (hex string, e.g., "#FF0000")
 - For Image: src (string URL, use "https://placehold.co/100x100.png" if a resource is mentioned but not a URL), contentDescription (string), width (number, "match_parent", or "wrap_content"), height (number, "match_parent", or "wrap_content")
 - For Button: text (string), backgroundColor (hex string), textColor (hex string)
+- For Spacer: width (number), height (number), layoutWeight (number). If only width is specified, assume it's a horizontal spacer. If only height is specified, assume it's a vertical spacer.
 - For Containers (Column, Row, Box, Card, Lazy*): padding (number, for all sides), paddingTop (number), paddingBottom (number), paddingStart (number), paddingEnd (number), backgroundColor (hex string), width (number, "match_parent", or "wrap_content"), height (number, "match_parent", or "wrap_content"), itemSpacing (number for Lazy layouts), layoutWeight (number, e.g., 1 for Modifier.weight(1f)).
   - For Card: elevation (number), cornerRadiusTopLeft (number), cornerRadiusTopRight (number), cornerRadiusBottomRight (number), cornerRadiusBottomLeft (number), borderWidth (number), borderColor (hex string), contentColor (hex string).
   - For LazyVerticalGrid: columns (number).
@@ -105,6 +107,7 @@ Example Input:
 \`\`\`
 Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
     Text("Welcome!", fontSize = 20.sp, color = Color.Blue, modifier = Modifier.weight(1f))
+    Spacer(modifier = Modifier.height(10.dp))
     Card(modifier = Modifier.clip(RoundedCornerShape(8.dp)), border = BorderStroke(1.dp, Color.Gray), contentColor = Color.DarkGray) {
         Image(imageResource = "logo.png", contentDescription = "App Logo", modifier = Modifier.height(50.dp).padding(start = 4.dp, end = 4.dp))
     }
@@ -138,8 +141,17 @@ Example Output JSON (stringified):
         },
         {
           "id": "comp-3",
+          "type": "Spacer",
+          "name": "Spacer 3",
+          "parentId": "comp-1",
+          "properties": {
+            "height": 10
+          }
+        },
+        {
+          "id": "comp-4",
           "type": "Card",
-          "name": "Card 3",
+          "name": "Card 4",
           "parentId": "comp-1",
           "properties": {
             "cornerRadiusTopLeft": 8,
@@ -151,10 +163,10 @@ Example Output JSON (stringified):
             "contentColor": "#A9A9A9",
             "children": [
               {
-                "id": "comp-4",
+                "id": "comp-5",
                 "type": "Image",
-                "name": "Image 4",
-                "parentId": "comp-3",
+                "name": "Image 5",
+                "parentId": "comp-4",
                 "properties": {
                   "src": "https://placehold.co/100x50.png",
                   "contentDescription": "App Logo",
@@ -170,9 +182,9 @@ Example Output JSON (stringified):
     }
   },
   {
-    "id": "comp-5",
+    "id": "comp-6",
     "type": "Button",
-    "name": "Button 5",
+    "name": "Button 6",
     "parentId": "${DEFAULT_ROOT_LAZY_COLUMN_ID}",
     "properties": {
       "text": "Submit",
@@ -185,7 +197,7 @@ Example Output JSON (stringified):
 \`\`\`
 Ensure all top-level components in the user's input have their "parentId" set to "${DEFAULT_ROOT_LAZY_COLUMN_ID}". Child components' "parentId" should be the "id" of their direct container in the input.
 Generate unique, sequential "id" values (e.g., "comp-1", "comp-2", ...).
-Generate descriptive "name" values (e.g., "Text 1", "Column 2", ...).
+Generate descriptive "name" values (e.g., "Text 1", "Column 2", "Spacer 3", ...).
 If only Modifier.padding(X.dp) is used, set the "padding" property. If specific sides like Modifier.padding(start=Y.dp) are used, set "paddingStart", "paddingTop", etc. accordingly.
 
 User's Jetpack Compose Commands:

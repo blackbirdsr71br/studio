@@ -94,6 +94,12 @@ const prompt = ai.definePrompt({
     border = BorderStroke(width = properties.borderWidth.dp, color = Color(android.graphics.Color.parseColor(properties.borderColor)))
     Remember to import androidx.compose.foundation.BorderStroke, android.graphics.Color, androidx.compose.material3.CardDefaults if you use this.
 
+  For Spacer components:
+  - Use Spacer(modifier = Modifier.width(X.dp)) if only width is significant.
+  - Use Spacer(modifier = Modifier.height(Y.dp)) if only height is significant.
+  - Use Spacer(modifier = Modifier.width(X.dp).height(Y.dp)) if both are significant.
+  - If a Spacer has a 'layoutWeight' property > 0, use Spacer(modifier = Modifier.weight(Wf)). If it also has width/height, include them, e.g., Spacer(Modifier.weight(1f).fillMaxWidth()) or Spacer(Modifier.weight(1f).height(0.dp)) if it's meant to fill flexible space.
+
 Intelligent List Handling for LazyColumn and LazyRow:
 - This applies ONLY to LazyColumn and LazyRow components.
 - When a LazyColumn or LazyRow contains multiple child components (2 or more) that are structurally identical (same type, same nested structure, and most properties are the same), you should optimize the code generation.
@@ -177,7 +183,5 @@ const generateComposeCodeFlow = ai.defineFlow(
     return output!;
   }
 );
-
-    
 
     

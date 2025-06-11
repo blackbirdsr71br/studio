@@ -34,6 +34,7 @@ import {
   BoxSelect, // Icon for custom components
   Trash2,
   Pencil,
+  Space, // Icon for Spacer
 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 
@@ -49,6 +50,7 @@ const availableBaseComponents: { type: ComponentType; icon: React.ElementType }[
   { type: "LazyRow", icon: GalleryHorizontal },
   { type: "LazyVerticalGrid", icon: Grid3x3 },
   { type: "LazyHorizontalGrid", icon: GalleryThumbnails },
+  { type: "Spacer", icon: Space }, // Added Spacer
 ];
 
 export function ComponentLibraryPanel() {
