@@ -4,7 +4,7 @@ import { generateComposeCode, type GenerateComposeCodeInput } from '@/ai/flows/g
 import { generateImageFromHint, type GenerateImageFromHintInput } from '@/ai/flows/generate-image-from-hint-flow';
 import { generateJsonFromComposeCommands, type GenerateJsonFromComposeCommandsInput } from '@/ai/flows/generate-json-from-compose-commands';
 import { generateCustomCommandJson, type GenerateCustomCommandJsonInput } from '@/ai/flows/generate-custom-command-json';
-// Removed: import { convertCanvasToCustomJson, type ConvertCanvasToCustomJsonInput } from '@/ai/flows/convert-canvas-to-custom-json-flow';
+import { convertCanvasToCustomJson, type ConvertCanvasToCustomJsonInput } from '@/ai/flows/convert-canvas-to-custom-json-flow.ts';
 import type { DesignComponent, CustomComponentTemplate, BaseComponentProps } from '@/types/compose-spec';
 import { isContainerType, DEFAULT_ROOT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
@@ -333,26 +333,42 @@ export async function generateCustomCommandJsonAction(
   }
 }
 
-// Removed convertCanvasToCustomJsonAction
-// export async function convertCanvasToCustomJsonAction(
-//   allComponents: DesignComponent[],
-//   customComponentTemplates: CustomComponentTemplate[]
-// ): Promise<{ customJsonString?: string; error?: string }> {
-//   try {
-//     const modalJsonTreeString = await getDesignComponentsAsJsonAction(allComponents, customComponentTemplates);
-//     if (modalJsonTreeString.startsWith("Error:") || modalJsonTreeString === "[]" && allComponents.filter(c => c.id !== DEFAULT_ROOT_LAZY_COLUMN_ID).length > 0) {
-//       return { error: "Failed to prepare canvas data for conversion." };
-//     }
+export async function convertCanvasToCustomJsonAction(
+  allComponents: DesignComponent[],
+  customComponentTemplates: CustomComponentTemplate[]
+): Promise<{ customJsonString?: string; error?: string }> {
+  try {
+    // Get the JSON representing the children of the root canvas node
+    const canvasDesignJsonString = await getDesignComponentsAsJsonAction(allComponents, customComponentTemplates);
+
+    if (canvasDesignJsonString.startsWith("Error:") || 
+        (canvasDesignJsonString === "[]" && allComponents.filter(c => c.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && c.parentId === DEFAULT_ROOT_LAZY_COLUMN_ID).length > 0) ||
+        (canvasDesignJsonString === "[]" && allComponents.filter(c => c.parentId === DEFAULT_ROOT_LAZY_COLUMN_ID).length === 0 && allComponents.length > 1) // Edge case: empty canvas but root exists
+       ) {
+      // If getDesignComponentsAsJsonAction returned an error, or if it's empty but there are actually user components
+      // directly under the root that should have been caught.
+      // The second part of the OR handles if the canvas is "empty" but has structure.
+      // The third part ensures if the canvas is truly empty (only root exists), we don't call AI with "[]" which is valid JSON but means "no user components".
+      const userComponentsOnCanvas = allComponents.filter(c => c.parentId === DEFAULT_ROOT_LAZY_COLUMN_ID);
+      if (userComponentsOnCanvas.length === 0) {
+        return { error: "No user components on the canvas to convert." };
+      }
+      // If there was an error preparing, but components exist, that's a specific error.
+      if (canvasDesignJsonString.startsWith("Error:")) {
+         return { error: "Failed to prepare canvas data for conversion: " + canvasDesignJsonString };
+      }
+    }
     
-//     const input: ConvertCanvasToCustomJsonInput = { designJson: modalJsonTreeString };
-//     const result = await convertCanvasToCustomJson(input);
-//     return { customJsonString: result.customJsonString };
-//   } catch (error) {
-//     console.error("Error in convertCanvasToCustomJsonAction:", error);
-//     const message = error instanceof Error ? error.message : "An unknown error occurred during custom JSON conversion from canvas.";
-//     return { error: message };
-//   }
-// }
+    const input: ConvertCanvasToCustomJsonInput = { designJson: canvasDesignJsonString };
+    const result = await convertCanvasToCustomJson(input);
+    return { customJsonString: result.customJsonString };
+  } catch (error)
+{
+    console.error("Error in convertCanvasToCustomJsonAction:", error);
+    const message = error instanceof Error ? error.message : "An unknown error occurred during custom JSON conversion from canvas.";
+    return { error: message };
+  }
+}
 
 
 export interface GlobalThemeColorsInput {
@@ -417,5 +433,7 @@ export async function updateGlobalStylesheetAction(
     return { success: false, error: `Failed to update stylesheet: ${message}` };
   }
 }
+
+    
 
     
