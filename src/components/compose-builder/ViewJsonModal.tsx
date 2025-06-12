@@ -17,7 +17,7 @@ import { json as jsonLang } from '@codemirror/lang-json';
 import { githubLight, githubDark } from '@uiw/codemirror-theme-github';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ModalJsonSchema } from '@/types/compose-spec'; // For validation
+import { ModalJsonSchema } from '@/types/compose-spec'; 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export interface ViewJsonModalRef {
@@ -65,7 +65,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
   }
 
 
-  const fetchDesignJson = useCallback(async () => {
+  const handleFetchDesignJson = useCallback(async () => {
     if (activeTab !== "canvasJson") return;
 
     setIsCanvasJsonLoading(true);
@@ -112,23 +112,31 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
   useEffect(() => {
     if (isOpen) {
       if (activeTab === "canvasJson") {
-         fetchDesignJson();
-      } else if (activeTab === "generateCustomJsonFromCanvas" && !customJsonFromCanvasString && !customJsonFromCanvasError) {
-        handleGenerateCustomJsonFromCanvas();
-      }
-    }
-  }, [isOpen, activeTab, fetchDesignJson, handleGenerateCustomJsonFromCanvas, customJsonFromCanvasString, customJsonFromCanvasError]);
-
-  useImperativeHandle(ref, () => ({
-    openModal: () => {
-      setIsOpen(true);
-      if (activeTab === "canvasJson") {
-        fetchDesignJson();
+         handleFetchDesignJson();
       } else if (activeTab === "generateCustomJsonFromCanvas") {
+        // Fetch only if it's not already loaded or errored
         if (!customJsonFromCanvasString && !customJsonFromCanvasError) {
            handleGenerateCustomJsonFromCanvas();
         }
       }
+    }
+  }, [isOpen, activeTab, handleFetchDesignJson, handleGenerateCustomJsonFromCanvas, customJsonFromCanvasString, customJsonFromCanvasError]);
+
+  useImperativeHandle(ref, () => ({
+    openModal: () => {
+      setIsOpen(true);
+      // Reset relevant states when modal opens, forcing a fetch for the active tab
+      setCanvasJsonString("");
+      setCanvasJsonError(null);
+      setSyntaxError(null);
+      setValidationErrors([]);
+      setIsCanvasJsonLoading(false);
+
+      setCustomJsonFromCanvasString("");
+      setCustomJsonFromCanvasError(null);
+      setIsCustomJsonFromCanvasLoading(false);
+      
+      // Logic to trigger fetch for the currently selected tab will be handled by the useEffect above
     }
   }));
 
@@ -162,7 +170,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
           title: "Canvas Updated",
           description: "JSON changes applied to the design canvas.",
         });
-        // setIsOpen(false); 
+        // setIsOpen(false); // Consider if modal should close on successful save
       } else {
         setCanvasJsonError(result.error || "Failed to apply JSON to canvas.");
          toast({
@@ -232,7 +240,8 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
   
   const isLoading = isCanvasJsonLoading || isCustomJsonFromCanvasLoading;
   const canPerformCopyDownloadActionsValue = !isLoading && !!currentJsonInEditor() && !currentError();
-  const canSaveChangesValue = activeTab === 'canvasJson' && !isCanvasJsonLoading && !!canvasJsonString && !syntaxError && validationErrors.length === 0;
+  const canSaveChangesValue = activeTab === 'canvasJson' && !isCanvasJsonLoading && !!canvasJsonString && !syntaxError && validationErrors.length === 0 && !canvasJsonError;
+
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -240,7 +249,8 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
         <DialogHeader>
           <DialogTitle className="font-headline">View / Generate JSON</DialogTitle>
           <DialogDescription>
-            View or edit the canvas design JSON, or generate custom command JSON from the canvas.
+            View or edit the canvas design JSON (changes apply to main canvas after saving).
+            Or generate custom command JSON from the current canvas state.
           </DialogDescription>
         </DialogHeader>
 
@@ -253,7 +263,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
           {/* Tab: Design Canvas JSON */}
           <TabsContent value="canvasJson" className="flex-grow flex flex-col space-y-2 min-h-0">
             <Label htmlFor="canvasJsonEditor" className="text-sm font-medium">Canvas Design (Editable)</Label>
-            <div className="flex-grow rounded-md border bg-muted/30 overflow-hidden min-h-[200px] relative">
+            <div className="flex-grow rounded-md border bg-muted/30 overflow-auto min-h-[200px] relative">
               {isCanvasJsonLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -272,7 +282,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
                 />
               )}
             </div>
-            {canvasJsonError && <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{canvasJsonError}</AlertDescription></Alert>}
+            {canvasJsonError && <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error Loading JSON</AlertTitle><AlertDescription>{canvasJsonError}</AlertDescription></Alert>}
             {syntaxError && <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Syntax Error</AlertTitle><AlertDescription>{syntaxError}</AlertDescription></Alert>}
             {validationErrors.length > 0 && (
               <Alert variant="destructive">
@@ -298,7 +308,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
                 {isCustomJsonFromCanvasLoading ? <Loader2 className="mr-1.5 animate-spin"/> : <Wand2 className="mr-1.5"/>} Regenerate
               </Button>
             </div>
-            <div className="flex-grow rounded-md border bg-muted/30 overflow-hidden min-h-[200px] relative">
+            <div className="flex-grow rounded-md border bg-muted/30 overflow-auto min-h-[200px] relative">
               {isCustomJsonFromCanvasLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -317,7 +327,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
                 />
               )}
             </div>
-            {customJsonFromCanvasError && <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{customJsonFromCanvasError}</AlertDescription></Alert>}
+            {customJsonFromCanvasError && <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error Generating JSON</AlertTitle><AlertDescription>{customJsonFromCanvasError}</AlertDescription></Alert>}
              <Alert>
                 <Info className="h-4 w-4"/>
                 <AlertTitle>Note</AlertTitle>
@@ -340,3 +350,4 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
 });
 
 ViewJsonModal.displayName = 'ViewJsonModal';
+

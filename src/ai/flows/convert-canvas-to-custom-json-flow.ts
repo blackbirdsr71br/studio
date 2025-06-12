@@ -35,13 +35,20 @@ const ConvertCanvasToCustomJsonOutputSchema = z.object({
   customJsonString: z
     .string()
     .describe(
-      'A JSON string representing the UI in the custom command format. The root key should be the lowercase name of the main component (e.g., "card", "column", "spacer").'
+      'A JSON string representing the UI in the custom command format. The root key should be the lowercase name of the main component (e.g., "card", "column", "spacer"). This JSON string should be pretty-printed (indented).'
     )
     .refine(
       (data) => {
         try {
-          JSON.parse(data);
-          return true;
+          // Check if it's parsable JSON
+          const parsed = JSON.parse(data);
+          // Check if it's "pretty-printed" by seeing if it contains newlines and multiple spaces for indentation
+          // This is a heuristic, but good enough for ensuring basic formatting.
+          const isPretty = data.includes('\n') && data.includes('  ');
+          if (!isPretty && Object.keys(parsed).length > 0) { // only be strict if it's not an empty object
+             // console.warn("AI returned custom JSON that was not pretty-printed. Attempting to format.");
+          }
+          return true; 
         } catch (e) {
           return false;
         }
@@ -65,6 +72,7 @@ const prompt = ai.definePrompt({
   input: {schema: ConvertCanvasToCustomJsonInputSchema},
   output: {schema: ConvertCanvasToCustomJsonOutputSchema},
   prompt: `You are an expert UI converter. Your task is to transform an input JSON (representing a canvas design) into a specific target "custom command" JSON format.
+The output JSON MUST be "pretty-printed" (formatted with newlines and indentation for readability).
 
 Input Canvas Design JSON Structure:
 The input (\`{{{designJson}}}\`) is a JSON string representing an array of component objects. These are the children of a main root container (typically a Column).
@@ -137,7 +145,7 @@ Modifier and Property Mapping Rules (from input component properties to output "
 Process the input \`{{{designJson}}}\` which is an array.
 If the array has one element, its type (lowercase) is the root key.
 If the array has multiple elements, the root key is "column", and the elements are its children.
-Ensure the output is a single JSON object adhering to the "custom command" structure.
+Ensure the output is a single JSON object adhering to the "custom command" structure and is "pretty-printed".
 Only include properties in the output JSON if they have meaningful values from the input. Do not include properties if their input values were empty strings, null, or defaults that imply absence (e.g. padding 0).
 
 Input Canvas Design JSON:
@@ -154,16 +162,35 @@ const convertCanvasToCustomJsonFlow = ai.defineFlow(
     outputSchema: ConvertCanvasToCustomJsonOutputSchema,
   },
   async (input) => {
-    const { output } = await prompt(input);
+    const { output } = await prompt(input); // 'output' will conform to ConvertCanvasToCustomJsonOutputSchema due to Zod
     if (!output) {
       throw new Error('AI did not return a response or the response was empty.');
     }
-    // Ensure the output is a string, even if AI returns an object
+
+    let jsonToFormat: any;
+
+    // The 'output.customJsonString' is guaranteed by Zod's .refine to be a string that can be parsed as JSON.
+    // If the AI were to return a raw object for the 'customJsonString' field (unlikely given the schema),
+    // Zod would attempt to coerce it. We handle it defensively if it remains an object.
     if (typeof output.customJsonString === 'object') {
-       return { customJsonString: JSON.stringify(output.customJsonString, null, 2) };
+        jsonToFormat = output.customJsonString;
+    } else {
+        // It's a string, and Zod has confirmed it's parsable JSON.
+        try {
+            jsonToFormat = JSON.parse(output.customJsonString);
+        } catch (e) {
+            // This case should ideally not be reached if Zod's .refine is effective.
+            // It implies the AI output was a string, but not valid JSON, and refine still passed it.
+            console.error("Error parsing customJsonString from AI output despite Zod refine: ", e);
+            // Fallback: return the raw string if it's not parseable, though this violates "pretty-print"
+            // return { customJsonString: output.customJsonString }; 
+            throw new Error("AI returned an invalid JSON string for customJsonString that could not be formatted.");
+        }
     }
-    return output;
+    
+    // Ensure the JSON is "pretty-printed" with an indent of 2 spaces.
+    const formattedJsonString = JSON.stringify(jsonToFormat, null, 2);
+    
+    return { customJsonString: formattedJsonString };
   }
 );
-
-    
