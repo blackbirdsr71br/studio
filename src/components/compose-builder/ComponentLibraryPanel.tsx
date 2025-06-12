@@ -44,6 +44,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 
 const availableBaseComponents: { type: ComponentType | "ScaffoldStructure"; icon: React.ElementType; displayName?: string }[] = [
+  { type: "ScaffoldStructure", icon: AppWindow, displayName: "Scaffold" }, // Re-added Scaffold
   { type: "Text", icon: Type },
   { type: "Button", icon: MousePointerSquareDashed },
   { type: "Image", icon: ImageIcon },
@@ -58,7 +59,6 @@ const availableBaseComponents: { type: ComponentType | "ScaffoldStructure"; icon
   { type: "Spacer", icon: Space },
   { type: "TopAppBar", icon: PanelTop },
   { type: "BottomNavigationBar", icon: PanelBottom },
-  { type: "ScaffoldStructure", icon: AppWindow, displayName: "Scaffold" },
 ];
 
 export function ComponentLibraryPanel() {
@@ -260,3 +260,5 @@ export function ComponentLibraryPanel() {
     </aside>
   );
 }
+
+    
