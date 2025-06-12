@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 
 
 interface DesignContextType extends DesignState {
-  addComponent: (type: ComponentType | string, parentId?: string | null, dropPosition?: { x: number; y: number }) => void;
+  addComponent: (type: ComponentType | string | "ScaffoldStructure", parentId?: string | null, dropPosition?: { x: number; y: number }) => void;
   deleteComponent: (id: string) => void;
   selectComponent: (id: string | null) => void;
   updateComponent: (id: string, updates: { name?: string; properties?: Partial<BaseComponentProps> }) => void;
@@ -55,11 +55,11 @@ export function createDefaultRootLazyColumn(): DesignComponent {
       padding: 8,
       backgroundColor: 'transparent',
       children: [],
-      itemSpacing: 8,
+      itemSpacing: 0, // Root canvas has no itemSpacing by default, children manage their margins/paddings or a Column child could have itemSpacing
       userScrollEnabled: true,
       reverseLayout: false,
       verticalArrangement: 'Top',
-      horizontalAlignment: 'CenterHorizontally', // Defaulted to CenterHorizontally
+      horizontalAlignment: 'CenterHorizontally',
     },
     parentId: null,
   };
@@ -187,24 +187,99 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
 
   const addComponent = useCallback((
-    type: ComponentType | string,
-    parentIdOrNull: string | null = null,
+    type: ComponentType | string | "ScaffoldStructure",
+    parentIdOrNull: string | null = DEFAULT_ROOT_LAZY_COLUMN_ID,
     dropPosition?: { x: number; y: number }
   ) => {
     setDesignState(prev => {
       let currentNextId = prev.nextId;
       let updatedComponentsList = [...prev.components];
       let finalSelectedComponentId = '';
+      let componentsToAdd: DesignComponent[] = [];
+      let parentToUpdateId = parentIdOrNull;
       
-      const actualParentId = parentIdOrNull;
-
-
       if (!updatedComponentsList.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID)) {
           updatedComponentsList.unshift(createDefaultRootLazyColumn());
       }
+      if (!parentToUpdateId) parentToUpdateId = DEFAULT_ROOT_LAZY_COLUMN_ID;
 
-      if (isCustomComponentType(type)) {
-        const templateId = type;
+      if (type === "ScaffoldStructure") {
+        let topAppBarId: string | null = null;
+        let contentColumnId: string | null = null;
+        let bottomNavBarId: string | null = null;
+
+        const rootLazyColumn = updatedComponentsList.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID);
+        const rootChildrenIds = rootLazyColumn?.properties.children || [];
+
+        const existingTopAppBar = updatedComponentsList.find(c => c.type === 'TopAppBar' && rootChildrenIds.includes(c.id));
+        const existingBottomNav = updatedComponentsList.find(c => c.type === 'BottomNavigationBar' && rootChildrenIds.includes(c.id));
+
+        if (!existingTopAppBar) {
+            topAppBarId = `comp-${currentNextId++}`;
+            const topAppBarProps = getDefaultProperties('TopAppBar');
+            componentsToAdd.push({
+                id: topAppBarId, type: 'TopAppBar', name: `Top App Bar ${topAppBarId.split('-')[1]}`,
+                properties: { ...topAppBarProps, width: 'match_parent', height: 56 }, parentId: DEFAULT_ROOT_LAZY_COLUMN_ID
+            });
+        } else {
+            topAppBarId = existingTopAppBar.id;
+        }
+
+        contentColumnId = `comp-${currentNextId++}`;
+        const columnProps = getDefaultProperties('Column');
+        componentsToAdd.push({
+            id: contentColumnId, type: 'Column', name: `Scaffold Content ${contentColumnId.split('-')[1]}`,
+            properties: { ...columnProps, width: 'match_parent', height: 'match_parent', backgroundColor: 'transparent' }, parentId: DEFAULT_ROOT_LAZY_COLUMN_ID
+        });
+        finalSelectedComponentId = contentColumnId;
+
+        if (!existingBottomNav) {
+            bottomNavBarId = `comp-${currentNextId++}`;
+            const bottomNavProps = getDefaultProperties('BottomNavigationBar');
+            componentsToAdd.push({
+                id: bottomNavBarId, type: 'BottomNavigationBar', name: `Bottom Nav Bar ${bottomNavBarId.split('-')[1]}`,
+                properties: { ...bottomNavProps, width: 'match_parent', height: 56 }, parentId: DEFAULT_ROOT_LAZY_COLUMN_ID
+            });
+        } else {
+            bottomNavBarId = existingBottomNav.id;
+        }
+        
+        updatedComponentsList.push(...componentsToAdd);
+        parentToUpdateId = DEFAULT_ROOT_LAZY_COLUMN_ID; // All scaffold parts are children of root
+         const newChildrenOrder: string[] = [];
+        if (topAppBarId && !rootChildrenIds.includes(topAppBarId)) newChildrenOrder.push(topAppBarId);
+        if (contentColumnId) newChildrenOrder.push(contentColumnId); // Always add the new content column
+        if (bottomNavBarId && !rootChildrenIds.includes(bottomNavBarId)) newChildrenOrder.push(bottomNavBarId);
+
+        // Rebuild root's children: existing items not part of scaffold, then scaffold parts in order
+        const parentCompIndex = updatedComponentsList.findIndex(c => c.id === parentToUpdateId);
+        if (parentCompIndex !== -1) {
+            const currentParent = updatedComponentsList[parentCompIndex];
+            let existingChildren = Array.isArray(currentParent.properties.children) ? currentParent.properties.children : [];
+            
+            // Filter out scaffold parts if they were already there and are being re-added or positioned
+            existingChildren = existingChildren.filter(id => id !== topAppBarId && id !== contentColumnId && id !== bottomNavBarId);
+
+            const finalChildren: string[] = [];
+            const hasTop = topAppBarId || existingTopAppBar;
+            const hasBottom = bottomNavBarId || existingBottomNav;
+
+            if (hasTop) finalChildren.push(hasTop.id || topAppBarId!);
+            finalChildren.push(contentColumnId!); // content column always gets added
+            
+            // Add other existing children that are not part of the scaffold structure in the middle
+            finalChildren.push(...existingChildren.filter(id => id !== (hasTop?.id || topAppBarId) && id !== (hasBottom?.id || bottomNavBarId)));
+
+            if (hasBottom) finalChildren.push(hasBottom.id || bottomNavBarId!);
+            
+            updatedComponentsList[parentCompIndex] = {
+                ...currentParent,
+                properties: { ...currentParent.properties, children: [...new Set(finalChildren)] } // Ensure unique IDs
+            };
+        }
+
+      } else if (isCustomComponentType(type as string)) {
+        const templateId = type as string;
         const template = prev.customComponentTemplates.find(t => t.templateId === templateId);
 
         if (!template) {
@@ -231,10 +306,9 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           if (templateComp.id === template.rootComponentId) {
             newInstanceComp.name = `${template.name} Instance`;
             instantiatedTemplateRootId = newInstanceCompId;
-            newInstanceComp.parentId = actualParentId; // Parent can be null or DEFAULT_ROOT_LAZY_COLUMN_ID
+            newInstanceComp.parentId = parentToUpdateId;
              
-            // Assign x,y only if free-floating, otherwise delete
-            if (actualParentId === null && dropPosition) {
+            if (parentToUpdateId === null && dropPosition) {
                 let offsetX = 0, offsetY = 0;
                 const w = newInstanceComp.properties.width;
                 const h = newInstanceComp.properties.height;
@@ -246,7 +320,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 delete newInstanceComp.properties.x;
                 delete newInstanceComp.properties.y;
             }
-
           } else {
             newInstanceComp.parentId = templateComp.parentId ? finalIdMap[templateComp.parentId] : null;
             delete newInstanceComp.properties.x;
@@ -262,9 +335,10 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         });
 
         finalSelectedComponentId = instantiatedTemplateRootId;
-        updatedComponentsList = [...updatedComponentsList, ...finalNewComponentsBatch];
+        componentsToAdd.push(...finalNewComponentsBatch);
+        updatedComponentsList.push(...componentsToAdd);
 
-      } else { // Standard component
+      } else { 
         const newId = `comp-${currentNextId++}`;
         finalSelectedComponentId = newId;
         const defaultProps = getDefaultProperties(type as ComponentType);
@@ -274,10 +348,10 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           type: type as ComponentType,
           name: `${getComponentDisplayNameResolved(type as ComponentType)} ${newId.split('-')[1]}`,
           properties: { ...defaultProps },
-          parentId: actualParentId, // Parent can be null or DEFAULT_ROOT_LAZY_COLUMN_ID
+          parentId: parentToUpdateId,
         };
 
-        if (actualParentId === null && dropPosition) {
+        if (parentToUpdateId === null && dropPosition) {
             let offsetX = 0;
             let offsetY = 0;
             const w = defaultProps.width;
@@ -299,16 +373,16 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             delete newComponent.properties.x;
             delete newComponent.properties.y;
         }
-        updatedComponentsList.push(newComponent);
+        componentsToAdd.push(newComponent);
+        updatedComponentsList.push(...componentsToAdd);
       }
 
-      // Add to parent's children array
-      if (actualParentId) {
-        const parentCompIndex = updatedComponentsList.findIndex(c => c.id === actualParentId);
+      if (parentToUpdateId && type !== "ScaffoldStructure") {
+        const parentCompIndex = updatedComponentsList.findIndex(c => c.id === parentToUpdateId);
         if (parentCompIndex !== -1) {
             const currentParent = updatedComponentsList[parentCompIndex];
             if (isContainerType(currentParent.type, prev.customComponentTemplates)) {
-                const childIdToAdd = finalSelectedComponentId; // This is now always the root of what was added
+                const childIdToAdd = finalSelectedComponentId;
                 const existingChildren = Array.isArray(currentParent.properties.children) ? currentParent.properties.children : [];
                 if (!existingChildren.includes(childIdToAdd)) {
                     updatedComponentsList[parentCompIndex] = {
@@ -322,7 +396,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             }
         }
       }
-
+      
       const finalUniqueComponents = updatedComponentsList.filter((comp, index, self) => index === self.findIndex(t => t.id === comp.id));
 
       return {
@@ -663,7 +737,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         let draggedComponent = {...currentComponents[draggedComponentIndex]};
         draggedComponent.properties = {...draggedComponent.properties};
         const oldParentId = draggedComponent.parentId;
-        const actualTargetParentId = targetParentIdOrNull;
+        const actualTargetParentId = targetParentIdOrNull === DEFAULT_ROOT_LAZY_COLUMN_ID ? DEFAULT_ROOT_LAZY_COLUMN_ID : targetParentIdOrNull;
+
 
         if (actualTargetParentId === draggedId) return prev;
 
@@ -680,7 +755,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         draggedComponent.parentId = actualTargetParentId;
 
         if (actualTargetParentId === null && newPosition) {
-             // Dropped onto the main canvas surface, make it free-floating
             draggedComponent.properties.x = Math.round(newPosition.x);
             draggedComponent.properties.y = Math.round(newPosition.y);
         } else {
@@ -709,14 +783,13 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                  newParent.properties = {...newParent.properties};
                  if (isContainerType(newParent.type, prev.customComponentTemplates)) {
                     let existingChildren = Array.isArray(newParent.properties.children) ? newParent.properties.children : [];
-                    existingChildren = existingChildren.filter(childId => childId !== draggedId); // Remove if already there (e.g. reordering)
+                    existingChildren = existingChildren.filter(childId => childId !== draggedId); 
                     newParent.properties.children = [...existingChildren, draggedId];
                     currentComponents[newParentIndex] = newParent;
                  } else {
                     console.warn(`Attempted to move component ${draggedId} into non-container ${actualTargetParentId}. Reverting.`);
                      draggedComponent.parentId = oldParentId;
                      const originalComponent = prev.components[draggedComponentIndex];
-                     // Restore original x,y if it was free-floating
                      if (oldParentId === null) {
                         draggedComponent.properties.x = originalComponent.properties.x;
                         draggedComponent.properties.y = originalComponent.properties.y;
@@ -810,7 +883,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         ...prev,
         components: deepClone(layoutToLoad.components),
         nextId: layoutToLoad.nextId,
-        selectedComponentId: DEFAULT_ROOT_LAZY_COLUMN_ID, // Select root after loading
+        selectedComponentId: DEFAULT_ROOT_LAZY_COLUMN_ID, 
       }));
       toast({ title: "Layout Loaded", description: `Layout "${layoutToLoad.name}" has been loaded onto the canvas.` });
     } else {

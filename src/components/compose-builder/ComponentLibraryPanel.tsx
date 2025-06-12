@@ -37,12 +37,13 @@ import {
   Space,
   LayoutDashboard, 
   Download, 
-  PanelTop, // Icon for TopAppBar
-  PanelBottom, // Icon for BottomNavigationBar
+  PanelTop,
+  PanelBottom,
+  AppWindow, // Icon for Scaffold structure
 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 
-const availableBaseComponents: { type: ComponentType; icon: React.ElementType }[] = [
+const availableBaseComponents: { type: ComponentType | "ScaffoldStructure"; icon: React.ElementType; displayName?: string }[] = [
   { type: "Text", icon: Type },
   { type: "Button", icon: MousePointerSquareDashed },
   { type: "Image", icon: ImageIcon },
@@ -57,6 +58,7 @@ const availableBaseComponents: { type: ComponentType; icon: React.ElementType }[
   { type: "Spacer", icon: Space },
   { type: "TopAppBar", icon: PanelTop },
   { type: "BottomNavigationBar", icon: PanelBottom },
+  { type: "ScaffoldStructure", icon: AppWindow, displayName: "Scaffold" },
 ];
 
 export function ComponentLibraryPanel() {
@@ -130,8 +132,8 @@ export function ComponentLibraryPanel() {
           <TabsContent value="standard" className="flex-grow overflow-hidden">
             <ScrollArea className="h-full pr-3">
               <div className="grid grid-cols-2 gap-2">
-                {availableBaseComponents.map(({ type, icon }) => (
-                  <DraggableComponentItem key={type} type={type} Icon={icon} />
+                {availableBaseComponents.map(({ type, icon, displayName }) => (
+                  <DraggableComponentItem key={type as string} type={type as string} Icon={icon} displayName={displayName}/>
                 ))}
               </div>
             </ScrollArea>
@@ -258,5 +260,3 @@ export function ComponentLibraryPanel() {
     </aside>
   );
 }
-
-    
