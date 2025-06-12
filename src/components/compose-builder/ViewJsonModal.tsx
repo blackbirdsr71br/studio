@@ -27,10 +27,9 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { getDesignComponentsAsJsonAction, generateJsonFromTextAction } from '@/app/actions';
 import { ModalJsonSchema } from '@/types/compose-spec';
-import { ZodError } from 'zod';
+import type { ZodError } from 'zod';
 
 export interface ViewJsonModalRef {
   openModal: (initialTab?: 'canvas' | 'command') => void;
@@ -43,17 +42,14 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
   const { resolvedTheme } = useTheme();
   const { components, customComponentTemplates, overwriteComponents } = useDesign();
 
-  // State for "Design Canvas JSON" tab
   const [designJsonString, setDesignJsonString] = useState<string>('');
   const [isFetchingDesignJson, setIsFetchingDesignJson] = useState(false);
   const [designJsonError, setDesignJsonError] = useState<string | null>(null);
 
-  // State for "Generate from Text Command" tab
   const [textCommandInput, setTextCommandInput] = useState<string>('');
   const [generatedCommandJsonString, setGeneratedCommandJsonString] = useState<string>('');
   const [isGeneratingCommandJson, setIsGeneratingCommandJson] = useState(false);
   const [commandJsonError, setCommandJsonError] = useState<string | null>(null);
-
 
   const handleFetchDesignJson = useCallback(async () => {
     setIsFetchingDesignJson(true);
@@ -63,14 +59,13 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
       const result = await getDesignComponentsAsJsonAction(components, customComponentTemplates);
       if (result.startsWith("Error:")) {
         setDesignJsonError(result);
-        setDesignJsonString("[]"); // Show empty array on error
+        setDesignJsonString("[]");
       } else {
-        // Ensure it's formatted
         try {
             const parsed = JSON.parse(result);
             setDesignJsonString(JSON.stringify(parsed, null, 2));
         } catch (e) {
-            setDesignJsonString(result); // Fallback to raw string if re-parsing fails
+            setDesignJsonString(result);
             setDesignJsonError("Could not format the fetched JSON. Displaying raw version.");
         }
       }
@@ -94,22 +89,17 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
     openModal: (initialTab = 'canvas') => {
       setActiveTab(initialTab);
       setIsOpen(true);
-      // Reset states
       setDesignJsonString('');
       setDesignJsonError(null);
       setTextCommandInput('');
       setGeneratedCommandJsonString('');
       setCommandJsonError(null);
-
-      if (initialTab === 'canvas') {
-        handleFetchDesignJson();
-      }
     },
-  }));
+  }), [handleFetchDesignJson]);
 
   const handleDesignJsonChange = useCallback((value: string) => {
     setDesignJsonString(value);
-    setDesignJsonError(null); // Clear error on edit
+    setDesignJsonError(null);
   }, []);
 
   const validateAndSetDesignJson = useCallback(() => {
@@ -132,7 +122,6 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
     }
   }, [designJsonString]);
 
-
   const handleSaveChangesToCanvas = useCallback(async () => {
     const validatedData = validateAndSetDesignJson();
     if (validatedData) {
@@ -142,7 +131,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
           title: 'Design Updated',
           description: 'Changes from JSON have been applied to the canvas.',
         });
-        setIsOpen(false); // Optionally close modal on success
+        setIsOpen(false);
       } else {
         setDesignJsonError(result.error || "Failed to apply changes to canvas.");
         toast({
@@ -158,14 +147,13 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
         variant: 'destructive',
       });
     }
-  }, [validateAndSetDesignJson, overwriteComponents, toast]);
-
+  }, [validateAndSetDesignJson, overwriteComponents, toast, setIsOpen, setDesignJsonError]);
 
   const handleTextCommandInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setTextCommandInput(event.target.value);
   };
 
-  const handleGenerateCommandJson = async () => {
+  const handleGenerateCommandJson = useCallback(async () => {
     if (!textCommandInput.trim()) {
       setCommandJsonError('Please enter some text commands to generate JSON.');
       return;
@@ -185,7 +173,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
         }
       } else {
         setCommandJsonError(result.error || 'Failed to generate JSON from commands.');
-        toast({ title: 'JSON Generation Failed', description: result.error, variant: 'destructive' });
+        toast({ title: 'JSON Generation Failed', description: result.error || "Unknown error", variant: 'destructive' });
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'An unknown error occurred.';
@@ -194,27 +182,30 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
     } finally {
       setIsGeneratingCommandJson(false);
     }
-  };
+  }, [textCommandInput, toast]);
   
   const handleGeneratedCommandJsonChange = useCallback((value: string) => {
     setGeneratedCommandJsonString(value);
     setCommandJsonError(null);
   }, []);
 
-  const handleDownloadJson = () => {
+  const handleDownloadJson = useCallback(() => {
     const contentToDownload = activeTab === 'canvas' ? designJsonString : generatedCommandJsonString;
-    if (!contentToDownload || contentToDownload.trim() === "[]" || contentToDownload.trim() === "") {
-      toast({ title: "Download Failed", description: "No JSON content to download.", variant: "destructive" });
+    const currentErr = activeTab === 'canvas' ? designJsonError : commandJsonError;
+
+    if (!contentToDownload || contentToDownload.trim() === "[]" || contentToDownload.trim() === "" || currentErr) {
+      toast({ title: "Download Failed", description: currentErr ? "JSON has errors." : "No valid JSON content to download.", variant: "destructive" });
       return;
     }
     try {
-      // Try to parse and re-stringify for consistent formatting, but fallback if it's already an error string
       let formattedJson = contentToDownload;
-      try {
-        const parsed = JSON.parse(contentToDownload);
-        formattedJson = JSON.stringify(parsed, null, 2);
-      } catch (e) {
-        // It might be an error message or already malformed, download as is
+      if (!currentErr) {
+          try {
+            const parsed = JSON.parse(contentToDownload);
+            formattedJson = JSON.stringify(parsed, null, 2);
+          } catch (e) {
+            // Download raw if re-parsing/formatting fails
+          }
       }
 
       const blob = new Blob([formattedJson], { type: 'application/json;charset=utf-8' });
@@ -229,12 +220,14 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
     } catch (error) {
       toast({ title: "Download Error", description: "Could not prepare JSON for download.", variant: "destructive" });
     }
-  };
+  }, [activeTab, designJsonString, generatedCommandJsonString, designJsonError, commandJsonError, toast]);
 
-  const handleCopyToClipboard = async () => {
+  const handleCopyToClipboard = useCallback(async () => {
     const contentToCopy = activeTab === 'canvas' ? designJsonString : generatedCommandJsonString;
-     if (!contentToCopy || contentToCopy.trim() === "[]" || contentToCopy.trim() === "") {
-      toast({ title: "Copy Failed", description: "No JSON content to copy.", variant: "destructive" });
+    const currentErr = activeTab === 'canvas' ? designJsonError : commandJsonError;
+
+     if (!contentToCopy || contentToCopy.trim() === "[]" || contentToCopy.trim() === "" || currentErr) {
+      toast({ title: "Copy Failed", description: currentErr ? "JSON has errors." : "No valid JSON content to copy.", variant: "destructive" });
       return;
     }
     try {
@@ -243,14 +236,11 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
     } catch (err) {
       toast({ title: "Copy Failed", description: "Could not copy JSON to clipboard.", variant: "destructive" });
     }
-  };
+  }, [activeTab, designJsonString, generatedCommandJsonString, designJsonError, commandJsonError, toast]);
   
   const isLoading = isFetchingDesignJson || isGeneratingCommandJson;
   const currentJsonContent = activeTab === 'canvas' ? designJsonString : generatedCommandJsonString;
   const currentError = activeTab === 'canvas' ? designJsonError : commandJsonError;
-  
-  const canPerformCopyDownloadActions = !isLoading && currentJsonContent && currentJsonContent.trim() !== "[]" && currentJsonContent.trim() !== "";
-  const canSaveChanges = activeTab === 'canvas' && !isFetchingDesignJson && designJsonString && designJsonString.trim() !== "[]" && !designJsonError;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -297,7 +287,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
                 </div>
               </div>
             )}
-             {!designJsonError && designJsonString && designJsonString.trim() !== "[]" && (
+             {!designJsonError && designJsonString && designJsonString.trim() !== "[]" && designJsonString.trim() !== "" && (
                 <div className="p-2 text-xs text-green-700 dark:text-green-400 bg-green-500/10 rounded-md">
                  <div className="flex items-center">
                     <CheckCircle className="h-4 w-4 mr-1.5 shrink-0" />
@@ -336,7 +326,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
                   theme={resolvedTheme === 'dark' ? githubDark : githubLight}
                   onChange={handleGeneratedCommandJsonChange}
                   className="text-sm h-full"
-                  readOnly={isGeneratingCommandJson}
+                  readOnly={isGeneratingCommandJson} // Keep readOnly if actively generating
                   basicSetup={{ lineNumbers: true, foldGutter: true, autocompletion: true, highlightActiveLine: true, bracketMatching: true }}
                 />
               )}
@@ -354,15 +344,32 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
         
         <DialogFooter className="mt-4 sm:justify-between flex-wrap gap-2 pt-3 border-t">
           <div className="flex gap-2">
-            <Button variant="outline" onClick={handleCopyToClipboard} disabled={!canPerformCopyDownloadActions}>
+            <Button 
+              variant="outline" 
+              onClick={handleCopyToClipboard} 
+              disabled={
+                !(!isLoading && currentJsonContent && currentJsonContent.trim() !== "[]" && currentJsonContent.trim() !== "" && !currentError)
+              }
+            >
               <Copy className="mr-2 h-4 w-4" /> Copy JSON
             </Button>
-            <Button variant="outline" onClick={handleDownloadJson} disabled={!canPerformCopyDownloadActions}>
+            <Button 
+              variant="outline" 
+              onClick={handleDownloadJson} 
+              disabled={
+                 !(!isLoading && currentJsonContent && currentJsonContent.trim() !== "[]" && currentJsonContent.trim() !== "" && !currentError)
+              }
+            >
               <Download className="mr-2 h-4 w-4" /> Download .json
             </Button>
           </div>
           {activeTab === 'canvas' && (
-            <Button onClick={handleSaveChangesToCanvas} disabled={!canSaveChanges || isFetchingDesignJson}>
+            <Button 
+              onClick={handleSaveChangesToCanvas} 
+              disabled={
+                !(activeTab === 'canvas' && !isFetchingDesignJson && designJsonString && designJsonString.trim() !== "[]" && !designJsonError)
+              }
+            >
               {isFetchingDesignJson && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               <Save className="mr-2 h-4 w-4" /> Save Changes to Canvas
             </Button>
