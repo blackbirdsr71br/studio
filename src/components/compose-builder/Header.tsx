@@ -68,9 +68,24 @@ export function Header({ generateModalRef, viewJsonModalRef, themeEditorModalRef
       });
       return;
     }
+
+    const parameterKey = window.prompt(
+      "Enter the Remote Config Parameter Key for publishing:",
+      "COMPOSE_DESIGN_JSON_V2" // Default value
+    );
+
+    if (!parameterKey || parameterKey.trim() === "") {
+      toast({
+        title: "Publish Canceled",
+        description: "Parameter key cannot be empty.",
+        variant: "default",
+      });
+      return;
+    }
+
     setIsPublishing(true);
     try {
-      const result = await publishToRemoteConfigAction(components, customComponentTemplates);
+      const result = await publishToRemoteConfigAction(components, customComponentTemplates, parameterKey.trim());
       if (result.success) {
         toast({
           title: "Publish Successful",
@@ -218,3 +233,4 @@ export function Header({ generateModalRef, viewJsonModalRef, themeEditorModalRef
     </header>
   );
 }
+
