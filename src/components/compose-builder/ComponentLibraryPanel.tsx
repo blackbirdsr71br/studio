@@ -35,8 +35,10 @@ import {
   Trash2,
   Pencil,
   Space,
-  LayoutDashboard, // Icon for Layouts
-  Download, // Icon for Load button
+  LayoutDashboard, 
+  Download, 
+  PanelTop, // Icon for TopAppBar
+  PanelBottom, // Icon for BottomNavigationBar
 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 
@@ -53,6 +55,8 @@ const availableBaseComponents: { type: ComponentType; icon: React.ElementType }[
   { type: "LazyVerticalGrid", icon: Grid3x3 },
   { type: "LazyHorizontalGrid", icon: GalleryThumbnails },
   { type: "Spacer", icon: Space },
+  { type: "TopAppBar", icon: PanelTop },
+  { type: "BottomNavigationBar", icon: PanelBottom },
 ];
 
 export function ComponentLibraryPanel() {
@@ -254,3 +258,5 @@ export function ComponentLibraryPanel() {
     </aside>
   );
 }
+
+    

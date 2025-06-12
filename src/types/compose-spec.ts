@@ -13,7 +13,9 @@ export type ComponentType =
   | 'LazyRow'
   | 'LazyVerticalGrid'
   | 'LazyHorizontalGrid'
-  | 'Spacer';
+  | 'Spacer'
+  | 'TopAppBar'
+  | 'BottomNavigationBar';
 
 export const CUSTOM_COMPONENT_TYPE_PREFIX = "custom/";
 export const DEFAULT_ROOT_LAZY_COLUMN_ID = 'default-root-lazy-column';
@@ -80,6 +82,7 @@ export interface BaseComponentProps {
   textAlign?: 'Left' | 'Center' | 'Right' | 'Justify' | 'Start' | 'End';
   textDecoration?: 'None' | 'Underline' | 'LineThrough';
   lineHeight?: number;
+  title?: string; // For TopAppBar
 }
 
 export interface DesignComponent {
@@ -167,7 +170,7 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
         children: [],
         padding: 8,
         backgroundColor: 'rgba(224, 224, 224, 0.5)',
-        width: 200, height: 200, itemSpacing: 0,
+        width: 200, height: 200, itemSpacing: 8, // Default itemSpacing to 8 for Column
         verticalArrangement: 'Top', horizontalAlignment: 'Start'
       };
     case 'Row':
@@ -176,7 +179,7 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
         children: [],
         padding: 8,
         backgroundColor: 'rgba(224, 224, 224, 0.5)',
-        width: 200, height: 100, itemSpacing: 0,
+        width: 200, height: 100, itemSpacing: 8, // Default itemSpacing to 8 for Row
         horizontalArrangement: 'Start', verticalAlignment: 'Top'
       };
     case 'Box':
@@ -204,7 +207,7 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
         children: [],
         padding: 8,
         backgroundColor: 'rgba(200, 240, 200, 0.3)',
-        width: 'match_parent', height: 300, itemSpacing: 0,
+        width: 'match_parent', height: 300, itemSpacing: 8, // Default itemSpacing to 8 for LazyColumn
         userScrollEnabled: true, reverseLayout: false,
         verticalArrangement: 'Top', horizontalAlignment: 'Start',
       };
@@ -214,7 +217,7 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
         children: [],
         padding: 8,
         backgroundColor: 'rgba(200, 200, 240, 0.3)',
-        width: 'match_parent', height: 120, itemSpacing: 0,
+        width: 'match_parent', height: 120, itemSpacing: 8, // Default itemSpacing to 8 for LazyRow
         userScrollEnabled: true, reverseLayout: false,
         horizontalArrangement: 'Start', verticalAlignment: 'Top',
       };
@@ -224,7 +227,7 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
         children: [],
         padding: 8,
         backgroundColor: 'rgba(240, 200, 200, 0.3)',
-        width: 'match_parent', height: 300, columns: 2, itemSpacing: 0,
+        width: 'match_parent', height: 300, columns: 2, itemSpacing: 8, // Default itemSpacing to 8
         verticalArrangement: 'Top', horizontalAlignment: 'Start'
       };
     case 'LazyHorizontalGrid':
@@ -233,7 +236,7 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
         children: [],
         padding: 8,
         backgroundColor: 'rgba(240, 240, 200, 0.3)',
-        width: 'match_parent', height: 200, rows: 2, itemSpacing: 0,
+        width: 'match_parent', height: 200, rows: 2, itemSpacing: 8, // Default itemSpacing to 8
         horizontalArrangement: 'Start', verticalAlignment: 'Top'
       };
     case 'Spacer':
@@ -242,6 +245,35 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
         width: 8,
         height: 8,
         layoutWeight: 0,
+      };
+    case 'TopAppBar':
+      return {
+        ...common,
+        children: [],
+        title: 'Screen Title',
+        width: 'match_parent',
+        height: 56,
+        padding: 0,
+        paddingStart: 16, // Typical padding for app bars
+        paddingEnd: 16,
+        backgroundColor: '#3F51B5', // Primary color
+        contentColor: '#FFFFFF',    // White text
+        itemSpacing: 8,
+        horizontalArrangement: 'SpaceBetween',
+        verticalAlignment: 'CenterVertically'
+      };
+    case 'BottomNavigationBar':
+      return {
+        ...common,
+        children: [],
+        width: 'match_parent',
+        height: 56,
+        padding: 0,
+        backgroundColor: '#F0F0F0', // Light gray
+        contentColor: '#000000',    // Black text/icons
+        itemSpacing: 0,
+        horizontalArrangement: 'SpaceAround',
+        verticalAlignment: 'CenterVertically'
       };
     default:
       if (isCustomComponentType(type)) {
@@ -268,6 +300,8 @@ export const getComponentDisplayName = (type: ComponentType | string, templateNa
     case 'LazyVerticalGrid': return 'Lazy Vertical Grid';
     case 'LazyHorizontalGrid': return 'Lazy Horizontal Grid';
     case 'Spacer': return 'Spacer';
+    case 'TopAppBar': return 'Top App Bar';
+    case 'BottomNavigationBar': return 'Bottom Nav Bar';
     default: return 'Unknown';
   }
 };
@@ -284,6 +318,41 @@ const commonLayoutProperties: (Omit<ComponentProperty, 'value'>)[] = [
     { name: 'paddingTop', type: 'number', label: 'Padding Top (dp)', placeholder: 'Overrides "All Sides"', group: 'Layout' },
     { name: 'paddingBottom', type: 'number', label: 'Padding Bottom (dp)', placeholder: 'Overrides "All Sides"', group: 'Layout' },
 ];
+
+const rowSpecificLayoutProperties: (Omit<ComponentProperty, 'value'>)[] = [
+  { name: 'itemSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' },
+  {
+    name: 'horizontalArrangement', type: 'enum', label: 'Horizontal Arrangement', group: 'Layout',
+    options: [
+      { label: 'Start', value: 'Start' }, { label: 'End', value: 'End' }, { label: 'Center', value: 'Center' },
+      { label: 'Space Around', value: 'SpaceAround' }, { label: 'Space Between', value: 'SpaceBetween' }, { label: 'Space Evenly', value: 'SpaceEvenly' },
+    ]
+  },
+  {
+    name: 'verticalAlignment', type: 'enum', label: 'Vertical Alignment', group: 'Layout',
+    options: [
+      { label: 'Top', value: 'Top' }, { label: 'Center Vertically', value: 'CenterVertically' }, { label: 'Bottom', value: 'Bottom' },
+    ]
+  },
+];
+
+const columnSpecificLayoutProperties: (Omit<ComponentProperty, 'value'>)[] = [
+  { name: 'itemSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' },
+  {
+    name: 'verticalArrangement', type: 'enum', label: 'Vertical Arrangement', group: 'Layout',
+    options: [
+      { label: 'Top', value: 'Top' }, { label: 'Bottom', value: 'Bottom' }, { label: 'Center', value: 'Center' },
+      { label: 'Space Around', value: 'SpaceAround' }, { label: 'Space Between', value: 'SpaceBetween' }, { label: 'Space Evenly', value: 'SpaceEvenly' },
+    ]
+  },
+  {
+    name: 'horizontalAlignment', type: 'enum', label: 'Horizontal Alignment', group: 'Layout',
+    options: [
+      { label: 'Start', value: 'Start' }, { label: 'Center Horizontally', value: 'CenterHorizontally' }, { label: 'End', value: 'End' },
+    ]
+  },
+];
+
 
 export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty, 'value'>)[]> = {
   Text: [
@@ -383,39 +452,13 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
   ],
   Column: [
     ...commonLayoutProperties,
+    ...columnSpecificLayoutProperties,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    { name: 'itemSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' },
-    {
-      name: 'verticalArrangement', type: 'enum', label: 'Vertical Arrangement', group: 'Layout',
-      options: [
-        { label: 'Top', value: 'Top' }, { label: 'Bottom', value: 'Bottom' }, { label: 'Center', value: 'Center' },
-        { label: 'Space Around', value: 'SpaceAround' }, { label: 'Space Between', value: 'SpaceBetween' }, { label: 'Space Evenly', value: 'SpaceEvenly' },
-      ]
-    },
-    {
-      name: 'horizontalAlignment', type: 'enum', label: 'Horizontal Alignment', group: 'Layout',
-      options: [
-        { label: 'Start', value: 'Start' }, { label: 'Center Horizontally', value: 'CenterHorizontally' }, { label: 'End', value: 'End' },
-      ]
-    },
   ],
   Row: [
     ...commonLayoutProperties,
+    ...rowSpecificLayoutProperties,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    { name: 'itemSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' },
-    {
-      name: 'horizontalArrangement', type: 'enum', label: 'Horizontal Arrangement', group: 'Layout',
-      options: [
-        { label: 'Start', value: 'Start' }, { label: 'End', value: 'End' }, { label: 'Center', value: 'Center' },
-        { label: 'Space Around', value: 'SpaceAround' }, { label: 'Space Between', value: 'SpaceBetween' }, { label: 'Space Evenly', value: 'SpaceEvenly' },
-      ]
-    },
-    {
-      name: 'verticalAlignment', type: 'enum', label: 'Vertical Alignment', group: 'Layout',
-      options: [
-        { label: 'Top', value: 'Top' }, { label: 'Center Vertically', value: 'CenterVertically' }, { label: 'Bottom', value: 'Bottom' },
-      ]
-    },
   ],
   Box: [
     ...commonLayoutProperties,
@@ -427,6 +470,7 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
   ],
   Card: [
     ...commonLayoutProperties,
+    ...columnSpecificLayoutProperties, // Cards often behave like Columns by default for their content
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (Overrides default contrast)', group: 'Appearance' },
     { name: 'cornerRadiusTopLeft', type: 'number', label: 'Corner Radius TL (dp)', placeholder: '8', group: 'Appearance' },
@@ -439,110 +483,47 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
   ],
   LazyColumn: [
     ...commonLayoutProperties,
+    ...columnSpecificLayoutProperties,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    { name: 'itemSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' },
-    {
-      name: 'verticalArrangement',
-      type: 'enum',
-      label: 'Vertical Arrangement',
-      group: 'Layout',
-      options: [
-        { label: 'Top', value: 'Top' },
-        { label: 'Bottom', value: 'Bottom' },
-        { label: 'Center', value: 'Center' },
-        { label: 'Space Around', value: 'SpaceAround' },
-        { label: 'Space Between', value: 'SpaceBetween' },
-        { label: 'Space Evenly', value: 'SpaceEvenly' },
-      ],
-    },
-    {
-      name: 'horizontalAlignment',
-      type: 'enum',
-      label: 'Horizontal Alignment',
-      group: 'Layout',
-      options: [
-        { label: 'Start', value: 'Start' },
-        { label: 'Center Horizontally', value: 'CenterHorizontally' },
-        { label: 'End', value: 'End' },
-      ],
-    },
     { name: 'userScrollEnabled', type: 'boolean', label: 'Enable Scrolling', group: 'Behavior' },
     { name: 'reverseLayout', type: 'boolean', label: 'Reverse Layout', group: 'Behavior' },
   ],
   LazyRow: [
     ...commonLayoutProperties,
+    ...rowSpecificLayoutProperties,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    { name: 'itemSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' },
-    {
-      name: 'horizontalArrangement',
-      type: 'enum',
-      label: 'Horizontal Arrangement',
-      group: 'Layout',
-      options: [
-        { label: 'Start', value: 'Start' },
-        { label: 'End', value: 'End' },
-        { label: 'Center', value: 'Center' },
-        { label: 'Space Around', value: 'SpaceAround' },
-        { label: 'Space Between', value: 'SpaceBetween' },
-        { label: 'Space Evenly', value: 'SpaceEvenly' },
-      ],
-    },
-    {
-      name: 'verticalAlignment',
-      type: 'enum',
-      label: 'Vertical Alignment',
-      group: 'Layout',
-      options: [
-        { label: 'Top', value: 'Top' },
-        { label: 'Center Vertically', value: 'CenterVertically' },
-        { label: 'Bottom', value: 'Bottom' },
-      ],
-    },
     { name: 'userScrollEnabled', type: 'boolean', label: 'Enable Scrolling', group: 'Behavior' },
     { name: 'reverseLayout', type: 'boolean', label: 'Reverse Layout', group: 'Behavior' },
   ],
   LazyVerticalGrid: [
     ...commonLayoutProperties,
+    ...columnSpecificLayoutProperties, // Grids also arrange in a column-like fashion for their overall structure
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'columns', type: 'number', label: 'Number of Columns', placeholder: '2', group: 'Layout' },
-    { name: 'itemSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' },
-    {
-      name: 'verticalArrangement', type: 'enum', label: 'Vertical Arrangement (Items)', group: 'Layout',
-      options: [
-        { label: 'Top', value: 'Top' }, { label: 'Bottom', value: 'Bottom' }, { label: 'Center', value: 'Center' },
-        { label: 'Space Around', value: 'SpaceAround' }, { label: 'Space Between', value: 'SpaceBetween' }, { label: 'Space Evenly', value: 'SpaceEvenly' },
-      ]
-    },
-    {
-      name: 'horizontalAlignment', type: 'enum', label: 'Horizontal Alignment (Items)', group: 'Layout',
-      options: [
-        { label: 'Start', value: 'Start' }, { label: 'Center Horizontally', value: 'CenterHorizontally' }, { label: 'End', value: 'End' },
-      ]
-    },
   ],
   LazyHorizontalGrid: [
     ...commonLayoutProperties,
+    ...rowSpecificLayoutProperties, // And horizontal grids arrange in a row-like fashion
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'rows', type: 'number', label: 'Number of Rows', placeholder: '2', group: 'Layout' },
-    { name: 'itemSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' },
-     {
-      name: 'horizontalArrangement', type: 'enum', label: 'Horizontal Arrangement (Items)', group: 'Layout',
-      options: [
-        { label: 'Start', value: 'Start' }, { label: 'End', value: 'End' }, { label: 'Center', value: 'Center' },
-        { label: 'Space Around', value: 'SpaceAround' }, { label: 'Space Between', value: 'SpaceBetween' }, { label: 'Space Evenly', value: 'SpaceEvenly' },
-      ]
-    },
-    {
-      name: 'verticalAlignment', type: 'enum', label: 'Vertical Alignment (Items)', group: 'Layout',
-      options: [
-        { label: 'Top', value: 'Top' }, { label: 'Center Vertically', value: 'CenterVertically' }, { label: 'Bottom', value: 'Bottom' },
-      ]
-    },
   ],
   Spacer: [
     { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '8', group: 'Layout' },
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '8', group: 'Layout' },
     { name: 'layoutWeight', type: 'number', label: 'Layout Weight', placeholder: '0 (no weight)', group: 'Layout' },
+  ],
+  TopAppBar: [
+    ...commonLayoutProperties.filter(p => p.name !== 'padding' && p.name !== 'paddingTop' && p.name !== 'paddingBottom'), // Height/Width are fine, padding is more specific
+    { name: 'title', type: 'string', label: 'Title', placeholder: 'Screen Title', group: 'Content' },
+    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'contentColor', type: 'color', label: 'Content Color (e.g. Title, Icons)', group: 'Appearance' },
+    ...rowSpecificLayoutProperties,
+  ],
+  BottomNavigationBar: [
+     ...commonLayoutProperties.filter(p => p.name !== 'padding' && p.name !== 'paddingTop' && p.name !== 'paddingBottom'),
+    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'contentColor', type: 'color', label: 'Content Color (e.g. Icons, Labels)', group: 'Appearance' },
+    ...rowSpecificLayoutProperties,
   ],
 };
 
@@ -550,9 +531,10 @@ export const isCustomComponentType = (type: string): boolean => {
   return type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX);
 };
 
-export const CONTAINER_TYPES: ReadonlyArray<ComponentType> = [
+export const CONTAINER_TYPES: ReadonlyArray<ComponentType | string > = [ // Added string for custom components
   'Column', 'Row', 'Box', 'Card',
-  'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid'
+  'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid',
+  'TopAppBar', 'BottomNavigationBar'
 ];
 
 export function isContainerType(type: ComponentType | string, customTemplates?: CustomComponentTemplate[]): boolean {
@@ -563,11 +545,12 @@ export function isContainerType(type: ComponentType | string, customTemplates?: 
       if (template && template.rootComponentId) {
         const rootOfTemplate = template.componentTree.find(c => c.id === template.rootComponentId);
         if (rootOfTemplate) {
+          // Check if the root of the custom component is itself a known container type
           return CONTAINER_TYPES.includes(rootOfTemplate.type as ComponentType);
         }
       }
     }
-    return false;
+    return false; // Default custom components to non-container if template not found or root is not container
   }
   return CONTAINER_TYPES.includes(type as ComponentType);
 }
@@ -615,6 +598,7 @@ const BaseModalPropertiesSchema = z.object({
   textAlign: z.enum(['Left', 'Center', 'Right', 'Justify', 'Start', 'End']).optional(),
   textDecoration: z.enum(['None', 'Underline', 'LineThrough']).optional(),
   lineHeight: z.number().min(0).optional(),
+  title: z.string().optional(), // For TopAppBar
 }).catchall(z.any());
 
 type ModalComponentNodePlain = {
@@ -652,3 +636,5 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
 );
 
 export const ModalJsonSchema = z.array(ModalComponentNodeSchema);
+
+    

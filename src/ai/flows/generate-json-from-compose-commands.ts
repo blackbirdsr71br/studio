@@ -49,10 +49,11 @@ export async function generateJsonFromComposeCommands(
   return generateJsonFromComposeCommandsFlow(input);
 }
 
-const availableComponentTypes: (ComponentType | 'Scaffold' | 'TopAppBar' | 'Spacer')[] = [
+const availableComponentTypes: (ComponentType | 'Scaffold' | 'Spacer')[] = [ // Removed TopAppBar from direct string type here, ComponentType covers it
   'Text', 'Button', 'Column', 'Row', 'Image', 'Box', 'Card',
   'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid', 'Spacer',
-  'Scaffold', 'TopAppBar'
+  'TopAppBar', 'BottomNavigationBar', // Added new types
+  'Scaffold' // Scaffold remains a concept to map to Column/Box
 ];
 
 
@@ -63,13 +64,15 @@ const prompt = ai.definePrompt({
   prompt: `You are an expert Jetpack Compose to JSON UI converter. Your task is to transform Jetpack Compose-like text commands into a specific JSON format.
 The output JSON must be an array of component objects. Each component object must have the following structure:
 - "id": A unique string identifier (e.g., "comp-1", "comp-2").
-- "type": A string indicating the component type (e.g., "Text", "Column", "Image", "Spacer").
-- "name": A user-friendly name for the component (e.g., "Main Title Text", "User Profile Card", "Vertical Spacer").
+- "type": A string indicating the component type (e.g., "Text", "Column", "Image", "Spacer", "TopAppBar", "BottomNavigationBar").
+- "name": A user-friendly name for the component (e.g., "Main Title Text", "User Profile Card", "Vertical Spacer", "Main App Bar", "Bottom Nav").
 - "parentId": The "id" of the parent component. For components that are at the top level of the user's described layout, this MUST be "${DEFAULT_ROOT_LAZY_COLUMN_ID}".
 - "properties": An object containing specific attributes for the component.
-  - For container components (like Column, Row, Box, Card, LazyColumn, LazyRow, LazyVerticalGrid, LazyHorizontalGrid), "properties" can include a "children" array.
+  - For container components (like Column, Row, Box, Card, LazyColumn, LazyRow, LazyVerticalGrid, LazyHorizontalGrid, TopAppBar, BottomNavigationBar), "properties" can include a "children" array.
   - The "children" array within "properties" should contain the full JSON objects of its child components, NOT just their IDs.
   - For Spacer: width (number), height (number). If a weight is implied, set layoutWeight.
+  - For TopAppBar: title (string), backgroundColor, contentColor. Default height 56, width match_parent.
+  - For BottomNavigationBar: backgroundColor, contentColor. Default height 56, width match_parent.
 
 Available component types: ${availableComponentTypes.join(', ')}.
 Recognized properties include (but are not limited to):
@@ -77,10 +80,12 @@ Recognized properties include (but are not limited to):
 - For Image: src (string URL, use "https://placehold.co/100x100.png" if a resource is mentioned but not a URL), contentDescription (string), width (number, "match_parent", or "wrap_content"), height (number, "match_parent", or "wrap_content"), fillMaxWidth (boolean), fillMaxHeight (boolean)
 - For Button: text (string), backgroundColor (hex string), textColor (hex string), fillMaxWidth (boolean), fillMaxHeight (boolean)
 - For Spacer: width (number), height (number), layoutWeight (number). If only width is specified, assume it's a horizontal spacer. If only height is specified, assume it's a vertical spacer.
-- For Containers (Column, Row, Box, Card, Lazy*): padding (number, for all sides), paddingTop (number), paddingBottom (number), paddingStart (number), paddingEnd (number), backgroundColor (hex string), width (number, "match_parent", or "wrap_content"), height (number, "match_parent", or "wrap_content"), itemSpacing (number for Lazy layouts), layoutWeight (number, e.g., 1 for Modifier.weight(1f)), fillMaxWidth (boolean), fillMaxHeight (boolean).
+- For Containers (Column, Row, Box, Card, Lazy*, TopAppBar, BottomNavigationBar): padding (number, for all sides), paddingTop (number), paddingBottom (number), paddingStart (number), paddingEnd (number), backgroundColor (hex string), width (number, "match_parent", or "wrap_content"), height (number, "match_parent", or "wrap_content"), itemSpacing (number for Lazy layouts and Row/Column like), layoutWeight (number, e.g., 1 for Modifier.weight(1f)), fillMaxWidth (boolean), fillMaxHeight (boolean).
   - For Card: elevation (number), cornerRadiusTopLeft (number), cornerRadiusTopRight (number), cornerRadiusBottomRight (number), cornerRadiusBottomLeft (number), borderWidth (number), borderColor (hex string), contentColor (hex string).
   - For LazyVerticalGrid: columns (number).
   - For LazyHorizontalGrid: rows (number).
+  - For TopAppBar: title (string). Default height is 56. Assumed to be like a Row for child arrangement.
+  - For BottomNavigationBar: Default height is 56. Assumed to be like a Row for child arrangement. User will add items (e.g. Columns with Image and Text) as children.
 
 Mapping common Modifiers:
 - Modifier.padding(X.dp) -> "padding": X (all sides)
@@ -104,97 +109,75 @@ Mapping common Modifiers:
 - Card's contentColor parameter: e.g., contentColor = Color.SomeColor -> "contentColor": "#CorrespondingHex"
 
 onClick handlers or complex logic within composables should generally be ignored for the JSON structure, focus on visual properties.
-If a component type like 'Scaffold' or 'TopAppBar' is mentioned, try to represent its main content area using a 'Column' or 'Box'.
+If a component type like 'Scaffold' is mentioned, try to represent its main content area using a 'Column' or 'Box'. If 'TopAppBar' or 'BottomNavigationBar' are mentioned as part of a Scaffold, create them as separate components parented to "${DEFAULT_ROOT_LAZY_COLUMN_ID}".
 
 Example Input:
 \`\`\`
-Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
-    Text("Welcome!", fontSize = 20.sp, color = Color.Blue, modifier = Modifier.weight(1f))
-    Spacer(modifier = Modifier.height(10.dp))
-    Card(modifier = Modifier.clip(RoundedCornerShape(8.dp)), border = BorderStroke(1.dp, Color.Gray), contentColor = Color.DarkGray) {
-        Image(imageResource = "logo.png", contentDescription = "App Logo", modifier = Modifier.height(50.dp).padding(start = 4.dp, end = 4.dp))
-    }
+Scaffold(
+  topBar = { TopAppBar(title = { Text("My App") }) },
+  bottomBar = { BottomNavigationBar { /* items here */ } }
+) { paddingValues ->
+  Column(modifier = Modifier.padding(paddingValues).fillMaxWidth()) {
+      Text("Welcome!", fontSize = 20.sp, color = Color.Blue, modifier = Modifier.weight(1f))
+      Spacer(modifier = Modifier.height(10.dp))
+  }
 }
-Button(text = "Submit", modifier = Modifier.width(120.dp).padding(horizontal = 10.dp))
 \`\`\`
 
-Example Output JSON (stringified):
+Example Output JSON (stringified for Scaffold example - TopAppBar and BottomNav will be siblings to main content Column):
 \`\`\`json
 [
   {
     "id": "comp-1",
-    "type": "Column",
-    "name": "Column 1",
+    "type": "TopAppBar",
+    "name": "Top App Bar 1",
     "parentId": "${DEFAULT_ROOT_LAZY_COLUMN_ID}",
     "properties": {
-      "padding": 16,
+      "title": "My App",
+      "width": "match_parent",
+      "height": 56,
+      "backgroundColor": "#3F51B5",
+      "contentColor": "#FFFFFF",
+      "children": [] 
+    }
+  },
+  {
+    "id": "comp-2",
+    "type": "Column",
+    "name": "Main Content Column 2",
+    "parentId": "${DEFAULT_ROOT_LAZY_COLUMN_ID}",
+    "properties": {
+      "padding": 16, 
       "fillMaxWidth": true,
       "children": [
         {
-          "id": "comp-2",
-          "type": "Text",
-          "name": "Text 2",
-          "parentId": "comp-1",
-          "properties": {
-            "text": "Welcome!",
-            "fontSize": 20,
-            "textColor": "#0000FF",
-            "layoutWeight": 1
-          }
-        },
-        {
           "id": "comp-3",
-          "type": "Spacer",
-          "name": "Spacer 3",
-          "parentId": "comp-1",
-          "properties": {
-            "height": 10
-          }
+          "type": "Text",
+          "name": "Text 3",
+          "parentId": "comp-2",
+          "properties": { "text": "Welcome!", "fontSize": 20, "textColor": "#0000FF", "layoutWeight": 1 }
         },
         {
           "id": "comp-4",
-          "type": "Card",
-          "name": "Card 4",
-          "parentId": "comp-1",
-          "properties": {
-            "cornerRadiusTopLeft": 8,
-            "cornerRadiusTopRight": 8,
-            "cornerRadiusBottomRight": 8,
-            "cornerRadiusBottomLeft": 8,
-            "borderWidth": 1,
-            "borderColor": "#808080",
-            "contentColor": "#A9A9A9",
-            "children": [
-              {
-                "id": "comp-5",
-                "type": "Image",
-                "name": "Image 5",
-                "parentId": "comp-4",
-                "properties": {
-                  "src": "https://placehold.co/100x50.png",
-                  "contentDescription": "App Logo",
-                  "height": 50,
-                  "paddingStart": 4,
-                  "paddingEnd": 4
-                }
-              }
-            ]
-          }
+          "type": "Spacer",
+          "name": "Spacer 4",
+          "parentId": "comp-2",
+          "properties": { "height": 10 }
         }
       ]
     }
   },
   {
-    "id": "comp-6",
-    "type": "Button",
-    "name": "Button 6",
+    "id": "comp-5",
+    "type": "BottomNavigationBar",
+    "name": "Bottom Nav Bar 5",
     "parentId": "${DEFAULT_ROOT_LAZY_COLUMN_ID}",
     "properties": {
-      "text": "Submit",
-      "width": 120,
-      "fillMaxWidth": false,
-      "paddingStart": 10,
-      "paddingEnd": 10
+      "width": "match_parent",
+      "height": 56,
+      "backgroundColor": "#F0F0F0",
+      "contentColor": "#000000",
+      "children": [] 
     }
   }
 ]
@@ -203,6 +186,7 @@ Ensure all top-level components in the user's input have their "parentId" set to
 Generate unique, sequential "id" values (e.g., "comp-1", "comp-2", ...).
 Generate descriptive "name" values (e.g., "Text 1", "Column 2", "Spacer 3", ...).
 If only Modifier.padding(X.dp) is used, set the "padding" property. If specific sides like Modifier.padding(start=Y.dp) are used, set "paddingStart", "paddingTop", etc. accordingly.
+TopAppBar and BottomNavigationBar are containers, their children will be whatever the user specifies within them (e.g., Text for TopAppBar title, or Columns for BottomNavigationBar items).
 
 User's Jetpack Compose Commands:
 \`\`\`
@@ -225,3 +209,5 @@ const generateJsonFromComposeCommandsFlow = ai.defineFlow(
     return output;
   }
 );
+
+    

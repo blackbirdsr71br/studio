@@ -211,7 +211,9 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       case 'LazyRow':
       case 'LazyVerticalGrid': 
       case 'LazyHorizontalGrid': 
-        return <ContainerView component={component} childrenComponents={childrenComponents} isRow={['Row', 'LazyRow', 'LazyVerticalGrid'].includes(component.type)} />;
+      case 'TopAppBar':
+      case 'BottomNavigationBar':
+        return <ContainerView component={component} childrenComponents={childrenComponents} isRow={true} />;
       
       case 'Spacer':
         return (
@@ -230,7 +232,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
            const template = customComponentTemplates.find(t => t.templateId === component.type);
            if (template) {
              const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
-             const isTemplateRootRowLike = rootTemplateComponent ? ['Row', 'LazyRow', 'LazyVerticalGrid'].includes(rootTemplateComponent.type) : false;
+             const isTemplateRootRowLike = rootTemplateComponent ? ['Row', 'LazyRow', 'LazyVerticalGrid', 'TopAppBar', 'BottomNavigationBar'].includes(rootTemplateComponent.type) : false;
              return <ContainerView component={component} childrenComponents={childrenComponents} isRow={isTemplateRootRowLike} />;
            }
         }
@@ -251,8 +253,8 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     width: getDimensionValue(component.properties.width, component.properties.fillMaxWidth),
     height: getDimensionValue(component.properties.height, component.properties.fillMaxHeight),
     position: component.id === DEFAULT_ROOT_LAZY_COLUMN_ID || component.parentId ? 'relative' : 'absolute',
-    left: component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && !component.parentId ? `${component.properties.x || 0}px` : undefined,
-    top: component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && !component.parentId ? `${component.properties.y || 0}px` : undefined,
+    left: component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && !component.parentId ? `${Math.round(component.properties.x || 0)}px` : undefined,
+    top: component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && !component.parentId ? `${Math.round(component.properties.y || 0)}px` : undefined,
   };
   
   if (component.id === DEFAULT_ROOT_LAZY_COLUMN_ID) {
@@ -324,3 +326,5 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     </div>
   );
 }
+
+    
