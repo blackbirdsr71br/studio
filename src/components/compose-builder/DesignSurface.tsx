@@ -39,12 +39,38 @@ export function DesignSurface() {
 
       if (itemType === ItemTypes.COMPONENT_LIBRARY_ITEM) {
         const libItem = item as LibraryItem;
-        addComponent(libItem.type, DEFAULT_ROOT_LAZY_COLUMN_ID, { x: dropX, y: dropY });
+        // Pass null as parentId for direct surface drops, addComponent in context will handle centering
+        addComponent(libItem.type, null, { x: dropX, y: dropY });
       } else if (itemType === ItemTypes.CANVAS_COMPONENT_ITEM) {
         const canvasItem = item as CanvasItem;
         const draggedComponent = getComponentById(canvasItem.id);
         if (draggedComponent) {
-             moveComponent(canvasItem.id, DEFAULT_ROOT_LAZY_COLUMN_ID, { x: dropX, y: dropY });
+            let finalX = dropX;
+            let finalY = dropY;
+            let offsetX = 0;
+            let offsetY = 0;
+
+            const compWidth = draggedComponent.properties.width;
+            const compHeight = draggedComponent.properties.height;
+
+            if (typeof compWidth === 'number') {
+                offsetX = compWidth / 2;
+            } else if (compWidth && typeof compWidth === 'string' && !['match_parent', 'wrap_content'].includes(compWidth)) {
+                const parsedWidth = parseFloat(compWidth);
+                if (!isNaN(parsedWidth)) offsetX = parsedWidth / 2;
+            }
+
+            if (typeof compHeight === 'number') {
+                offsetY = compHeight / 2;
+            } else if (compHeight && typeof compHeight === 'string' && !['match_parent', 'wrap_content'].includes(compHeight)) {
+                const parsedHeight = parseFloat(compHeight);
+                if (!isNaN(parsedHeight)) offsetY = parsedHeight / 2;
+            }
+            finalX = dropX - offsetX;
+            finalY = dropY - offsetY;
+
+            // Pass null as parentId for direct surface drops, moveComponent in context will handle x,y
+            moveComponent(canvasItem.id, null, { x: Math.round(finalX), y: Math.round(finalY) });
         }
       }
     },
@@ -57,19 +83,35 @@ export function DesignSurface() {
   dropRef(surfaceRef); 
 
   const handleSurfaceClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // When clicking the surface itself, we select nothing (or a conceptual root)
+    // For now, let's make it select null to deselect any component.
+    // Or, if DEFAULT_ROOT_LAZY_COLUMN_ID is meant to be selectable when clicking empty space,
+    // then selectComponent(DEFAULT_ROOT_LAZY_COLUMN_ID);
     if (e.target === surfaceRef.current) {
-      selectComponent(DEFAULT_ROOT_LAZY_COLUMN_ID);
+       selectComponent(null); // Deselect if clicking on empty surface
     }
   };
+  
+  // Render free-floating components (parentId is null)
+  const freeFloatingComponents = components.filter(c => c.parentId === null);
 
-  const rootDisplayComponent = components.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID);
+  // The DEFAULT_ROOT_LAZY_COLUMN_ID might be one of the freeFloatingComponents if its parentId is null.
+  // If it's not, it means it was parented to something else, which is unlikely for the root.
 
   let showPlaceholder = false;
   let placeholderText = "";
-
-  if (!rootDisplayComponent || (rootDisplayComponent.properties.children && rootDisplayComponent.properties.children.length === 0)) {
+  
+  // Show placeholder if there are no free-floating components other than potentially the root,
+  // and the root itself (if it's the only thing) has no children.
+  const rootComponent = components.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID);
+  if (freeFloatingComponents.length === 0) {
     showPlaceholder = true;
-    placeholderText = "Drag components into the Root Canvas";
+    placeholderText = "Drag components onto the canvas";
+  } else if (freeFloatingComponents.length === 1 && freeFloatingComponents[0].id === DEFAULT_ROOT_LAZY_COLUMN_ID) {
+    if (!rootComponent || (rootComponent.properties.children && rootComponent.properties.children.length === 0)) {
+        showPlaceholder = true;
+        placeholderText = "Drag components into the Root Canvas or alongside it";
+    }
   }
 
 
@@ -77,7 +119,7 @@ export function DesignSurface() {
     <div
       ref={surfaceRef}
       className={cn(
-        "bg-background relative border-2 border-transparent transition-colors duration-200", // Removed overflow-auto
+        "bg-background relative border-2 border-transparent transition-colors duration-200", 
         "w-full h-full", 
         { 
           'drag-over-surface': isOverSurface && canDropOnSurface,
@@ -114,9 +156,9 @@ export function DesignSurface() {
         .resize-handle.e { cursor: ew-resize; top: 50%; right: -5px; transform: translateY(-50%); }
       `}</style>
       
-      {rootDisplayComponent && (
-        <RenderedComponentWrapper key={rootDisplayComponent.id} component={rootDisplayComponent} />
-      )}
+      {freeFloatingComponents.map(component => (
+        <RenderedComponentWrapper key={component.id} component={component} />
+      ))}
 
       {showPlaceholder && (
          <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground pointer-events-none p-4 text-center">

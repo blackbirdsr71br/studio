@@ -40,15 +40,15 @@ export function createDefaultRootLazyColumn(): DesignComponent {
   return {
     id: DEFAULT_ROOT_LAZY_COLUMN_ID,
     type: 'LazyColumn',
-    name: 'Root Canvas',
+    name: 'Root Canvas', // This name might be updated in PropertyPanel if it's selectable
     properties: {
       ...defaultLazyColumnProps,
-      x: 0,
+      x: 0, // Root canvas starts at 0,0
       y: 0,
       width: 'match_parent',
       height: 'match_parent',
       padding: 8,
-      backgroundColor: 'transparent',
+      backgroundColor: 'transparent', // Make root canvas itself transparent by default
       children: [],
       itemSpacing: 8,
       userScrollEnabled: true,
@@ -56,14 +56,14 @@ export function createDefaultRootLazyColumn(): DesignComponent {
       verticalArrangement: 'Top',
       horizontalAlignment: 'Start',
     },
-    parentId: null,
+    parentId: null, // The root canvas itself has no parent
   };
 }
 
 const initialDefaultRootLazyColumn = createDefaultRootLazyColumn();
 const initialDesignState: DesignState = {
   components: [initialDefaultRootLazyColumn],
-  selectedComponentId: initialDefaultRootLazyColumn.id,
+  selectedComponentId: null, // Start with nothing selected, or DEFAULT_ROOT_LAZY_COLUMN_ID
   nextId: 1,
   customComponentTemplates: [],
 };
@@ -72,12 +72,12 @@ const initialDesignState: DesignState = {
 // Helper to flatten hierarchical components from modal JSON
 const flattenComponentsFromModalJson = (
   modalNodes: any[],
-  currentDesignParentId: string | null
+  currentDesignParentId: string | null // Can be null if items are at the root of the JSON array
 ): DesignComponent[] => {
   let flatList: DesignComponent[] = [];
 
   for (const modalNode of modalNodes) {
-    const { properties: modalNodeProperties, parentId: _modalNodeOriginalParentIdIgnored, ...baseModalNodeData } = modalNode;
+    const { properties: modalNodeProperties, parentId: _modalNodeOriginalParentId, ...baseModalNodeData } = modalNode;
     const { children: nestedModalChildrenObjects, ...scalarModalProperties } = modalNodeProperties || {};
 
     const designComponentProperties: BaseComponentProps = { ...scalarModalProperties };
@@ -86,17 +86,24 @@ const flattenComponentsFromModalJson = (
     if (nestedModalChildrenObjects && Array.isArray(nestedModalChildrenObjects)) {
       const flattenedNestedChildren = flattenComponentsFromModalJson(
         nestedModalChildrenObjects,
-        modalNode.id
+        modalNode.id // Children in modal JSON are parented to their container in modal JSON
       );
       flatList = flatList.concat(flattenedNestedChildren);
       designComponentChildIds = flattenedNestedChildren
         .filter(fc => fc.parentId === modalNode.id)
         .map(fc => fc.id);
     }
+    
+    // The parentId from modalNode is relative to the JSON structure.
+    // We need to determine the *actual* parentId in the DesignContext.
+    // If _modalNodeOriginalParentId is null/undefined, it means it was a top-level item in the JSON array.
+    // These top-level items become children of `currentDesignParentId` (which is DEFAULT_ROOT_LAZY_COLUMN_ID for the main import)
+    const actualParentInDesign = baseModalNodeData.parentId || currentDesignParentId;
+
 
     const newDesignComponent: DesignComponent = {
       ...baseModalNodeData,
-      parentId: currentDesignParentId,
+      parentId: actualParentInDesign, // This is the parentId from the modal JSON structure
       properties: {
         ...designComponentProperties,
         children: designComponentChildIds,
@@ -160,85 +167,78 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const addComponent = useCallback((
     type: ComponentType | string,
-    parentIdOrNull: string | null = null,
+    parentIdOrNull: string | null = null, // This can now be truly null for surface drops
     dropPosition?: { x: number; y: number }
   ) => {
     setDesignState(prev => {
       let currentNextId = prev.nextId;
       let updatedComponentsList = [...prev.components];
-      let finalSelectedComponentId = ''; // The ID of the component that should be selected after adding
+      let finalSelectedComponentId = ''; 
 
-      let actualParentId = parentIdOrNull;
+      const actualParentId = parentIdOrNull; // Use as is. Null means free-floating.
 
-      let rootLazyColumn = updatedComponentsList.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID);
-      if (!rootLazyColumn) {
-          rootLazyColumn = createDefaultRootLazyColumn();
-          updatedComponentsList.unshift(rootLazyColumn);
+      // Ensure DEFAULT_ROOT_LAZY_COLUMN_ID exists if it's somehow removed, though it should persist.
+      if (!updatedComponentsList.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID)) {
+          updatedComponentsList.unshift(createDefaultRootLazyColumn());
       }
-
-      if (!actualParentId) {
-        actualParentId = DEFAULT_ROOT_LAZY_COLUMN_ID;
-      }
-
 
       if (isCustomComponentType(type)) {
         const templateId = type;
         const template = prev.customComponentTemplates.find(t => t.templateId === templateId);
 
         if (!template) {
-          if (isLoadingTemplates) {
-             console.warn(`Attempted to add custom template ${templateId}, but templates are still loading. Please try again shortly.`);
-          } else if (prev.customComponentTemplates.length === 0 && isCustomComponentType(type)) {
-            console.warn(`Attempted to add custom template ${templateId}, but no custom templates are loaded yet. This might indicate an issue with template loading or an empty template library.`);
-          } else {
-            console.error(`Custom template ${templateId} not found among loaded templates:`, prev.customComponentTemplates.map(t => t.templateId));
-          }
+          console.error(`Custom template ${templateId} not found.`);
           return prev;
         }
 
-        const finalIdMap: Record<string, string> = {}; // Maps template-local ID to new instance ID
+        const finalIdMap: Record<string, string> = {};
         const finalNewComponentsBatch: DesignComponent[] = [];
-        let instantiatedTemplateRootId = ""; // ID of the root component OF THE INSTANCE
+        let instantiatedTemplateRootId = "";
 
         template.componentTree.forEach(templateComp => {
           const newInstanceCompId = `inst-${templateComp.type.toLowerCase().replace(/\s+/g, '-')}-${currentNextId}`;
           finalIdMap[templateComp.id] = newInstanceCompId;
           currentNextId++;
         });
-        currentNextId--;
-
-
-        let maxNumericIdPart = prev.nextId -1;
-        Object.values(finalIdMap).forEach(instanceId => {
-            const parts = instanceId.split('-');
-            const numericPart = parseInt(parts[parts.length - 1], 10);
-            if (!isNaN(numericPart) && numericPart > maxNumericIdPart) {
-                maxNumericIdPart = numericPart;
-            }
-        });
-        currentNextId = maxNumericIdPart + 1;
-
+        // currentNextId--; // No, let it be for the next actual component
 
         template.componentTree.forEach(templateComp => {
           const newInstanceCompId = finalIdMap[templateComp.id];
-          if (!newInstanceCompId) {
-            console.error(`Could not find mapped instance ID for template component ${templateComp.id}. Skipping.`);
-            return;
-          }
-
           const newInstanceComp = deepClone(templateComp);
           newInstanceComp.id = newInstanceCompId;
-          newInstanceComp.name = templateComp.name;
+          newInstanceComp.name = templateComp.name; // Will be overridden for root below
 
           if (templateComp.id === template.rootComponentId) {
             newInstanceComp.name = `${template.name} Instance`;
             instantiatedTemplateRootId = newInstanceCompId;
-            newInstanceComp.parentId = actualParentId;
-          } else {
-            newInstanceComp.parentId = templateComp.parentId ? finalIdMap[templateComp.parentId] : null;
-            if (templateComp.parentId && !newInstanceComp.parentId) {
-               console.warn(`Could not map parent for instance of ${templateComp.id}. Original template parentId: ${templateComp.parentId}`);
+            newInstanceComp.parentId = actualParentId; // Parent can be null or a container ID
+
+            // Centering logic for custom component instance if dropped on surface
+            if (actualParentId === null && dropPosition) {
+                let offsetX = 0;
+                let offsetY = 0;
+                const rootProps = templateComp.properties; // Use original template root's props for size
+                if (typeof rootProps.width === 'number') offsetX = rootProps.width / 2;
+                else if (rootProps.width && typeof rootProps.width === 'string' && !['match_parent', 'wrap_content'].includes(rootProps.width)) {
+                    const parsed = parseFloat(rootProps.width);
+                    if (!isNaN(parsed)) offsetX = parsed / 2;
+                }
+                if (typeof rootProps.height === 'number') offsetY = rootProps.height / 2;
+                else if (rootProps.height && typeof rootProps.height === 'string' && !['match_parent', 'wrap_content'].includes(rootProps.height)) {
+                    const parsed = parseFloat(rootProps.height);
+                    if (!isNaN(parsed)) offsetY = parsed / 2;
+                }
+                newInstanceComp.properties.x = Math.round(dropPosition.x - offsetX);
+                newInstanceComp.properties.y = Math.round(dropPosition.y - offsetY);
+            } else { // Parented or no drop position
+                delete newInstanceComp.properties.x;
+                delete newInstanceComp.properties.y;
             }
+
+          } else { // Child of the template
+            newInstanceComp.parentId = templateComp.parentId ? finalIdMap[templateComp.parentId] : null;
+            delete newInstanceComp.properties.x; // Children's x,y are relative to template structure
+            delete newInstanceComp.properties.y;
           }
 
           if (newInstanceComp.properties.children && Array.isArray(newInstanceComp.properties.children)) {
@@ -246,80 +246,78 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
               .map(childIdFromTemplate => finalIdMap[childIdFromTemplate])
               .filter(childId => !!childId);
           }
-
-          delete newInstanceComp.properties.x;
-          delete newInstanceComp.properties.y;
-
           finalNewComponentsBatch.push(newInstanceComp);
         });
-
+        
         finalSelectedComponentId = instantiatedTemplateRootId;
         updatedComponentsList = [...updatedComponentsList, ...finalNewComponentsBatch];
 
-        if (actualParentId && instantiatedTemplateRootId) {
-            const parentCompIndex = updatedComponentsList.findIndex(c => c.id === actualParentId);
-            if (parentCompIndex !== -1) {
-                const currentParent = updatedComponentsList[parentCompIndex];
-                if (isContainerType(currentParent.type, prev.customComponentTemplates)) {
-                    const existingChildren = Array.isArray(currentParent.properties.children) ? currentParent.properties.children : [];
-                    if (!existingChildren.includes(instantiatedTemplateRootId)) {
-                        updatedComponentsList[parentCompIndex] = {
-                            ...currentParent,
-                            properties: {
-                                ...currentParent.properties,
-                                children: [...existingChildren, instantiatedTemplateRootId]
-                            }
-                        };
-                    }
-                }
-            } else {
-                 console.warn(`Could not find parent ${actualParentId} in updated list to add ${instantiatedTemplateRootId}`);
-            }
-        } else if (!actualParentId && instantiatedTemplateRootId) {
-            console.warn(`Instantiated template root ${instantiatedTemplateRootId} has no actualParentId.`);
-        }
-
-
-      } else {
+      } else { // Standard component
         const newId = `comp-${currentNextId++}`;
         finalSelectedComponentId = newId;
         const defaultProps = getDefaultProperties(type as ComponentType);
+        
+        let componentX, componentY;
+
+        if (actualParentId === null && dropPosition) { // Dropped on surface
+            let offsetX = 0;
+            let offsetY = 0;
+            const w = defaultProps.width;
+            const h = defaultProps.height;
+
+            if (typeof w === 'number') offsetX = w / 2;
+            else if (w && typeof w === 'string' && !['match_parent', 'wrap_content'].includes(w)) {
+                const parsed = parseFloat(w);
+                if (!isNaN(parsed)) offsetX = parsed / 2;
+            }
+            if (typeof h === 'number') offsetY = h / 2;
+            else if (h && typeof h === 'string' && !['match_parent', 'wrap_content'].includes(h)) {
+                const parsed = parseFloat(h);
+                if (!isNaN(parsed)) offsetY = parsed / 2;
+            }
+            componentX = Math.round(dropPosition.x - offsetX);
+            componentY = Math.round(dropPosition.y - offsetY);
+        }
 
         const newComponent: DesignComponent = {
           id: newId,
           type: type as ComponentType,
           name: `${getComponentDisplayNameResolved(type as ComponentType)} ${newId.split('-')[1]}`,
-          properties: {
-            ...defaultProps,
-          },
+          properties: { ...defaultProps },
           parentId: actualParentId,
         };
 
-        delete newComponent.properties.x;
-        delete newComponent.properties.y;
-
-        updatedComponentsList.push(newComponent);
-
-        if (actualParentId) {
-          const parentCompIndex = updatedComponentsList.findIndex(c => c.id === actualParentId);
-          if (parentCompIndex !== -1) {
-            const currentParent = updatedComponentsList[parentCompIndex];
-            if (isContainerType(currentParent.type, prev.customComponentTemplates)) {
-              const existingChildren = Array.isArray(currentParent.properties.children) ? currentParent.properties.children : [];
-              if (!existingChildren.includes(newId)) {
-                updatedComponentsList[parentCompIndex] = {
-                  ...currentParent,
-                  properties: {
-                    ...currentParent.properties,
-                    children: [...existingChildren, newId],
-                  },
-                };
-              }
-            }
-          }
+        if (actualParentId === null && dropPosition) {
+            newComponent.properties.x = componentX;
+            newComponent.properties.y = componentY;
+        } else { // Parented or no drop position
+            delete newComponent.properties.x;
+            delete newComponent.properties.y;
         }
+        updatedComponentsList.push(newComponent);
       }
 
+      // Add to parent's children array if parented
+      if (actualParentId) {
+        const parentCompIndex = updatedComponentsList.findIndex(c => c.id === actualParentId);
+        if (parentCompIndex !== -1) {
+            const currentParent = updatedComponentsList[parentCompIndex];
+            if (isContainerType(currentParent.type, prev.customComponentTemplates)) {
+                const childIdToAdd = isCustomComponentType(type) ? finalSelectedComponentId : finalSelectedComponentId; // finalSelectedComponentId is the root of the instance or the new comp
+                const existingChildren = Array.isArray(currentParent.properties.children) ? currentParent.properties.children : [];
+                if (!existingChildren.includes(childIdToAdd)) {
+                    updatedComponentsList[parentCompIndex] = {
+                        ...currentParent,
+                        properties: {
+                            ...currentParent.properties,
+                            children: [...existingChildren, childIdToAdd]
+                        }
+                    };
+                }
+            }
+        }
+      }
+      
       const finalUniqueComponents = updatedComponentsList.filter((comp, index, self) => index === self.findIndex(t => t.id === comp.id));
 
       return {
@@ -419,8 +417,9 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
 
   const deleteComponent = useCallback((id: string) => {
-    if (id === DEFAULT_ROOT_LAZY_COLUMN_ID) {
-      console.warn("Attempted to delete the default root LazyColumn. Operation prevented.");
+    if (id === DEFAULT_ROOT_LAZY_COLUMN_ID && designState.components.length === 1) {
+      console.warn("Attempted to delete the last remaining default root LazyColumn. Operation prevented.");
+      toast({ title: "Action Prevented", description: "Cannot delete the root canvas component.", variant: "destructive" });
       return;
     }
 
@@ -467,12 +466,23 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       });
 
       let finalComponents = remainingComponents;
-      if (!finalComponents.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID)) {
-        finalComponents.unshift(createDefaultRootLazyColumn());
+      // Ensure DEFAULT_ROOT_LAZY_COLUMN_ID exists if it was deleted and was not the only component
+      if (id === DEFAULT_ROOT_LAZY_COLUMN_ID || !finalComponents.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID && c.parentId === null)) {
+         if (finalComponents.length > 0) { // If other components remain, add a new root
+            const newRoot = createDefaultRootLazyColumn();
+            // Try to reparent orphaned top-level components to the new root
+            const orphanedChildren = finalComponents.filter(c => c.parentId === id || (c.parentId === null && c.id !== newRoot.id));
+            newRoot.properties.children = orphanedChildren.map(oc => oc.id);
+            finalComponents = [newRoot, ...finalComponents.map(c => (orphanedChildren.find(oc => oc.id === c.id) ? {...c, parentId: newRoot.id} : c) )];
+            finalComponents = finalComponents.filter((comp, index, self) => index === self.findIndex(t => t.id === comp.id)); // Ensure unique
+         } else { // No components left, create a fresh root
+            finalComponents.unshift(createDefaultRootLazyColumn());
+         }
       }
 
+
       const newSelectedComponentId = deletedIdsArray.includes(prev.selectedComponentId || "")
-        ? DEFAULT_ROOT_LAZY_COLUMN_ID
+        ? null // Select nothing if deleted component was selected
         : prev.selectedComponentId;
 
       return {
@@ -481,7 +491,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         selectedComponentId: newSelectedComponentId,
       };
     });
-  }, []);
+  }, [designState.components.length, toast]);
 
 
   const selectComponent = useCallback((id: string | null) => {
@@ -496,7 +506,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           let newComp = { ...comp, properties: { ...comp.properties} };
           if (updates.name !== undefined) {
             if (id === DEFAULT_ROOT_LAZY_COLUMN_ID) {
-                 newComp.name = "Root Canvas";
+                 newComp.name = "Root Canvas"; // Ensure root name is fixed
             } else {
                 newComp.name = updates.name;
             }
@@ -515,7 +525,9 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setDesignState(prev => ({
       ...prev,
       components: prev.components.map(comp =>
-        (comp.id === id && !comp.parentId && id !== DEFAULT_ROOT_LAZY_COLUMN_ID) ? { ...comp, properties: { ...comp.properties, x: position.x, y: position.y } } : comp
+        (comp.id === id && comp.parentId === null && id !== DEFAULT_ROOT_LAZY_COLUMN_ID) 
+          ? { ...comp, properties: { ...comp.properties, x: position.x, y: position.y } } 
+          : comp
       ),
     }));
   }, []);
@@ -525,7 +537,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setDesignState(prev => ({
         ...prev,
         components: [newRootLazyColumn],
-        selectedComponentId: newRootLazyColumn.id,
+        selectedComponentId: null, // Select nothing on clear
         nextId: 1,
     }));
   }, []);
@@ -534,32 +546,38 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     let finalComponents = newDesign.components;
     let finalSelectedId = newDesign.selectedComponentId;
 
-    let rootLazyColumn = finalComponents.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID);
+    let rootLazyColumn = finalComponents.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID && c.parentId === null);
     if (!rootLazyColumn) {
         rootLazyColumn = createDefaultRootLazyColumn();
-        const oldRootChildrenIds = finalComponents.filter(c => !c.parentId).map(c => c.id);
+        // Find any components that were previously parentless (or parented to an old root) and assign them to the new root.
+        const oldRootChildrenIds = finalComponents
+            .filter(c => c.parentId === null && c.id !== DEFAULT_ROOT_LAZY_COLUMN_ID)
+            .map(c => c.id);
+        
         rootLazyColumn.properties.children = oldRootChildrenIds;
 
         finalComponents = [rootLazyColumn, ...finalComponents.map(c => {
-            if (!c.parentId) return {...c, parentId: rootLazyColumn!.id };
+            if (c.parentId === null && c.id !== DEFAULT_ROOT_LAZY_COLUMN_ID) return {...c, parentId: rootLazyColumn!.id };
             return c;
         })];
+        finalComponents = finalComponents.filter((comp, index, self) => index === self.findIndex(t => t.id === comp.id));
     } else {
+      // Ensure root's parentId is null
       if (rootLazyColumn.parentId !== null) rootLazyColumn.parentId = null;
-      finalComponents = finalComponents.map(c => {
-        if (c.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && !c.parentId) {
-          if (!rootLazyColumn!.properties.children?.includes(c.id)) {
-             rootLazyColumn!.properties.children = [...(rootLazyColumn!.properties.children || []), c.id];
+      // Reparent any other parentless components to the root if they aren't already children.
+      const currentRootChildren = new Set(rootLazyColumn.properties.children || []);
+      finalComponents.forEach(c => {
+        if (c.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && c.parentId === null) {
+          c.parentId = DEFAULT_ROOT_LAZY_COLUMN_ID;
+          if (!currentRootChildren.has(c.id)) {
+            rootLazyColumn!.properties.children = [...(rootLazyColumn!.properties.children || []), c.id];
           }
-          return {...c, parentId: DEFAULT_ROOT_LAZY_COLUMN_ID};
         }
-        return c;
       });
     }
 
-
     if (!finalSelectedId || !finalComponents.find(c => c.id === finalSelectedId)) {
-        finalSelectedId = DEFAULT_ROOT_LAZY_COLUMN_ID;
+        finalSelectedId = null; // Default to no selection or root
     }
     setDesignState(prev => ({...newDesign, components: finalComponents, selectedComponentId: finalSelectedId, customComponentTemplates: prev.customComponentTemplates }));
   }, []);
@@ -570,21 +588,26 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       return { success: false, error: "Invalid JSON: Data must be an array of components." };
     }
 
+    // Flatten assuming the input array is children of DEFAULT_ROOT_LAZY_COLUMN_ID
     const userComponentsFlatList = flattenComponentsFromModalJson(hierarchicalUserComponentsJson, DEFAULT_ROOT_LAZY_COLUMN_ID);
 
-    let rootLazyColumn = createDefaultRootLazyColumn();
+    let rootLazyColumn = designState.components.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID && c.parentId === null) 
+                         || createDefaultRootLazyColumn();
     rootLazyColumn.properties.children = userComponentsFlatList
-        .filter(c => c.parentId === DEFAULT_ROOT_LAZY_COLUMN_ID)
+        .filter(c => c.parentId === DEFAULT_ROOT_LAZY_COLUMN_ID) // Only direct children of root
         .map(c => c.id);
 
     const finalComponents: DesignComponent[] = [rootLazyColumn, ...userComponentsFlatList];
-
+    
+    // Ensure all IDs are unique
     const allIds = new Set(finalComponents.map(c => c.id));
     if (allIds.size !== finalComponents.length) {
-        console.error("Non-unique IDs after flattening modal JSON:", finalComponents.map(c => c.id));
-        return { success: false, error: "Invalid JSON: Component IDs are not unique after processing."};
+        const duplicateIds = finalComponents.map(c=>c.id).filter((id, index, arr) => arr.indexOf(id) !== index);
+        console.error("Non-unique IDs after flattening modal JSON:", duplicateIds);
+        return { success: false, error: `Invalid JSON: Component IDs are not unique. Duplicates: ${duplicateIds.join(', ')}`};
     }
 
+    // Validate parent-child relationships
     for (const comp of finalComponents) {
       if (comp.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && comp.parentId && !allIds.has(comp.parentId)) {
         return { success: false, error: `Invalid JSON: Component "${comp.name} (${comp.id})" has a non-existent parentId "${comp.parentId}".`};
@@ -594,8 +617,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
            return { success: false, error: `Invalid JSON: Component "${comp.name} (${comp.id})" has non-array children property.`};
         }
         for (const childId of comp.properties.children) {
-          if (!allIds.has(childId)) {
-            return { success: false, error: `Invalid JSON: Component "${comp.name} (${comp.id})" lists non-existent childId "${childId}".`};
+          if (typeof childId !== 'string' || !allIds.has(childId)) {
+            return { success: false, error: `Invalid JSON: Component "${comp.name} (${comp.id})" lists non-existent or invalid childId "${childId}".`};
           }
         }
       }
@@ -617,10 +640,10 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       ...prev,
       components: finalComponents,
       nextId: maxIdNum + 1,
-      selectedComponentId: DEFAULT_ROOT_LAZY_COLUMN_ID,
+      selectedComponentId: DEFAULT_ROOT_LAZY_COLUMN_ID, // Select root after import
     }));
     return { success: true };
-  }, []);
+  }, [designState.components]);
 
 
   const moveComponent = useCallback((draggedId: string, targetParentIdOrNull: string | null, newPosition?: { x: number, y: number}) => {
@@ -637,13 +660,11 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         let draggedComponent = {...currentComponents[draggedComponentIndex]};
         draggedComponent.properties = {...draggedComponent.properties};
         const oldParentId = draggedComponent.parentId;
+        const actualTargetParentId = targetParentIdOrNull; // Can be null
 
-        let actualTargetParentId = targetParentIdOrNull;
-        if (targetParentIdOrNull === null || targetParentIdOrNull === "design-surface") {
-            actualTargetParentId = DEFAULT_ROOT_LAZY_COLUMN_ID;
-        }
+        if (actualTargetParentId === draggedId) return prev; // Cannot parent to self
 
-        if (actualTargetParentId === draggedId) return prev;
+        // Prevent nesting a component into its own descendant
         let tempParentCheck = actualTargetParentId;
         while(tempParentCheck) {
             if (tempParentCheck === draggedId) {
@@ -656,11 +677,17 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         draggedComponent.parentId = actualTargetParentId;
 
-        delete draggedComponent.properties.x;
-        delete draggedComponent.properties.y;
-
+        // Handle x,y properties based on new parent
+        if (actualTargetParentId === null && newPosition) { // Target is the canvas surface (free-floating)
+            draggedComponent.properties.x = newPosition.x;
+            draggedComponent.properties.y = newPosition.y;
+        } else { // Target is a container component or no position info
+            delete draggedComponent.properties.x;
+            delete draggedComponent.properties.y;
+        }
         currentComponents[draggedComponentIndex] = draggedComponent;
 
+        // Remove from old parent's children list
         if (oldParentId && oldParentId !== actualTargetParentId) {
             const oldParentIndex = currentComponents.findIndex(c => c.id === oldParentId);
             if (oldParentIndex !== -1) {
@@ -673,6 +700,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             }
         }
 
+        // Add to new parent's children list (if not null)
         if (actualTargetParentId) {
             const newParentIndex = currentComponents.findIndex(c => c.id === actualTargetParentId);
             if (newParentIndex !== -1) {
@@ -680,24 +708,19 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                  newParent.properties = {...newParent.properties};
                  if (isContainerType(newParent.type, prev.customComponentTemplates)) {
                     let existingChildren = Array.isArray(newParent.properties.children) ? newParent.properties.children : [];
-                    existingChildren = existingChildren.filter(childId => childId !== draggedId);
+                    existingChildren = existingChildren.filter(childId => childId !== draggedId); // Ensure not already there
                     newParent.properties.children = [...existingChildren, draggedId];
                     currentComponents[newParentIndex] = newParent;
                  } else {
-                    console.warn(`Attempted to move component ${draggedId} into non-container ${actualTargetParentId}. Reverting parentId.`);
-                     draggedComponent.parentId = oldParentId;
+                    // Target is not a container, revert parentId and position
+                    console.warn(`Attempted to move component ${draggedId} into non-container ${actualTargetParentId}. Reverting.`);
+                     draggedComponent.parentId = oldParentId; // Revert parentId
+                     // Re-apply old x,y if it was free-floating, or remove if it was parented
+                     const originalComponent = prev.components[draggedComponentIndex];
+                     draggedComponent.properties.x = originalComponent.properties.x;
+                     draggedComponent.properties.y = originalComponent.properties.y;
                      currentComponents[draggedComponentIndex] = draggedComponent;
-                     if (oldParentId && oldParentId !== actualTargetParentId) {
-                        const oldParentIndex = currentComponents.findIndex(c => c.id === oldParentId);
-                        if (oldParentIndex !== -1) {
-                            const oldParent = {...currentComponents[oldParentIndex]};
-                            oldParent.properties = {...oldParent.properties};
-                             if (Array.isArray(oldParent.properties.children) && !oldParent.properties.children.includes(draggedId)) {
-                                oldParent.properties.children.push(draggedId);
-                                currentComponents[oldParentIndex] = oldParent;
-                            }
-                        }
-                     }
+                     // Add back to old parent if necessary (already handled by it not being removed if actualTargetParentId === oldParentId)
                      return prev;
                  }
             }
@@ -709,7 +732,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const deleteCustomComponentTemplate = useCallback(async (templateId: string, firestoreId?: string) => {
     const idToDelete = firestoreId || templateId;
     try {
-      if (db && idToDelete) {
+      if (db && idToDelete && !idToDelete.startsWith("local-")) { // Don't try to delete local-only ones from firestore
         await deleteDoc(doc(db, CUSTOM_TEMPLATES_COLLECTION, idToDelete));
       }
       setDesignState(prev => ({
@@ -726,7 +749,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const renameCustomComponentTemplate = useCallback(async (templateId: string, newName: string, firestoreId?: string) => {
     const idToUpdate = firestoreId || templateId;
     try {
-      if (db && idToUpdate) {
+      if (db && idToUpdate && !idToUpdate.startsWith("local-")) { // Don't try to update local-only ones in firestore
         const templateRef = doc(db, CUSTOM_TEMPLATES_COLLECTION, idToUpdate);
         await updateDoc(templateRef, { name: newName });
       }
@@ -762,7 +785,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   if (!isClient) {
-    const initialContextValue: DesignContextType = {
+    const initialContextValueForSSR: DesignContextType = {
       ...initialDesignState,
       addComponent: () => {},
       deleteComponent: () => {},
@@ -772,14 +795,14 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       getComponentById: (id: string) => initialDesignState.components.find(comp => comp.id === id),
       clearDesign: () => {},
       setDesign: () => {},
-      overwriteComponents: () => { return {success: false, error: "Context not ready."}; },
+      overwriteComponents: () => { return {success: false, error: "Context not ready on server."}; },
       moveComponent: () => {},
       saveSelectedAsCustomTemplate: () => {},
       deleteCustomComponentTemplate: async () => {},
       renameCustomComponentTemplate: async () => {},
     };
     return (
-      <DesignContext.Provider value={initialContextValue}>
+      <DesignContext.Provider value={initialContextValueForSSR}>
         {children}
       </DesignContext.Provider>
     );
@@ -799,5 +822,3 @@ export const useDesign = (): DesignContextType => {
   }
   return context;
 };
-
-    
