@@ -42,14 +42,115 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
   const { resolvedTheme } = useTheme();
   const { components, customComponentTemplates, overwriteComponents } = useDesign();
 
+  // State for "Design Canvas JSON" tab
   const [designJsonString, setDesignJsonString] = useState<string>('');
   const [isFetchingDesignJson, setIsFetchingDesignJson] = useState(false);
   const [designJsonError, setDesignJsonError] = useState<string | null>(null);
 
+  // State for "Generate from Text Command" tab
   const [textCommandInput, setTextCommandInput] = useState<string>('');
   const [generatedCommandJsonString, setGeneratedCommandJsonString] = useState<string>('');
   const [isGeneratingCommandJson, setIsGeneratingCommandJson] = useState(false);
   const [commandJsonError, setCommandJsonError] = useState<string | null>(null);
+
+  const handleDesignJsonChange = useCallback((value: string) => {
+    setDesignJsonString(value);
+    setDesignJsonError(null); // Clear previous errors on edit
+  }, [setDesignJsonString, setDesignJsonError]);
+
+  const validateAndSetDesignJson = useCallback(() => {
+    if (!designJsonString.trim()) {
+      setDesignJsonError("JSON content cannot be empty.");
+      return null;
+    }
+    try {
+      const parsedJson = JSON.parse(designJsonString);
+      const validationResult = ModalJsonSchema.safeParse(parsedJson);
+      if (!validationResult.success) {
+        const zodError = validationResult.error as ZodError;
+        const errorMessages = zodError.errors.map(
+          (err) => `${err.path.join('.')} : ${err.message}`
+        );
+        setDesignJsonError(`Schema Validation Failed:\n- ${errorMessages.join('\n- ')}`);
+        return null;
+      }
+      setDesignJsonError(null); // Clear error on successful validation
+      return validationResult.data;
+    } catch (e) {
+      setDesignJsonError(`Invalid JSON syntax: ${(e as Error).message}`);
+      return null;
+    }
+  }, [designJsonString, setDesignJsonError]);
+
+  const handleSaveChangesToCanvas = useCallback(async () => {
+    const validatedData = validateAndSetDesignJson();
+    if (validatedData) {
+      const result = overwriteComponents(validatedData);
+      if (result.success) {
+        toast({
+          title: 'Design Updated',
+          description: 'Changes from JSON have been applied to the canvas.',
+        });
+        setIsOpen(false);
+      } else {
+        const errorMessage = result.error || "Failed to apply changes to canvas.";
+        setDesignJsonError(errorMessage);
+        toast({
+          title: 'Update Failed',
+          description: errorMessage,
+          variant: 'destructive',
+        });
+      }
+    } else {
+      // designJsonError would have been set by validateAndSetDesignJson
+      toast({
+        title: 'Validation Error',
+        description: designJsonError || 'Please fix the errors in the JSON before saving.',
+        variant: 'destructive',
+      });
+    }
+  }, [validateAndSetDesignJson, overwriteComponents, toast, setIsOpen, setDesignJsonError, designJsonError]);
+
+  const handleTextCommandInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setTextCommandInput(event.target.value);
+  };
+
+  const handleGenerateCommandJson = useCallback(async () => {
+    if (!textCommandInput.trim()) {
+      setCommandJsonError('Please enter some text commands to generate JSON.');
+      return;
+    }
+    setIsGeneratingCommandJson(true);
+    setGeneratedCommandJsonString('');
+    setCommandJsonError(null);
+    try {
+      const result = await generateJsonFromTextAction(textCommandInput);
+      if (result.designJson) {
+         try {
+          const parsed = JSON.parse(result.designJson);
+          setGeneratedCommandJsonString(JSON.stringify(parsed, null, 2));
+        } catch (parseError) {
+          setGeneratedCommandJsonString(result.designJson); // Show raw if pretty print fails
+          setCommandJsonError("AI returned content, but it could not be formatted as pretty JSON. Displaying raw version.");
+          toast({ title: 'Formatting Issue', description: "AI content shown raw; could not pretty-print.", variant: 'default' });
+        }
+      } else {
+        setCommandJsonError(result.error || 'Failed to generate JSON from commands.');
+        toast({ title: 'JSON Generation Failed', description: result.error || "Unknown error during generation.", variant: 'destructive' });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An unknown error occurred during AI JSON generation.';
+      setCommandJsonError(message);
+      toast({ title: 'Generation Error', description: message, variant: 'destructive' });
+    } finally {
+      setIsGeneratingCommandJson(false);
+    }
+  }, [textCommandInput, toast, setGeneratedCommandJsonString, setCommandJsonError, setIsGeneratingCommandJson]);
+
+  const handleGeneratedCommandJsonChange = useCallback((value: string) => {
+    setGeneratedCommandJsonString(value);
+    setCommandJsonError(null);
+  }, [setGeneratedCommandJsonString, setCommandJsonError]);
 
   const handleFetchDesignJson = useCallback(async () => {
     setIsFetchingDesignJson(true);
@@ -61,13 +162,14 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
         setDesignJsonError(result);
         setDesignJsonString("[]");
       } else {
-        try {
+         try {
             const parsed = JSON.parse(result);
             setDesignJsonString(JSON.stringify(parsed, null, 2));
-        } catch (e) {
+          } catch (e) {
             setDesignJsonString(result);
-            setDesignJsonError("Could not format the fetched JSON. Displaying raw version.");
-        }
+            setDesignJsonError("Could not format the fetched JSON. Displaying raw version. It might contain errors.");
+            toast({ title: 'Formatting Issue', description: "Fetched JSON shown raw; could not pretty-print.", variant: 'default' });
+          }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to fetch design JSON.';
@@ -77,7 +179,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
     } finally {
       setIsFetchingDesignJson(false);
     }
-  }, [components, customComponentTemplates, toast]);
+  }, [components, customComponentTemplates, toast, setDesignJsonString, setDesignJsonError, setIsFetchingDesignJson]);
 
   useEffect(() => {
     if (isOpen && activeTab === 'canvas') {
@@ -95,103 +197,12 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
       setGeneratedCommandJsonString('');
       setCommandJsonError(null);
     },
-  }), [handleFetchDesignJson]);
-
-  const handleDesignJsonChange = useCallback((value: string) => {
-    setDesignJsonString(value);
-    setDesignJsonError(null);
-  }, []);
-
-  const validateAndSetDesignJson = useCallback(() => {
-    try {
-      const parsedJson = JSON.parse(designJsonString);
-      const validationResult = ModalJsonSchema.safeParse(parsedJson);
-      if (!validationResult.success) {
-        const zodError = validationResult.error as ZodError;
-        const errorMessages = zodError.errors.map(
-          (err) => `${err.path.join('.')} : ${err.message}`
-        );
-        setDesignJsonError(`Schema Validation Failed:\n- ${errorMessages.join('\n- ')}`);
-        return null;
-      }
-      setDesignJsonError(null);
-      return validationResult.data;
-    } catch (e) {
-      setDesignJsonError(`Invalid JSON syntax: ${(e as Error).message}`);
-      return null;
-    }
-  }, [designJsonString]);
-
-  const handleSaveChangesToCanvas = useCallback(async () => {
-    const validatedData = validateAndSetDesignJson();
-    if (validatedData) {
-      const result = overwriteComponents(validatedData);
-      if (result.success) {
-        toast({
-          title: 'Design Updated',
-          description: 'Changes from JSON have been applied to the canvas.',
-        });
-        setIsOpen(false);
-      } else {
-        setDesignJsonError(result.error || "Failed to apply changes to canvas.");
-        toast({
-          title: 'Update Failed',
-          description: result.error || "Could not apply JSON to canvas.",
-          variant: 'destructive',
-        });
-      }
-    } else {
-      toast({
-        title: 'Validation Error',
-        description: 'Please fix the errors in the JSON before saving.',
-        variant: 'destructive',
-      });
-    }
-  }, [validateAndSetDesignJson, overwriteComponents, toast, setIsOpen, setDesignJsonError]);
-
-  const handleTextCommandInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setTextCommandInput(event.target.value);
-  };
-
-  const handleGenerateCommandJson = useCallback(async () => {
-    if (!textCommandInput.trim()) {
-      setCommandJsonError('Please enter some text commands to generate JSON.');
-      return;
-    }
-    setIsGeneratingCommandJson(true);
-    setGeneratedCommandJsonString('');
-    setCommandJsonError(null);
-    try {
-      const result = await generateJsonFromTextAction(textCommandInput);
-      if (result.designJson) {
-        try {
-            const parsed = JSON.parse(result.designJson);
-            setGeneratedCommandJsonString(JSON.stringify(parsed, null, 2));
-        } catch (e) {
-            setGeneratedCommandJsonString(result.designJson);
-            setCommandJsonError("AI returned JSON, but it could not be formatted. Displaying raw version.");
-        }
-      } else {
-        setCommandJsonError(result.error || 'Failed to generate JSON from commands.');
-        toast({ title: 'JSON Generation Failed', description: result.error || "Unknown error", variant: 'destructive' });
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'An unknown error occurred.';
-      setCommandJsonError(message);
-      toast({ title: 'Generation Error', description: message, variant: 'destructive' });
-    } finally {
-      setIsGeneratingCommandJson(false);
-    }
-  }, [textCommandInput, toast]);
-  
-  const handleGeneratedCommandJsonChange = useCallback((value: string) => {
-    setGeneratedCommandJsonString(value);
-    setCommandJsonError(null);
-  }, []);
+  }), [setActiveTab, setIsOpen, setDesignJsonString, setDesignJsonError, setTextCommandInput, setGeneratedCommandJsonString, setCommandJsonError]);
 
   const handleDownloadJson = useCallback(() => {
     const contentToDownload = activeTab === 'canvas' ? designJsonString : generatedCommandJsonString;
     const currentErr = activeTab === 'canvas' ? designJsonError : commandJsonError;
+    const filename = activeTab === 'canvas' ? 'design_canvas.json' : 'generated_commands.json';
 
     if (!contentToDownload || contentToDownload.trim() === "[]" || contentToDownload.trim() === "" || currentErr) {
       toast({ title: "Download Failed", description: currentErr ? "JSON has errors." : "No valid JSON content to download.", variant: "destructive" });
@@ -204,19 +215,18 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
             const parsed = JSON.parse(contentToDownload);
             formattedJson = JSON.stringify(parsed, null, 2);
           } catch (e) {
-            // Download raw if re-parsing/formatting fails
+            // Use raw if formatting fails
           }
       }
-
       const blob = new Blob([formattedJson], { type: 'application/json;charset=utf-8' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = activeTab === 'canvas' ? 'design_canvas.json' : 'generated_commands.json';
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(link.href);
-      toast({ title: "JSON Downloaded", description: `${link.download} has started downloading.` });
+      toast({ title: "JSON Downloaded", description: `${filename} has started downloading.` });
     } catch (error) {
       toast({ title: "Download Error", description: "Could not prepare JSON for download.", variant: "destructive" });
     }
@@ -237,10 +247,36 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
       toast({ title: "Copy Failed", description: "Could not copy JSON to clipboard.", variant: "destructive" });
     }
   }, [activeTab, designJsonString, generatedCommandJsonString, designJsonError, commandJsonError, toast]);
-  
-  const isLoading = isFetchingDesignJson || isGeneratingCommandJson;
-  const currentJsonContent = activeTab === 'canvas' ? designJsonString : generatedCommandJsonString;
-  const currentError = activeTab === 'canvas' ? designJsonError : commandJsonError;
+
+  const isLoadingCurrentTab =
+    (activeTab === 'canvas' && isFetchingDesignJson) ||
+    (activeTab === 'command' && isGeneratingCommandJson);
+
+  let currentJsonContentForActions: string | null = null;
+  let currentErrorFlagForActions: string | null = null;
+
+  if (activeTab === 'canvas') {
+    currentJsonContentForActions = designJsonString;
+    currentErrorFlagForActions = designJsonError;
+  } else { // 'command'
+    currentJsonContentForActions = generatedCommandJsonString;
+    currentErrorFlagForActions = commandJsonError;
+  }
+
+  const canPerformCopyDownloadActionsValue =
+    !isLoadingCurrentTab &&
+    currentJsonContentForActions &&
+    currentJsonContentForActions.trim() !== "" &&
+    (activeTab === 'canvas' ? currentJsonContentForActions.trim() !== "[]" : true) &&
+    !currentErrorFlagForActions;
+
+  const canSaveChangesValue =
+    activeTab === 'canvas' &&
+    !isFetchingDesignJson &&
+    designJsonString &&
+    designJsonString.trim() !== "" &&
+    designJsonString.trim() !== "[]" &&
+    !designJsonError;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -326,7 +362,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
                   theme={resolvedTheme === 'dark' ? githubDark : githubLight}
                   onChange={handleGeneratedCommandJsonChange}
                   className="text-sm h-full"
-                  readOnly={isGeneratingCommandJson} // Keep readOnly if actively generating
+                  readOnly={isGeneratingCommandJson}
                   basicSetup={{ lineNumbers: true, foldGutter: true, autocompletion: true, highlightActiveLine: true, bracketMatching: true }}
                 />
               )}
@@ -347,34 +383,27 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
             <Button 
               variant="outline" 
               onClick={handleCopyToClipboard} 
-              disabled={
-                !(!isLoading && currentJsonContent && currentJsonContent.trim() !== "[]" && currentJsonContent.trim() !== "" && !currentError)
-              }
+              disabled={!canPerformCopyDownloadActionsValue}
             >
               <Copy className="mr-2 h-4 w-4" /> Copy JSON
             </Button>
             <Button 
               variant="outline" 
               onClick={handleDownloadJson} 
-              disabled={
-                 !(!isLoading && currentJsonContent && currentJsonContent.trim() !== "[]" && currentJsonContent.trim() !== "" && !currentError)
-              }
+              disabled={!canPerformCopyDownloadActionsValue}
             >
               <Download className="mr-2 h-4 w-4" /> Download .json
             </Button>
           </div>
-          {activeTab === 'canvas' && (
+          {activeTab === 'canvas' ? (
             <Button 
               onClick={handleSaveChangesToCanvas} 
-              disabled={
-                !(activeTab === 'canvas' && !isFetchingDesignJson && designJsonString && designJsonString.trim() !== "[]" && !designJsonError)
-              }
+              disabled={!canSaveChangesValue}
             >
               {isFetchingDesignJson && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               <Save className="mr-2 h-4 w-4" /> Save Changes to Canvas
             </Button>
-          )}
-          {activeTab === 'command' && (
+          ) : (
              <Button variant="secondary" onClick={() => setIsOpen(false)}>
               Close
             </Button>
@@ -386,5 +415,3 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
 });
 
 ViewJsonModal.displayName = 'ViewJsonModal';
-
-    
