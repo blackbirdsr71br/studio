@@ -1,134 +1,86 @@
 
 'use client';
 
-import React, { useRef, useCallback } from 'react';
+import React, { useRef } from 'react';
 import { useDesign } from '@/contexts/DesignContext';
-import type { ComponentType, DesignComponent } from '@/types/compose-spec';
+import type { DesignComponent } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from './RenderedComponentWrapper';
 import { cn } from '@/lib/utils';
-import { useDrop, type XYCoord } from 'react-dnd';
-import { ItemTypes } from '@/lib/dnd-types';
-import { DEFAULT_ROOT_LAZY_COLUMN_ID } from '@/types/compose-spec';
-
-interface LibraryItem {
-  type: ComponentType | string; 
-}
-
-interface CanvasItem {
-  id: string; 
-  type: typeof ItemTypes.CANVAS_COMPONENT_ITEM;
-}
+// useDrop, XYCoord, ItemTypes are not directly used by DesignSurface anymore for root drops
+import { ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 
 export function DesignSurface() {
-  const { components, addComponent, selectComponent, moveComponent, getComponentById } = useDesign();
+  const { components, selectComponent } = useDesign();
   const surfaceRef = useRef<HTMLDivElement>(null);
 
-  const [{ isOverSurface, canDropOnSurface }, dropRef] = useDrop(() => ({
-    accept: [ItemTypes.COMPONENT_LIBRARY_ITEM, ItemTypes.CANVAS_COMPONENT_ITEM],
-    drop: (item: LibraryItem | CanvasItem, monitor) => {
-      const surfaceBounds = surfaceRef.current?.getBoundingClientRect();
-      if (!surfaceBounds || monitor.didDrop()) return; 
-
-      const clientOffset = monitor.getClientOffset();
-      if (!clientOffset) return;
-      
-      const dropX = clientOffset.x - surfaceBounds.left;
-      const dropY = clientOffset.y - surfaceBounds.top;
-      
-      const itemType = monitor.getItemType();
-
-      if (itemType === ItemTypes.COMPONENT_LIBRARY_ITEM) {
-        const libItem = item as LibraryItem;
-        // When dropping on the surface, parent to DEFAULT_ROOT_LAZY_COLUMN_ID
-        // No x,y passed; DesignContext will remove them for parented components.
-        addComponent(libItem.type, DEFAULT_ROOT_LAZY_COLUMN_ID);
-      } else if (itemType === ItemTypes.CANVAS_COMPONENT_ITEM) {
-        const canvasItem = item as CanvasItem;
-        const draggedComponent = getComponentById(canvasItem.id);
-        if (draggedComponent) {
-            // When moving an existing component to the surface, parent to DEFAULT_ROOT_LAZY_COLUMN_ID
-            // No x,y passed; DesignContext will remove them.
-            moveComponent(canvasItem.id, DEFAULT_ROOT_LAZY_COLUMN_ID);
-        }
-      }
-    },
-    collect: (monitor) => ({
-      isOverSurface: !!monitor.isOver({ shallow: true }), 
-      canDropOnSurface: !!monitor.canDrop(),
-    }),
-  }), [addComponent, moveComponent, getComponentById]);
-
-  dropRef(surfaceRef); 
-
   const handleSurfaceClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // If click is directly on the surface (e.g. MobileFrame background visible through transparent Scaffold),
+    // select the content area (LazyColumn) of the root Scaffold.
     if (e.target === surfaceRef.current) {
-       selectComponent(DEFAULT_ROOT_LAZY_COLUMN_ID); 
+       selectComponent(DEFAULT_CONTENT_LAZY_COLUMN_ID);
     }
   };
   
-  const freeFloatingComponents = components.filter(c => c.parentId === null);
+  const rootScaffoldComponent = components.find(c => c.id === ROOT_SCAFFOLD_ID && c.parentId === null);
 
   let showPlaceholder = false;
-  let placeholderText = "Drag components into the Root Canvas";
-  
-  const rootComponent = components.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID);
-  if (!rootComponent || (rootComponent.properties.children && rootComponent.properties.children.length === 0)) {
+  if (rootScaffoldComponent) {
+    const contentArea = components.find(c => c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID && c.parentId === ROOT_SCAFFOLD_ID);
+    if (contentArea && (!contentArea.properties.children || contentArea.properties.children.length === 0)) {
       showPlaceholder = true;
+    }
+  } else {
+    // Should not happen if context initializes correctly
+    showPlaceholder = true; 
   }
-
 
   return (
     <div
       ref={surfaceRef}
       className={cn(
-        "bg-background relative border-2 border-transparent transition-colors duration-200", 
+        "bg-background relative border-2 border-transparent", 
         "w-full h-full", 
-        { 
-          'drag-over-surface': isOverSurface && canDropOnSurface,
-        }
+        "flex flex-col overflow-hidden" // Ensures Scaffold (if it's the only root) fills space
       )}
       onClick={handleSurfaceClick}
       id="design-surface"
     >
       <style jsx global>{`
-        .drag-over-surface { 
-          border-color: hsl(var(--primary) / 0.5) !important;
-          background-color: hsl(var(--primary) / 0.1) !important;
-        }
+        /* drag-over-surface is no longer needed here, drop is handled by content area */
         .drag-over-container { 
           outline: 2px dashed hsl(var(--accent));
           background-color: hsla(var(--accent-hsl, 291 64% 42%) / 0.1) !important; 
         }
         .resize-handle {
           position: absolute;
-          width: 10px;
-          height: 10px;
+          width: 12px; /* Increased size */
+          height: 12px; /* Increased size */
           background-color: hsl(var(--primary));
           border: 1px solid hsl(var(--primary-foreground));
           border-radius: 2px;
           z-index: 10; 
         }
-        .resize-handle.nw { cursor: nwse-resize; top: -5px; left: -5px; }
-        .resize-handle.ne { cursor: nesw-resize; top: -5px; right: -5px; }
-        .resize-handle.sw { cursor: nesw-resize; bottom: -5px; left: -5px; }
-        .resize-handle.se { cursor: nwse-resize; bottom: -5px; right: -5px; }
-        .resize-handle.n { cursor: ns-resize; top: -5px; left: 50%; transform: translateX(-50%); }
-        .resize-handle.s { cursor: ns-resize; bottom: -5px; left: 50%; transform: translateX(-50%); }
-        .resize-handle.w { cursor: ew-resize; top: 50%; left: -5px; transform: translateY(-50%); }
-        .resize-handle.e { cursor: ew-resize; top: 50%; right: -5px; transform: translateY(-50%); }
+        .resize-handle.nw { cursor: nwse-resize; top: -6px; left: -6px; } /* Adjusted offset */
+        .resize-handle.ne { cursor: nesw-resize; top: -6px; right: -6px; } /* Adjusted offset */
+        .resize-handle.sw { cursor: nesw-resize; bottom: -6px; left: -6px; } /* Adjusted offset */
+        .resize-handle.se { cursor: nwse-resize; bottom: -6px; right: -6px; } /* Adjusted offset */
+        .resize-handle.n { cursor: ns-resize; top: -6px; left: 50%; transform: translateX(-50%); } /* Adjusted offset */
+        .resize-handle.s { cursor: ns-resize; bottom: -6px; left: 50%; transform: translateX(-50%); } /* Adjusted offset */
+        .resize-handle.w { cursor: ew-resize; top: 50%; left: -6px; transform: translateY(-50%); } /* Adjusted offset */
+        .resize-handle.e { cursor: ew-resize; top: 50%; right: -6px; transform: translateY(-50%); } /* Adjusted offset */
       `}</style>
       
-      {/* Only the root component should be directly rendered here as free-floating */}
-      {components.filter(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID && c.parentId === null).map(component => (
-        <RenderedComponentWrapper key={component.id} component={component} />
-      ))}
-
-      {showPlaceholder && (
+      {/* DesignSurface now only renders the single root Scaffold component */}
+      {rootScaffoldComponent ? (
+        <RenderedComponentWrapper component={rootScaffoldComponent} />
+      ) : (
          <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground pointer-events-none p-4 text-center">
-            <p className="text-lg">{placeholderText}</p>
-            <p className="text-xs mt-1">(This is your app screen)</p>
+            <p className="text-lg">Scaffold not found. Initializing...</p>
         </div>
       )}
+
+      {/* Placeholder is now conceptually inside the content LazyColumn, managed by its RenderedComponentWrapper */}
+      {/* This placeholder logic might need to move or be adapted if DesignSurface no longer directly sees contentAreaComponent's children */}
     </div>
   );
 }

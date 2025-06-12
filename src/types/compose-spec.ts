@@ -15,10 +15,15 @@ export type ComponentType =
   | 'LazyHorizontalGrid'
   | 'Spacer'
   | 'TopAppBar'
-  | 'BottomNavigationBar';
+  | 'BottomNavigationBar'
+  | 'Scaffold'; // Added Scaffold type
 
 export const CUSTOM_COMPONENT_TYPE_PREFIX = "custom/";
-export const DEFAULT_ROOT_LAZY_COLUMN_ID = 'default-root-lazy-column';
+export const ROOT_SCAFFOLD_ID = 'root-scaffold';
+export const DEFAULT_CONTENT_LAZY_COLUMN_ID = 'scaffold-content-lazy-column';
+export const DEFAULT_TOP_APP_BAR_ID = 'scaffold-top-app-bar';
+export const DEFAULT_BOTTOM_NAV_BAR_ID = 'scaffold-bottom-nav-bar';
+
 
 export interface ComponentPropertyOption {
   label: string;
@@ -31,7 +36,7 @@ export interface ComponentProperty {
   options?: ComponentPropertyOption[];
   label: string;
   placeholder?: string;
-  group: 'Layout' | 'Appearance' | 'Content' | 'Behavior';
+  group: 'Layout' | 'Appearance' | 'Content' | 'Behavior' | 'Slots';
 }
 
 export interface BaseComponentProps {
@@ -51,10 +56,10 @@ export interface BaseComponentProps {
   paddingBottom?: number;
   paddingStart?: number;
   paddingEnd?: number;
-  id?: string;
-  x?: number;
-  y?: number;
-  children?: string[] | any[];
+  id?: string; // Should not be in BaseComponentProps, it's part of DesignComponent
+  // x?: number; // Deprecated with scaffold model
+  // y?: number; // Deprecated with scaffold model
+  children?: string[] | any[]; // For generic containers, or for Scaffold's direct children IDs
   contentDescription?: string;
   src?: string;
   "data-ai-hint"?: string;
@@ -83,13 +88,18 @@ export interface BaseComponentProps {
   textDecoration?: 'None' | 'Underline' | 'LineThrough';
   lineHeight?: number;
   title?: string; // For TopAppBar
+
+  // Scaffold specific properties (might not be directly user-editable, but managed internally)
+  topBarId?: string;
+  contentId?: string;
+  bottomBarId?: string;
 }
 
 export interface DesignComponent {
   id: string;
   type: ComponentType | string;
   name: string;
-  properties: BaseComponentProps & { children?: string[] };
+  properties: BaseComponentProps & { children?: string[] }; // Ensure children is always string[] if present for consistency
   parentId?: string | null;
 }
 
@@ -106,8 +116,8 @@ export interface SavedLayout {
   layoutId: string;
   name: string;
   components: DesignComponent[];
-  nextId: number; // To restore the ID counter state
-  timestamp?: number; // Optional: for sorting or info
+  nextId: number;
+  timestamp?: number;
 }
 
 export interface DesignState {
@@ -119,15 +129,22 @@ export interface DesignState {
 }
 
 export const getDefaultProperties = (type: ComponentType | string): BaseComponentProps => {
-  const common = {
-    x: 50, y: 50, layoutWeight: 0,
+  const commonLayout = { // No x,y for components within scaffold slots
+    layoutWeight: 0,
     padding: undefined, paddingTop: undefined, paddingBottom: undefined, paddingStart: undefined, paddingEnd: undefined,
     fillMaxWidth: false, fillMaxHeight: false,
   };
   switch (type) {
+    case 'Scaffold':
+      return {
+        width: 'match_parent', // Scaffold always fills parent
+        height: 'match_parent',
+        backgroundColor: 'transparent', // Scaffold itself is a layout, content area can have bg
+        children: [] // Will hold IDs of TopAppBar, ContentLazyColumn, BottomNavBar
+      };
     case 'Text':
       return {
-        ...common,
+        ...commonLayout,
         text: 'Sample Text',
         fontSize: 16,
         textColor: undefined,
@@ -144,7 +161,7 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
       };
     case 'Button':
       return {
-        ...common,
+        ...commonLayout,
         text: 'Click Me',
         backgroundColor: '#3F51B5',
         textColor: undefined,
@@ -154,7 +171,7 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
       };
     case 'Image':
       return {
-        ...common,
+        ...commonLayout,
         src: 'https://placehold.co/300x200.png',
         contentDescription: 'Placeholder Image',
         width: 200,
@@ -166,25 +183,25 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
       };
     case 'Column':
       return {
-        ...common,
+        ...commonLayout,
         children: [],
         padding: 8,
         backgroundColor: 'rgba(224, 224, 224, 0.5)',
-        width: 200, height: 200, itemSpacing: 8, // Default itemSpacing to 8 for Column
+        width: 200, height: 200, itemSpacing: 8,
         verticalArrangement: 'Top', horizontalAlignment: 'Start'
       };
     case 'Row':
       return {
-        ...common,
+        ...commonLayout,
         children: [],
         padding: 8,
         backgroundColor: 'rgba(224, 224, 224, 0.5)',
-        width: 200, height: 100, itemSpacing: 8, // Default itemSpacing to 8 for Row
+        width: 200, height: 100, itemSpacing: 8,
         horizontalArrangement: 'Start', verticalAlignment: 'Top'
       };
     case 'Box':
       return {
-        ...common,
+        ...commonLayout,
         children: [],
         padding: 0,
         backgroundColor: 'rgba(220, 220, 220, 0.3)',
@@ -193,7 +210,7 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
       };
     case 'Card':
       return {
-        ...common,
+        ...commonLayout,
         children: [],
         padding: 16,
         backgroundColor: '#FFFFFF', contentColor: undefined,
@@ -201,85 +218,87 @@ export const getDefaultProperties = (type: ComponentType | string): BaseComponen
         cornerRadiusTopLeft: 8, cornerRadiusTopRight: 8, cornerRadiusBottomRight: 8, cornerRadiusBottomLeft: 8,
         borderWidth: 0, borderColor: '#000000'
       };
-    case 'LazyColumn':
+    case 'LazyColumn': // This will be used for the content area of Scaffold
       return {
-        ...common,
+        ...commonLayout,
         children: [],
-        padding: 8,
-        backgroundColor: 'rgba(200, 240, 200, 0.3)',
-        width: 'match_parent', height: 300, itemSpacing: 8, // Default itemSpacing to 8 for LazyColumn
+        padding: 8, // Default padding for content area
+        backgroundColor: 'transparent', // Content area bg, scaffold itself can have a main bg
+        width: 'match_parent', // Content area should fill width
+        height: 'match_parent', // Content area should fill available height (flex-grow)
+        itemSpacing: 8,
         userScrollEnabled: true, reverseLayout: false,
-        verticalArrangement: 'Top', horizontalAlignment: 'Start',
+        verticalArrangement: 'Top', horizontalAlignment: 'CenterHorizontally', // Center content items
       };
     case 'LazyRow':
       return {
-        ...common,
+        ...commonLayout,
         children: [],
         padding: 8,
         backgroundColor: 'rgba(200, 200, 240, 0.3)',
-        width: 'match_parent', height: 120, itemSpacing: 8, // Default itemSpacing to 8 for LazyRow
+        width: 'match_parent', height: 120, itemSpacing: 8,
         userScrollEnabled: true, reverseLayout: false,
         horizontalArrangement: 'Start', verticalAlignment: 'Top',
       };
     case 'LazyVerticalGrid':
       return {
-        ...common,
+        ...commonLayout,
         children: [],
         padding: 8,
         backgroundColor: 'rgba(240, 200, 200, 0.3)',
-        width: 'match_parent', height: 300, columns: 2, itemSpacing: 8, // Default itemSpacing to 8
+        width: 'match_parent', height: 300, columns: 2, itemSpacing: 8,
         verticalArrangement: 'Top', horizontalAlignment: 'Start'
       };
     case 'LazyHorizontalGrid':
       return {
-        ...common,
+        ...commonLayout,
         children: [],
         padding: 8,
         backgroundColor: 'rgba(240, 240, 200, 0.3)',
-        width: 'match_parent', height: 200, rows: 2, itemSpacing: 8, // Default itemSpacing to 8
+        width: 'match_parent', height: 200, rows: 2, itemSpacing: 8,
         horizontalArrangement: 'Start', verticalAlignment: 'Top'
       };
     case 'Spacer':
       return {
-        ...common,
+        ...commonLayout,
         width: 8,
         height: 8,
         layoutWeight: 0,
       };
     case 'TopAppBar':
       return {
-        ...common,
+        ...commonLayout,
         children: [],
         title: 'Screen Title',
         width: 'match_parent',
         height: 56,
         padding: 0,
-        paddingStart: 16, // Typical padding for app bars
+        paddingStart: 16,
         paddingEnd: 16,
-        backgroundColor: '#3F51B5', // Primary color
-        contentColor: '#FFFFFF',    // White text
+        backgroundColor: '#3F51B5',
+        contentColor: '#FFFFFF',
         itemSpacing: 8,
         horizontalArrangement: 'SpaceBetween',
         verticalAlignment: 'CenterVertically'
       };
     case 'BottomNavigationBar':
       return {
-        ...common,
+        ...commonLayout,
         children: [],
         width: 'match_parent',
         height: 56,
         padding: 0,
-        backgroundColor: '#F0F0F0', // Light gray
-        contentColor: '#000000',    // Black text/icons
+        backgroundColor: '#F0F0F0',
+        contentColor: '#000000',
         itemSpacing: 0,
         horizontalArrangement: 'SpaceAround',
         verticalAlignment: 'CenterVertically'
       };
     default:
       if (isCustomComponentType(type)) {
-        return { ...common, children: [], width: 'wrap_content', height: 'wrap_content', padding: 0, fillMaxWidth: false, fillMaxHeight: false };
+        return { ...commonLayout, children: [], width: 'wrap_content', height: 'wrap_content', padding: 0, fillMaxWidth: false, fillMaxHeight: false };
       }
-      return {...common, width: 'wrap_content', height: 'wrap_content', padding: 0, fillMaxWidth: false, fillMaxHeight: false };
+      return {...commonLayout, width: 'wrap_content', height: 'wrap_content', padding: 0, fillMaxWidth: false, fillMaxHeight: false };
   }
 };
 
@@ -288,6 +307,7 @@ export const getComponentDisplayName = (type: ComponentType | string, templateNa
     return templateName || type.replace(CUSTOM_COMPONENT_TYPE_PREFIX, "").replace(/-\d+$/, "");
   }
   switch (type as ComponentType) {
+    case 'Scaffold': return 'Scaffold (Root)';
     case 'Text': return 'Text';
     case 'Button': return 'Button';
     case 'Column': return 'Column (Layout)';
@@ -354,7 +374,16 @@ const columnSpecificLayoutProperties: (Omit<ComponentProperty, 'value'>)[] = [
 ];
 
 
-export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty, 'value'>)[]> = {
+export const propertyDefinitions: Record<ComponentType | string, (Omit<ComponentProperty, 'value'>)[]> = {
+  Scaffold: [
+    // A Scaffold might have a general background color for the area behind floating elements,
+    // but often its content area has its own background.
+    // For now, keep it simple. Slot management is implicit.
+    { name: 'backgroundColor', type: 'color', label: 'Background Color (Scaffold Body)', group: 'Appearance' },
+    // Properties to show/hide slots could be added here if needed later
+    // { name: 'showTopBar', type: 'boolean', label: 'Show Top App Bar', group: 'Slots'},
+    // { name: 'showBottomBar', type: 'boolean', label: 'Show Bottom Nav Bar', group: 'Slots'},
+  ],
   Text: [
     ...commonLayoutProperties,
     { name: 'text', type: 'string', label: 'Text Content', placeholder: 'Enter text', group: 'Content' },
@@ -470,7 +499,7 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
   ],
   Card: [
     ...commonLayoutProperties,
-    ...columnSpecificLayoutProperties, // Cards often behave like Columns by default for their content
+    ...columnSpecificLayoutProperties,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (Overrides default contrast)', group: 'Appearance' },
     { name: 'cornerRadiusTopLeft', type: 'number', label: 'Corner Radius TL (dp)', placeholder: '8', group: 'Appearance' },
@@ -481,7 +510,7 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'borderWidth', type: 'number', label: 'Border Width (dp)', placeholder: '0', group: 'Appearance' },
     { name: 'borderColor', type: 'color', label: 'Border Color', group: 'Appearance' },
   ],
-  LazyColumn: [
+  LazyColumn: [ // This is for the main content LazyColumn or any user-added LazyColumn
     ...commonLayoutProperties,
     ...columnSpecificLayoutProperties,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
@@ -497,13 +526,13 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
   ],
   LazyVerticalGrid: [
     ...commonLayoutProperties,
-    ...columnSpecificLayoutProperties, // Grids also arrange in a column-like fashion for their overall structure
+    ...columnSpecificLayoutProperties,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'columns', type: 'number', label: 'Number of Columns', placeholder: '2', group: 'Layout' },
   ],
   LazyHorizontalGrid: [
     ...commonLayoutProperties,
-    ...rowSpecificLayoutProperties, // And horizontal grids arrange in a row-like fashion
+    ...rowSpecificLayoutProperties,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'rows', type: 'number', label: 'Number of Rows', placeholder: '2', group: 'Layout' },
   ],
@@ -513,14 +542,16 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'layoutWeight', type: 'number', label: 'Layout Weight', placeholder: '0 (no weight)', group: 'Layout' },
   ],
   TopAppBar: [
-    ...commonLayoutProperties.filter(p => p.name !== 'padding' && p.name !== 'paddingTop' && p.name !== 'paddingBottom'), // Height/Width are fine, padding is more specific
+    ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'layoutWeight', 'fillMaxHeight', 'fillMaxWidth'].includes(p.name) ), // Height/Width are fixed for TopAppBar by default
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '56', group: 'Layout' }, // Allow override, but default fixed
     { name: 'title', type: 'string', label: 'Title', placeholder: 'Screen Title', group: 'Content' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (e.g. Title, Icons)', group: 'Appearance' },
     ...rowSpecificLayoutProperties,
   ],
   BottomNavigationBar: [
-     ...commonLayoutProperties.filter(p => p.name !== 'padding' && p.name !== 'paddingTop' && p.name !== 'paddingBottom'),
+     ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'layoutWeight', 'fillMaxHeight', 'fillMaxWidth'].includes(p.name) ),
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '56', group: 'Layout' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (e.g. Icons, Labels)', group: 'Appearance' },
     ...rowSpecificLayoutProperties,
@@ -531,10 +562,11 @@ export const isCustomComponentType = (type: string): boolean => {
   return type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX);
 };
 
-export const CONTAINER_TYPES: ReadonlyArray<ComponentType | string > = [ // Added string for custom components
+export const CONTAINER_TYPES: ReadonlyArray<ComponentType | string > = [
   'Column', 'Row', 'Box', 'Card',
   'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid',
-  'TopAppBar', 'BottomNavigationBar'
+  'TopAppBar', 'BottomNavigationBar',
+  'Scaffold' // Scaffold is a container for its slots
 ];
 
 export function isContainerType(type: ComponentType | string, customTemplates?: CustomComponentTemplate[]): boolean {
@@ -545,12 +577,11 @@ export function isContainerType(type: ComponentType | string, customTemplates?: 
       if (template && template.rootComponentId) {
         const rootOfTemplate = template.componentTree.find(c => c.id === template.rootComponentId);
         if (rootOfTemplate) {
-          // Check if the root of the custom component is itself a known container type
-          return CONTAINER_TYPES.includes(rootOfTemplate.type as ComponentType);
+          return isContainerType(rootOfTemplate.type, customTemplates); // Recurse for custom component root type
         }
       }
     }
-    return false; // Default custom components to non-container if template not found or root is not container
+    return false;
   }
   return CONTAINER_TYPES.includes(type as ComponentType);
 }
@@ -598,14 +629,14 @@ const BaseModalPropertiesSchema = z.object({
   textAlign: z.enum(['Left', 'Center', 'Right', 'Justify', 'Start', 'End']).optional(),
   textDecoration: z.enum(['None', 'Underline', 'LineThrough']).optional(),
   lineHeight: z.number().min(0).optional(),
-  title: z.string().optional(), // For TopAppBar
+  title: z.string().optional(),
 }).catchall(z.any());
 
 type ModalComponentNodePlain = {
   id: string;
   type: string;
   name: string;
-  parentId: string | null;
+  parentId: string | null; // For Modal JSON, parentId is the ID of the parent in *this specific hierarchical JSON*, not necessarily the design context's one.
   properties?: Partial<BaseComponentProps> & { children?: ModalComponentNodePlain[] };
 };
 
@@ -614,7 +645,7 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
     id: z.string().min(1, "Component ID cannot be empty"),
     type: z.string().min(1, "Component type cannot be empty"),
     name: z.string().min(1, "Component name cannot be empty"),
-    parentId: z.string().nullable(),
+    parentId: z.string().nullable(), // parentId in this context is the direct hierarchical parent in the JSON being edited.
     properties: BaseModalPropertiesSchema.extend({
       children: z.array(ModalComponentNodeSchema).optional(),
     }).optional(),
@@ -636,5 +667,3 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
 );
 
 export const ModalJsonSchema = z.array(ModalComponentNodeSchema);
-
-    

@@ -5,7 +5,7 @@ import React, { useState, useRef, ChangeEvent } from 'react';
 import { useDesign } from '@/contexts/DesignContext';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { propertyDefinitions, type ComponentType, type ComponentProperty, getComponentDisplayName, DEFAULT_ROOT_LAZY_COLUMN_ID } from '@/types/compose-spec';
+import { propertyDefinitions, type ComponentType, type ComponentProperty, getComponentDisplayName, DEFAULT_CONTENT_LAZY_COLUMN_ID, ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID } from '@/types/compose-spec';
 import { PropertyEditor } from './PropertyEditor';
 import { Trash2, Save, Sparkles, Loader2, Upload, Search } from 'lucide-react';
 import { Input } from '../ui/input';
@@ -23,6 +23,7 @@ interface GroupedProperties {
 }
 
 const PREFERRED_GROUP_ORDER = ['Layout', 'Appearance', 'Content', 'Behavior'];
+const CORE_SCAFFOLD_ELEMENT_IDS = [ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_BOTTOM_NAV_BAR_ID];
 
 export function PropertyPanel() {
   const { selectedComponentId, getComponentById, updateComponent, deleteComponent, saveSelectedAsCustomTemplate } = useDesign();
@@ -83,16 +84,20 @@ export function PropertyPanel() {
   };
 
   const handleDelete = () => {
+    if (CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponent.id)) {
+        toast({ title: "Action Prevented", description: "Core scaffold elements cannot be deleted.", variant: "destructive" });
+        return;
+    }
     if (window.confirm(`Are you sure you want to delete "${selectedComponent.name}"?`)) {
       deleteComponent(selectedComponent.id);
     }
   };
 
   const handleSaveAsCustom = () => {
-    if (selectedComponentId === DEFAULT_ROOT_LAZY_COLUMN_ID) {
+    if (CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponent.id)) {
       toast({
-        title: "Cannot Save Root",
-        description: "The root canvas cannot be saved as a custom component.",
+        title: "Cannot Save Root Element",
+        description: "Core scaffold elements cannot be saved as custom components.",
         variant: "destructive",
       });
       return;
@@ -100,10 +105,7 @@ export function PropertyPanel() {
     const name = window.prompt("Enter a name for your custom component:", selectedComponent.name);
     if (name && name.trim() !== "") {
       saveSelectedAsCustomTemplate(name.trim());
-      toast({
-        title: "Custom Component Saved",
-        description: `"${name.trim()}" added to the component library.`,
-      });
+      // Toast is handled within saveSelectedAsCustomTemplate in DesignContext
     } else if (name !== null) {
       toast({
         title: "Save Failed",
@@ -275,7 +277,7 @@ export function PropertyPanel() {
   });
 
   const componentDisplayName = getComponentDisplayName(selectedComponent.type);
-  const canSaveAsCustom = selectedComponentId !== DEFAULT_ROOT_LAZY_COLUMN_ID;
+  const isCoreScaffoldElement = CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponent.id);
 
   return (
     <aside className="w-72 border-l bg-sidebar p-4 flex flex-col shrink-0">
@@ -284,12 +286,12 @@ export function PropertyPanel() {
           {selectedComponent.name}
         </h2>
         <div className="flex items-center">
-          {canSaveAsCustom && (
+          {!isCoreScaffoldElement && (
             <Button variant="ghost" size="icon" onClick={handleSaveAsCustom} className="text-sidebar-primary hover:bg-primary/10 h-7 w-7" aria-label="Save as custom component">
               <Save className="h-4 w-4" />
             </Button>
           )}
-          <Button variant="ghost" size="icon" onClick={handleDelete} className="text-destructive hover:bg-destructive/10 h-7 w-7" aria-label="Delete component" disabled={selectedComponentId === DEFAULT_ROOT_LAZY_COLUMN_ID}>
+          <Button variant="ghost" size="icon" onClick={handleDelete} className="text-destructive hover:bg-destructive/10 h-7 w-7" aria-label="Delete component" disabled={isCoreScaffoldElement}>
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
@@ -298,7 +300,7 @@ export function PropertyPanel() {
 
       <div className="mb-4">
         <Label htmlFor="componentName" className="text-xs">Instance Name</Label>
-        <Input id="componentName" type="text" value={selectedComponent.name} onChange={handleNameChange} className="h-8 text-sm mt-1.5" disabled={selectedComponentId === DEFAULT_ROOT_LAZY_COLUMN_ID} />
+        <Input id="componentName" type="text" value={selectedComponent.name} onChange={handleNameChange} className="h-8 text-sm mt-1.5" disabled={isCoreScaffoldElement} />
       </div>
 
       <ScrollArea className="flex-grow pr-2">

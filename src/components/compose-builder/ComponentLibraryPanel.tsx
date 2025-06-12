@@ -39,12 +39,12 @@ import {
   Download, 
   PanelTop,
   PanelBottom,
-  AppWindow, // Icon for Scaffold structure
+  // AppWindow, // Icon for Scaffold structure - Scaffold item removed from palette
 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 
-const availableBaseComponents: { type: ComponentType | "ScaffoldStructure"; icon: React.ElementType; displayName?: string }[] = [
-  { type: "ScaffoldStructure", icon: AppWindow, displayName: "Scaffold" }, // Re-added Scaffold
+// "ScaffoldStructure" removed as the canvas root is now always a Scaffold
+const availableBaseComponents: { type: ComponentType; icon: React.ElementType; displayName?: string }[] = [
   { type: "Text", icon: Type },
   { type: "Button", icon: MousePointerSquareDashed },
   { type: "Image", icon: ImageIcon },
@@ -260,5 +260,3 @@ export function ComponentLibraryPanel() {
     </aside>
   );
 }
-
-    
