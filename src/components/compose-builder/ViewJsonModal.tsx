@@ -14,7 +14,7 @@ import CodeMirror from '@uiw/react-codemirror';
 import { json as jsonLang } from '@codemirror/lang-json';
 import { githubLight, githubDark } from '@uiw/codemirror-theme-github';
 import { useTheme } from '@/contexts/ThemeContext';
-import { ModalJsonSchema, DEFAULT_ROOT_LAZY_COLUMN_ID, type DesignComponent } from '@/types/compose-spec';
+import { ModalJsonSchema, DEFAULT_ROOT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 import type { ZodError } from 'zod';
 
 export interface ViewJsonModalRef {
@@ -26,7 +26,7 @@ type ActiveTab = "design-json" | "generate-command-json";
 export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>("design-json");
-  
+
   const { components, customComponentTemplates, overwriteComponents } = useDesign();
   const { toast } = useToast();
   const { resolvedTheme } = useTheme();
@@ -43,17 +43,15 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
   const [isGeneratingCommandJson, setIsGeneratingCommandJson] = useState(false);
   const [commandJsonError, setCommandJsonError] = useState<string | null>(null);
 
-
   const handleFetchDesignJson = useCallback(async () => {
     setIsFetchingDesignJson(true);
     setDesignJsonError(null);
     try {
-      // Check if there are any user-added components
-      const hasUserComponents = components.some(c => c.id !== DEFAULT_ROOT_LAZY_COLUMN_ID) || 
+      const hasUserComponents = components.some(c => c.id !== DEFAULT_ROOT_LAZY_COLUMN_ID) ||
                                (components.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID)?.properties.children?.length || 0) > 0;
       if (!hasUserComponents) {
         setDesignJsonString("[]");
-        setDesignJsonError("No user components on the canvas to display as JSON.");
+        setDesignJsonError("No user components on the canvas to display as JSON. Add some components first!");
         setIsFetchingDesignJson(false);
         return;
       }
@@ -61,66 +59,45 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
       const jsonStr = await getDesignComponentsAsJsonAction(components, customComponentTemplates);
       if (jsonStr.startsWith("Error:")) {
         setDesignJsonError(jsonStr);
-        setDesignJsonString("[]"); 
+        setDesignJsonString("[]");
       } else {
-        setDesignJsonString(jsonStr);
+        try {
+          const parsed = JSON.parse(jsonStr);
+          setDesignJsonString(JSON.stringify(parsed, null, 2));
+        } catch {
+          setDesignJsonString(jsonStr); 
+          setDesignJsonError("Received malformed JSON from action. Displaying raw string.");
+          toast({ title: "Warning", description: "Could not parse JSON from server, showing raw data.", variant: "default" });
+        }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "An unknown error occurred";
       setDesignJsonError(`Failed to fetch design JSON: ${message}`);
       setDesignJsonString("[]");
+      toast({ title: "Error Fetching JSON", description: message, variant: "destructive" });
     } finally {
       setIsFetchingDesignJson(false);
     }
-  }, [components, customComponentTemplates]);
-
-  useEffect(() => {
-    if (isOpen && activeTab === "design-json") {
-      handleFetchDesignJson();
-    }
-  }, [isOpen, activeTab, handleFetchDesignJson]);
-  
-  useImperativeHandle(ref, () => ({
-    openModal: () => {
-      setIsOpen(true);
-      // Reset states for both tabs for a clean open
-      setDesignJsonString("");
-      setDesignJsonError(null);
-      setIsFetchingDesignJson(false);
-      setIsSavingDesignJson(false);
-
-      setJsonCommandInput('');
-      setGeneratedCommandJsonOutput('');
-      setIsGeneratingCommandJson(false);
-      setCommandJsonError(null);
-      
-      // setActiveTab will trigger useEffect if it's "design-json"
-      // If it's already "design-json", and we want to force fetch:
-      if (activeTab === "design-json") {
-        handleFetchDesignJson();
-      } else {
-        setActiveTab("design-json"); // Default to first tab, which will trigger fetch
-      }
-    }
-  }), [activeTab, handleFetchDesignJson]); // Added activeTab and handleFetchDesignJson to deps
+  }, [components, customComponentTemplates, toast]);
 
   const handleDesignJsonChange = useCallback((value: string) => {
     setDesignJsonString(value);
     setDesignJsonError(null); // Clear previous errors on edit
   }, []);
 
-  const validateAndApplyDesignJson = useCallback(async () => {
+  const handleSaveChanges = useCallback(async () => {
     setIsSavingDesignJson(true);
     setDesignJsonError(null);
     try {
-      const parsedJson = JSON.parse(designJsonString);
+      const parsedJson = JSON.parse(designJsonString); // Check for syntax errors first
       const validationResult = ModalJsonSchema.safeParse(parsedJson);
 
       if (!validationResult.success) {
         const zodError = validationResult.error as ZodError;
         const errorMessages = zodError.errors.map(err => `Path: ${err.path.join('.')} - Message: ${err.message}`).join('\n');
-        setDesignJsonError(`Invalid JSON structure:\n${errorMessages}`);
-        toast({ title: "Validation Error", description: "JSON does not match the required schema. See errors in modal.", variant: "destructive", duration: 5000 });
+        const detailedError = `Invalid JSON structure. Please check the following issues:\n${errorMessages}`;
+        setDesignJsonError(detailedError);
+        toast({ title: "Validation Error", description: "JSON does not match the required schema. See errors in modal.", variant: "destructive", duration: 10000 });
         setIsSavingDesignJson(false);
         return;
       }
@@ -128,28 +105,27 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
       const overwriteResult = overwriteComponents(validationResult.data);
       if (overwriteResult.success) {
         toast({ title: "Canvas Updated", description: "Changes applied to the design canvas." });
+        // After saving, refresh the JSON displayed to reflect any processing by overwriteComponents
         await handleFetchDesignJson(); 
       } else {
         setDesignJsonError(overwriteResult.error || "Failed to update canvas with the provided JSON.");
-        toast({ title: "Update Failed", description: overwriteResult.error || "Could not update canvas.", variant: "destructive", duration: 5000 });
+        toast({ title: "Update Failed", description: overwriteResult.error || "Could not update canvas.", variant: "destructive", duration: 7000 });
       }
-
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Invalid JSON syntax";
+      const message = e instanceof Error ? e.message : "Invalid JSON syntax. Please check for typos, missing commas, or unclosed brackets/braces.";
       setDesignJsonError(`JSON Syntax Error: ${message}`);
-      toast({ title: "Syntax Error", description: "Invalid JSON syntax. Please correct it.", variant: "destructive", duration: 5000 });
+      toast({ title: "Syntax Error", description: "Invalid JSON syntax. Please correct it.", variant: "destructive", duration: 7000 });
     } finally {
       setIsSavingDesignJson(false);
     }
-  }, [designJsonString, overwriteComponents, toast, handleFetchDesignJson]);
-
+  }, [designJsonString, overwriteComponents, toast, handleFetchDesignJson, ModalJsonSchema]);
 
   const handleJsonCommandInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setJsonCommandInput(event.target.value);
     setCommandJsonError(null);
   };
 
-  const handleGenerateCommandJson = async () => {
+  const handleGenerateCommandJson = useCallback(async () => {
     if (!jsonCommandInput.trim()) {
       setCommandJsonError("Please enter some Jetpack Compose-like commands.");
       return;
@@ -160,23 +136,54 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
     try {
       const result = await generateJsonFromTextAction(jsonCommandInput);
       if (result.designJson) {
-        setGeneratedCommandJsonOutput(result.designJson);
+        try {
+          const parsed = JSON.parse(result.designJson);
+          setGeneratedCommandJsonOutput(JSON.stringify(parsed, null, 2));
+        } catch {
+          setGeneratedCommandJsonOutput(result.designJson);
+           setCommandJsonError("AI returned JSON that could not be parsed. Displaying raw output.");
+          toast({ title: "Warning", description: "AI returned malformed JSON.", variant: "default" });
+        }
         toast({ title: "JSON Generated", description: "JSON successfully generated from your commands." });
       } else {
         setCommandJsonError(result.error || "Failed to generate JSON. AI returned an empty or invalid response.");
-        toast({ title: "Generation Failed", description: result.error || "Unknown error from AI.", variant: "destructive", duration: 5000 });
+        toast({ title: "Generation Failed", description: result.error || "Unknown error from AI.", variant: "destructive", duration: 7000 });
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "An unknown error occurred.";
       setCommandJsonError(`Error: ${message}`);
-      toast({ title: "Generation Error", description: message, variant: "destructive", duration: 5000 });
+      toast({ title: "Generation Error", description: message, variant: "destructive", duration: 7000 });
     } finally {
       setIsGeneratingCommandJson(false);
     }
-  };
+  }, [jsonCommandInput, toast]);
 
-  const handleCopyToClipboard = async (text: string, type: string) => {
-    if (text) {
+  useImperativeHandle(ref, () => ({
+    openModal: () => {
+      setIsOpen(true);
+      // Reset states for both tabs when modal opens
+      setDesignJsonString("");
+      setDesignJsonError(null);
+      setIsFetchingDesignJson(false);
+      setIsSavingDesignJson(false);
+
+      setJsonCommandInput('');
+      setGeneratedCommandJsonOutput('');
+      setIsGeneratingCommandJson(false);
+      setCommandJsonError(null);
+      // The useEffect below will handle fetching if the activeTab is already 'design-json'
+      // or becomes 'design-json' while open.
+    }
+  }), []); // No dependencies needed if setters are stable and activeTab effect handles fetch
+
+  useEffect(() => {
+    if (isOpen && activeTab === "design-json") {
+      handleFetchDesignJson();
+    }
+  }, [isOpen, activeTab, handleFetchDesignJson]);
+
+  const handleCopyToClipboard = useCallback(async (text: string, type: string) => {
+    if (text && text.trim()) {
       try {
         await navigator.clipboard.writeText(text);
         toast({
@@ -190,11 +197,17 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
           variant: "destructive",
         });
       }
+    } else {
+      toast({
+        title: "Nothing to Copy",
+        description: `No ${type} content available to copy.`,
+        variant: "default",
+      });
     }
-  };
+  }, [toast]);
 
-  const handleDownloadJson = (text: string, filename: string, type: string) => {
-    if (text && !text.startsWith("Error:") && text.trim() !== "[]" && text.trim() !== "") {
+  const handleDownloadJson = useCallback((text: string, filename: string, type: string) => {
+    if (text && text.trim() && text.trim() !== "[]" && !text.startsWith("Error:")) {
       const blob = new Blob([text], { type: 'application/json;charset=utf-8' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
@@ -210,14 +223,22 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
     } else {
        toast({
         title: "Download Failed",
-        description: `No valid ${type} to download or JSON is empty.`,
+        description: `No valid ${type} to download or JSON is empty/error.`,
         variant: "destructive",
       });
     }
-  };
+  }, [toast]);
+
+  const canSaveChanges = !isFetchingDesignJson &&
+                         !isSavingDesignJson &&
+                         designJsonString &&
+                         designJsonString.trim() !== "[]" &&
+                         !(designJsonError && designJsonError.includes("No user components on the canvas"));
   
-  const canSaveChanges = !isFetchingDesignJson && !isSavingDesignJson && designJsonString && designJsonString.trim() !== "[]";
-  const canPerformCopyDownloadActions = (text: string) => text && text.trim() !== "" && text.trim() !== "[]" && !text.startsWith("Error:");
+  const canPerformCopyDownloadActions = useCallback((text: string) => {
+    return text && text.trim() !== "" && text.trim() !== "[]" && !text.startsWith("Error:");
+  }, []);
+
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -281,7 +302,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
                 </Button>
               </div>
             </div>
-             <Button onClick={validateAndApplyDesignJson} disabled={!canSaveChanges || !!designJsonError} className="w-full">
+             <Button onClick={handleSaveChanges} disabled={!canSaveChanges || (!!designJsonError && !designJsonError.includes("No user components"))} className="w-full">
                 {isSavingDesignJson ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Save Changes to Canvas
             </Button>
@@ -348,5 +369,6 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((props, ref) => {
 });
 
 ViewJsonModal.displayName = 'ViewJsonModal';
-
+    
+    
     

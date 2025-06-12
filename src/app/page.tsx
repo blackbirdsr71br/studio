@@ -10,15 +10,16 @@ import { ComponentLibraryPanel } from '@/components/compose-builder/ComponentLib
 import { DesignSurface } from '@/components/compose-builder/DesignSurface';
 import { PropertyPanel } from '@/components/compose-builder/PropertyPanel';
 import { GenerateCodeModal, type GenerateCodeModalRef } from '@/components/compose-builder/GenerateCodeModal';
-
+import { ViewJsonModal, type ViewJsonModalRef } from '@/components/compose-builder/ViewJsonModal'; // Import ViewJsonModal
 import { ThemeEditorModal, type ThemeEditorModalRef } from '@/components/compose-builder/ThemeEditorModal';
-import { ImageSourceModal, type ImageSourceModalRef } from '@/components/compose-builder/ImageSourceModal'; // Import new modal
+import { ImageSourceModal, type ImageSourceModalRef } from '@/components/compose-builder/ImageSourceModal';
 import { MobileFrame } from '@/components/compose-builder/MobileFrame';
 
 export default function ComposeBuilderPage() {
   const generateModalRef = useRef<GenerateCodeModalRef>(null);
+  const viewJsonModalRef = useRef<ViewJsonModalRef>(null); // Create ref for ViewJsonModal
   const themeEditorModalRef = useRef<ThemeEditorModalRef>(null);
-  const imageSourceModalRef = useRef<ImageSourceModalRef>(null); // Add ref for ImageSourceModal
+  const imageSourceModalRef = useRef<ImageSourceModalRef>(null);
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -26,8 +27,8 @@ export default function ComposeBuilderPage() {
         <div className="flex flex-col h-screen overflow-hidden bg-background">
           <Header
             generateModalRef={generateModalRef}
+            viewJsonModalRef={viewJsonModalRef} // Pass the ref to Header
             themeEditorModalRef={themeEditorModalRef}
-            // No need to pass imageSourceModalRef to Header, PropertyPanel will use its own ref or a passed down one
           />
           <div className="flex flex-row flex-grow overflow-hidden">
             <ComponentLibraryPanel />
@@ -36,14 +37,13 @@ export default function ComposeBuilderPage() {
                 <DesignSurface />
               </MobileFrame>
             </main>
-            {/* Pass the imageSourceModalRef to PropertyPanel so it can open it */}
-            <PropertyPanel /> 
-            {/* Alternative: Could pass imageSourceModalRef to PropertyPanel directly as a prop if PropertyPanel is refactored to accept it */}
+            <PropertyPanel />
           </div>
         </div>
         <GenerateCodeModal ref={generateModalRef} />
+        <ViewJsonModal ref={viewJsonModalRef} /> {/* Render ViewJsonModal and assign ref */}
         <ThemeEditorModal ref={themeEditorModalRef} />
-        <ImageSourceModal ref={imageSourceModalRef} /> {/* Render ImageSourceModal, PropertyPanel will need to access this ref, ideally through context or prop drilling if state is managed in page */}
+        <ImageSourceModal ref={imageSourceModalRef} />
       </DesignProvider>
     </DndProvider>
   );
