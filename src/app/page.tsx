@@ -13,6 +13,7 @@ import { GenerateCodeModal, type GenerateCodeModalRef } from '@/components/compo
 import { ViewJsonModal, type ViewJsonModalRef } from '@/components/compose-builder/ViewJsonModal';
 import { ThemeEditorModal, type ThemeEditorModalRef } from '@/components/compose-builder/ThemeEditorModal';
 import { ImageSourceModal, type ImageSourceModalRef } from '@/components/compose-builder/ImageSourceModal';
+import { PublishConfigModal, type PublishConfigModalRef } from '@/components/compose-builder/PublishConfigModal';
 import { MobileFrame } from '@/components/compose-builder/MobileFrame';
 
 export default function ComposeBuilderPage() {
@@ -20,6 +21,7 @@ export default function ComposeBuilderPage() {
   const viewJsonModalRef = useRef<ViewJsonModalRef>(null);
   const themeEditorModalRef = useRef<ThemeEditorModalRef>(null);
   const imageSourceModalRef = useRef<ImageSourceModalRef>(null);
+  const publishConfigModalRef = useRef<PublishConfigModalRef>(null);
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -29,6 +31,7 @@ export default function ComposeBuilderPage() {
             generateModalRef={generateModalRef}
             viewJsonModalRef={viewJsonModalRef}
             themeEditorModalRef={themeEditorModalRef}
+            publishConfigModalRef={publishConfigModalRef}
           />
           <div className="flex flex-row flex-grow overflow-hidden">
             <ComponentLibraryPanel />
@@ -44,6 +47,7 @@ export default function ComposeBuilderPage() {
         <ViewJsonModal ref={viewJsonModalRef} />
         <ThemeEditorModal ref={themeEditorModalRef} />
         <ImageSourceModal ref={imageSourceModalRef} />
+        <PublishConfigModal ref={publishConfigModalRef} />
       </DesignProvider>
     </DndProvider>
   );

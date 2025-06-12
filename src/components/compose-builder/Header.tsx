@@ -8,6 +8,7 @@ import { Code, Trash2, FileJson, UploadCloud, Loader2, Cog as SettingsIcon, Pale
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
 import type { ViewJsonModalRef } from "./ViewJsonModal";
 import type { ThemeEditorModalRef } from "./ThemeEditorModal";
+import type { PublishConfigModalRef } from "./PublishConfigModal"; // Import new ref type
 import type { RefObject } from "react";
 import { useDesign } from "@/contexts/DesignContext";
 import {
@@ -18,19 +19,25 @@ import {
 } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SettingsPanelContent } from "./SettingsPanelContent";
-import { publishToRemoteConfigAction } from '@/app/actions';
+// publishToRemoteConfigAction is no longer called directly from here
 import { useToast } from '@/hooks/use-toast';
 
 interface HeaderProps {
   generateModalRef: RefObject<GenerateCodeModalRef>;
   viewJsonModalRef: RefObject<ViewJsonModalRef>;
   themeEditorModalRef: RefObject<ThemeEditorModalRef>;
+  publishConfigModalRef: RefObject<PublishConfigModalRef>; // Add new ref prop
 }
 
-export function Header({ generateModalRef, viewJsonModalRef, themeEditorModalRef }: HeaderProps) {
-  const { clearDesign, components, customComponentTemplates } = useDesign();
+export function Header({
+  generateModalRef,
+  viewJsonModalRef,
+  themeEditorModalRef,
+  publishConfigModalRef, // Destructure new prop
+}: HeaderProps) {
+  const { clearDesign, components } = useDesign(); // Removed customComponentTemplates as it's not directly used for the condition
   const { toast } = useToast();
-  const [isPublishing, setIsPublishing] = useState(false);
+  // isPublishing state is now managed within PublishConfigModal
 
   const handleGenerateCode = () => {
     if (generateModalRef.current) {
@@ -59,60 +66,20 @@ export function Header({ generateModalRef, viewJsonModalRef, themeEditorModalRef
     }
   };
 
-  const handlePublishToRemoteConfig = async () => {
-    if (components.length === 0 || (components.length === 1 && components[0].id === 'default-root-lazy-column' && (!components[0].properties.children || components[0].properties.children.length === 0))) {
+  const handleOpenPublishConfigModal = () => {
+    if (publishConfigModalRef.current) {
+      publishConfigModalRef.current.openModal();
+    } else {
       toast({
-        title: "Cannot Publish",
-        description: "There are no user-added components on the canvas to publish.",
+        title: "Error",
+        description: "Publish Configuration Modal reference is not available.",
         variant: "destructive",
       });
-      return;
-    }
-
-    const parameterKey = window.prompt(
-      "Enter the Remote Config Parameter Key for publishing:",
-      "COMPOSE_DESIGN_JSON_V2" // Default value
-    );
-
-    if (!parameterKey || parameterKey.trim() === "") {
-      toast({
-        title: "Publish Canceled",
-        description: "Parameter key cannot be empty.",
-        variant: "default",
-      });
-      return;
-    }
-
-    setIsPublishing(true);
-    try {
-      const result = await publishToRemoteConfigAction(components, customComponentTemplates, parameterKey.trim());
-      if (result.success) {
-        toast({
-          title: "Publish Successful",
-          description: `${result.message} (Version: ${result.version || 'N/A'})`,
-        });
-      } else {
-        toast({
-          title: "Publish Failed",
-          description: result.message,
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Publishing error:", error);
-      toast({
-        title: "Publish Error",
-        description: "An unexpected error occurred.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsPublishing(false);
     }
   };
   
   const hasUserComponents = components.some(c => c.id !== 'default-root-lazy-column') || 
                            (components.find(c => c.id === 'default-root-lazy-column')?.properties.children?.length || 0) > 0;
-
 
   return (
     <header className="h-16 border-b bg-sidebar flex items-center justify-between px-6 shrink-0">
@@ -125,7 +92,7 @@ export function Header({ generateModalRef, viewJsonModalRef, themeEditorModalRef
                 size="icon"
                 variant="outline"
                 onClick={handleClearCanvas}
-                disabled={!hasUserComponents || isPublishing}
+                disabled={!hasUserComponents} // isPublishing check removed as modal handles its own state
                 aria-label="Clear Canvas"
                 className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
               >
@@ -141,12 +108,13 @@ export function Header({ generateModalRef, viewJsonModalRef, themeEditorModalRef
               <Button
                 size="icon"
                 variant="outline"
-                onClick={handlePublishToRemoteConfig}
-                disabled={!hasUserComponents || isPublishing}
+                onClick={handleOpenPublishConfigModal} // Changed to open the new modal
+                disabled={!hasUserComponents} // isPublishing check removed
                 aria-label="Publish to Remote Config"
                 className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
               >
-                {isPublishing ? <Loader2 className="animate-spin" /> : <UploadCloud />}
+                {/* Loader2 might be managed inside the modal now, or can be kept if header needs global indication */}
+                <UploadCloud />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
@@ -200,7 +168,7 @@ export function Header({ generateModalRef, viewJsonModalRef, themeEditorModalRef
                 size="icon"
                 variant="outline"
                 onClick={handleViewJson}
-                disabled={isPublishing}
+                // disabled={isPublishing} // isPublishing check removed
                 aria-label="View/Edit Design JSON"
                 className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
               >
@@ -218,7 +186,7 @@ export function Header({ generateModalRef, viewJsonModalRef, themeEditorModalRef
                 size="icon"
                 onClick={handleGenerateCode}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                disabled={!hasUserComponents || isPublishing}
+                disabled={!hasUserComponents} // isPublishing check removed
                 aria-label="Generate Jetpack Compose Code"
               >
                 <Code />
@@ -233,4 +201,3 @@ export function Header({ generateModalRef, viewJsonModalRef, themeEditorModalRef
     </header>
   );
 }
-
