@@ -59,7 +59,7 @@ export function createDefaultRootLazyColumn(): DesignComponent {
       userScrollEnabled: true,
       reverseLayout: false,
       verticalArrangement: 'Top',
-      horizontalAlignment: 'CenterHorizontally',
+      horizontalAlignment: 'CenterHorizontally', // Defaulted to CenterHorizontally
     },
     parentId: null,
   };
@@ -195,8 +195,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       let currentNextId = prev.nextId;
       let updatedComponentsList = [...prev.components];
       let finalSelectedComponentId = '';
-
-      const actualParentId = parentIdOrNull === DEFAULT_ROOT_LAZY_COLUMN_ID ? DEFAULT_ROOT_LAZY_COLUMN_ID : parentIdOrNull;
+      
+      const actualParentId = parentIdOrNull;
 
 
       if (!updatedComponentsList.find(c => c.id === DEFAULT_ROOT_LAZY_COLUMN_ID)) {
@@ -231,11 +231,21 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           if (templateComp.id === template.rootComponentId) {
             newInstanceComp.name = `${template.name} Instance`;
             instantiatedTemplateRootId = newInstanceCompId;
-            newInstanceComp.parentId = actualParentId;
-
-             delete newInstanceComp.properties.x;
-             delete newInstanceComp.properties.y;
-
+            newInstanceComp.parentId = actualParentId; // Parent can be null or DEFAULT_ROOT_LAZY_COLUMN_ID
+             
+            // Assign x,y only if free-floating, otherwise delete
+            if (actualParentId === null && dropPosition) {
+                let offsetX = 0, offsetY = 0;
+                const w = newInstanceComp.properties.width;
+                const h = newInstanceComp.properties.height;
+                if (typeof w === 'number') offsetX = w / 2;
+                if (typeof h === 'number') offsetY = h / 2;
+                newInstanceComp.properties.x = Math.round(dropPosition.x - offsetX);
+                newInstanceComp.properties.y = Math.round(dropPosition.y - offsetY);
+            } else {
+                delete newInstanceComp.properties.x;
+                delete newInstanceComp.properties.y;
+            }
 
           } else {
             newInstanceComp.parentId = templateComp.parentId ? finalIdMap[templateComp.parentId] : null;
@@ -254,7 +264,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         finalSelectedComponentId = instantiatedTemplateRootId;
         updatedComponentsList = [...updatedComponentsList, ...finalNewComponentsBatch];
 
-      } else {
+      } else { // Standard component
         const newId = `comp-${currentNextId++}`;
         finalSelectedComponentId = newId;
         const defaultProps = getDefaultProperties(type as ComponentType);
@@ -264,11 +274,10 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           type: type as ComponentType,
           name: `${getComponentDisplayNameResolved(type as ComponentType)} ${newId.split('-')[1]}`,
           properties: { ...defaultProps },
-          parentId: actualParentId,
+          parentId: actualParentId, // Parent can be null or DEFAULT_ROOT_LAZY_COLUMN_ID
         };
 
         if (actualParentId === null && dropPosition) {
-             // This logic is now less likely to be hit if drops on surface always parent to root
             let offsetX = 0;
             let offsetY = 0;
             const w = defaultProps.width;
@@ -293,12 +302,13 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         updatedComponentsList.push(newComponent);
       }
 
+      // Add to parent's children array
       if (actualParentId) {
         const parentCompIndex = updatedComponentsList.findIndex(c => c.id === actualParentId);
         if (parentCompIndex !== -1) {
             const currentParent = updatedComponentsList[parentCompIndex];
             if (isContainerType(currentParent.type, prev.customComponentTemplates)) {
-                const childIdToAdd = isCustomComponentType(type) ? finalSelectedComponentId : finalSelectedComponentId;
+                const childIdToAdd = finalSelectedComponentId; // This is now always the root of what was added
                 const existingChildren = Array.isArray(currentParent.properties.children) ? currentParent.properties.children : [];
                 if (!existingChildren.includes(childIdToAdd)) {
                     updatedComponentsList[parentCompIndex] = {
@@ -519,7 +529,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       ...prev,
       components: prev.components.map(comp =>
         (comp.id === id && comp.parentId === null && id !== DEFAULT_ROOT_LAZY_COLUMN_ID)
-          ? { ...comp, properties: { ...comp.properties, x: position.x, y: position.y } }
+          ? { ...comp, properties: { ...comp.properties, x: Math.round(position.x), y: Math.round(position.y) } }
           : comp
       ),
     }));
@@ -669,9 +679,14 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         draggedComponent.parentId = actualTargetParentId;
 
-
-        delete draggedComponent.properties.x;
-        delete draggedComponent.properties.y;
+        if (actualTargetParentId === null && newPosition) {
+             // Dropped onto the main canvas surface, make it free-floating
+            draggedComponent.properties.x = Math.round(newPosition.x);
+            draggedComponent.properties.y = Math.round(newPosition.y);
+        } else {
+            delete draggedComponent.properties.x;
+            delete draggedComponent.properties.y;
+        }
 
         currentComponents[draggedComponentIndex] = draggedComponent;
 
@@ -694,7 +709,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                  newParent.properties = {...newParent.properties};
                  if (isContainerType(newParent.type, prev.customComponentTemplates)) {
                     let existingChildren = Array.isArray(newParent.properties.children) ? newParent.properties.children : [];
-                    existingChildren = existingChildren.filter(childId => childId !== draggedId);
+                    existingChildren = existingChildren.filter(childId => childId !== draggedId); // Remove if already there (e.g. reordering)
                     newParent.properties.children = [...existingChildren, draggedId];
                     currentComponents[newParentIndex] = newParent;
                  } else {

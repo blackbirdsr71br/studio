@@ -98,7 +98,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
         const libraryItem = item as DraggedLibraryItem;
         addComponent(libraryItem.type, component.id);
       } else if (itemTypeFromMonitor === ItemTypes.CANVAS_COMPONENT_ITEM) {
-        const canvasItem = item as CanvasItem;
+        const canvasItem = item as DraggedCanvasItem; // Corrected type here
         if (canvasItem.id !== component.id) {
           moveComponent(canvasItem.id, component.id);
         }
@@ -295,7 +295,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       className={cn(
         'p-0.5 border border-transparent hover:border-primary/50', 
         {
-          'ring-2 ring-primary ring-offset-4 shadow-lg': isSelected && component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID,
+          'ring-4 ring-primary ring-offset-[6px] ring-offset-background shadow-lg': isSelected && component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID,
           'opacity-50': isDragging,
           'cursor-grab': !isResizing && component.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && component.type !== 'Spacer',
           'cursor-default': component.type === 'Spacer',
