@@ -3,8 +3,7 @@
 import { generateComposeCode, type GenerateComposeCodeInput } from '@/ai/flows/generate-compose-code';
 import { generateImageFromHint, type GenerateImageFromHintInput } from '@/ai/flows/generate-image-from-hint-flow';
 import { generateJsonFromComposeCommands, type GenerateJsonFromComposeCommandsInput } from '@/ai/flows/generate-json-from-compose-commands';
-import { generateCustomCommandJson, type GenerateCustomCommandJsonInput } from '@/ai/flows/generate-custom-command-json';
-import { convertCanvasToCustomJson, type ConvertCanvasToCustomJsonInput } from '@/ai/flows/convert-canvas-to-custom-json-flow.ts';
+import { convertCanvasToCustomJson, type ConvertCanvasToCustomJsonInput } from '@/ai/flows/convert-canvas-to-custom-json-flow';
 import type { DesignComponent, CustomComponentTemplate, BaseComponentProps } from '@/types/compose-spec';
 import { isContainerType, DEFAULT_ROOT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
@@ -316,44 +315,21 @@ export async function generateJsonFromTextAction(
   }
 }
 
-export async function generateCustomCommandJsonAction(
-  commands: string
-): Promise<{ commandJson?: string; error?: string }> {
-  if (!commands || commands.trim().length < 10) {
-    return { error: "Input commands are too short. Please provide more details." };
-  }
-  try {
-    const input: GenerateCustomCommandJsonInput = { commands };
-    const result = await generateCustomCommandJson(input);
-    return { commandJson: result.commandJson };
-  } catch (error) {
-    console.error("Error in generateCustomCommandJsonAction:", error);
-    const message = error instanceof Error ? error.message : "An unknown error occurred during custom command JSON generation.";
-    return { error: message };
-  }
-}
-
 export async function convertCanvasToCustomJsonAction(
   allComponents: DesignComponent[],
   customComponentTemplates: CustomComponentTemplate[]
 ): Promise<{ customJsonString?: string; error?: string }> {
   try {
-    // Get the JSON representing the children of the root canvas node
     const canvasDesignJsonString = await getDesignComponentsAsJsonAction(allComponents, customComponentTemplates);
 
     if (canvasDesignJsonString.startsWith("Error:") || 
         (canvasDesignJsonString === "[]" && allComponents.filter(c => c.id !== DEFAULT_ROOT_LAZY_COLUMN_ID && c.parentId === DEFAULT_ROOT_LAZY_COLUMN_ID).length > 0) ||
-        (canvasDesignJsonString === "[]" && allComponents.filter(c => c.parentId === DEFAULT_ROOT_LAZY_COLUMN_ID).length === 0 && allComponents.length > 1) // Edge case: empty canvas but root exists
+        (canvasDesignJsonString === "[]" && allComponents.filter(c => c.parentId === DEFAULT_ROOT_LAZY_COLUMN_ID).length === 0 && allComponents.length > 1)
        ) {
-      // If getDesignComponentsAsJsonAction returned an error, or if it's empty but there are actually user components
-      // directly under the root that should have been caught.
-      // The second part of the OR handles if the canvas is "empty" but has structure.
-      // The third part ensures if the canvas is truly empty (only root exists), we don't call AI with "[]" which is valid JSON but means "no user components".
       const userComponentsOnCanvas = allComponents.filter(c => c.parentId === DEFAULT_ROOT_LAZY_COLUMN_ID);
       if (userComponentsOnCanvas.length === 0) {
         return { error: "No user components on the canvas to convert." };
       }
-      // If there was an error preparing, but components exist, that's a specific error.
       if (canvasDesignJsonString.startsWith("Error:")) {
          return { error: "Failed to prepare canvas data for conversion: " + canvasDesignJsonString };
       }
@@ -433,7 +409,3 @@ export async function updateGlobalStylesheetAction(
     return { success: false, error: `Failed to update stylesheet: ${message}` };
   }
 }
-
-    
-
-    
