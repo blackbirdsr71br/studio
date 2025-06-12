@@ -216,7 +216,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         borderWidth: 0, borderColor: '#000000'
       };
     case 'LazyColumn':
-      const isContentArea = componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID;
+      const isContentArea = componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID; // Use componentId here
       return {
         ...commonLayout,
         children: [],
@@ -266,31 +266,31 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
       };
     case 'TopAppBar':
       return {
-        ...commonLayout, // Includes padding settings
+        ...commonLayout,
         children: [],
         title: 'Screen Title',
         width: 'match_parent',
-        height: 56, // Default height for TopAppBar
-        padding: 0, // Override commonLayout padding
-        paddingStart: 16, // Specific padding for TopAppBar
-        paddingEnd: 16,   // Specific padding for TopAppBar
+        height: 56, 
+        padding: 0, 
+        paddingStart: 16, 
+        paddingEnd: 16,  
         backgroundColor: '#3F51B5',
         contentColor: '#FFFFFF',
         itemSpacing: 8,
-        horizontalArrangement: 'SpaceBetween', // Default for TopAppBar, title left, actions right
+        horizontalArrangement: 'SpaceBetween', 
         verticalAlignment: 'CenterVertically'
       };
     case 'BottomNavigationBar':
       return {
-        ...commonLayout, // Includes padding settings
+        ...commonLayout, 
         children: [],
         width: 'match_parent',
-        height: 56, // Default height for BottomNavigationBar
-        padding: 0, // Override commonLayout padding
+        height: 56, 
+        padding: 0, 
         backgroundColor: '#F0F0F0',
         contentColor: '#000000',
-        itemSpacing: 0, // Items usually distribute space
-        horizontalArrangement: 'SpaceAround', // Common for BottomNav items
+        itemSpacing: 0, 
+        horizontalArrangement: 'SpaceAround', 
         verticalAlignment: 'CenterVertically'
       };
     default:
