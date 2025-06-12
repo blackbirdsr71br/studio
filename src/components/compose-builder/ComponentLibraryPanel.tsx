@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { DraggableComponentItem } from "./DraggableComponentItem";
-import type { ComponentType, CustomComponentTemplate } from "@/types/compose-spec";
+import type { ComponentType, CustomComponentTemplate, SavedLayout } from "@/types/compose-spec";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useDesign } from '@/contexts/DesignContext';
@@ -31,10 +31,12 @@ import {
   GalleryHorizontal,
   Grid3x3,
   GalleryThumbnails,
-  BoxSelect, // Icon for custom components
+  BoxSelect,
   Trash2,
   Pencil,
-  Space, // Icon for Spacer
+  Space,
+  LayoutDashboard, // Icon for Layouts
+  Download, // Icon for Load button
 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 
@@ -50,39 +52,59 @@ const availableBaseComponents: { type: ComponentType; icon: React.ElementType }[
   { type: "LazyRow", icon: GalleryHorizontal },
   { type: "LazyVerticalGrid", icon: Grid3x3 },
   { type: "LazyHorizontalGrid", icon: GalleryThumbnails },
-  { type: "Spacer", icon: Space }, // Added Spacer
+  { type: "Spacer", icon: Space },
 ];
 
 export function ComponentLibraryPanel() {
-  const { customComponentTemplates, deleteCustomComponentTemplate, renameCustomComponentTemplate } = useDesign();
+  const {
+    customComponentTemplates, deleteCustomComponentTemplate, renameCustomComponentTemplate,
+    savedLayouts, loadLayoutToCanvas, deleteSavedLayout, renameSavedLayout
+  } = useDesign();
   const { toast } = useToast();
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [templateToDelete, setTemplateToDelete] = useState<CustomComponentTemplate | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<CustomComponentTemplate | SavedLayout | null>(null);
+  const [deleteType, setDeleteType] = useState<'template' | 'layout' | null>(null);
 
-  const handleDeleteClick = (template: CustomComponentTemplate) => {
-    setTemplateToDelete(template);
+  const handleDeleteClick = (item: CustomComponentTemplate | SavedLayout, type: 'template' | 'layout') => {
+    setItemToDelete(item);
+    setDeleteType(type);
     setIsDeleteDialogOpen(true);
   };
 
   const confirmDelete = async () => {
-    if (templateToDelete) {
-      await deleteCustomComponentTemplate(templateToDelete.templateId, templateToDelete.firestoreId);
-      setTemplateToDelete(null);
+    if (itemToDelete && deleteType) {
+      if (deleteType === 'template') {
+        await deleteCustomComponentTemplate((itemToDelete as CustomComponentTemplate).templateId, (itemToDelete as CustomComponentTemplate).firestoreId);
+      } else if (deleteType === 'layout') {
+        await deleteSavedLayout((itemToDelete as SavedLayout).layoutId, (itemToDelete as SavedLayout).firestoreId);
+      }
+      setItemToDelete(null);
+      setDeleteType(null);
     }
     setIsDeleteDialogOpen(false);
   };
 
-  const handleRenameClick = async (template: CustomComponentTemplate) => {
-    const newName = window.prompt("Enter new name for the custom component:", template.name);
+  const handleRenameClick = async (item: CustomComponentTemplate | SavedLayout, type: 'template' | 'layout') => {
+    const newName = window.prompt(`Enter new name for this ${type}:`, item.name);
     if (newName && newName.trim() !== "") {
-      await renameCustomComponentTemplate(template.templateId, newName.trim(), template.firestoreId);
-    } else if (newName !== null) { // User didn't cancel, but entered empty name
+      if (type === 'template') {
+        await renameCustomComponentTemplate((item as CustomComponentTemplate).templateId, newName.trim(), (item as CustomComponentTemplate).firestoreId);
+      } else if (type === 'layout') {
+        await renameSavedLayout((item as SavedLayout).layoutId, newName.trim(), (item as SavedLayout).firestoreId);
+      }
+    } else if (newName !== null) {
       toast({
         title: "Rename Failed",
         description: "New name cannot be empty.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleLoadLayout = (layoutId: string) => {
+    if (window.confirm("Loading this layout will replace the current canvas. Are you sure?")) {
+      loadLayoutToCanvas(layoutId);
     }
   };
 
@@ -92,10 +114,13 @@ export function ComponentLibraryPanel() {
       <h2 className="text-xl font-semibold mb-2 text-sidebar-foreground font-headline">Components</h2>
       <TooltipProvider delayDuration={200}>
         <Tabs defaultValue="standard" className="flex-grow flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-2 mb-2 h-auto">
+          <TabsList className="grid w-full grid-cols-3 mb-2 h-auto">
             <TabsTrigger value="standard" className="text-xs px-1 py-1.5">Standard</TabsTrigger>
             <TabsTrigger value="custom" disabled={customComponentTemplates.length === 0} className="text-xs px-1 py-1.5">
               Custom ({customComponentTemplates.length})
+            </TabsTrigger>
+            <TabsTrigger value="layouts" disabled={savedLayouts.length === 0} className="text-xs px-1 py-1.5">
+              Layouts ({savedLayouts.length})
             </TabsTrigger>
           </TabsList>
           <TabsContent value="standard" className="flex-grow overflow-hidden">
@@ -110,7 +135,7 @@ export function ComponentLibraryPanel() {
           <TabsContent value="custom" className="flex-grow overflow-hidden">
             {customComponentTemplates.length > 0 ? (
               <ScrollArea className="h-full pr-3">
-                <div className="grid grid-cols-1 gap-2"> {/* Changed to 1 column for custom items with actions */}
+                <div className="grid grid-cols-1 gap-2">
                   {customComponentTemplates.map((template) => (
                     <div key={template.templateId} className="bg-card border border-sidebar-border rounded-md shadow-sm overflow-hidden">
                       <DraggableComponentItem
@@ -123,7 +148,7 @@ export function ComponentLibraryPanel() {
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6 text-sidebar-foreground hover:bg-sidebar-accent/20"
-                          onClick={(e) => { e.stopPropagation(); handleRenameClick(template);}}
+                          onClick={(e) => { e.stopPropagation(); handleRenameClick(template, 'template');}}
                           aria-label={`Rename ${template.name}`}
                         >
                           <Pencil className="h-3.5 w-3.5" />
@@ -132,7 +157,7 @@ export function ComponentLibraryPanel() {
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6 text-destructive hover:bg-destructive/20"
-                           onClick={(e) => { e.stopPropagation(); handleDeleteClick(template);}}
+                           onClick={(e) => { e.stopPropagation(); handleDeleteClick(template, 'template');}}
                           aria-label={`Delete ${template.name}`}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -148,17 +173,73 @@ export function ComponentLibraryPanel() {
               </div>
             )}
           </TabsContent>
+          <TabsContent value="layouts" className="flex-grow overflow-hidden">
+            {savedLayouts.length > 0 ? (
+              <ScrollArea className="h-full pr-3">
+                <div className="grid grid-cols-1 gap-2">
+                  {savedLayouts.map((layout) => (
+                    <div key={layout.layoutId} className="bg-card border border-sidebar-border rounded-md shadow-sm overflow-hidden">
+                      <div className="flex items-center p-2">
+                        <LayoutDashboard className="h-6 w-6 text-sidebar-primary mr-2 shrink-0" />
+                        <p className="text-sm text-sidebar-foreground truncate flex-grow" title={layout.name}>
+                          {layout.name}
+                        </p>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2 py-1 text-xs ml-2 text-sidebar-foreground hover:bg-sidebar-accent/20"
+                            onClick={() => handleLoadLayout(layout.layoutId)}
+                            aria-label={`Load layout ${layout.name}`}
+                        >
+                            <Download className="h-3 w-3 mr-1" /> Load
+                        </Button>
+                      </div>
+                       {layout.timestamp && (
+                        <p className="text-xxs text-muted-foreground px-2 pb-1 pt-0 text-right">
+                          Saved: {new Date(layout.timestamp).toLocaleDateString()}
+                        </p>
+                      )}
+                      <div className="p-1 flex justify-end items-center space-x-1 border-t border-sidebar-border/50 bg-muted/30">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-sidebar-foreground hover:bg-sidebar-accent/20"
+                          onClick={() => handleRenameClick(layout, 'layout')}
+                          aria-label={`Rename layout ${layout.name}`}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-destructive hover:bg-destructive/20"
+                          onClick={() => handleDeleteClick(layout, 'layout')}
+                          aria-label={`Delete layout ${layout.name}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            ) : (
+              <div className="flex items-center justify-center h-full text-xs text-sidebar-foreground/70 text-center p-2">
+                No layouts saved yet. Use the "Save Layout" button in the header to save the current canvas.
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
       </TooltipProvider>
 
-      {templateToDelete && (
+      {itemToDelete && (
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Are you sure you want to delete "{templateToDelete.name}"?</AlertDialogTitle>
+              <AlertDialogTitle>Are you sure you want to delete "{itemToDelete.name}"?</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. This will remove the template from the library.
-                Existing instances on the canvas will not be automatically removed but may no longer be addable or editable as this template.
+                This action cannot be undone. This will remove the {deleteType} from the library.
+                {deleteType === 'template' && " Existing instances on the canvas will not be automatically removed but may no longer be addable or editable as this template."}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -173,5 +254,3 @@ export function ComponentLibraryPanel() {
     </aside>
   );
 }
-
-    

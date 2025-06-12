@@ -98,11 +98,21 @@ export interface CustomComponentTemplate {
   componentTree: DesignComponent[];
 }
 
+export interface SavedLayout {
+  firestoreId?: string;
+  layoutId: string;
+  name: string;
+  components: DesignComponent[];
+  nextId: number; // To restore the ID counter state
+  timestamp?: number; // Optional: for sorting or info
+}
+
 export interface DesignState {
   components: DesignComponent[];
   selectedComponentId: string | null;
   nextId: number;
   customComponentTemplates: CustomComponentTemplate[];
+  savedLayouts: SavedLayout[];
 }
 
 export const getDefaultProperties = (type: ComponentType | string): BaseComponentProps => {

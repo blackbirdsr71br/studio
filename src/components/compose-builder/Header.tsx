@@ -4,11 +4,11 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/icons/Logo";
-import { Code, Trash2, FileJson, UploadCloud, Loader2, Cog as SettingsIcon, Palette } from "lucide-react";
+import { Code, Trash2, FileJson, UploadCloud, Loader2, Cog as SettingsIcon, Palette, Save } from "lucide-react"; // Added Save icon
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
 import type { ViewJsonModalRef } from "./ViewJsonModal";
 import type { ThemeEditorModalRef } from "./ThemeEditorModal";
-import type { PublishConfigModalRef } from "./PublishConfigModal"; // Import new ref type
+import type { PublishConfigModalRef } from "./PublishConfigModal";
 import type { RefObject } from "react";
 import { useDesign } from "@/contexts/DesignContext";
 import {
@@ -19,25 +19,23 @@ import {
 } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SettingsPanelContent } from "./SettingsPanelContent";
-// publishToRemoteConfigAction is no longer called directly from here
 import { useToast } from '@/hooks/use-toast';
 
 interface HeaderProps {
   generateModalRef: RefObject<GenerateCodeModalRef>;
   viewJsonModalRef: RefObject<ViewJsonModalRef>;
   themeEditorModalRef: RefObject<ThemeEditorModalRef>;
-  publishConfigModalRef: RefObject<PublishConfigModalRef>; // Add new ref prop
+  publishConfigModalRef: RefObject<PublishConfigModalRef>;
 }
 
 export function Header({
   generateModalRef,
   viewJsonModalRef,
   themeEditorModalRef,
-  publishConfigModalRef, // Destructure new prop
+  publishConfigModalRef,
 }: HeaderProps) {
-  const { clearDesign, components } = useDesign(); // Removed customComponentTemplates as it's not directly used for the condition
+  const { clearDesign, components, saveCurrentCanvasAsLayout } = useDesign();
   const { toast } = useToast();
-  // isPublishing state is now managed within PublishConfigModal
 
   const handleGenerateCode = () => {
     if (generateModalRef.current) {
@@ -77,8 +75,31 @@ export function Header({
       });
     }
   };
-  
-  const hasUserComponents = components.some(c => c.id !== 'default-root-lazy-column') || 
+
+  const handleSaveLayout = async () => {
+    const name = window.prompt("Enter a name for this layout:", "My Saved Layout");
+    if (name && name.trim() !== "") {
+      try {
+        await saveCurrentCanvasAsLayout(name.trim());
+        // Toast is handled within saveCurrentCanvasAsLayout
+      } catch (error) {
+        // Toast for unexpected error (though context should handle most)
+        toast({
+          title: "Save Layout Failed",
+          description: error instanceof Error ? error.message : "An unexpected error occurred.",
+          variant: "destructive",
+        });
+      }
+    } else if (name !== null) { // User didn't cancel, but entered empty name
+      toast({
+        title: "Save Failed",
+        description: "Layout name cannot be empty.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const hasUserComponents = components.some(c => c.id !== 'default-root-lazy-column') ||
                            (components.find(c => c.id === 'default-root-lazy-column')?.properties.children?.length || 0) > 0;
 
   return (
@@ -92,7 +113,7 @@ export function Header({
                 size="icon"
                 variant="outline"
                 onClick={handleClearCanvas}
-                disabled={!hasUserComponents} // isPublishing check removed as modal handles its own state
+                disabled={!hasUserComponents}
                 aria-label="Clear Canvas"
                 className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
               >
@@ -103,17 +124,35 @@ export function Header({
               <p>Clear Canvas</p>
             </TooltipContent>
           </Tooltip>
+
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 size="icon"
                 variant="outline"
-                onClick={handleOpenPublishConfigModal} // Changed to open the new modal
-                disabled={!hasUserComponents} // isPublishing check removed
+                onClick={handleSaveLayout}
+                disabled={!hasUserComponents}
+                aria-label="Save Current Layout"
+                className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+              >
+                <Save />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Save Current Layout</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={handleOpenPublishConfigModal}
+                disabled={!hasUserComponents}
                 aria-label="Publish to Remote Config"
                 className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
               >
-                {/* Loader2 might be managed inside the modal now, or can be kept if header needs global indication */}
                 <UploadCloud />
               </Button>
             </TooltipTrigger>
@@ -168,7 +207,6 @@ export function Header({
                 size="icon"
                 variant="outline"
                 onClick={handleViewJson}
-                // disabled={isPublishing} // isPublishing check removed
                 aria-label="View/Edit Design JSON"
                 className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
               >
@@ -186,7 +224,7 @@ export function Header({
                 size="icon"
                 onClick={handleGenerateCode}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                disabled={!hasUserComponents} // isPublishing check removed
+                disabled={!hasUserComponents}
                 aria-label="Generate Jetpack Compose Code"
               >
                 <Code />
