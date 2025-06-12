@@ -17,7 +17,6 @@ import { MobileFrame } from '@/components/compose-builder/MobileFrame';
 
 export default function ComposeBuilderPage() {
   const generateModalRef = useRef<GenerateCodeModalRef>(null);
-  const viewJsonModalRef = useRef<ViewJsonModalRef>(null); // Create ref for ViewJsonModal
   const themeEditorModalRef = useRef<ThemeEditorModalRef>(null);
   const imageSourceModalRef = useRef<ImageSourceModalRef>(null);
 
@@ -27,7 +26,6 @@ export default function ComposeBuilderPage() {
         <div className="flex flex-col h-screen overflow-hidden bg-background">
           <Header
             generateModalRef={generateModalRef}
-            viewJsonModalRef={viewJsonModalRef} // Pass the ref to Header
             themeEditorModalRef={themeEditorModalRef}
           />
           <div className="flex flex-row flex-grow overflow-hidden">
@@ -41,7 +39,6 @@ export default function ComposeBuilderPage() {
           </div>
         </div>
         <GenerateCodeModal ref={generateModalRef} />
-        <ViewJsonModal ref={viewJsonModalRef} /> {/* Render ViewJsonModal and assign ref */}
         <ThemeEditorModal ref={themeEditorModalRef} />
         <ImageSourceModal ref={imageSourceModalRef} />
       </DesignProvider>

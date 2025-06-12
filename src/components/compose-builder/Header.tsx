@@ -38,12 +38,6 @@ export function Header({ generateModalRef, viewJsonModalRef, themeEditorModalRef
     }
   };
 
-  const handleViewJson = () => {
-    if (viewJsonModalRef.current) {
-      viewJsonModalRef.current.openModal();
-    }
-  };
-
   const handleOpenThemeEditor = () => { // Function to open theme editor
     if (themeEditorModalRef.current) {
       themeEditorModalRef.current.openModal();
@@ -118,25 +112,6 @@ export function Header({ generateModalRef, viewJsonModalRef, themeEditorModalRef
               <p>Clear Canvas</p>
             </TooltipContent>
           </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="outline"
-                onClick={handleViewJson}
-                disabled={!hasUserComponents || isPublishing}
-                aria-label="View JSON"
-                className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
-              >
-                <FileJson />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>View/Edit Design JSON</p>
-            </TooltipContent>
-          </Tooltip>
-          
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
