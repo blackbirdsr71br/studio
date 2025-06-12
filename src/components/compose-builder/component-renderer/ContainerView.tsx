@@ -1,7 +1,7 @@
-
 'use client';
 import type { DesignComponent } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from '../RenderedComponentWrapper';
+// Corrected import:
 import { getComponentDisplayName, DEFAULT_CONTENT_LAZY_COLUMN_ID, isCustomComponentType, ROOT_SCAFFOLD_ID } from '@/types/compose-spec';
 import { useDesign } from '@/contexts/DesignContext';
 import { getContrastingTextColor } from '@/lib/utils';
@@ -58,12 +58,14 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
   } = properties;
 
   // Determine effective padding for each side
+  // Corrected usage:
   const defaultAllSidesPadding = (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID ? 8 : (type === 'Card' ? 16 : 0));
   const effectivePaddingTop = paddingTop ?? padding ?? defaultAllSidesPadding;
   let effectivePaddingBottom = paddingBottom ?? padding ?? defaultAllSidesPadding;
   const effectivePaddingStart = paddingStart ?? padding ?? defaultAllSidesPadding;
   const effectivePaddingEnd = paddingEnd ?? padding ?? defaultAllSidesPadding;
 
+  // Corrected usage:
   if (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID && component.parentId === ROOT_SCAFFOLD_ID) {
     effectivePaddingBottom += 60; // Add extra space at the bottom of the root canvas
   }
@@ -89,8 +91,10 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
   let defaultWidth: string | number = 'wrap_content';
   let defaultHeight: string | number = 'wrap_content';
 
+  // Corrected usage:
   if (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || type === 'LazyColumn' || type === 'LazyVerticalGrid') {
     defaultWidth = 'match_parent';
+    // Corrected usage:
     defaultHeight = (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || type === 'LazyColumn') ? 'match_parent' : 300;
   } else if (type === 'LazyRow' || type === 'LazyHorizontalGrid') {
     defaultWidth = 'match_parent';
@@ -131,6 +135,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     gap: `${itemSpacing}px`,
   };
 
+  // Corrected usage:
   if (componentId !== DEFAULT_CONTENT_LAZY_COLUMN_ID &&
       (cornerRadiusTopLeft > 0 || cornerRadiusTopRight > 0 || cornerRadiusBottomLeft > 0 || cornerRadiusBottomRight > 0)) {
     specificStyles.overflow = 'hidden';
@@ -152,6 +157,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
       if (typeof borderWidth === 'number' && borderWidth > 0 && borderColor) {
         specificStyles.border = `${borderWidth}px solid ${borderColor}`;
       } else {
+         // Corrected usage:
          specificStyles.border = (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || type.startsWith('Lazy')) ? 'none' : '1px dashed hsl(var(--border) / 0.3)';
       }
       break;
@@ -258,14 +264,18 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     height: styleHeight,
     display: 'flex',
     flexDirection: flexDirection,
+    // Corrected usage:
     border: (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || type.startsWith('Lazy') || type === 'Card') ? specificStyles.border : '1px dashed hsl(var(--border) / 0.3)',
     position: 'relative',
+    // Corrected usage:
     minWidth: (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || properties.width === 'match_parent' ) ? '100%' : (properties.width === 'wrap_content' || !isNumericString(properties.width) ? 'auto' : '60px'),
+    // Corrected usage:
     minHeight: (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || properties.height === 'match_parent') ? '100%' : (properties.height === 'wrap_content' || !isNumericString(properties.height) ? 'auto' : '60px'),
     boxSizing: 'border-box',
     ...specificStyles,
   };
 
+  // Corrected usage:
   if (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
     baseStyle.backgroundColor = containerBackgroundColor || 'transparent';
     baseStyle.overflowY = 'auto';
@@ -275,12 +285,14 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     delete baseStyle.overflow;
   }
 
+  // Corrected usage:
   const placeholderText = `Drop components into this ${getComponentDisplayName(type, customComponentTemplates.find(t => t.templateId === type)?.name)}`;
 
   const isWeightedContainer = type === 'Row' || type === 'Column';
 
   return (
     <div style={baseStyle} className="select-none component-container" data-container-id={component.id} data-container-type={type}>
+      {/* Corrected usage: */}
       {childrenComponents.length === 0 && componentId !== DEFAULT_CONTENT_LAZY_COLUMN_ID && (
         <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground/70 text-xs pointer-events-none p-2 text-center leading-tight">
           {placeholderText}
@@ -309,5 +321,3 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     </div>
   );
 }
-
-    
