@@ -4,10 +4,10 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/icons/Logo";
-import { Code, Trash2, FileJson, UploadCloud, Loader2, Cog as SettingsIcon, Palette } from "lucide-react"; // Added Palette
+import { Code, Trash2, FileJson, UploadCloud, Loader2, Cog as SettingsIcon, Palette } from "lucide-react";
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
 import type { ViewJsonModalRef } from "./ViewJsonModal";
-import type { ThemeEditorModalRef } from "./ThemeEditorModal"; // Import new modal ref type
+import type { ThemeEditorModalRef } from "./ThemeEditorModal";
 import type { RefObject } from "react";
 import { useDesign } from "@/contexts/DesignContext";
 import {
@@ -24,7 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 interface HeaderProps {
   generateModalRef: RefObject<GenerateCodeModalRef>;
   viewJsonModalRef: RefObject<ViewJsonModalRef>;
-  themeEditorModalRef: RefObject<ThemeEditorModalRef>; // Add prop for theme editor modal
+  themeEditorModalRef: RefObject<ThemeEditorModalRef>;
 }
 
 export function Header({ generateModalRef, viewJsonModalRef, themeEditorModalRef }: HeaderProps) {
@@ -38,7 +38,16 @@ export function Header({ generateModalRef, viewJsonModalRef, themeEditorModalRef
     }
   };
 
-  const handleOpenThemeEditor = () => { // Function to open theme editor
+  const handleViewJson = () => {
+    if (viewJsonModalRef && viewJsonModalRef.current) {
+      viewJsonModalRef.current.openModal();
+    } else {
+      console.error("ViewJsonModalRef or its .current property is not available in Header's handleViewJson.");
+      toast({ title: "Error", description: "View JSON Modal reference is not configured correctly.", variant: "destructive"});
+    }
+  };
+
+  const handleOpenThemeEditor = () => {
     if (themeEditorModalRef.current) {
       themeEditorModalRef.current.openModal();
     }
@@ -135,7 +144,7 @@ export function Header({ generateModalRef, viewJsonModalRef, themeEditorModalRef
               <Button
                 size="icon"
                 variant="outline"
-                onClick={handleOpenThemeEditor} // Call to open theme editor modal
+                onClick={handleOpenThemeEditor}
                 aria-label="Edit App Theme"
                 className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               >
@@ -162,13 +171,31 @@ export function Header({ generateModalRef, viewJsonModalRef, themeEditorModalRef
                 </PopoverTrigger>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                <p>Interface Theme Settings</p> {/* Updated tooltip */}
+                <p>Interface Theme Settings</p>
               </TooltipContent>
             </Tooltip>
             <PopoverContent className="w-auto p-0 mr-2" align="end">
               <SettingsPanelContent />
             </PopoverContent>
           </Popover>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={handleViewJson}
+                disabled={isPublishing}
+                aria-label="View/Edit Design JSON"
+                className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+              >
+                <FileJson />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>View/Edit Design JSON</p>
+            </TooltipContent>
+          </Tooltip>
 
           <Tooltip>
             <TooltipTrigger asChild>
