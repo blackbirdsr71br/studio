@@ -229,7 +229,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         itemSpacing: 8,
         userScrollEnabled: true, reverseLayout: false,
         verticalArrangement: 'Top', horizontalAlignment: 'Start', 
-        paddingBottom: isContentArea ? (8 + 60) : 8, // Default paddingBottom for LazyColumn is 8
+        paddingBottom: isContentArea ? (8 + 60) : 8, 
       };
     case 'LazyRow':
       return {
@@ -274,13 +274,13 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         titleFontSize: 20,
         width: 'match_parent',
         height: 30, 
-        padding: 0,
-        paddingStart: 16,
-        paddingEnd: 16,
+        padding: 0, // Ensures paddingTop and paddingBottom default to 0
+        paddingStart: 0, // No horizontal padding by default
+        paddingEnd: 0,   // No horizontal padding by default
         backgroundColor: '#3F51B5',
         contentColor: '#FFFFFF',
         itemSpacing: 8,
-        horizontalArrangement: 'SpaceBetween', // Default arrangement
+        horizontalArrangement: 'SpaceBetween', 
         verticalAlignment: 'CenterVertically'
       };
     case 'BottomNavigationBar':
@@ -289,7 +289,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         children: [],
         width: 'match_parent',
         height: 48,
-        padding: 0,
+        padding: 0, // Ensures all paddings default to 0
         backgroundColor: '#F0F0F0',
         contentColor: '#000000',
         itemSpacing: 0,
@@ -540,19 +540,19 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
   ],
   TopAppBar: [
     ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'layoutWeight', 'fillMaxHeight', 'fillMaxWidth', 'height'].includes(p.name) ),
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '30', group: 'Layout' }, // Default height
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '30', group: 'Layout' }, 
     { name: 'title', type: 'string', label: 'Title', placeholder: 'Screen Title', group: 'Content' },
     { name: 'titleFontSize', type: 'number', label: 'Title Font Size (sp)', placeholder: '20', group: 'Appearance' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (Title, Icons)', group: 'Appearance' },
-    ...rowSpecificLayoutProperties, // Includes itemSpacing, horizontalArrangement, verticalAlignment
+    ...rowSpecificLayoutProperties, 
   ],
   BottomNavigationBar: [
      ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'layoutWeight', 'fillMaxHeight', 'fillMaxWidth', 'height'].includes(p.name) ),
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '48', group: 'Layout' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (Icons, Labels)', group: 'Appearance' },
-    ...rowSpecificLayoutProperties, // Includes itemSpacing, horizontalArrangement, verticalAlignment
+    ...rowSpecificLayoutProperties, 
   ],
 };
 
