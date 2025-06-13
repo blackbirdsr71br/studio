@@ -187,57 +187,55 @@ export async function getDesignComponentsAsJsonAction(
   }
 }
 
-// Helper for Full Remote Config JSON (includes entire scaffold structure)
-const buildFullScaffoldTreeForRemoteConfig = (
+// Helper to get a flat list of components belonging to the content area for Remote Config
+// This function collects all components that are descendants of startParentId
+const buildFlatContentTreeForRemoteConfig = (
   allComponents: DesignComponent[],
-  customComponentTemplates: CustomComponentTemplate[],
-  currentParentId: string | null = null // Start with null to find the root Scaffold
-): DesignComponent[] => { // Return type is DesignComponent[] as it's a flat list with parentIds
+  startParentId: string = DEFAULT_CONTENT_LAZY_COLUMN_ID
+): DesignComponent[] => {
+  const contentAreaComponents: DesignComponent[] = [];
+  const queue: string[] = [];
+
+  // Start with direct children of the startParentId
+  allComponents.forEach(component => {
+    if (component.parentId === startParentId) {
+      queue.push(component.id);
+    }
+  });
   
-  const buildNode = (component: DesignComponent): DesignComponent => {
-    const componentDataCopy = { ...component };
-    componentDataCopy.properties = cleanEmptyOrNullProperties({ ...component.properties });
-    
-    // Children are handled by parentId relationships in the flat list for Remote Config
-    // No need to nest "childrenComponents" directly for this version of Remote Config publishing.
-    // The consumer of the Remote Config JSON will reconstruct the tree.
-    
-    // We can remove the actual 'children' array of IDs from properties for Remote Config if desired,
-    // as the full flat list with parentIds is enough. Or keep it for easier parsing on client.
-    // For now, let's keep it.
-    // delete componentDataCopy.properties.children;
+  const visited = new Set<string>(); 
 
-    return componentDataCopy;
-  };
+  while (queue.length > 0) {
+    const currentId = queue.shift()!;
+    if (visited.has(currentId)) continue;
+    visited.add(currentId);
 
-  if (currentParentId === null) { // Initial call, find the root Scaffold
-    const rootScaffold = allComponents.find(c => c.id === ROOT_SCAFFOLD_ID && c.parentId === null);
-    if (!rootScaffold) return [];
-    
-    let result: DesignComponent[] = [buildNode(rootScaffold)];
-    const directChildrenOfScaffold = allComponents.filter(c => c.parentId === ROOT_SCAFFOLD_ID);
-    directChildrenOfScaffold.forEach(child => {
-      result.push(buildNode(child));
-      result.push(...buildFullScaffoldTreeForRemoteConfig(allComponents, customComponentTemplates, child.id));
-    });
-    // Deduplicate, in case components were passed in a way that could cause duplicates
-    return result.filter((v,i,a)=>a.findIndex(t=>(t.id === v.id))===i);
-  } else { // Recursive call for children of a specific parent
-    let childrenNodes: DesignComponent[] = [];
-    allComponents
-      .filter(c => c.parentId === currentParentId)
-      .forEach(child => {
-        childrenNodes.push(buildNode(child));
-        childrenNodes.push(...buildFullScaffoldTreeForRemoteConfig(allComponents, customComponentTemplates, child.id));
-      });
-    return childrenNodes;
+    const component = allComponents.find(c => c.id === currentId);
+    if (component) {
+      const cleanedComponent = {
+        ...component,
+        properties: cleanEmptyOrNullProperties({ ...component.properties }),
+      };
+      contentAreaComponents.push(cleanedComponent);
+
+      // If this component is a container and has children (IDs), add them to the queue
+      if (component.properties.children && Array.isArray(component.properties.children)) {
+        component.properties.children.forEach(childId => {
+          const childComponentExists = allComponents.find(c => c.id === childId);
+          if (childComponentExists && !visited.has(childId)) { 
+            queue.push(childId);
+          }
+        });
+      }
+    }
   }
+  return contentAreaComponents;
 };
 
 
 export async function publishToRemoteConfigAction(
   components: DesignComponent[],
-  customComponentTemplates: CustomComponentTemplate[],
+  customComponentTemplates: CustomComponentTemplate[], // Kept for signature consistency, not used by buildFlatContentTreeForRemoteConfig
   parameterKey: string
 ): Promise<{ success: boolean; message: string; version?: string }> {
   console.log("publishToRemoteConfigAction: Initiating publish...");
@@ -261,16 +259,19 @@ export async function publishToRemoteConfigAction(
   }
   console.log(`publishToRemoteConfigAction: Publishing to parameter key: "${parameterKey}"`);
 
-
   try {
-    console.log("publishToRemoteConfigAction: Building full component tree for Remote Config...");
-    // Publish the entire component list as a flat array. The client will reconstruct.
-    const fullComponentListForRemote = components.map(c => {
-        const cleaned = { ...c, properties: cleanEmptyOrNullProperties({ ...c.properties })};
-        return cleaned;
-    });
-    const designJsonString = JSON.stringify(fullComponentListForRemote, null, 2);
-    console.log("publishToRemoteConfigAction: Component tree built. Size:", designJsonString.length);
+    console.log("publishToRemoteConfigAction: Building content component tree for Remote Config...");
+    
+    // Get only the components within the main content area (DEFAULT_CONTENT_LAZY_COLUMN_ID)
+    const contentComponentsForRemoteConfig = buildFlatContentTreeForRemoteConfig(components);
+    
+    // The JSON to publish will be an array of these content components.
+    // If contentComponentsForRemoteConfig is empty, an empty array "[]" will be published.
+    const designJsonString = JSON.stringify(contentComponentsForRemoteConfig, null, 2);
+    
+    console.log("publishToRemoteConfigAction: Content components for Remote Config. Count:", contentComponentsForRemoteConfig.length);
+    // To debug the exact JSON being published:
+    // console.log("Remote Config JSON to be published:", designJsonString);
 
 
     console.log("publishToRemoteConfigAction: Getting current Remote Config template...");
@@ -279,7 +280,7 @@ export async function publishToRemoteConfigAction(
 
     currentTemplate.parameters[parameterKey] = {
       defaultValue: { value: designJsonString },
-      description: 'Jetpack Compose UI design generated by Compose Builder (Root Scaffold model).',
+      description: 'Jetpack Compose UI design (content area components only) generated by Compose Builder.',
       valueType: 'JSON',
     };
     console.log("publishToRemoteConfigAction: Parameter set in template.");
@@ -294,7 +295,7 @@ export async function publishToRemoteConfigAction(
 
     return {
       success: true,
-      message: `Design published to Remote Config parameter "${parameterKey}".`,
+      message: `Design (content area only) published to Remote Config parameter "${parameterKey}".`,
       version: updatedTemplate.version?.toString()
     };
 
