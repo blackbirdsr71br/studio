@@ -216,18 +216,18 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         borderWidth: 0, borderColor: '#000000'
       };
     case 'LazyColumn':
-      const isContentArea = componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID; // Use componentId here
+      const isContentArea = componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID;
       return {
         ...commonLayout,
         children: [],
         padding: isContentArea ? 8 : 0,
-        backgroundColor: isContentArea ? 'transparent' : 'rgba(200, 240, 200, 0.3)', // Main content area is transparent
+        backgroundColor: isContentArea ? 'transparent' : 'rgba(200, 240, 200, 0.3)',
         width: 'match_parent',
         height: 'match_parent',
         itemSpacing: 8,
         userScrollEnabled: true, reverseLayout: false,
-        verticalArrangement: 'Top', horizontalAlignment: 'Start', // Default content alignment for the LazyColumn itself
-        paddingBottom: isContentArea ? (8 + 60) : 8, // Specific padding for main content area
+        verticalArrangement: 'Top', horizontalAlignment: 'Start',
+        paddingBottom: isContentArea ? (8 + 60) : 8, // Default paddingBottom for LazyColumn is 8
       };
     case 'LazyRow':
       return {
@@ -270,27 +270,27 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         children: [],
         title: 'Screen Title',
         width: 'match_parent',
-        height: 56, 
-        padding: 0, 
-        paddingStart: 16, 
-        paddingEnd: 16,  
+        height: 48,
+        padding: 0,
+        paddingStart: 16,
+        paddingEnd: 16,
         backgroundColor: '#3F51B5',
         contentColor: '#FFFFFF',
         itemSpacing: 8,
-        horizontalArrangement: 'SpaceBetween', 
+        horizontalArrangement: 'SpaceBetween',
         verticalAlignment: 'CenterVertically'
       };
     case 'BottomNavigationBar':
       return {
-        ...commonLayout, 
+        ...commonLayout,
         children: [],
         width: 'match_parent',
-        height: 56, 
-        padding: 0, 
+        height: 48,
+        padding: 0,
         backgroundColor: '#F0F0F0',
         contentColor: '#000000',
-        itemSpacing: 0, 
-        horizontalArrangement: 'SpaceAround', 
+        itemSpacing: 0,
+        horizontalArrangement: 'SpaceAround',
         verticalAlignment: 'CenterVertically'
       };
     default:
@@ -536,7 +536,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
   ],
   TopAppBar: [
     ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'layoutWeight', 'fillMaxHeight', 'fillMaxWidth', 'height'].includes(p.name) ),
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '56', group: 'Layout' },
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '48', group: 'Layout' },
     { name: 'title', type: 'string', label: 'Title', placeholder: 'Screen Title', group: 'Content' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (e.g. Title, Icons)', group: 'Appearance' },
@@ -544,7 +544,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
   ],
   BottomNavigationBar: [
      ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'layoutWeight', 'fillMaxHeight', 'fillMaxWidth', 'height'].includes(p.name) ),
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '56', group: 'Layout' },
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '48', group: 'Layout' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (e.g. Icons, Labels)', group: 'Appearance' },
     ...rowSpecificLayoutProperties, // BottomNav behaves like a Row for its items
