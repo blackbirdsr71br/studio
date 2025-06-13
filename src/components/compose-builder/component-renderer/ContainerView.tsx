@@ -62,8 +62,8 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
   const defaultAllSidesPadding = (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID ? 8 : (type === 'Card' ? 16 : 0));
   const effectivePaddingTop = paddingTop ?? padding ?? (type === 'TopAppBar' || type === 'BottomNavigationBar' ? 0 : defaultAllSidesPadding) ;
   let effectivePaddingBottom = paddingBottom ?? padding ?? (type === 'TopAppBar' || type === 'BottomNavigationBar' ? 0 : defaultAllSidesPadding);
-  const effectivePaddingStart = paddingStart ?? padding ?? (type === 'TopAppBar' || type === 'BottomNavigationBar' ? 16 : defaultAllSidesPadding);
-  const effectivePaddingEnd = paddingEnd ?? padding ?? (type === 'TopAppBar' || type === 'BottomNavigationBar' ? 16 : defaultAllSidesPadding);
+  const effectivePaddingStart = paddingStart ?? padding ?? (type === 'TopAppBar' || type === 'BottomNavigationBar' ? 0 : defaultAllSidesPadding);
+  const effectivePaddingEnd = paddingEnd ?? padding ?? (type === 'TopAppBar' || type === 'BottomNavigationBar' ? 0 : defaultAllSidesPadding);
 
 
   if (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID && component.parentId === ROOT_SCAFFOLD_ID) {
@@ -170,7 +170,10 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     case 'LazyColumn':
     case 'LazyVerticalGrid':
       flexDirection = reverseLayout ? 'column-reverse' : 'column';
-      specificStyles.overflowY = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
+      // Only apply overflowY if it's NOT the main content area, which is handled by RenderedComponentWrapper
+      if (componentId !== DEFAULT_CONTENT_LAZY_COLUMN_ID) {
+          specificStyles.overflowY = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
+      }
       specificStyles.minHeight = '100px'; 
 
       switch (properties.verticalArrangement) {
@@ -288,11 +291,12 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
 
   if (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
     baseStyle.backgroundColor = containerBackgroundColor || 'transparent'; 
-    baseStyle.overflowY = 'auto';
+    // Remove explicit overflowY from here; it's handled by RenderedComponentWrapper for the content slot
     baseStyle.overflowX = 'hidden';
     baseStyle.width = '100%'; 
     baseStyle.height = '100%'; 
-    delete baseStyle.overflow; 
+    delete baseStyle.overflow; // Remove if set by cornerRadius logic
+    delete baseStyle.overflowY; // Explicitly remove
   }
   
   const showPlaceholder = (componentId === DEFAULT_TOP_APP_BAR_ID && !title && childrenComponents.length === 0) ||
@@ -341,3 +345,4 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     </div>
   );
 }
+
