@@ -236,7 +236,10 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
               </div>
             )}
             {contentChild && (
-              <div style={{ flexGrow: 1, minHeight: 0, overflowY: 'auto', width: '100%' }} className="flex w-full">
+              <div
+                style={{ flexGrow: 1, minHeight: 0, overflowY: 'auto', width: '100%' }}
+                className={cn("flex w-full", "scrollbar-hidden")}
+              >
                 <RenderedComponentWrapper component={contentChild} />
               </div>
             )}
