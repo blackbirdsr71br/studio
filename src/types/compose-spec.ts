@@ -136,7 +136,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
       return {
         width: 'match_parent',
         height: 'match_parent',
-        backgroundColor: 'transparent',
+        backgroundColor: 'transparent', // Scaffold itself is a structural element, often transparent
         children: [DEFAULT_TOP_APP_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_BOTTOM_NAV_BAR_ID]
       };
     case 'Text':
@@ -221,13 +221,13 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         ...commonLayout,
         children: [],
         padding: isContentArea ? 8 : 0,
-        backgroundColor: isContentArea ? 'transparent' : 'rgba(200, 240, 200, 0.3)',
+        backgroundColor: isContentArea ? 'transparent' : 'rgba(200, 240, 200, 0.3)', // Make content area transparent by default
         width: 'match_parent',
-        height: 'match_parent',
+        height: 'match_parent', // For content area, this signifies it should grow
         itemSpacing: 8,
         userScrollEnabled: true, reverseLayout: false,
-        verticalArrangement: 'Top', horizontalAlignment: 'CenterHorizontally',
-        paddingBottom: isContentArea ? (8 + 60) : 8,
+        verticalArrangement: 'Top', horizontalAlignment: 'CenterHorizontally', // Default for content area
+        paddingBottom: isContentArea ? (8 + 60) : 8, // Default paddingBottom for LazyColumn is 8
       };
     case 'LazyRow':
       return {
@@ -270,7 +270,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         children: [],
         title: 'Screen Title',
         width: 'match_parent',
-        height: 50,
+        height: 40, // Reduced height
         padding: 0,
         paddingStart: 16,
         paddingEnd: 16,
@@ -492,7 +492,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
   ],
   Card: [
     ...commonLayoutProperties,
-    ...columnSpecificLayoutProperties, 
+    ...columnSpecificLayoutProperties,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (Overrides default contrast)', group: 'Appearance' },
     { name: 'cornerRadiusTopLeft', type: 'number', label: 'Corner Radius TL (dp)', placeholder: '8', group: 'Appearance' },
@@ -503,7 +503,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     { name: 'borderWidth', type: 'number', label: 'Border Width (dp)', placeholder: '0', group: 'Appearance' },
     { name: 'borderColor', type: 'color', label: 'Border Color', group: 'Appearance' },
   ],
-  LazyColumn: [ 
+  LazyColumn: [
     ...commonLayoutProperties,
     ...columnSpecificLayoutProperties,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
@@ -519,13 +519,13 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
   ],
   LazyVerticalGrid: [
     ...commonLayoutProperties,
-    ...columnSpecificLayoutProperties, 
+    ...columnSpecificLayoutProperties,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'columns', type: 'number', label: 'Number of Columns', placeholder: '2', group: 'Layout' },
   ],
   LazyHorizontalGrid: [
     ...commonLayoutProperties,
-    ...rowSpecificLayoutProperties, 
+    ...rowSpecificLayoutProperties,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'rows', type: 'number', label: 'Number of Rows', placeholder: '2', group: 'Layout' },
   ],
@@ -536,18 +536,18 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
   ],
   TopAppBar: [
     ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'layoutWeight', 'fillMaxHeight', 'fillMaxWidth', 'height'].includes(p.name) ),
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '50', group: 'Layout' },
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '40', group: 'Layout' }, // Reduced placeholder
     { name: 'title', type: 'string', label: 'Title', placeholder: 'Screen Title', group: 'Content' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (e.g. Title, Icons)', group: 'Appearance' },
-    ...rowSpecificLayoutProperties, 
+    ...rowSpecificLayoutProperties,
   ],
   BottomNavigationBar: [
      ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'layoutWeight', 'fillMaxHeight', 'fillMaxWidth', 'height'].includes(p.name) ),
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '48', group: 'Layout' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (e.g. Icons, Labels)', group: 'Appearance' },
-    ...rowSpecificLayoutProperties, 
+    ...rowSpecificLayoutProperties,
   ],
 };
 
@@ -559,7 +559,7 @@ export const CONTAINER_TYPES: ReadonlyArray<ComponentType | string > = [
   'Column', 'Row', 'Box', 'Card',
   'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid',
   'TopAppBar', 'BottomNavigationBar',
-  'Scaffold' 
+  'Scaffold'
 ];
 
 export function isContainerType(type: ComponentType | string, customTemplates?: CustomComponentTemplate[]): boolean {
@@ -570,12 +570,12 @@ export function isContainerType(type: ComponentType | string, customTemplates?: 
       if (template && template.rootComponentId) {
         const rootOfTemplate = template.componentTree.find(c => c.id === template.rootComponentId);
         if (rootOfTemplate) {
-          
+
           return isContainerType(rootOfTemplate.type, customTemplates);
         }
       }
     }
-    return false; 
+    return false;
   }
   return CONTAINER_TYPES.includes(type as ComponentType);
 }
@@ -625,42 +625,42 @@ const BaseModalPropertiesSchema = z.object({
   textDecoration: z.enum(['None', 'Underline', 'LineThrough']).optional(),
   lineHeight: z.number().min(0).optional(),
   title: z.string().optional(),
-  
-}).catchall(z.any()); 
+
+}).catchall(z.any());
 
 
 type ModalComponentNodePlain = {
   id: string;
   type: string;
   name: string;
-  parentId: string | null; 
+  parentId: string | null;
   properties?: Partial<BaseComponentProps> & { children?: ModalComponentNodePlain[] };
 };
 
 const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =>
   z.object({
     id: z.string().min(1, "Component ID cannot be empty"),
-    type: z.string().min(1, "Component type cannot be empty"), 
+    type: z.string().min(1, "Component type cannot be empty"),
     name: z.string().min(1, "Component name cannot be empty"),
-    parentId: z.string().nullable(), 
+    parentId: z.string().nullable(),
     properties: BaseModalPropertiesSchema.extend({
       children: z.array(ModalComponentNodeSchema).optional(),
     }).optional(),
   }).refine(data => {
-    
+
     if (data.type === 'Image') {
       if (data.properties?.src && !z.string().url().or(z.string().startsWith("data:image/")).safeParse(data.properties.src).success) {
-        
+
       }
     }
-    
+
     if (data.type === 'Spacer') {
         const props = data.properties || {};
         const hasWeight = typeof props.layoutWeight === 'number' && props.layoutWeight > 0;
         const hasWidth = typeof props.width === 'number' && props.width > 0;
         const hasHeight = typeof props.height === 'number' && props.height > 0;
         if (!hasWeight && !hasWidth && !hasHeight) {
-            
+
         }
     }
     return true;
@@ -669,4 +669,3 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
 
 export const ModalJsonSchema = z.array(ModalComponentNodeSchema);
 
-    
