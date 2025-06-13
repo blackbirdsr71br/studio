@@ -12,8 +12,8 @@ export function ButtonView({ properties }: ButtonViewProps) {
     text = 'Button',
     backgroundColor = '#3F51B5',
     textColor,
-    fontSize = 14, // Use the fontSize from properties
-    padding, // All sides padding
+    fontSize = 14,
+    padding, 
     paddingTop,
     paddingBottom,
     paddingStart,
@@ -30,7 +30,7 @@ export function ButtonView({ properties }: ButtonViewProps) {
   const style: React.CSSProperties = {
     backgroundColor,
     color: effectiveTextColor,
-    fontSize: `${fontSize}px`, // Apply fontSize
+    fontSize: `${fontSize}px`,
     paddingTop: `${paddingTop ?? padding ?? 8}px`,
     paddingBottom: `${paddingBottom ?? padding ?? 8}px`,
     paddingLeft: `${paddingStart ?? padding ?? 12}px`,
@@ -41,9 +41,10 @@ export function ButtonView({ properties }: ButtonViewProps) {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: '80px',
-    minHeight: '36px',
     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    width: '100%', // Fill the wrapper provided by RenderedComponentWrapper
+    height: '100%', // Fill the wrapper provided by RenderedComponentWrapper
+    boxSizing: 'border-box', // Ensure padding is included within width/height
   };
 
   return (
