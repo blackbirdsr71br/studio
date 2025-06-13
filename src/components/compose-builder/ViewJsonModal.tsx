@@ -3,21 +3,34 @@
 
 import React, { useState, useImperativeHandle, forwardRef, useCallback, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDesign } from '@/contexts/DesignContext';
 import {
   getDesignComponentsAsJsonAction,
-  convertCanvasToCustomJsonAction
+  convertCanvasToCustomJsonAction,
+  publishCustomJsonToRemoteConfigAction // Import new action
 } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Copy, Download, Wand2, FileJson, Info, Save, AlertTriangle } from 'lucide-react';
+import { Loader2, Copy, Download, Wand2, FileJson, Info, Save, AlertTriangle, UploadCloud } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
 import { json as jsonLang } from '@codemirror/lang-json';
 import { githubLight, githubDark } from '@uiw/codemirror-theme-github';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ModalJsonSchema } from '@/types/compose-spec'; 
+import { ModalJsonSchema } from '@/types/compose-spec';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export interface ViewJsonModalRef {
@@ -44,6 +57,12 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
   const [isCustomJsonFromCanvasLoading, setIsCustomJsonFromCanvasLoading] = useState(false);
   const [customJsonFromCanvasError, setCustomJsonFromCanvasError] = useState<string | null>(null);
 
+  // State for publishing custom JSON
+  const [showPublishDialog, setShowPublishDialog] = useState(false);
+  const [publishParameterKey, setPublishParameterKey] = useState<string>("CUSTOM_COMMAND_JSON_V1");
+  const [isPublishingCustomJson, setIsPublishingCustomJson] = useState(false);
+
+
   const { components, customComponentTemplates, overwriteComponents } = useDesign();
   const { toast } = useToast();
   const { resolvedTheme } = useTheme();
@@ -55,7 +74,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
       default: return "";
     }
   };
-  
+
   const currentError = (): string | null => {
      switch (activeTab) {
       case "canvasJson": return canvasJsonError || syntaxError || (validationErrors.length > 0 ? validationErrors.join('; ') : null);
@@ -114,7 +133,6 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
       if (activeTab === "canvasJson") {
          handleFetchDesignJson();
       } else if (activeTab === "generateCustomJsonFromCanvas") {
-        // Fetch only if it's not already loaded or errored
         if (!customJsonFromCanvasString && !customJsonFromCanvasError) {
            handleGenerateCustomJsonFromCanvas();
         }
@@ -125,7 +143,6 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
   useImperativeHandle(ref, () => ({
     openModal: () => {
       setIsOpen(true);
-      // Reset relevant states when modal opens, forcing a fetch for the active tab
       setCanvasJsonString("");
       setCanvasJsonError(null);
       setSyntaxError(null);
@@ -135,15 +152,16 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
       setCustomJsonFromCanvasString("");
       setCustomJsonFromCanvasError(null);
       setIsCustomJsonFromCanvasLoading(false);
-      
-      // Logic to trigger fetch for the currently selected tab will be handled by the useEffect above
+
+      setIsPublishingCustomJson(false);
+      setShowPublishDialog(false);
     }
   }));
 
   const handleCanvasJsonChange = useCallback((value: string) => {
     setCanvasJsonString(value);
-    setSyntaxError(null); 
-    setValidationErrors([]); 
+    setSyntaxError(null);
+    setValidationErrors([]);
   }, []);
 
   const handleSaveChangesToCanvas = () => {
@@ -163,14 +181,13 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
         });
         return;
       }
-      
+
       const result = overwriteComponents(validationResult.data);
       if (result.success) {
         toast({
           title: "Canvas Updated",
           description: "JSON changes applied to the design canvas.",
         });
-        // setIsOpen(false); // Consider if modal should close on successful save
       } else {
         setCanvasJsonError(result.error || "Failed to apply JSON to canvas.");
          toast({
@@ -190,7 +207,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
       });
     }
   };
-  
+
   const handleCopyToClipboard = async () => {
     const jsonToCopy = currentJsonInEditor();
     if (jsonToCopy) {
@@ -237,10 +254,68 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
       });
     }
   };
-  
+
+  const handleOpenPublishCustomJsonDialog = () => {
+    if (customJsonFromCanvasString && !customJsonFromCanvasError && !isCustomJsonFromCanvasLoading) {
+        setShowPublishDialog(true);
+    } else {
+        toast({
+            title: "Cannot Publish",
+            description: "No valid custom JSON available to publish.",
+            variant: "destructive"
+        });
+    }
+  };
+
+  const handleActualPublishCustomJson = async () => {
+    if (!publishParameterKey.trim()) {
+        toast({
+            title: "Validation Error",
+            description: "Remote Config parameter key cannot be empty.",
+            variant: "destructive"
+        });
+        return;
+    }
+    if (!customJsonFromCanvasString) {
+        toast({
+            title: "Error",
+            description: "No custom JSON available to publish.",
+            variant: "destructive"
+        });
+        return;
+    }
+
+    setIsPublishingCustomJson(true);
+    try {
+        const result = await publishCustomJsonToRemoteConfigAction(customJsonFromCanvasString, publishParameterKey.trim());
+        if (result.success) {
+            toast({
+                title: "Publish Successful",
+                description: `${result.message} (Version: ${result.version || 'N/A'})`
+            });
+            setShowPublishDialog(false); // Close dialog on success
+        } else {
+            toast({
+                title: "Publish Failed",
+                description: result.message,
+                variant: "destructive"
+            });
+        }
+    } catch (error) {
+        toast({
+            title: "Publish Error",
+            description: error instanceof Error ? error.message : "An unexpected error occurred.",
+            variant: "destructive"
+        });
+    } finally {
+        setIsPublishingCustomJson(false);
+    }
+  };
+
   const isLoading = isCanvasJsonLoading || isCustomJsonFromCanvasLoading;
   const canPerformCopyDownloadActionsValue = !isLoading && !!currentJsonInEditor() && !currentError();
   const canSaveChangesValue = activeTab === 'canvasJson' && !isCanvasJsonLoading && !!canvasJsonString && !syntaxError && validationErrors.length === 0 && !canvasJsonError;
+  const canPublishCustomJson = activeTab === 'generateCustomJsonFromCanvas' && !!customJsonFromCanvasString && !customJsonFromCanvasError && !isCustomJsonFromCanvasLoading && !isPublishingCustomJson;
 
 
   return (
@@ -250,7 +325,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
           <DialogTitle className="font-headline">View / Generate JSON</DialogTitle>
           <DialogDescription>
             View or edit the canvas design JSON (changes apply to main canvas after saving).
-            Or generate custom command JSON from the current canvas state.
+            Or generate and publish custom command JSON from the current canvas state.
           </DialogDescription>
         </DialogHeader>
 
@@ -260,7 +335,6 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
             <TabsTrigger value="generateCustomJsonFromCanvas" className="text-xs px-1 py-1.5"><Wand2 className="mr-1.5"/>Custom from Canvas</TabsTrigger>
           </TabsList>
 
-          {/* Tab: Design Canvas JSON */}
           <TabsContent value="canvasJson" className="flex-grow flex flex-col space-y-2 min-h-0">
             <Label htmlFor="canvasJsonEditor" className="text-sm font-medium">Canvas Design (Editable)</Label>
             <div className="flex-grow rounded-md border bg-muted/30 overflow-auto min-h-[200px] relative">
@@ -300,11 +374,10 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
             </Button>
           </TabsContent>
 
-          {/* Tab: Generate Custom JSON from Canvas */}
           <TabsContent value="generateCustomJsonFromCanvas" className="flex-grow flex flex-col space-y-2 min-h-0">
             <div className="flex justify-between items-center">
               <Label htmlFor="customJsonFromCanvasEditor" className="text-sm font-medium">Custom Command JSON (from Canvas)</Label>
-              <Button onClick={handleGenerateCustomJsonFromCanvas} variant="outline" size="sm" disabled={isCustomJsonFromCanvasLoading}>
+              <Button onClick={handleGenerateCustomJsonFromCanvas} variant="outline" size="sm" disabled={isCustomJsonFromCanvasLoading || isPublishingCustomJson}>
                 {isCustomJsonFromCanvasLoading ? <Loader2 className="mr-1.5 animate-spin"/> : <Wand2 className="mr-1.5"/>} Regenerate
               </Button>
             </div>
@@ -320,7 +393,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
                   height="100%"
                   extensions={[jsonLang()]}
                   theme={resolvedTheme === 'dark' ? githubDark : githubLight}
-                  readOnly={true} 
+                  readOnly={true}
                   className="text-sm h-full"
                   basicSetup={{ lineNumbers: true, foldGutter: true, highlightActiveLine: true }}
                   id="customJsonFromCanvasEditor"
@@ -328,11 +401,15 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
               )}
             </div>
             {customJsonFromCanvasError && <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error Generating JSON</AlertTitle><AlertDescription>{customJsonFromCanvasError}</AlertDescription></Alert>}
-             <Alert>
+            <Alert>
                 <Info className="h-4 w-4"/>
                 <AlertTitle>Note</AlertTitle>
                 <AlertDescription>This JSON is generated for use with server-driven UI systems expecting the custom command format. It's read-only here.</AlertDescription>
             </Alert>
+            <Button onClick={handleOpenPublishCustomJsonDialog} disabled={!canPublishCustomJson} className="w-full sm:w-auto mt-2">
+                {isPublishingCustomJson ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
+                Publish Custom JSON to Remote Config
+            </Button>
           </TabsContent>
         </Tabs>
 
@@ -344,10 +421,39 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
             <Download className="mr-2" /> Download .json
           </Button>
         </DialogFooter>
+
+        {/* Dialog for entering Remote Config Parameter Key */}
+        <AlertDialog open={showPublishDialog} onOpenChange={setShowPublishDialog}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Publish Custom JSON to Remote Config</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Enter the parameter key where this custom JSON will be published.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="py-2 space-y-1.5">
+                    <Label htmlFor="publishParameterKeyInput">Parameter Key</Label>
+                    <Input
+                        id="publishParameterKeyInput"
+                        value={publishParameterKey}
+                        onChange={(e) => setPublishParameterKey(e.target.value)}
+                        placeholder="e.g., MY_CUSTOM_UI_JSON"
+                        disabled={isPublishingCustomJson}
+                    />
+                </div>
+                <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isPublishingCustomJson}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleActualPublishCustomJson} disabled={isPublishingCustomJson || !publishParameterKey.trim()}>
+                        {isPublishingCustomJson && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Confirm & Publish
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
       </DialogContent>
     </Dialog>
   );
 });
 
 ViewJsonModal.displayName = 'ViewJsonModal';
-
