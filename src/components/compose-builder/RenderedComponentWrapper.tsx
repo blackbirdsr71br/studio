@@ -71,46 +71,56 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
   const [{ canDrop, isOver }, drop] = useDrop(() => ({
     accept: [ItemTypes.COMPONENT_LIBRARY_ITEM, ItemTypes.CANVAS_COMPONENT_ITEM],
     canDrop: (item: DraggedCanvasItem | DraggedLibraryItem, monitor) => {
-      if (component.id === ROOT_SCAFFOLD_ID) return false; // Cannot drop directly on Scaffold root
-      
-      // Only content LazyColumn or user-added containers *within* content LazyColumn can accept drops
-      const isDirectContentAreaChild = component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID;
-      let isDescendantOfContentArea = false;
-      let tempParent = getComponentById(component.parentId || "");
-      while(tempParent){
-        if(tempParent.id === DEFAULT_CONTENT_LAZY_COLUMN_ID){
-          isDescendantOfContentArea = true;
-          break;
-        }
-        tempParent = getComponentById(tempParent.parentId || "");
-      }
-
-      if (!isDirectContentAreaChild && !isDescendantOfContentArea) {
-        return false;
-      }
-      if (!isContainerType(component.type, customComponentTemplates)) {
-        return false;
-      }
-
+      // Prevent dropping onto itself
       if (monitor.getItemType() === ItemTypes.CANVAS_COMPONENT_ITEM && (item as DraggedCanvasItem).id === component.id) {
         return false;
       }
+      // Prevent dropping into its own children/descendants
       if (monitor.getItemType() === ItemTypes.CANVAS_COMPONENT_ITEM) {
-        let currentParentId = component.parentId;
-        while(currentParentId) {
-            if (currentParentId === (item as DraggedCanvasItem).id) return false;
-            const parentComponent = getComponentById(currentParentId);
-            currentParentId = parentComponent ? parentComponent.parentId : null;
+        let currentParentIdToCheck = component.parentId;
+        while (currentParentIdToCheck) {
+          if (currentParentIdToCheck === (item as DraggedCanvasItem).id) return false;
+          const parentComponent = getComponentById(currentParentIdToCheck);
+          currentParentIdToCheck = parentComponent ? parentComponent.parentId : null;
         }
       }
-      return true;
+
+      // Target must be a container type
+      if (!isContainerType(component.type, customComponentTemplates)) {
+        return false;
+      }
+      
+      // Allow drops into TopAppBar, BottomNavBar, ContentArea, or their container descendants
+      const isTargetTopAppBar = component.id === DEFAULT_TOP_APP_BAR_ID;
+      const isTargetBottomNavBar = component.id === DEFAULT_BOTTOM_NAV_BAR_ID;
+      const isTargetContentArea = component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID;
+
+      if (isTargetTopAppBar || isTargetBottomNavBar || isTargetContentArea) {
+        return true;
+      }
+
+      // Check if descendant of allowed areas
+      let tempParent = getComponentById(component.parentId || "");
+      while(tempParent){
+        if(tempParent.id === DEFAULT_TOP_APP_BAR_ID || 
+           tempParent.id === DEFAULT_BOTTOM_NAV_BAR_ID || 
+           tempParent.id === DEFAULT_CONTENT_LAZY_COLUMN_ID){
+          return true; // Is a descendant of one of the primary drop zones
+        }
+        if (tempParent.id === ROOT_SCAFFOLD_ID) break; // Stop if we reach scaffold root without finding a zone
+        tempParent = getComponentById(tempParent.parentId || "");
+      }
+      
+      return false; // If not one of the primary zones or their container descendants
     },
     drop: (item: DraggedCanvasItem | DraggedLibraryItem, monitor) => {
       if (monitor.didDrop()) return;
       
       let targetParentIdForDrop = component.id;
-       if (!isContainerType(component.type, customComponentTemplates)) {
-         targetParentIdForDrop = component.parentId || DEFAULT_CONTENT_LAZY_COLUMN_ID; // Fallback to own parent or content area
+      // If the direct drop target component itself isn't a container (e.g., a Text inside TopAppBar),
+      // then the item should be added to the parent of this non-container component (which should be the TopAppBar).
+      if (!isContainerType(component.type, customComponentTemplates)) {
+         targetParentIdForDrop = component.parentId || DEFAULT_CONTENT_LAZY_COLUMN_ID; 
       }
 
 
@@ -126,7 +136,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       }
     },
     collect: (monitor) => ({
-      isOver: monitor.isOver({ shallow: true }),
+      isOver: monitor.isOver({ shallow: true }), // shallow: true means only for this specific component, not if over a child
       canDrop: monitor.canDrop(),
     }),
   }), [component.id, component.type, component.parentId, addComponent, moveComponent, customComponentTemplates, getComponentById, isContainerType]);
@@ -221,17 +231,17 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
         return (
           <div className="flex flex-col w-full h-full">
             {topBarChild && (
-              <div style={{ flexShrink: 0, width: '100%', height: `${topBarChild.properties.height || 30}px` }} className="flex">
+              <div style={{ flexShrink: 0, width: '100%', height: `${topBarChild.properties.height || 30}px` }} className="flex w-full">
                 <RenderedComponentWrapper component={topBarChild} />
               </div>
             )}
             {contentChild && (
-              <div style={{ flexGrow: 1, minHeight: 0, overflowY: 'auto', width: '100%' }} className="flex">
+              <div style={{ flexGrow: 1, minHeight: 0, overflowY: 'auto', width: '100%' }} className="flex w-full">
                 <RenderedComponentWrapper component={contentChild} />
               </div>
             )}
             {bottomBarChild && (
-              <div style={{ flexShrink: 0, width: '100%', height: `${bottomBarChild.properties.height || 48}px` }} className="flex">
+              <div style={{ flexShrink: 0, width: '100%', height: `${bottomBarChild.properties.height || 48}px` }} className="flex w-full">
                  <RenderedComponentWrapper component={bottomBarChild} />
               </div>
             )}
@@ -286,14 +296,13 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
   const getDimensionValue = (propName: 'width' | 'height', propValue: any, fillValue: boolean | undefined, componentType: string, componentId: string): string => {
     if (componentId === ROOT_SCAFFOLD_ID) return '100%'; 
     
-    // For direct children of Scaffold, width is always 100%. Height is managed by flex or specific value.
-    if (component.parentId === ROOT_SCAFFOLD_ID) {
+    if (component.parentId === ROOT_SCAFFOLD_ID) { // TopAppBar, ContentLazyColumn, BottomNavBar
         if (propName === 'width') return '100%';
-        if (propName === 'height') {
-            if (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID) return '100%'; // Will be controlled by flex-grow
-            if (isNumericValue(propValue)) return `${propValue}px`; // Top/Bottom bar height
-            return (componentType === 'TopAppBar' ? '30px' : '48px'); // Default heights if not set
-        }
+        // Height for these is now controlled by the Scaffold's rendering logic via direct style on their divs
+        if (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID && propName === 'height') return '100%'; // It will grow
+        // For TopAppBar/BottomNavBar, their height is set by Scaffold's direct style on the wrapper div based on their own height prop
+        // so here we can return 'auto' or '100%' to fill their allocated slot.
+        return '100%'; 
     }
 
     if (fillValue) return '100%';
@@ -319,7 +328,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
 
 
   if (component.type === 'Image' || component.type === 'Card' || (component.properties.cornerRadiusTopLeft || 0) > 0 || (component.properties.cornerRadiusTopRight || 0) > 0 || (component.properties.cornerRadiusBottomLeft || 0) > 0 || (component.properties.cornerRadiusBottomRight || 0) > 0) {
-    wrapperStyle.overflow = 'hidden'; // Apply overflow hidden only if there's a corner radius
+    wrapperStyle.overflow = 'hidden'; 
     wrapperStyle.borderTopLeftRadius = `${component.properties.cornerRadiusTopLeft || 0}px`;
     wrapperStyle.borderTopRightRadius = `${component.properties.cornerRadiusTopRight || 0}px`;
     wrapperStyle.borderBottomRightRadius = `${component.properties.cornerRadiusBottomRight || 0}px`;
@@ -347,8 +356,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
                               !component.properties.fillMaxHeight &&
                               isNumericValue(component.properties.height);
 
-  // Class to ensure the component itself is a flex item if it's a direct child of a flex container (like Scaffold's slots)
-  const flexItemClass = component.parentId === ROOT_SCAFFOLD_ID ? 'flex w-full' : '';
+  const flexItemClass = (component.parentId === ROOT_SCAFFOLD_ID || component.id === ROOT_SCAFFOLD_ID) ? 'flex w-full' : '';
 
 
   return (
@@ -367,7 +375,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
           'cursor-grabbing': isDragging,
         },
         containerDropTargetStyle,
-        (component.parentId === ROOT_SCAFFOLD_ID || component.id === ROOT_SCAFFOLD_ID) ? 'flex' : '' 
+        (component.id === ROOT_SCAFFOLD_ID) ? 'flex' : '' 
       )}
       onClick={handleClick}
       data-component-id={component.id}
@@ -390,5 +398,3 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     </div>
   );
 }
-
-    

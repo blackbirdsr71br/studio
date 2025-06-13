@@ -2,10 +2,10 @@
 'use client';
 import type { DesignComponent } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from '../RenderedComponentWrapper';
-import { getComponentDisplayName, DEFAULT_CONTENT_LAZY_COLUMN_ID, isCustomComponentType, ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID } from '@/types/compose-spec';
+import { getComponentDisplayName, DEFAULT_CONTENT_LAZY_COLUMN_ID, isCustomComponentType, ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID } from '@/types/compose-spec';
 import { useDesign } from '@/contexts/DesignContext';
 import { getContrastingTextColor } from '@/lib/utils';
-import { TextView } from './TextView'; // Import TextView
+import { TextView } from './TextView'; 
 
 interface ContainerViewProps {
   component: DesignComponent;
@@ -55,8 +55,8 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     contentColor: explicitContentColor,
     borderWidth,
     borderColor,
-    title, // For TopAppBar
-    titleFontSize, // For TopAppBar
+    title, 
+    titleFontSize, 
   } = properties;
 
   const defaultAllSidesPadding = (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID ? 8 : (type === 'Card' ? 16 : 0));
@@ -93,7 +93,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
 
   if (componentId === DEFAULT_TOP_APP_BAR_ID || type === 'TopAppBar') {
     defaultWidth = 'match_parent';
-    defaultHeight = properties.height || 30; // Use actual height prop or default
+    defaultHeight = properties.height || 30; 
   } else if (type === 'BottomNavigationBar') {
     defaultWidth = 'match_parent';
     defaultHeight = properties.height || 48;
@@ -151,7 +151,6 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     const contrastingColor = getContrastingTextColor(containerBackgroundColor);
     (specificStyles as any)['--effective-foreground-color'] = contrastingColor;
   } else {
-    // For TopAppBar and BottomNavBar, if no explicit contentColor or bgColor, use theme foreground
     if (type === 'TopAppBar' || type === 'BottomNavigationBar') {
       (specificStyles as any)['--effective-foreground-color'] = 'hsl(var(--foreground))';
     }
@@ -172,7 +171,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     case 'LazyVerticalGrid':
       flexDirection = reverseLayout ? 'column-reverse' : 'column';
       specificStyles.overflowY = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
-      specificStyles.minHeight = '100px'; // ensure some min height
+      specificStyles.minHeight = '100px'; 
 
       switch (properties.verticalArrangement) {
         case 'Top': specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
@@ -190,7 +189,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
         default: specificStyles.alignItems = 'flex-start';
       }
       if (type === 'LazyVerticalGrid') {
-        flexDirection = 'row'; // Grids are row-based for flex wrap
+        flexDirection = 'row'; 
         specificStyles.flexWrap = 'wrap';
       }
       break;
@@ -198,7 +197,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     case 'LazyHorizontalGrid':
       flexDirection = reverseLayout ? 'row-reverse' : 'row';
       specificStyles.overflowX = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
-      specificStyles.minHeight = '80px'; // ensure some min height
+      specificStyles.minHeight = '80px'; 
 
       switch (properties.horizontalArrangement) {
           case 'Start': specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
@@ -216,7 +215,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
           default: specificStyles.alignItems = 'flex-start';
       }
        if (type === 'LazyHorizontalGrid') {
-          flexDirection = 'column'; // Grids are column-based for flex wrap if horizontal
+          flexDirection = 'column'; 
           specificStyles.flexWrap = 'wrap';
           specificStyles.height = styleHeight; 
       }
@@ -228,11 +227,11 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     case 'BottomNavigationBar':
       specificStyles.backgroundColor = containerBackgroundColor || 'hsl(var(--secondary))';
       specificStyles.alignItems = properties.verticalAlignment ? (properties.verticalAlignment.toLowerCase().includes('center') ? 'center' : properties.verticalAlignment.toLowerCase() as any) : 'center';
-      specificStyles.justifyContent = properties.horizontalArrangement ? properties.horizontalArrangement.toLowerCase().replace('space', 'space-') as any : 'space-between';
+      specificStyles.justifyContent = properties.horizontalArrangement ? properties.horizontalArrangement.toLowerCase().replace('space', 'space-') as any : (type === 'TopAppBar' ? 'flex-start' : 'space-around');
       specificStyles.color = explicitContentColor || getContrastingTextColor(specificStyles.backgroundColor as string);
-      (specificStyles as any)['--effective-foreground-color'] = specificStyles.color; // for children TextView
+      (specificStyles as any)['--effective-foreground-color'] = specificStyles.color; 
       break;
-    default: // Column, Row, custom components behaving as containers
+    default: 
       specificStyles.backgroundColor = containerBackgroundColor || 'transparent';
       if (type === 'Column' || (isCustomComponentType(type) && !isRow) ) {
           switch (properties.verticalArrangement) {
@@ -288,28 +287,32 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
   };
 
   if (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
-    baseStyle.backgroundColor = containerBackgroundColor || 'transparent'; // Default to theme background
+    baseStyle.backgroundColor = containerBackgroundColor || 'transparent'; 
     baseStyle.overflowY = 'auto';
     baseStyle.overflowX = 'hidden';
-    baseStyle.width = '100%'; // Must fill width
-    baseStyle.height = '100%'; // flex-grow gives it its height, but 100% confirms it tries to fill its flex item area
-    delete baseStyle.overflow; // remove general overflow if set by corner radius logic
+    baseStyle.width = '100%'; 
+    baseStyle.height = '100%'; 
+    delete baseStyle.overflow; 
   }
+  
+  const showPlaceholder = (componentId === DEFAULT_TOP_APP_BAR_ID && !title && childrenComponents.length === 0) ||
+                        (componentId === DEFAULT_BOTTOM_NAV_BAR_ID && childrenComponents.length === 0) ||
+                        (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID && childrenComponents.length === 0) ||
+                        (![DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID].includes(componentId) && childrenComponents.length === 0);
 
   const placeholderText = `Drop components into this ${getComponentDisplayName(type, customComponentTemplates.find(t => t.templateId === type)?.name)}`;
 
   const isWeightedContainer = type === 'Row' || type === 'Column';
 
-  // Special rendering for TopAppBar title
   const topAppBarTitleElement = type === 'TopAppBar' && title ? (
     <div style={{ flexShrink: 0, marginRight: (childrenComponents.length > 0 ? (itemSpacing || 8) : 0) + 'px' }} className="top-app-bar-title-container">
-      <TextView properties={{ text: title, fontSize: titleFontSize || 20, textColor: baseStyle.color }} />
+      <TextView properties={{ text: title, fontSize: titleFontSize || 20, textColor: baseStyle.color as string }} />
     </div>
   ) : null;
 
   return (
     <div style={baseStyle} className="select-none component-container" data-container-id={component.id} data-container-type={type}>
-      {childrenComponents.length === 0 && componentId !== DEFAULT_CONTENT_LAZY_COLUMN_ID && type !== 'TopAppBar' && (
+      {showPlaceholder && (
         <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground/70 text-xs pointer-events-none p-2 text-center leading-tight">
           {placeholderText}
           {(type === 'LazyVerticalGrid' && properties.columns) && <span className="mt-1 text-xxs opacity-70">({properties.columns} columns)</span>}
@@ -321,16 +324,15 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
         let childSpecificStyle: React.CSSProperties = {};
         if (isWeightedContainer && child.properties.layoutWeight && child.properties.layoutWeight > 0) {
             childSpecificStyle.flexGrow = child.properties.layoutWeight;
-            childSpecificStyle.flexShrink = 1; // Allow shrinking if needed
-            childSpecificStyle.flexBasis = '0%'; // Basis of 0% allows grow/shrink to work from nothing
+            childSpecificStyle.flexShrink = 1; 
+            childSpecificStyle.flexBasis = '0%'; 
             if (flexDirection === 'row') {
-                childSpecificStyle.width = 'auto'; // Let flex-basis and flex-grow determine width
+                childSpecificStyle.width = 'auto'; 
             } else {
-                childSpecificStyle.height = 'auto'; // Let flex-basis and flex-grow determine height
+                childSpecificStyle.height = 'auto'; 
             }
         }
         return (
-          // Wrap child RenderedComponentWrapper in a div that can take flex item styles
           <div key={child.id} style={childSpecificStyle} className="flex"> 
             <RenderedComponentWrapper component={child} />
           </div>
@@ -339,5 +341,3 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     </div>
   );
 }
-
-    

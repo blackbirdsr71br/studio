@@ -35,7 +35,6 @@ const DesignContext = createContext<DesignContextType | undefined>(undefined);
 const CUSTOM_TEMPLATES_COLLECTION = 'customComponentTemplates';
 const SAVED_LAYOUTS_COLLECTION = 'savedLayouts';
 
-// Core Scaffold element IDs that should not be deleted or saved as custom.
 const CORE_SCAFFOLD_ELEMENT_IDS = [ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_BOTTOM_NAV_BAR_ID];
 
 
@@ -46,7 +45,6 @@ const deepClone = <T>(obj: T): T => {
 export function createInitialScaffoldDesign(): { components: DesignComponent[], nextId: number, selectedId: string } {
   const scaffoldProps = getDefaultProperties('Scaffold', ROOT_SCAFFOLD_ID);
   const topAppBarProps = getDefaultProperties('TopAppBar', DEFAULT_TOP_APP_BAR_ID);
-  // Pass the ID to getDefaultProperties so it can apply specific paddingBottom for the content area
   const contentLazyColumnProps = getDefaultProperties('LazyColumn', DEFAULT_CONTENT_LAZY_COLUMN_ID);
   const bottomNavBarProps = getDefaultProperties('BottomNavigationBar', DEFAULT_BOTTOM_NAV_BAR_ID);
 
@@ -73,9 +71,9 @@ export function createInitialScaffoldDesign(): { components: DesignComponent[], 
     id: DEFAULT_CONTENT_LAZY_COLUMN_ID,
     type: 'LazyColumn',
     name: 'Main Content Area',
-    properties: { // contentLazyColumnProps already includes the special paddingBottom
+    properties: {
       ...contentLazyColumnProps,
-      children: [], // User components go here
+      children: [], 
     },
     parentId: ROOT_SCAFFOLD_ID,
   };
@@ -90,7 +88,7 @@ export function createInitialScaffoldDesign(): { components: DesignComponent[], 
 
   return {
     components: [rootScaffold, topAppBar, contentLazyColumn, bottomNavBar],
-    nextId: 1,
+    nextId: 1, 
     selectedId: DEFAULT_CONTENT_LAZY_COLUMN_ID,
   };
 }
@@ -224,33 +222,33 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       let updatedComponentsList = [...prev.components];
       let finalSelectedComponentId = '';
       let componentsToAdd: DesignComponent[] = [];
+      
       let parentToUpdateId = parentIdOrNull;
 
-      if (type === "ScaffoldStructure") {
-        // Re-initialize the entire canvas to the default scaffold structure
-        const { components: newScaffoldComponents, nextId: newNextId, selectedId: newSelectedId } = createInitialScaffoldDesign();
-        updatedComponentsList = newScaffoldComponents;
-        currentNextId = newNextId;
-        finalSelectedComponentId = newSelectedId;
-        
-        // No specific parent to update in this case as we are resetting
-        return {
-          ...prev,
-          components: updatedComponentsList,
-          selectedComponentId: finalSelectedComponentId,
-          nextId: currentNextId,
-        };
-      }
-
-
-      if (!parentToUpdateId || !getComponentById(parentToUpdateId) || parentToUpdateId === ROOT_SCAFFOLD_ID) {
+      if (!parentToUpdateId || parentToUpdateId === ROOT_SCAFFOLD_ID) {
         parentToUpdateId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
       }
 
-      const parentComponent = getComponentById(parentToUpdateId);
-      if (!parentComponent || !isContainerType(parentComponent.type, prev.customComponentTemplates)) {
-         console.warn(`Attempted to add component to non-container or non-existent parent: ${parentToUpdateId}. Defaulting to content area.`);
+      let parentComponent = getComponentById(parentToUpdateId);
+
+      if (!parentComponent) {
+         console.warn(`Target parent ${parentToUpdateId} for addComponent not found. Defaulting to content area.`);
          parentToUpdateId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
+         parentComponent = getComponentById(parentToUpdateId); // Re-fetch after defaulting
+      }
+      
+      // If the direct drop target is not a container (e.g., a Text inside TopAppBar),
+      // use its parent if it's a valid container (TopAppBar, BottomNavBar, ContentArea).
+      if (parentComponent && !isContainerType(parentComponent.type, prev.customComponentTemplates)) {
+         const grandParentId = parentComponent.parentId;
+         const grandParentComponent = grandParentId ? getComponentById(grandParentId) : null;
+         if (grandParentComponent && isContainerType(grandParentComponent.type, prev.customComponentTemplates) && 
+             (grandParentId === DEFAULT_TOP_APP_BAR_ID || grandParentId === DEFAULT_BOTTOM_NAV_BAR_ID || grandParentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || getComponentById(grandParentId)?.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID)) {
+            parentToUpdateId = grandParentId;
+         } else {
+            console.warn(`Parent of target ${parentComponent.id} is also not a valid drop zone. Defaulting to content area.`);
+            parentToUpdateId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
+         }
       }
       
       if (isCustomComponentType(type as string)) {
@@ -301,7 +299,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       } else { 
         const newId = `comp-${currentNextId++}`;
         finalSelectedComponentId = newId;
-        const defaultProps = getDefaultProperties(type as ComponentType, newId); // Pass newId
+        const defaultProps = getDefaultProperties(type as ComponentType, newId); 
 
         const newComponent: DesignComponent = {
           id: newId,
@@ -320,10 +318,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         if (parentCompIndex !== -1) {
             const currentParent = updatedComponentsList[parentCompIndex];
             if (isContainerType(currentParent.type, prev.customComponentTemplates)) {
-                // If adding multiple (from template), add all their root IDs to parent
-                // If adding single, add its ID.
                 const childrenIdsToAdd = componentsToAdd.filter(c => c.parentId === parentToUpdateId).map(c => c.id);
-                
                 const existingChildren = Array.isArray(currentParent.properties.children) ? currentParent.properties.children : [];
                 const newChildrenSet = new Set([...existingChildren, ...childrenIdsToAdd]);
                 
@@ -512,7 +507,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           let newComp = { ...comp, properties: { ...comp.properties} };
           if (updates.name !== undefined) {
             if (CORE_SCAFFOLD_ELEMENT_IDS.includes(id)) {
-                // Names of core scaffold elements are fixed
                 if (id === ROOT_SCAFFOLD_ID) newComp.name = "Root Scaffold";
                 else if (id === DEFAULT_TOP_APP_BAR_ID) newComp.name = "Top App Bar";
                 else if (id === DEFAULT_CONTENT_LAZY_COLUMN_ID) newComp.name = "Main Content Area";
@@ -557,11 +551,9 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       console.warn("Loaded layout does not conform to the root Scaffold structure. Attempting to adapt.");
       const defaultScaffold = createInitialScaffoldDesign();
       
-      // Take user components that were at root (or had no valid parent in new structure)
-      // and try to place them into the new default content area.
       const userProvidedRootComponents = finalComponents.filter(c => 
-        !CORE_SCAFFOLD_ELEMENT_IDS.includes(c.id) && // Exclude any potential old scaffold parts
-        (c.parentId === null || !finalComponents.find(p => p.id === c.parentId)) // Orphaned or was root
+        !CORE_SCAFFOLD_ELEMENT_IDS.includes(c.id) && 
+        (c.parentId === null || !finalComponents.find(p => p.id === c.parentId)) 
       );
 
       const newContentArea = defaultScaffold.components.find(c => c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID)!;
@@ -573,14 +565,13 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         newContentArea,
         defaultScaffold.components.find(c => c.id === DEFAULT_BOTTOM_NAV_BAR_ID)!,
         ...userProvidedRootComponents.map(c => ({...c, parentId: DEFAULT_CONTENT_LAZY_COLUMN_ID })),
-        // Add back other nested components from the loaded design, ensuring their parentage is updated if necessary
         ...finalComponents.filter(c => 
             !CORE_SCAFFOLD_ELEMENT_IDS.includes(c.id) && 
             !userProvidedRootComponents.find(upc => upc.id === c.id) &&
-            c.parentId !== null && finalComponents.find(p => p.id === c.parentId) // Ensure parent still exists
+            c.parentId !== null && finalComponents.find(p => p.id === c.parentId) 
         )
       ];
-      finalComponents = finalComponents.filter((v,i,a)=>a.findIndex(t=>(t.id === v.id))===i); // Deduplicate
+      finalComponents = finalComponents.filter((v,i,a)=>a.findIndex(t=>(t.id === v.id))===i); 
       finalNextId = Math.max(finalNextId, defaultScaffold.nextId);
     }
 
@@ -631,8 +622,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     ];
     
     userComponentsFlatList.forEach(userComp => {
-        // Only add user components that are not already part of the core scaffold structure
-        // and ensure they are not already added (e.g. if they were children of content area)
         if (!CORE_SCAFFOLD_ELEMENT_IDS.includes(userComp.id) && !finalComponents.find(fc => fc.id === userComp.id)) {
             finalComponents.push(userComp);
         }
@@ -688,20 +677,30 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
     
     let actualTargetParentId = targetParentIdOrNull;
-    if (!actualTargetParentId || actualTargetParentId === ROOT_SCAFFOLD_ID) { // Cannot drop directly onto Scaffold root
-        actualTargetParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
-    }
-    
-    const targetParentComponent = getComponentById(actualTargetParentId);
-    if (!targetParentComponent) {
-        console.warn(`Target parent ${actualTargetParentId} not found. Defaulting to content area.`);
-        actualTargetParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
-    } else if (!isContainerType(targetParentComponent.type, designState.customComponentTemplates) || targetParentComponent.parentId !== ROOT_SCAFFOLD_ID && actualTargetParentId !== DEFAULT_CONTENT_LAZY_COLUMN_ID) {
-        // If target is not the content area, or not a user-added container within content area
-        console.warn(`Target parent ${actualTargetParentId} is not a valid container. Defaulting to content area.`);
+
+    if (!actualTargetParentId || actualTargetParentId === ROOT_SCAFFOLD_ID) {
         actualTargetParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
     }
 
+    let targetParentComponent = getComponentById(actualTargetParentId);
+
+    if (!targetParentComponent) {
+        console.warn(`Target parent ${actualTargetParentId} for moveComponent not found. Defaulting to content area.`);
+        actualTargetParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
+    } else if (!isContainerType(targetParentComponent.type, designState.customComponentTemplates)) {
+        // If the direct target is not a container (e.g., a Text inside TopAppBar),
+        // try to use its parent.
+        const grandParentId = targetParentComponent.parentId;
+        const grandParentComponent = grandParentId ? getComponentById(grandParentId) : null;
+
+        if (grandParentComponent && isContainerType(grandParentComponent.type, designState.customComponentTemplates) &&
+            (grandParentId === DEFAULT_TOP_APP_BAR_ID || grandParentId === DEFAULT_BOTTOM_NAV_BAR_ID || grandParentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || getComponentById(grandParentId)?.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID)) {
+            actualTargetParentId = grandParentId;
+        } else {
+            console.warn(`Target ${actualTargetParentId} and its parent are not valid drop zones. Defaulting to content area.`);
+            actualTargetParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
+        }
+    }
 
     setDesignState(prev => {
         let currentComponents = [...prev.components];
@@ -952,4 +951,3 @@ export const useDesign = (): DesignContextType => {
   }
   return context;
 };
-
