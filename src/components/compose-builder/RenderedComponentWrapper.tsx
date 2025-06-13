@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { TextView } from './component-renderer/TextView';
 import { ButtonView } from './component-renderer/ButtonView';
 import { ImageView } from './component-renderer/ImageView';
-import { ContainerView } from './component-renderer/ContainerView'; // Used for Column, Row, Box, Card, Lazy*, AppBars
+import { ContainerView } from './component-renderer/ContainerView'; 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { ItemTypes } from '@/lib/dnd-types';
@@ -23,7 +23,7 @@ interface DraggedCanvasItem {
 }
 
 interface DraggedLibraryItem {
-  type: string; // ComponentType or custom templateId
+  type: string; 
 }
 
 type HandleType = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
@@ -65,18 +65,33 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
-    // Prevent dragging the root scaffold or its direct slot components
     canDrag: () => ![ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_BOTTOM_NAV_BAR_ID].includes(component.id),
   }));
 
   const [{ canDrop, isOver }, drop] = useDrop(() => ({
     accept: [ItemTypes.COMPONENT_LIBRARY_ITEM, ItemTypes.CANVAS_COMPONENT_ITEM],
     canDrop: (item: DraggedCanvasItem | DraggedLibraryItem, monitor) => {
-      // Only the content LazyColumn (or other user-added containers) can accept drops
-      if (component.id !== DEFAULT_CONTENT_LAZY_COLUMN_ID && !isContainerType(component.type, customComponentTemplates)) {
+      if (component.id === ROOT_SCAFFOLD_ID) return false; // Cannot drop directly on Scaffold root
+      
+      // Only content LazyColumn or user-added containers *within* content LazyColumn can accept drops
+      const isDirectContentAreaChild = component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID;
+      let isDescendantOfContentArea = false;
+      let tempParent = getComponentById(component.parentId || "");
+      while(tempParent){
+        if(tempParent.id === DEFAULT_CONTENT_LAZY_COLUMN_ID){
+          isDescendantOfContentArea = true;
+          break;
+        }
+        tempParent = getComponentById(tempParent.parentId || "");
+      }
+
+      if (!isDirectContentAreaChild && !isDescendantOfContentArea) {
         return false;
       }
-      // Prevent dropping on self or into own descendant (standard DND checks)
+      if (!isContainerType(component.type, customComponentTemplates)) {
+        return false;
+      }
+
       if (monitor.getItemType() === ItemTypes.CANVAS_COMPONENT_ITEM && (item as DraggedCanvasItem).id === component.id) {
         return false;
       }
@@ -93,10 +108,9 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     drop: (item: DraggedCanvasItem | DraggedLibraryItem, monitor) => {
       if (monitor.didDrop()) return;
       
-      // Ensure drops only happen on the content area or valid containers within it
       let targetParentIdForDrop = component.id;
-      if (component.id !== DEFAULT_CONTENT_LAZY_COLUMN_ID && !isContainerType(component.type, customComponentTemplates)) {
-        targetParentIdForDrop = DEFAULT_CONTENT_LAZY_COLUMN_ID; // Fallback to content area
+       if (!isContainerType(component.type, customComponentTemplates)) {
+         targetParentIdForDrop = component.parentId || DEFAULT_CONTENT_LAZY_COLUMN_ID; // Fallback to own parent or content area
       }
 
 
@@ -106,7 +120,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
         addComponent(libraryItem.type, targetParentIdForDrop);
       } else if (itemTypeFromMonitor === ItemTypes.CANVAS_COMPONENT_ITEM) {
         const canvasItem = item as DraggedCanvasItem;
-        if (canvasItem.id !== targetParentIdForDrop) { // Ensure not dropping on self
+        if (canvasItem.id !== targetParentIdForDrop) { 
           moveComponent(canvasItem.id, targetParentIdForDrop);
         }
       }
@@ -123,12 +137,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Allow selecting Scaffold, TopAppBar, ContentLazyColumn, BottomNavBar
-    if ([ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_BOTTOM_NAV_BAR_ID].includes(component.id) || component.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || getComponentById(component.parentId || "")?.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
-        selectComponent(component.id);
-    } else if (component.parentId) { // For deeper nested components
-        selectComponent(component.id);
-    }
+    selectComponent(component.id);
   };
 
   const handleMouseDownOnResizeHandle = useCallback((event: React.MouseEvent<HTMLDivElement>, handle: HandleType) => {
@@ -199,32 +208,33 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
 
 
   const renderSpecificComponent = () => {
-    // For Scaffold, its children are TopAppBar, ContentLazyColumn, BottomNavBar
-    // For other containers, children are user-added components
     const childrenToRender = (component.properties.children || [])
       .map(id => getComponentById(id))
       .filter(Boolean) as DesignComponent[];
     
     switch (component.type) {
-      case 'Scaffold': // Scaffold is a flex column orchestrating its slots
+      case 'Scaffold':
+        const topBarChild = childrenToRender.find(c => c.id === DEFAULT_TOP_APP_BAR_ID);
+        const contentChild = childrenToRender.find(c => c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID);
+        const bottomBarChild = childrenToRender.find(c => c.id === DEFAULT_BOTTOM_NAV_BAR_ID);
+        
         return (
           <div className="flex flex-col w-full h-full">
-            {childrenToRender.map(childComp => {
-                // Apply specific flex styling for scaffold slots
-                let slotStyle: React.CSSProperties = {};
-                if (childComp.id === DEFAULT_TOP_APP_BAR_ID || childComp.id === DEFAULT_BOTTOM_NAV_BAR_ID) {
-                    slotStyle.flexShrink = 0;
-                } else if (childComp.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
-                    slotStyle.flexGrow = 1;
-                    slotStyle.minHeight = 0; // Important for flex-grow in column
-                    slotStyle.overflowY = 'auto';
-                }
-                return (
-                    <div key={childComp.id} style={slotStyle} className="flex"> {/* Ensure child RenderedComponentWrapper can expand */}
-                        <RenderedComponentWrapper component={childComp} />
-                    </div>
-                );
-            })}
+            {topBarChild && (
+              <div style={{ flexShrink: 0, width: '100%', height: `${topBarChild.properties.height || 30}px` }} className="flex">
+                <RenderedComponentWrapper component={topBarChild} />
+              </div>
+            )}
+            {contentChild && (
+              <div style={{ flexGrow: 1, minHeight: 0, overflowY: 'auto', width: '100%' }} className="flex">
+                <RenderedComponentWrapper component={contentChild} />
+              </div>
+            )}
+            {bottomBarChild && (
+              <div style={{ flexShrink: 0, width: '100%', height: `${bottomBarChild.properties.height || 48}px` }} className="flex">
+                 <RenderedComponentWrapper component={bottomBarChild} />
+              </div>
+            )}
           </div>
         );
       case 'Text':
@@ -237,14 +247,14 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       case 'Column':
       case 'Box':
       case 'Card':
-      case 'LazyColumn': // This now includes the main content LazyColumn
+      case 'LazyColumn': 
         return <ContainerView component={component} childrenComponents={childrenToRender} isRow={false} />;
 
       case 'Row':
       case 'LazyRow':
       case 'LazyVerticalGrid': 
       case 'LazyHorizontalGrid': 
-      case 'TopAppBar': // TopAppBar and BottomNavBar are rendered as row-like containers
+      case 'TopAppBar': 
       case 'BottomNavigationBar':
         return <ContainerView component={component} childrenComponents={childrenToRender} isRow={true} />;
       
@@ -254,7 +264,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
             style={{
               width: isNumericValue(component.properties.width) ? `${component.properties.width}px` : '8px',
               height: isNumericValue(component.properties.height) ? `${component.properties.height}px` : '8px',
-              flexShrink: 0, // Spacers should not shrink
+              flexShrink: 0, 
             }}
             className="select-none"
           />
@@ -273,15 +283,17 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     }
   };
   
-  const getDimensionValue = (propValue: any, fillValue: boolean | undefined, componentType: string, componentId: string): string => {
-    if (componentId === ROOT_SCAFFOLD_ID) return '100%'; // Root scaffold always fills
-    if (componentType === 'TopAppBar' || componentType === 'BottomNavigationBar' || componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
-        // These are direct children of Scaffold and should fill width
-        if (propValue === 'height') { // height is fixed or grows for content
-             if (isNumericValue(component.properties.height)) return `${component.properties.height}px`;
-             return componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID ? '100%' : 'auto'; // Content LazyColumn height is by flex-grow
+  const getDimensionValue = (propName: 'width' | 'height', propValue: any, fillValue: boolean | undefined, componentType: string, componentId: string): string => {
+    if (componentId === ROOT_SCAFFOLD_ID) return '100%'; 
+    
+    // For direct children of Scaffold, width is always 100%. Height is managed by flex or specific value.
+    if (component.parentId === ROOT_SCAFFOLD_ID) {
+        if (propName === 'width') return '100%';
+        if (propName === 'height') {
+            if (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID) return '100%'; // Will be controlled by flex-grow
+            if (isNumericValue(propValue)) return `${propValue}px`; // Top/Bottom bar height
+            return (componentType === 'TopAppBar' ? '30px' : '48px'); // Default heights if not set
         }
-        return '100%'; // Width is always 100% for these slots
     }
 
     if (fillValue) return '100%';
@@ -293,31 +305,28 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
   
   const wrapperStyle: React.CSSProperties = {
     transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
-    width: getDimensionValue(component.properties.width, component.properties.fillMaxWidth, component.type, component.id),
-    height: getDimensionValue(component.properties.height, component.properties.fillMaxHeight, component.type, component.id),
-    position: 'relative', // All components are now relatively positioned within their parent (flex items)
-    // No left/top needed for flex items
+    width: getDimensionValue('width', component.properties.width, component.properties.fillMaxWidth, component.type, component.id),
+    height: getDimensionValue('height', component.properties.height, component.properties.fillMaxHeight, component.type, component.id),
+    position: 'relative', 
   };
   
-  // Special handling for root scaffold background
   if (component.id === ROOT_SCAFFOLD_ID) {
-    wrapperStyle.backgroundColor = component.properties.backgroundColor || 'transparent'; // Or a default canvas bg
+    wrapperStyle.backgroundColor = component.properties.backgroundColor || 'transparent';
   }
-  // For content area, ensure its background is distinct or uses theme.
   if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
-    wrapperStyle.backgroundColor = component.properties.backgroundColor || 'hsl(var(--background))'; // Default to theme background
+    wrapperStyle.backgroundColor = component.properties.backgroundColor || 'hsl(var(--background))'; 
   }
 
 
   if (component.type === 'Image' || component.type === 'Card' || (component.properties.cornerRadiusTopLeft || 0) > 0 || (component.properties.cornerRadiusTopRight || 0) > 0 || (component.properties.cornerRadiusBottomLeft || 0) > 0 || (component.properties.cornerRadiusBottomRight || 0) > 0) {
-    wrapperStyle.overflow = 'hidden';
+    wrapperStyle.overflow = 'hidden'; // Apply overflow hidden only if there's a corner radius
     wrapperStyle.borderTopLeftRadius = `${component.properties.cornerRadiusTopLeft || 0}px`;
     wrapperStyle.borderTopRightRadius = `${component.properties.cornerRadiusTopRight || 0}px`;
     wrapperStyle.borderBottomRightRadius = `${component.properties.cornerRadiusBottomRight || 0}px`;
     wrapperStyle.borderBottomLeftRadius = `${component.properties.cornerRadiusBottomLeft || 0}px`;
   }
 
-  const containerDropTargetStyle = (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || isContainerType(component.type, customComponentTemplates)) && isOver && canDrop
+  const containerDropTargetStyle = (isContainerType(component.type, customComponentTemplates)) && isOver && canDrop
     ? 'drag-over-container'
     : '';
 
@@ -338,24 +347,26 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
                               !component.properties.fillMaxHeight &&
                               isNumericValue(component.properties.height);
 
+  // Class to ensure the component itself is a flex item if it's a direct child of a flex container (like Scaffold's slots)
+  const flexItemClass = component.parentId === ROOT_SCAFFOLD_ID ? 'flex w-full' : '';
+
 
   return (
     <div
       ref={ref}
       style={wrapperStyle}
       className={cn(
-        'p-0.5 border border-transparent', // Removed hover:border-primary/50 to avoid nesting issues
+        'p-0.5 border border-transparent', 
+        flexItemClass,
         {
           'ring-4 ring-primary ring-offset-[6px] ring-offset-background shadow-lg': isSelected && ![ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_BOTTOM_NAV_BAR_ID].includes(component.id),
-           // Special selection for scaffold slots
           'ring-2 ring-accent ring-offset-2 ring-offset-background': isSelected && [DEFAULT_TOP_APP_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_BOTTOM_NAV_BAR_ID].includes(component.id),
           'opacity-50': isDragging,
           'cursor-grab': !isResizing && ![ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_BOTTOM_NAV_BAR_ID, 'Spacer'].includes(component.id) && component.type !== 'Spacer',
-          'cursor-default': component.type === 'Spacer' || [ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID].includes(component.id), // Make scaffold structure non-grabbable by default
+          'cursor-default': component.type === 'Spacer' || [ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID].includes(component.id), 
           'cursor-grabbing': isDragging,
         },
         containerDropTargetStyle,
-        // Ensure flex layout for direct children of Scaffold's visual slots
         (component.parentId === ROOT_SCAFFOLD_ID || component.id === ROOT_SCAFFOLD_ID) ? 'flex' : '' 
       )}
       onClick={handleClick}
@@ -368,10 +379,10 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
           {showVerticalResizeHandles && showHorizontalResizeHandles && (['nw', 'ne', 'sw', 'se'] as HandleType[]).map(handle => (
             <div key={handle} className={`resize-handle ${handle}`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle)} />
           ))}
-          {showVerticalResizeHandles && (['n', 's'] as HandleType[]).map(handle => (
+          {showVerticalResizeHandles && !showHorizontalResizeHandles && (['n', 's'] as HandleType[]).map(handle => (
             <div key={handle} className={`resize-handle ${handle}`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle)} />
           ))}
-          {showHorizontalResizeHandles && (['e', 'w'] as HandleType[]).map(handle => (
+          {showHorizontalResizeHandles && !showVerticalResizeHandles && (['e', 'w'] as HandleType[]).map(handle => (
             <div key={handle} className={`resize-handle ${handle}`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle)} />
           ))}
         </>
@@ -379,3 +390,5 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     </div>
   );
 }
+
+    

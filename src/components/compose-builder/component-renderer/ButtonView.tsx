@@ -12,7 +12,7 @@ export function ButtonView({ properties }: ButtonViewProps) {
     text = 'Button',
     backgroundColor = '#3F51B5',
     textColor,
-    fontSize = 14,
+    fontSize = 14, // Use the fontSize from properties
     padding, // All sides padding
     paddingTop,
     paddingBottom,
@@ -30,10 +30,10 @@ export function ButtonView({ properties }: ButtonViewProps) {
   const style: React.CSSProperties = {
     backgroundColor,
     color: effectiveTextColor,
-    fontSize: `${fontSize}px`,
-    paddingTop: `${paddingTop ?? padding ?? 8}px`, // Default 'all' padding for button is 8 if nothing is set
+    fontSize: `${fontSize}px`, // Apply fontSize
+    paddingTop: `${paddingTop ?? padding ?? 8}px`,
     paddingBottom: `${paddingBottom ?? padding ?? 8}px`,
-    paddingLeft: `${paddingStart ?? padding ?? 12}px`, // Horizontal padding is often more for buttons
+    paddingLeft: `${paddingStart ?? padding ?? 12}px`,
     paddingRight: `${paddingEnd ?? padding ?? 12}px`,
     borderRadius: '4px',
     border: 'none',

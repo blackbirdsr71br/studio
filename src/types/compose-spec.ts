@@ -42,7 +42,8 @@ export interface ComponentProperty {
 export interface BaseComponentProps {
   [key: string]: any;
   text?: string;
-  fontSize?: number;
+  fontSize?: number; // Added for general use
+  titleFontSize?: number; // Specific for TopAppBar title
   textColor?: string;
   backgroundColor?: string;
   contentColor?: string;
@@ -160,9 +161,10 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
       return {
         ...commonLayout,
         text: 'Click Me',
+        fontSize: 14,
         backgroundColor: '#3F51B5',
         textColor: undefined,
-        padding: 12,
+        padding: 12, // Default button padding
         width: 'wrap_content',
         height: 'wrap_content'
       };
@@ -226,8 +228,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         height: 'match_parent',
         itemSpacing: 8,
         userScrollEnabled: true, reverseLayout: false,
-        verticalArrangement: 'Top', horizontalAlignment: 'CenterHorizontally', 
-        paddingBottom: isContentArea ? (8 + 60) : 8,
+        verticalArrangement: 'Top', horizontalAlignment: 'Start', 
+        paddingBottom: isContentArea ? (8 + 60) : 8, // Default paddingBottom for LazyColumn is 8
       };
     case 'LazyRow':
       return {
@@ -269,6 +271,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         ...commonLayout,
         children: [],
         title: 'Screen Title',
+        titleFontSize: 20,
         width: 'match_parent',
         height: 30, 
         padding: 0,
@@ -277,7 +280,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         backgroundColor: '#3F51B5',
         contentColor: '#FFFFFF',
         itemSpacing: 8,
-        horizontalArrangement: 'SpaceBetween',
+        horizontalArrangement: 'SpaceBetween', // Default arrangement
         verticalAlignment: 'CenterVertically'
       };
     case 'BottomNavigationBar':
@@ -444,6 +447,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
   Button: [
     ...commonLayoutProperties,
     { name: 'text', type: 'string', label: 'Button Text', placeholder: 'Button', group: 'Content' },
+    { name: 'fontSize', type: 'number', label: 'Font Size (sp)', placeholder: '14', group: 'Appearance' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'textColor', type: 'color', label: 'Text Color', group: 'Appearance' },
   ],
@@ -536,18 +540,19 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
   ],
   TopAppBar: [
     ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'layoutWeight', 'fillMaxHeight', 'fillMaxWidth', 'height'].includes(p.name) ),
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '30', group: 'Layout' },
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '30', group: 'Layout' }, // Default height
     { name: 'title', type: 'string', label: 'Title', placeholder: 'Screen Title', group: 'Content' },
+    { name: 'titleFontSize', type: 'number', label: 'Title Font Size (sp)', placeholder: '20', group: 'Appearance' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    { name: 'contentColor', type: 'color', label: 'Content Color (e.g. Title, Icons)', group: 'Appearance' },
-    ...rowSpecificLayoutProperties,
+    { name: 'contentColor', type: 'color', label: 'Content Color (Title, Icons)', group: 'Appearance' },
+    ...rowSpecificLayoutProperties, // Includes itemSpacing, horizontalArrangement, verticalAlignment
   ],
   BottomNavigationBar: [
      ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'layoutWeight', 'fillMaxHeight', 'fillMaxWidth', 'height'].includes(p.name) ),
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '48', group: 'Layout' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    { name: 'contentColor', type: 'color', label: 'Content Color (e.g. Icons, Labels)', group: 'Appearance' },
-    ...rowSpecificLayoutProperties,
+    { name: 'contentColor', type: 'color', label: 'Content Color (Icons, Labels)', group: 'Appearance' },
+    ...rowSpecificLayoutProperties, // Includes itemSpacing, horizontalArrangement, verticalAlignment
   ],
 };
 
@@ -584,6 +589,7 @@ export function isContainerType(type: ComponentType | string, customTemplates?: 
 const BaseModalPropertiesSchema = z.object({
   text: z.string().optional(),
   fontSize: z.number().optional(),
+  titleFontSize: z.number().optional(),
   textColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional().or(z.literal(undefined)),
   backgroundColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional(),
   contentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional().or(z.literal(undefined)),
@@ -650,7 +656,7 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
 
     if (data.type === 'Image') {
       if (data.properties?.src && !z.string().url().or(z.string().startsWith("data:image/")).safeParse(data.properties.src).success) {
-
+        // This would be caught by BaseModalPropertiesSchema's .url() or .startsWith()
       }
     }
 
@@ -660,7 +666,7 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
         const hasWidth = typeof props.width === 'number' && props.width > 0;
         const hasHeight = typeof props.height === 'number' && props.height > 0;
         if (!hasWeight && !hasWidth && !hasHeight) {
-
+          // This is a validation, not a type error. Zod's .refine needs to return false for error.
         }
     }
     return true;
@@ -668,3 +674,5 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
 );
 
 export const ModalJsonSchema = z.array(ModalComponentNodeSchema);
+
+    

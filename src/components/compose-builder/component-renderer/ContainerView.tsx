@@ -1,10 +1,11 @@
+
 'use client';
 import type { DesignComponent } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from '../RenderedComponentWrapper';
-// Corrected import:
-import { getComponentDisplayName, DEFAULT_CONTENT_LAZY_COLUMN_ID, isCustomComponentType, ROOT_SCAFFOLD_ID } from '@/types/compose-spec';
+import { getComponentDisplayName, DEFAULT_CONTENT_LAZY_COLUMN_ID, isCustomComponentType, ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID } from '@/types/compose-spec';
 import { useDesign } from '@/contexts/DesignContext';
 import { getContrastingTextColor } from '@/lib/utils';
+import { TextView } from './TextView'; // Import TextView
 
 interface ContainerViewProps {
   component: DesignComponent;
@@ -12,13 +13,12 @@ interface ContainerViewProps {
   isRow: boolean;
 }
 
-// Helper function to check if a value is a number or a string representing a number
 const isNumericString = (value: any): boolean => {
   if (value === null || value === undefined || typeof value === 'boolean') {
     return false;
   }
   if (typeof value === 'number' && !isNaN(value)) {
-    return true; // It's a number
+    return true;
   }
   if (typeof value === 'string' && value.trim() !== '') {
     if (value === 'match_parent' || value === 'wrap_content') return false;
@@ -39,7 +39,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
   };
 
   const {
-    padding, // All sides padding
+    padding, 
     paddingTop,
     paddingBottom,
     paddingStart,
@@ -55,19 +55,19 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     contentColor: explicitContentColor,
     borderWidth,
     borderColor,
+    title, // For TopAppBar
+    titleFontSize, // For TopAppBar
   } = properties;
 
-  // Determine effective padding for each side
-  // Corrected usage:
   const defaultAllSidesPadding = (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID ? 8 : (type === 'Card' ? 16 : 0));
-  const effectivePaddingTop = paddingTop ?? padding ?? defaultAllSidesPadding;
-  let effectivePaddingBottom = paddingBottom ?? padding ?? defaultAllSidesPadding;
-  const effectivePaddingStart = paddingStart ?? padding ?? defaultAllSidesPadding;
-  const effectivePaddingEnd = paddingEnd ?? padding ?? defaultAllSidesPadding;
+  const effectivePaddingTop = paddingTop ?? padding ?? (type === 'TopAppBar' || type === 'BottomNavigationBar' ? 0 : defaultAllSidesPadding) ;
+  let effectivePaddingBottom = paddingBottom ?? padding ?? (type === 'TopAppBar' || type === 'BottomNavigationBar' ? 0 : defaultAllSidesPadding);
+  const effectivePaddingStart = paddingStart ?? padding ?? (type === 'TopAppBar' || type === 'BottomNavigationBar' ? 16 : defaultAllSidesPadding);
+  const effectivePaddingEnd = paddingEnd ?? padding ?? (type === 'TopAppBar' || type === 'BottomNavigationBar' ? 16 : defaultAllSidesPadding);
 
-  // Corrected usage:
+
   if (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID && component.parentId === ROOT_SCAFFOLD_ID) {
-    effectivePaddingBottom += 60; // Add extra space at the bottom of the root canvas
+    effectivePaddingBottom += 60; 
   }
 
 
@@ -91,10 +91,14 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
   let defaultWidth: string | number = 'wrap_content';
   let defaultHeight: string | number = 'wrap_content';
 
-  // Corrected usage:
-  if (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || type === 'LazyColumn' || type === 'LazyVerticalGrid') {
+  if (componentId === DEFAULT_TOP_APP_BAR_ID || type === 'TopAppBar') {
     defaultWidth = 'match_parent';
-    // Corrected usage:
+    defaultHeight = properties.height || 30; // Use actual height prop or default
+  } else if (type === 'BottomNavigationBar') {
+    defaultWidth = 'match_parent';
+    defaultHeight = properties.height || 48;
+  } else if (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || type === 'LazyColumn' || type === 'LazyVerticalGrid') {
+    defaultWidth = 'match_parent';
     defaultHeight = (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || type === 'LazyColumn') ? 'match_parent' : 300;
   } else if (type === 'LazyRow' || type === 'LazyHorizontalGrid') {
     defaultWidth = 'match_parent';
@@ -135,7 +139,6 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     gap: `${itemSpacing}px`,
   };
 
-  // Corrected usage:
   if (componentId !== DEFAULT_CONTENT_LAZY_COLUMN_ID &&
       (cornerRadiusTopLeft > 0 || cornerRadiusTopRight > 0 || cornerRadiusBottomLeft > 0 || cornerRadiusBottomRight > 0)) {
     specificStyles.overflow = 'hidden';
@@ -147,6 +150,11 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
   } else if (containerBackgroundColor && typeof containerBackgroundColor === 'string' && containerBackgroundColor !== 'transparent') {
     const contrastingColor = getContrastingTextColor(containerBackgroundColor);
     (specificStyles as any)['--effective-foreground-color'] = contrastingColor;
+  } else {
+    // For TopAppBar and BottomNavBar, if no explicit contentColor or bgColor, use theme foreground
+    if (type === 'TopAppBar' || type === 'BottomNavigationBar') {
+      (specificStyles as any)['--effective-foreground-color'] = 'hsl(var(--foreground))';
+    }
   }
 
 
@@ -157,15 +165,14 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
       if (typeof borderWidth === 'number' && borderWidth > 0 && borderColor) {
         specificStyles.border = `${borderWidth}px solid ${borderColor}`;
       } else {
-         // Corrected usage:
-         specificStyles.border = (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || type.startsWith('Lazy')) ? 'none' : '1px dashed hsl(var(--border) / 0.3)';
+         specificStyles.border = (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || type.startsWith('Lazy')) ? 'none' : '1px solid hsl(var(--border) / 0.5)';
       }
       break;
     case 'LazyColumn':
     case 'LazyVerticalGrid':
       flexDirection = reverseLayout ? 'column-reverse' : 'column';
       specificStyles.overflowY = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
-      specificStyles.minHeight = '100px';
+      specificStyles.minHeight = '100px'; // ensure some min height
 
       switch (properties.verticalArrangement) {
         case 'Top': specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
@@ -183,7 +190,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
         default: specificStyles.alignItems = 'flex-start';
       }
       if (type === 'LazyVerticalGrid') {
-        flexDirection = 'row';
+        flexDirection = 'row'; // Grids are row-based for flex wrap
         specificStyles.flexWrap = 'wrap';
       }
       break;
@@ -191,7 +198,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     case 'LazyHorizontalGrid':
       flexDirection = reverseLayout ? 'row-reverse' : 'row';
       specificStyles.overflowX = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
-      specificStyles.minHeight = '80px';
+      specificStyles.minHeight = '80px'; // ensure some min height
 
       switch (properties.horizontalArrangement) {
           case 'Start': specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
@@ -209,15 +216,23 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
           default: specificStyles.alignItems = 'flex-start';
       }
        if (type === 'LazyHorizontalGrid') {
-          flexDirection = 'column';
+          flexDirection = 'column'; // Grids are column-based for flex wrap if horizontal
           specificStyles.flexWrap = 'wrap';
-          specificStyles.height = styleHeight;
+          specificStyles.height = styleHeight; 
       }
       break;
     case 'Box':
       specificStyles.backgroundColor = containerBackgroundColor || 'transparent';
       break;
-    default:
+    case 'TopAppBar':
+    case 'BottomNavigationBar':
+      specificStyles.backgroundColor = containerBackgroundColor || 'hsl(var(--secondary))';
+      specificStyles.alignItems = properties.verticalAlignment ? (properties.verticalAlignment.toLowerCase().includes('center') ? 'center' : properties.verticalAlignment.toLowerCase() as any) : 'center';
+      specificStyles.justifyContent = properties.horizontalArrangement ? properties.horizontalArrangement.toLowerCase().replace('space', 'space-') as any : 'space-between';
+      specificStyles.color = explicitContentColor || getContrastingTextColor(specificStyles.backgroundColor as string);
+      (specificStyles as any)['--effective-foreground-color'] = specificStyles.color; // for children TextView
+      break;
+    default: // Column, Row, custom components behaving as containers
       specificStyles.backgroundColor = containerBackgroundColor || 'transparent';
       if (type === 'Column' || (isCustomComponentType(type) && !isRow) ) {
           switch (properties.verticalArrangement) {
@@ -264,48 +279,50 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     height: styleHeight,
     display: 'flex',
     flexDirection: flexDirection,
-    // Corrected usage:
-    border: (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || type.startsWith('Lazy') || type === 'Card') ? specificStyles.border : '1px dashed hsl(var(--border) / 0.3)',
+    border: (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || type.startsWith('Lazy') || type === 'Card' || type === 'TopAppBar' || type === 'BottomNavigationBar') ? specificStyles.border || 'none' : '1px dashed hsl(var(--border) / 0.3)',
     position: 'relative',
-    // Corrected usage:
     minWidth: (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || properties.width === 'match_parent' ) ? '100%' : (properties.width === 'wrap_content' || !isNumericString(properties.width) ? 'auto' : '60px'),
-    // Corrected usage:
-    minHeight: (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || properties.height === 'match_parent') ? '100%' : (properties.height === 'wrap_content' || !isNumericString(properties.height) ? 'auto' : '60px'),
+    minHeight: (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || properties.height === 'match_parent' || type === 'TopAppBar' || type === 'BottomNavigationBar') ? styleHeight : (properties.height === 'wrap_content' || !isNumericString(properties.height) ? 'auto' : '60px'),
     boxSizing: 'border-box',
     ...specificStyles,
   };
 
-  // Corrected usage:
   if (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
-    baseStyle.backgroundColor = containerBackgroundColor || 'transparent';
+    baseStyle.backgroundColor = containerBackgroundColor || 'transparent'; // Default to theme background
     baseStyle.overflowY = 'auto';
     baseStyle.overflowX = 'hidden';
-    baseStyle.width = '100%';
-    baseStyle.height = '100%';
-    delete baseStyle.overflow;
+    baseStyle.width = '100%'; // Must fill width
+    baseStyle.height = '100%'; // flex-grow gives it its height, but 100% confirms it tries to fill its flex item area
+    delete baseStyle.overflow; // remove general overflow if set by corner radius logic
   }
 
-  // Corrected usage:
   const placeholderText = `Drop components into this ${getComponentDisplayName(type, customComponentTemplates.find(t => t.templateId === type)?.name)}`;
 
   const isWeightedContainer = type === 'Row' || type === 'Column';
 
+  // Special rendering for TopAppBar title
+  const topAppBarTitleElement = type === 'TopAppBar' && title ? (
+    <div style={{ flexShrink: 0, marginRight: (childrenComponents.length > 0 ? (itemSpacing || 8) : 0) + 'px' }} className="top-app-bar-title-container">
+      <TextView properties={{ text: title, fontSize: titleFontSize || 20, textColor: baseStyle.color }} />
+    </div>
+  ) : null;
+
   return (
     <div style={baseStyle} className="select-none component-container" data-container-id={component.id} data-container-type={type}>
-      {/* Corrected usage: */}
-      {childrenComponents.length === 0 && componentId !== DEFAULT_CONTENT_LAZY_COLUMN_ID && (
+      {childrenComponents.length === 0 && componentId !== DEFAULT_CONTENT_LAZY_COLUMN_ID && type !== 'TopAppBar' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground/70 text-xs pointer-events-none p-2 text-center leading-tight">
           {placeholderText}
           {(type === 'LazyVerticalGrid' && properties.columns) && <span className="mt-1 text-xxs opacity-70">({properties.columns} columns)</span>}
           {(type === 'LazyHorizontalGrid' && properties.rows) && <span className="mt-1 text-xxs opacity-70">({properties.rows} rows)</span>}
         </div>
       )}
+      {topAppBarTitleElement}
       {childrenComponents.map(child => {
         let childSpecificStyle: React.CSSProperties = {};
         if (isWeightedContainer && child.properties.layoutWeight && child.properties.layoutWeight > 0) {
             childSpecificStyle.flexGrow = child.properties.layoutWeight;
-            childSpecificStyle.flexShrink = 1;
-            childSpecificStyle.flexBasis = '0%';
+            childSpecificStyle.flexShrink = 1; // Allow shrinking if needed
+            childSpecificStyle.flexBasis = '0%'; // Basis of 0% allows grow/shrink to work from nothing
             if (flexDirection === 'row') {
                 childSpecificStyle.width = 'auto'; // Let flex-basis and flex-grow determine width
             } else {
@@ -313,7 +330,8 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
             }
         }
         return (
-          <div key={child.id} style={childSpecificStyle} className="flex">
+          // Wrap child RenderedComponentWrapper in a div that can take flex item styles
+          <div key={child.id} style={childSpecificStyle} className="flex"> 
             <RenderedComponentWrapper component={child} />
           </div>
         );
@@ -321,3 +339,5 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     </div>
   );
 }
+
+    
