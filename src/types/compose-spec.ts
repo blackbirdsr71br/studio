@@ -136,7 +136,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
       return {
         width: 'match_parent',
         height: 'match_parent',
-        backgroundColor: 'transparent', // Scaffold itself is a structural element, often transparent
+        backgroundColor: 'transparent', 
         children: [DEFAULT_TOP_APP_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_BOTTOM_NAV_BAR_ID]
       };
     case 'Text':
@@ -221,13 +221,13 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         ...commonLayout,
         children: [],
         padding: isContentArea ? 8 : 0,
-        backgroundColor: isContentArea ? 'transparent' : 'rgba(200, 240, 200, 0.3)', // Make content area transparent by default
+        backgroundColor: isContentArea ? 'transparent' : 'rgba(200, 240, 200, 0.3)', 
         width: 'match_parent',
-        height: 'match_parent', // For content area, this signifies it should grow
+        height: 'match_parent',
         itemSpacing: 8,
         userScrollEnabled: true, reverseLayout: false,
-        verticalArrangement: 'Top', horizontalAlignment: 'CenterHorizontally', // Default for content area
-        paddingBottom: isContentArea ? (8 + 60) : 8, // Default paddingBottom for LazyColumn is 8
+        verticalArrangement: 'Top', horizontalAlignment: 'CenterHorizontally', 
+        paddingBottom: isContentArea ? (8 + 60) : 8,
       };
     case 'LazyRow':
       return {
@@ -270,7 +270,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         children: [],
         title: 'Screen Title',
         width: 'match_parent',
-        height: 40, // Reduced height
+        height: 30, 
         padding: 0,
         paddingStart: 16,
         paddingEnd: 16,
@@ -536,7 +536,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
   ],
   TopAppBar: [
     ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'layoutWeight', 'fillMaxHeight', 'fillMaxWidth', 'height'].includes(p.name) ),
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '40', group: 'Layout' }, // Reduced placeholder
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '30', group: 'Layout' },
     { name: 'title', type: 'string', label: 'Title', placeholder: 'Screen Title', group: 'Content' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (e.g. Title, Icons)', group: 'Appearance' },
@@ -668,4 +668,3 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
 );
 
 export const ModalJsonSchema = z.array(ModalComponentNodeSchema);
-
