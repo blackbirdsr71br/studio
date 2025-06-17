@@ -480,11 +480,6 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
               )}
             </div>
             {customJsonFromCanvasError && <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error Generating JSON</AlertTitle><AlertDescription>{customJsonFromCanvasError}</AlertDescription></Alert>}
-            <Alert>
-                <Info className="h-4 w-4"/>
-                <AlertTitle>Note</AlertTitle>
-                <AlertDescription>This JSON is generated for use with server-driven UI systems expecting the custom command format. It's read-only here.</AlertDescription>
-            </Alert>
           </TabsContent>
         </Tabs>
 
@@ -503,7 +498,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
               </>
             )}
             {activeTab === 'generateCustomJsonFromCanvas' && (
-              <Button onClick={handleOpenPublishCustomJsonDialog} disabled={!canPublishCustomJsonValue} className="w-full sm:w-auto">
+               <Button onClick={handleOpenPublishCustomJsonDialog} disabled={!canPublishCustomJsonValue} className="w-full sm:w-auto">
                 {isPublishingCustomJson ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
                 Publish Custom JSON
               </Button>
