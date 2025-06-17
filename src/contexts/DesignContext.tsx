@@ -118,8 +118,8 @@ export function createInitialScaffoldDesign(): { components: DesignComponent[], 
 
   return {
     components: [rootScaffold, topAppBar, contentLazyColumn, bottomNavBar],
-    nextId: 1,
-    selectedId: DEFAULT_CONTENT_LAZY_COLUMN_ID,
+    nextId: 1, // Start user component IDs from 1
+    selectedId: DEFAULT_CONTENT_LAZY_COLUMN_ID, // Default selection to content area
   };
 }
 
@@ -136,23 +136,32 @@ const initialDesignState: DesignState = {
 
 const flattenComponentsFromModalJson = (
   modalNodes: any[],
-  forcedParentId: string
+  forcedParentId: string // This should be DEFAULT_CONTENT_LAZY_COLUMN_ID for modal JSON
 ): DesignComponent[] => {
   let flatList: DesignComponent[] = [];
 
   for (const modalNode of modalNodes) {
-    const { properties: modalNodeProperties, parentId: _modalNodeOriginalParentId, ...baseModalNodeData } = modalNode;
+    // Ensure modalNode and modalNode.properties exist before destructuring
+    const { properties: modalNodeProperties, parentId: _modalNodeOriginalParentId, ...baseModalNodeData } = modalNode || {};
     const { children: nestedModalChildrenObjects, ...scalarModalProperties } = modalNodeProperties || {};
 
+    // If essential baseModalNodeData (like id, type, name) is missing, skip this node
+    if (!baseModalNodeData.id || !baseModalNodeData.type || !baseModalNodeData.name) {
+      console.warn("Skipping invalid modal node during flatten:", modalNode);
+      continue;
+    }
+    
     const designComponentProperties: BaseComponentProps = { ...scalarModalProperties };
     let designComponentChildIds: string[] = [];
 
     if (nestedModalChildrenObjects && Array.isArray(nestedModalChildrenObjects)) {
+      // Recursively flatten children, passing the current modalNode.id as their parent context
       const flattenedNestedChildren = flattenComponentsFromModalJson(
         nestedModalChildrenObjects,
-        modalNode.id
+        modalNode.id // Children's parentId will be this node's ID
       );
       flatList = flatList.concat(flattenedNestedChildren);
+      // Collect IDs of direct children for the current node's properties.children array
       designComponentChildIds = flattenedNestedChildren
         .filter(fc => fc.parentId === modalNode.id)
         .map(fc => fc.id);
@@ -160,10 +169,12 @@ const flattenComponentsFromModalJson = (
 
     const newDesignComponent: DesignComponent = {
       ...baseModalNodeData,
-      parentId: baseModalNodeData.id === modalNodes[0].id ? forcedParentId : baseModalNodeData.parentId || forcedParentId,
+      // The parentId for top-level items from the modal JSON is forcedParentId (DEFAULT_CONTENT_LAZY_COLUMN_ID)
+      // For nested items, their parentId is already set correctly by the recursive call.
+      parentId: baseModalNodeData.parentId || forcedParentId,
       properties: {
         ...designComponentProperties,
-        children: designComponentChildIds,
+        children: designComponentChildIds, // This should only contain direct children IDs
       },
     };
     flatList.push(newDesignComponent);
@@ -264,7 +275,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       }
     };
     loadInitialData();
-  }, []); // Changed from [toast] to []
+  }, [toast]); 
 
   const getComponentById = useCallback(
     (id: string) => designState.components.find(comp => comp.id === id),
@@ -279,40 +290,59 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const addComponent = useCallback((
     type: ComponentType | string,
     parentIdOrNull: string | null = DEFAULT_CONTENT_LAZY_COLUMN_ID,
-    _dropPosition?: { x: number; y: number }
+    _dropPosition?: { x: number; y: number } // dropPosition currently unused due to slot logic
   ) => {
     setDesignState(prev => {
       let currentNextId = prev.nextId;
       let updatedComponentsList = [...prev.components];
       let finalSelectedComponentId = '';
       let componentsToAdd: DesignComponent[] = [];
+      let effectiveParentId = parentIdOrNull;
 
-      let parentToUpdateId = parentIdOrNull;
-
-      if (!parentToUpdateId || parentToUpdateId === ROOT_SCAFFOLD_ID) {
-        parentToUpdateId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
+      const rootScaffold = updatedComponentsList.find(c => c.id === ROOT_SCAFFOLD_ID);
+      if (!rootScaffold) {
+        console.error("Root Scaffold not found. Cannot add component.");
+        return prev;
+      }
+      
+      // Determine the correct parent based on type and target
+      if (type === 'TopAppBar') {
+        effectiveParentId = ROOT_SCAFFOLD_ID;
+        // Prevent adding if a TopAppBar already exists as a child of Scaffold
+        const existingTopAppBar = updatedComponentsList.find(c => c.parentId === ROOT_SCAFFOLD_ID && c.type === 'TopAppBar');
+        if (existingTopAppBar && existingTopAppBar.id !== DEFAULT_TOP_APP_BAR_ID) { // Allow replacing placeholder
+             toast({title: "Info", description: "A TopAppBar already exists. Replace it or add items to it.", variant: "default"});
+             return prev; // Or select existing one
+        }
+      } else if (type === 'BottomNavigationBar') {
+        effectiveParentId = ROOT_SCAFFOLD_ID;
+        const existingBottomNav = updatedComponentsList.find(c => c.parentId === ROOT_SCAFFOLD_ID && c.type === 'BottomNavigationBar');
+        if (existingBottomNav && existingBottomNav.id !== DEFAULT_BOTTOM_NAV_BAR_ID) {
+             toast({title: "Info", description: "A BottomNavigationBar already exists. Replace it or add items to it.", variant: "default"});
+             return prev;
+        }
+      } else if (parentIdOrNull === ROOT_SCAFFOLD_ID) {
+        // General components cannot be direct children of Scaffold, redirect to content area
+        effectiveParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
+      } else if (!parentIdOrNull) {
+        // Default to content area if no parent specified
+        effectiveParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
       }
 
-      let parentComponent = updatedComponentsList.find(c => c.id === parentToUpdateId);
 
-
-      if (!parentComponent) {
-         console.warn(`Target parent ${parentToUpdateId} for addComponent not found. Defaulting to content area.`);
-         parentToUpdateId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
-         parentComponent = updatedComponentsList.find(c => c.id === parentToUpdateId);
+      // Ensure the effectiveParentId exists and is a valid container
+      let parentComponent = updatedComponentsList.find(c => c.id === effectiveParentId);
+      if (!parentComponent || !isContainerType(parentComponent.type, prev.customComponentTemplates)) {
+        // If targeted parent is not a container (e.g. dropping on a Text), try its parent, or default to content.
+        const originalTarget = updatedComponentsList.find(c => c.id === parentIdOrNull);
+        if(originalTarget && originalTarget.parentId && updatedComponentsList.find(c => c.id === originalTarget.parentId && isContainerType(c.type, prev.customComponentTemplates))) {
+            effectiveParentId = originalTarget.parentId;
+        } else {
+            console.warn(`Target parent ${effectiveParentId} for new component is not a valid container or not found. Defaulting to content area.`);
+            effectiveParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
+        }
       }
 
-      if (parentComponent && !isContainerType(parentComponent.type, prev.customComponentTemplates)) {
-         const grandParentId = parentComponent.parentId;
-         const grandParentComponent = grandParentId ? updatedComponentsList.find(c=> c.id === grandParentId) : null;
-         if (grandParentComponent && isContainerType(grandParentComponent.type, prev.customComponentTemplates) &&
-             (grandParentId === DEFAULT_TOP_APP_BAR_ID || grandParentId === DEFAULT_BOTTOM_NAV_BAR_ID || grandParentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || updatedComponentsList.find(c=> c.id === grandParentId)?.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID)) {
-            parentToUpdateId = grandParentId;
-         } else {
-            console.warn(`Parent of target ${parentComponent.id} is also not a valid drop zone. Defaulting to content area.`);
-            parentToUpdateId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
-         }
-      }
 
       if (isCustomComponentType(type as string)) {
         const appTemplateId = type as string;
@@ -342,8 +372,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           if (templateComp.id === template.rootComponentId) {
             newInstanceComp.name = `${template.name} Instance`;
             instantiatedTemplateRootId = newInstanceCompId;
-            newInstanceComp.parentId = parentToUpdateId;
-            newInstanceComp.type = appTemplateId;
+            newInstanceComp.parentId = effectiveParentId; // Correct parent assignment
+            newInstanceComp.type = appTemplateId; // Keep the custom type for the root
           } else {
             newInstanceComp.parentId = templateComp.parentId ? finalIdMap[templateComp.parentId] : null;
           }
@@ -370,20 +400,25 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           type: type as ComponentType,
           name: `${getComponentDisplayNameResolved(type as ComponentType)} ${newId.split('-')[1]}`,
           properties: { ...defaultProps },
-          parentId: parentToUpdateId,
+          parentId: effectiveParentId, // Correct parent assignment
         };
 
         componentsToAdd.push(newComponent);
         updatedComponentsList.push(...componentsToAdd);
       }
 
-      if (parentToUpdateId && componentsToAdd.length > 0) {
-        const parentCompIndex = updatedComponentsList.findIndex(c => c.id === parentToUpdateId);
+      // Update parent's children array
+      if (effectiveParentId && componentsToAdd.length > 0) {
+        const parentCompIndex = updatedComponentsList.findIndex(c => c.id === effectiveParentId);
         if (parentCompIndex !== -1) {
             const currentParent = updatedComponentsList[parentCompIndex];
             if (isContainerType(currentParent.type, prev.customComponentTemplates)) {
-                const childrenIdsToAdd = componentsToAdd.filter(c => c.parentId === parentToUpdateId).map(c => c.id);
+                const childrenIdsToAdd = componentsToAdd
+                    .filter(c => c.parentId === effectiveParentId) // Only direct children for this parent
+                    .map(c => c.id);
                 const existingChildren = Array.isArray(currentParent.properties.children) ? currentParent.properties.children : [];
+                
+                // Prevent duplicates, though new IDs should be unique
                 const newChildrenSet = new Set([...existingChildren, ...childrenIdsToAdd]);
 
                 updatedComponentsList[parentCompIndex] = {
@@ -396,6 +431,30 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             }
         }
       }
+      
+      // Ensure scaffold children array is correctly maintained for slot components
+      if (effectiveParentId === ROOT_SCAFFOLD_ID && (type === 'TopAppBar' || type === 'BottomNavigationBar')) {
+        const scaffoldIndex = updatedComponentsList.findIndex(c => c.id === ROOT_SCAFFOLD_ID);
+        if (scaffoldIndex !== -1) {
+          const scaffold = updatedComponentsList[scaffoldIndex];
+          const newChildId = componentsToAdd[0].id; // Assuming one slot component added at a time
+          let scaffoldChildren = [...(scaffold.properties.children || [])];
+          if (type === 'TopAppBar') {
+            const existingTopBarIndex = scaffoldChildren.indexOf(DEFAULT_TOP_APP_BAR_ID);
+            if(existingTopBarIndex !== -1) scaffoldChildren.splice(existingTopBarIndex, 1, newChildId);
+            else scaffoldChildren.unshift(newChildId); // Add to beginning if placeholder was missing
+          } else if (type === 'BottomNavigationBar') {
+             const existingBottomNavIndex = scaffoldChildren.indexOf(DEFAULT_BOTTOM_NAV_BAR_ID);
+             if(existingBottomNavIndex !== -1) scaffoldChildren.splice(existingBottomNavIndex, 1, newChildId);
+             else scaffoldChildren.push(newChildId); // Add to end
+          }
+          updatedComponentsList[scaffoldIndex] = {
+            ...scaffold,
+            properties: {...scaffold.properties, children: Array.from(new Set(scaffoldChildren))}
+          };
+        }
+      }
+
 
       const finalUniqueComponents = updatedComponentsList.filter((comp, index, self) => index === self.findIndex(t => t.id === comp.id));
 
@@ -406,7 +465,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         nextId: currentNextId,
       };
     });
-  }, [getComponentById, designState.customComponentTemplates, getComponentDisplayNameResolved, isLoadingTemplates]);
+  }, [getComponentById, designState.customComponentTemplates, getComponentDisplayNameResolved, isLoadingTemplates, toast]);
 
 
   const saveSelectedAsCustomTemplate = useCallback(async (name: string) => {
@@ -470,7 +529,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     const baseName = name.replace(/\s+/g, '_').toLowerCase().replace(/[^a-z0-9_-]/g, '');
     const timestamp = Date.now();
-    const firestoreDocumentId = `${baseName}-${timestamp}`.replace(/\//g, '_'); // Prevent '/' in ID
+    const firestoreDocumentId = `${baseName}-${timestamp}`.replace(/\//g, '_'); 
     const applicationTemplateId = `${CUSTOM_COMPONENT_TYPE_PREFIX}${firestoreDocumentId}`; 
 
     const newTemplateForState: CustomComponentTemplate = {
@@ -481,12 +540,11 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       componentTree: templateComponentTree,
     };
 
-    // Optimistic UI update
     setDesignState(prev => {
       const updatedCustomComponentTemplates = [...prev.customComponentTemplates, newTemplateForState];
       return { ...prev, customComponentTemplates: updatedCustomComponentTemplates };
     });
-    toast({ title: "Custom Template Saved", description: `"${name}" saved locally. Attempting to sync with cloud...` });
+    toast({ title: "Custom Template Saved", description: `"${name}" saved locally. Attempting to sync...` });
 
     const dataToSaveToFirestore = {
       templateId: applicationTemplateId, 
@@ -551,21 +609,41 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           const updatedChildren = parentCandidate.properties.children.filter(
             childId => !deletedIdsArray.includes(childId)
           );
+          // If a core slot component was targeted for deletion (which is prevented),
+          // ensure its placeholder ID is reinstated if necessary.
+          let finalChildren = updatedChildren;
+          if (parentCandidate.id === ROOT_SCAFFOLD_ID) {
+              if (!updatedChildren.includes(DEFAULT_TOP_APP_BAR_ID) && prev.components.find(c=>c.id === DEFAULT_TOP_APP_BAR_ID && !deletedIdsArray.includes(DEFAULT_TOP_APP_BAR_ID) )) finalChildren.unshift(DEFAULT_TOP_APP_BAR_ID);
+              if (!updatedChildren.includes(DEFAULT_CONTENT_LAZY_COLUMN_ID) && prev.components.find(c=>c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID && !deletedIdsArray.includes(DEFAULT_CONTENT_LAZY_COLUMN_ID) )) {
+                 const topBarExists = finalChildren.includes(DEFAULT_TOP_APP_BAR_ID);
+                 finalChildren.splice(topBarExists ? 1:0, 0, DEFAULT_CONTENT_LAZY_COLUMN_ID);
+              }
+              if (!updatedChildren.includes(DEFAULT_BOTTOM_NAV_BAR_ID) && prev.components.find(c=>c.id === DEFAULT_BOTTOM_NAV_BAR_ID && !deletedIdsArray.includes(DEFAULT_BOTTOM_NAV_BAR_ID) )) finalChildren.push(DEFAULT_BOTTOM_NAV_BAR_ID);
+          }
+
+
           if (updatedChildren.length !== parentCandidate.properties.children.length) {
             return {
               ...parentCandidate,
               properties: {
                 ...parentCandidate.properties,
-                children: updatedChildren,
+                children: finalChildren,
               },
             };
           }
         }
         return parentCandidate;
       });
+      
+      // If a slot component itself was deleted, create a new placeholder for it.
+      // This part is complex because deleting a slot container needs to be handled carefully.
+      // For now, direct deletion of slot containers is blocked.
+      // If a user somehow deletes a component *that was serving as a slot*,
+      // the Scaffold's children list needs to be robust or the slot needs to be repopulated.
+
 
       const newSelectedComponentId = deletedIdsArray.includes(prev.selectedComponentId || "")
-        ? (componentToDelete.parentId || DEFAULT_CONTENT_LAZY_COLUMN_ID)
+        ? (componentToDelete.parentId || DEFAULT_CONTENT_LAZY_COLUMN_ID) // Fallback to content area
         : prev.selectedComponentId;
 
       return {
@@ -589,6 +667,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           let newComp = { ...comp, properties: { ...comp.properties} };
           if (updates.name !== undefined) {
             if (CORE_SCAFFOLD_ELEMENT_IDS.includes(id)) {
+                // Prevent renaming core scaffold elements from user input
                 if (id === ROOT_SCAFFOLD_ID) newComp.name = "Root Scaffold";
                 else if (id === DEFAULT_TOP_APP_BAR_ID) newComp.name = "Top App Bar";
                 else if (id === DEFAULT_CONTENT_LAZY_COLUMN_ID) newComp.name = "Main Content Area";
@@ -608,6 +687,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, []);
 
   const updateComponentPosition = useCallback((_id: string, _position: { x: number; y: number }) => {
+     // This function might be deprecated or adapted if absolute positioning is not used with Scaffold slots.
+     // For now, log a warning.
      console.warn("updateComponentPosition is deprecated with the new Scaffold layout model.");
   }, []);
 
@@ -617,7 +698,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         ...prev,
         components: newScaffoldComponents,
         selectedComponentId: newSelectedId,
-        nextId: newNextId,
+        nextId: newNextId, // Reset nextId as well
     }));
   }, []);
 
@@ -626,39 +707,48 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     let finalSelectedId = newDesign.selectedComponentId;
     let finalNextId = newDesign.nextId;
 
+    // Ensure the core Scaffold structure is present
     const loadedRootScaffold = finalComponents.find(c => c.id === ROOT_SCAFFOLD_ID && c.parentId === null && c.type === 'Scaffold');
+    const loadedTopBar = finalComponents.find(c => c.id === DEFAULT_TOP_APP_BAR_ID && c.parentId === ROOT_SCAFFOLD_ID);
     const loadedContentArea = finalComponents.find(c => c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID && c.parentId === ROOT_SCAFFOLD_ID);
+    const loadedBottomBar = finalComponents.find(c => c.id === DEFAULT_BOTTOM_NAV_BAR_ID && c.parentId === ROOT_SCAFFOLD_ID);
 
-    if (!loadedRootScaffold || !loadedContentArea) {
-      console.warn("Loaded layout does not conform to the root Scaffold structure. Attempting to adapt.");
-      const defaultScaffold = createInitialScaffoldDesign();
+    if (!loadedRootScaffold || !loadedTopBar || !loadedContentArea || !loadedBottomBar) {
+      console.warn("Loaded layout does not conform to the root Scaffold structure. Re-initializing with defaults and attempting to place user components in content area.");
+      const defaultScaffoldDesign = createInitialScaffoldDesign();
+      
+      // Filter out any default scaffold components from the loaded design to avoid duplicates
+      const userProvidedComponents = finalComponents.filter(c => !CORE_SCAFFOLD_ELEMENT_IDS.includes(c.id));
+      
+      // Re-parent user components that were at root or had missing parents to the new content area
+      const reparentedUserComponents = userProvidedComponents.map(c => {
+        const parentExists = userProvidedComponents.find(p => p.id === c.parentId);
+        if (c.parentId === null || c.parentId === ROOT_SCAFFOLD_ID || !parentExists) {
+          return {...c, parentId: DEFAULT_CONTENT_LAZY_COLUMN_ID};
+        }
+        return c;
+      });
 
-      const userProvidedRootComponents = finalComponents.filter(c =>
-        !CORE_SCAFFOLD_ELEMENT_IDS.includes(c.id) &&
-        (c.parentId === null || !finalComponents.find(p => p.id === c.parentId))
-      );
-
-      const newContentArea = defaultScaffold.components.find(c => c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID)!;
-      newContentArea.properties.children = userProvidedRootComponents.map(c => c.id);
+      const newContentArea = defaultScaffoldDesign.components.find(c => c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID)!;
+      newContentArea.properties.children = reparentedUserComponents
+          .filter(c => c.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID)
+          .map(c => c.id);
 
       finalComponents = [
-        defaultScaffold.components.find(c => c.id === ROOT_SCAFFOLD_ID)!,
-        defaultScaffold.components.find(c => c.id === DEFAULT_TOP_APP_BAR_ID)!,
+        defaultScaffoldDesign.components.find(c => c.id === ROOT_SCAFFOLD_ID)!,
+        defaultScaffoldDesign.components.find(c => c.id === DEFAULT_TOP_APP_BAR_ID)!,
         newContentArea,
-        defaultScaffold.components.find(c => c.id === DEFAULT_BOTTOM_NAV_BAR_ID)!,
-        ...userProvidedRootComponents.map(c => ({...c, parentId: DEFAULT_CONTENT_LAZY_COLUMN_ID })),
-        ...finalComponents.filter(c =>
-            !CORE_SCAFFOLD_ELEMENT_IDS.includes(c.id) &&
-            !userProvidedRootComponents.find(upc => upc.id === c.id) &&
-            c.parentId !== null && finalComponents.find(p => p.id === c.parentId)
-        )
+        defaultScaffoldDesign.components.find(c => c.id === DEFAULT_BOTTOM_NAV_BAR_ID)!,
+        ...reparentedUserComponents
       ];
+      // Remove duplicates by ID, keeping the first occurrence
       finalComponents = finalComponents.filter((v,i,a)=>a.findIndex(t=>(t.id === v.id))===i);
-      finalNextId = Math.max(finalNextId, defaultScaffold.nextId);
+      
+      finalNextId = Math.max(finalNextId, defaultScaffoldDesign.nextId); // Ensure nextId is high enough
     }
 
     if (!finalSelectedId || !finalComponents.find(c => c.id === finalSelectedId)) {
-        finalSelectedId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
+        finalSelectedId = DEFAULT_CONTENT_LAZY_COLUMN_ID; // Default selection if current is invalid
     }
 
     setDesignState(prev => ({
@@ -671,44 +761,55 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
 
   const overwriteComponents = useCallback((hierarchicalUserComponentsJson: any[]): { success: boolean, error?: string } => {
+    if (!db && (hierarchicalUserComponentsJson.length > 0) ) { // Only check db if there's something to save
+        toast({ title: "Warning", description: "Firestore not available. Changes will be local only.", variant: "default" });
+    }
     if (!Array.isArray(hierarchicalUserComponentsJson)) {
       return { success: false, error: "Invalid JSON: Data must be an array of components." };
     }
 
+    // Flatten the hierarchical JSON from the modal, forcing parentId to DEFAULT_CONTENT_LAZY_COLUMN_ID for top-level items
     const userComponentsFlatList = flattenComponentsFromModalJson(hierarchicalUserComponentsJson, DEFAULT_CONTENT_LAZY_COLUMN_ID);
 
+    // Get current scaffold structure components
     const currentRootScaffold = designState.components.find(c => c.id === ROOT_SCAFFOLD_ID && c.parentId === null);
     const currentTopBar = designState.components.find(c => c.id === DEFAULT_TOP_APP_BAR_ID);
     const currentContentLazyColumn = designState.components.find(c => c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID);
     const currentBottomNav = designState.components.find(c => c.id === DEFAULT_BOTTOM_NAV_BAR_ID);
 
     if (!currentRootScaffold || !currentTopBar || !currentContentLazyColumn || !currentBottomNav) {
+        // This should not happen if createInitialScaffoldDesign ran correctly
         return { success: false, error: "Core scaffold structure missing. Cannot overwrite components." };
     }
 
+    // Update the content lazy column with new children from the modal JSON
     const updatedContentLazyColumn = {
       ...currentContentLazyColumn,
       properties: {
         ...currentContentLazyColumn.properties,
         children: userComponentsFlatList
-          .filter(c => c.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID)
+          .filter(c => c.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID) // Only direct children of content area
           .map(c => c.id),
       }
     };
 
+    // Assemble the new components list: scaffold, slots, and the new user components
     const finalComponents: DesignComponent[] = [
         currentRootScaffold,
         currentTopBar,
-        updatedContentLazyColumn,
+        updatedContentLazyColumn, // This now contains the new children structure
         currentBottomNav,
     ];
 
+    // Add all components from the flattened list (these include nested children with correct parentIds)
     userComponentsFlatList.forEach(userComp => {
+        // Avoid re-adding core scaffold elements if they were somehow in the JSON
         if (!CORE_SCAFFOLD_ELEMENT_IDS.includes(userComp.id) && !finalComponents.find(fc => fc.id === userComp.id)) {
             finalComponents.push(userComp);
         }
     });
-
+    
+    // Validate uniqueness and parent-child relationships
     const allIds = new Set(finalComponents.map(c => c.id));
     if (allIds.size !== finalComponents.length) {
         const duplicateIds = finalComponents.map(c=>c.id).filter((id, index, arr) => arr.indexOf(id) !== index);
@@ -717,7 +818,10 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     for (const comp of finalComponents) {
       if (comp.parentId && !allIds.has(comp.parentId) && comp.parentId !== null) {
-        return { success: false, error: `Invalid JSON: Component "${comp.name} (${comp.id})" has a non-existent parentId "${comp.parentId}".`};
+        // Allow parentId to be null for the root scaffold
+        if (comp.id !== ROOT_SCAFFOLD_ID) {
+          return { success: false, error: `Invalid JSON: Component "${comp.name} (${comp.id})" has a non-existent parentId "${comp.parentId}".`};
+        }
       }
       if (comp.properties.children) {
         if (!Array.isArray(comp.properties.children)) {
@@ -731,11 +835,12 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       }
     }
 
-    let maxIdNum = designState.nextId -1;
+    // Update nextId to be greater than any ID number found in the newly applied components
+    let maxIdNum = designState.nextId -1; // Start with current known max
     finalComponents.forEach(comp => {
       const idParts = comp.id.split('-');
       const numStr = idParts[idParts.length -1];
-      if (/^\d+$/.test(numStr)) {
+      if (/^\d+$/.test(numStr)) { // Check if the last part is a number
         const num = parseInt(numStr, 10);
         if (num > maxIdNum) maxIdNum = num;
       }
@@ -744,12 +849,12 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     setDesignState(prev => ({
       ...prev,
-      components: finalComponents.filter((c, index, self) => self.findIndex(other => other.id === c.id) === index),
-      nextId: maxIdNum + 1,
-      selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID,
+      components: finalComponents.filter((c, index, self) => self.findIndex(other => other.id === c.id) === index), // Final uniqueness check
+      nextId: maxIdNum + 1, // Ensure next ID is fresh
+      selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID, // Reset selection to content area
     }));
     return { success: true };
-  }, [designState.components, designState.nextId]);
+  }, [designState.components, designState.nextId, toast]);
 
 
   const moveComponent = useCallback((draggedId: string, newParentId: string | null, newIndex?: number) => {
@@ -761,12 +866,31 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
              console.warn(`moveComponent: Dragged component with ID ${draggedId} not found.`);
              return prev;
         }
+        if (CORE_SCAFFOLD_ELEMENT_IDS.includes(draggedId)) {
+            toast({title: "Move Prevented", description: "Core scaffold elements cannot be moved arbitrarily.", variant: "destructive"});
+            return prev;
+        }
 
         let draggedComponent = { ...currentComponents[draggedComponentIndexInState] };
         draggedComponent.properties = { ...draggedComponent.properties };
         const oldParentId = draggedComponent.parentId;
+        
+        // Determine effective new parent ID
+        let effectiveNewParentId = newParentId;
+        if (newParentId === ROOT_SCAFFOLD_ID) {
+            if (draggedComponent.type === 'TopAppBar') {
+                effectiveNewParentId = ROOT_SCAFFOLD_ID; // Allowed
+            } else if (draggedComponent.type === 'BottomNavigationBar') {
+                effectiveNewParentId = ROOT_SCAFFOLD_ID; // Allowed
+            } else {
+                effectiveNewParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID; // Redirect others to content
+            }
+        } else if (!newParentId) { // Dropped on surface background
+            effectiveNewParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
+        }
 
-        let checkParentLoop = newParentId;
+
+        let checkParentLoop = effectiveNewParentId;
         while(checkParentLoop) {
             if (checkParentLoop === draggedId) {
                 console.warn("Cannot move component into itself or its descendants.");
@@ -776,6 +900,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             checkParentLoop = parentComp ? parentComp.parentId : null;
         }
 
+        // Remove from old parent's children array
         if (oldParentId) {
             const oldParentIndexInState = currentComponents.findIndex(c => c.id === oldParentId);
             if (oldParentIndexInState !== -1) {
@@ -790,40 +915,43 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             }
         }
 
-        draggedComponent.parentId = newParentId;
+        // Update dragged component's parentId
+        draggedComponent.parentId = effectiveNewParentId;
         currentComponents[draggedComponentIndexInState] = draggedComponent;
 
-        if (newParentId) {
-            const newParentActualIndexInState = currentComponents.findIndex(c => c.id === newParentId);
+        // Add to new parent's children array
+        if (effectiveNewParentId) {
+            const newParentActualIndexInState = currentComponents.findIndex(c => c.id === effectiveNewParentId);
             if (newParentActualIndexInState !== -1) {
                 const newParent = { ...currentComponents[newParentActualIndexInState] };
                 newParent.properties = { ...newParent.properties };
 
                 if (isContainerType(newParent.type, prev.customComponentTemplates)) {
                     let childrenArray = Array.isArray(newParent.properties.children) ? [...newParent.properties.children] : [];
-                    childrenArray = childrenArray.filter(id => id !== draggedId);
+                    childrenArray = childrenArray.filter(id => id !== draggedId); // Remove if already exists (e.g., due to reordering)
 
                     if (newIndex !== undefined && newIndex >= 0 && newIndex <= childrenArray.length) {
                         childrenArray.splice(newIndex, 0, draggedId);
                     } else {
-                        childrenArray.push(draggedId);
+                        childrenArray.push(draggedId); // Add to end if no index
                     }
                     newParent.properties.children = childrenArray;
                     currentComponents[newParentActualIndexInState] = newParent;
                 } else {
-                    console.warn(`moveComponent: Attempted to move component ${draggedId} into non-container ${newParentId}.`);
-                    draggedComponent.parentId = oldParentId;
-                    currentComponents[draggedComponentIndexInState] = prev.components[draggedComponentIndexInState];
-                     if (oldParentId) {
-                        const oldParentIndex = currentComponents.findIndex(c => c.id === oldParentId);
-                        if (oldParentIndex !== -1) {
-                           currentComponents[oldParentIndex] = prev.components[oldParentIndex];
+                    console.warn(`moveComponent: Attempted to move component ${draggedId} into non-container ${effectiveNewParentId}. Reverting parent.`);
+                    // Revert parent change if new parent is not a container
+                    draggedComponent.parentId = oldParentId; 
+                    currentComponents[draggedComponentIndexInState] = draggedComponent; 
+                     if (oldParentId) { // Add back to old parent's children if it was removed
+                        const oldParentIdx = currentComponents.findIndex(c => c.id === oldParentId);
+                        if (oldParentIdx !== -1 && currentComponents[oldParentIdx].properties.children && !currentComponents[oldParentIdx].properties.children!.includes(draggedId)) {
+                           currentComponents[oldParentIdx].properties.children!.push(draggedId);
                         }
                      }
                     return prev;
                 }
             } else {
-                 console.warn(`moveComponent: New parent with ID ${newParentId} not found. Dragged component might be orphaned.`);
+                 console.warn(`moveComponent: New parent with ID ${effectiveNewParentId} not found. Dragged component might be orphaned.`);
             }
         }
 
@@ -831,7 +959,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         return { ...prev, components: finalComponents, selectedComponentId: draggedId };
     });
-  }, []);
+  }, [toast]);
 
   const deleteCustomComponentTemplate = useCallback(async (appTemplateId: string, firestoreDocId?: string) => {
     if (!db) {
@@ -845,7 +973,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
     
     let templateName = "Template";
-    // Optimistic UI update
     setDesignState(prev => {
       const template = prev.customComponentTemplates.find(t => t.templateId === appTemplateId);
       if (template) templateName = template.name;
@@ -884,7 +1011,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         return;
     }
 
-    // Optimistic UI update
     setDesignState(prev => {
       const newTemplates = prev.customComponentTemplates.map(t =>
         t.templateId === appTemplateId ? { ...t, name: newName } : t
@@ -915,11 +1041,10 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const saveCurrentCanvasAsLayout = useCallback(async (name: string) => {
     if (!db) {
-        toast({ title: "Save Failed", description: "Firestore instance (db) is not available. Cannot save layout.", variant: "destructive" });
-        return;
+        toast({ title: "Save Failed", description: "Firestore not available. Layout saved locally only.", variant: "destructive" });
     }
     const currentTimestamp = Date.now();
-    const layoutIdForFirestore = `layout-${currentTimestamp}`.replace(/\//g, '_'); // Prevent '/' in ID
+    const layoutIdForFirestore = `layout-${currentTimestamp}`.replace(/\//g, '_'); 
     const clonedComponents = deepClone(designState.components);
 
     const newLayoutForState: SavedLayout = {
@@ -931,50 +1056,51 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       timestamp: currentTimestamp,
     };
     
-    // Optimistic UI update
     setDesignState(prev => {
       const updatedSavedLayouts = [newLayoutForState, ...(prev.savedLayouts || [])]
         .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
       return { ...prev, savedLayouts: updatedSavedLayouts };
     });
-    toast({ title: "Layout Saved", description: `Layout "${name}" saved locally. Attempting to sync with cloud...` });
+    toast({ title: "Layout Saved", description: `Layout "${name}" saved locally.${db ? " Attempting to sync..." : ""}` });
 
-    const layoutDataForFirestore = {
-      layoutId: newLayoutForState.layoutId,
-      name: newLayoutForState.name,
-      components: newLayoutForState.components,
-      nextId: newLayoutForState.nextId,
-      timestamp: newLayoutForState.timestamp,
-    };
-    const newLayoutDataForFirestore = sanitizeForFirestore(layoutDataForFirestore);
-    
-    try {
-      console.log(`Attempting to save layout to Firestore with ID: ${layoutIdForFirestore}`);
-      console.log("Sanitized Data to save (layout):", JSON.stringify(newLayoutDataForFirestore, null, 2));
-
-      const layoutRef = doc(db, SAVED_LAYOUTS_COLLECTION, layoutIdForFirestore);
-      await setDoc(layoutRef, newLayoutDataForFirestore);
+    if (db) {
+      const layoutDataForFirestore = {
+        layoutId: newLayoutForState.layoutId,
+        name: newLayoutForState.name,
+        components: newLayoutForState.components,
+        nextId: newLayoutForState.nextId,
+        timestamp: newLayoutForState.timestamp,
+      };
+      const newLayoutDataForFirestore = sanitizeForFirestore(layoutDataForFirestore);
       
-      toast({ title: "Sync Successful", description: `Layout "${name}" has been saved to Firestore.` });
+      try {
+        console.log(`Attempting to save layout to Firestore with ID: ${layoutIdForFirestore}`);
+        console.log("Sanitized Data to save (layout):", JSON.stringify(newLayoutDataForFirestore, null, 2));
 
-    } catch (error) {
-      console.error("Firestore operation error (saveCurrentCanvasAsLayout):", error);
-      let detail = "Could not save layout to Firestore.";
-      if (error instanceof Error) {
-        const firebaseError = error as any;
-        detail += ` (Error: ${firebaseError.code || 'UNKNOWN'} - ${firebaseError.message || 'No message'})`;
+        const layoutRef = doc(db, SAVED_LAYOUTS_COLLECTION, layoutIdForFirestore);
+        await setDoc(layoutRef, newLayoutDataForFirestore);
+        
+        toast({ title: "Sync Successful", description: `Layout "${name}" has been saved to Firestore.` });
+
+      } catch (error) {
+        console.error("Firestore operation error (saveCurrentCanvasAsLayout):", error);
+        let detail = "Could not save layout to Firestore.";
+        if (error instanceof Error) {
+          const firebaseError = error as any;
+          detail += ` (Error: ${firebaseError.code || 'UNKNOWN'} - ${firebaseError.message || 'No message'})`;
+        }
+        toast({ title: "Save Layout Failed (Firestore Sync)", description: `${detail}. Layout remains saved locally.`, variant: "destructive" });
       }
-      toast({ title: "Save Layout Failed (Firestore Sync)", description: `${detail}. Layout remains saved locally.`, variant: "destructive" });
     }
   }, [designState.components, designState.nextId, toast, designState.savedLayouts]);
 
   const loadLayoutToCanvas = useCallback((layoutId: string) => {
     const layoutToLoad = designState.savedLayouts.find(l => l.layoutId === layoutId);
     if (layoutToLoad) {
-      setDesign({
+      setDesign({ // Use the enhanced setDesign to ensure Scaffold structure
         components: deepClone(layoutToLoad.components),
         nextId: layoutToLoad.nextId,
-        selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID,
+        selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID, // Default to content
         customComponentTemplates: designState.customComponentTemplates,
         savedLayouts: designState.savedLayouts,
       });
@@ -987,8 +1113,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const deleteSavedLayout = useCallback(async (layoutId: string, firestoreDocId?: string) => {
     if (!db) {
-        toast({ title: "Delete Failed", description: "Firestore instance (db) is not available. Cannot delete layout.", variant: "destructive" });
-        return;
+        toast({ title: "Delete Failed", description: "Firestore not available. Layout deleted locally only.", variant: "destructive" });
     }
     const idToDeleteInFirestore = firestoreDocId || layoutId;
     if (!idToDeleteInFirestore || typeof idToDeleteInFirestore !== 'string' || idToDeleteInFirestore.trim() === '') {
@@ -998,39 +1123,38 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
 
     let layoutName = "Layout";
-    // Optimistic UI update
     setDesignState(prev => {
       const layout = (prev.savedLayouts || []).find(l => l.layoutId === layoutId);
       if(layout) layoutName = layout.name;
       const newLayouts = (prev.savedLayouts || []).filter(l => l.layoutId !== layoutId);
       return { ...prev, savedLayouts: newLayouts };
     });
-    toast({ title: "Layout Deleted", description: `Layout "${layoutName}" removed locally. Attempting to sync...` });
+    toast({ title: "Layout Deleted", description: `Layout "${layoutName}" removed locally.${db ? " Attempting to sync..." : ""}` });
 
-
-    try {
-        if (!idToDeleteInFirestore.startsWith("local-")) { 
-            console.log(`Attempting to delete layout from Firestore with ID: ${idToDeleteInFirestore}`);
-            await deleteDoc(doc(db, SAVED_LAYOUTS_COLLECTION, idToDeleteInFirestore));
-            toast({ title: "Sync Successful", description: `Layout "${layoutName}" also deleted from Firestore.` });
-        } else {
-            toast({ title: "Sync Successful", description: `Layout "${layoutName}" was local, no Firestore delete needed.` });
+    if (db) {
+        try {
+            if (!idToDeleteInFirestore.startsWith("local-")) { 
+                console.log(`Attempting to delete layout from Firestore with ID: ${idToDeleteInFirestore}`);
+                await deleteDoc(doc(db, SAVED_LAYOUTS_COLLECTION, idToDeleteInFirestore));
+                toast({ title: "Sync Successful", description: `Layout "${layoutName}" also deleted from Firestore.` });
+            } else {
+                toast({ title: "Sync Successful", description: `Layout "${layoutName}" was local, no Firestore delete needed.` });
+            }
+        } catch (error) {
+            console.error("Firestore operation error (deleteSavedLayout):", error);
+            let detail = "Could not delete layout from Firestore.";
+            if (error instanceof Error) {
+                const firebaseError = error as any;
+                detail += ` (Error: ${firebaseError.code || 'UNKNOWN'} - ${firebaseError.message || 'No message'})`;
+            }
+            toast({ title: "Delete Layout Failed (Firestore Sync)", description: `${detail}. Removed locally.`, variant: "destructive" });
         }
-    } catch (error) {
-        console.error("Firestore operation error (deleteSavedLayout):", error);
-        let detail = "Could not delete layout from Firestore.";
-        if (error instanceof Error) {
-            const firebaseError = error as any;
-            detail += ` (Error: ${firebaseError.code || 'UNKNOWN'} - ${firebaseError.message || 'No message'})`;
-        }
-        toast({ title: "Delete Layout Failed (Firestore Sync)", description: `${detail}. Removed locally.`, variant: "destructive" });
     }
   }, [toast, designState.savedLayouts]);
 
   const renameSavedLayout = useCallback(async (layoutId: string, newName: string, firestoreDocId?: string) => {
      if (!db) {
-        toast({ title: "Rename Failed", description: "Firestore instance (db) is not available. Cannot rename layout.", variant: "destructive" });
-        return;
+        toast({ title: "Rename Failed", description: "Firestore not available. Layout renamed locally only.", variant: "destructive" });
     }
     const idToUpdateInFirestore = firestoreDocId || layoutId;
      if (!idToUpdateInFirestore || typeof idToUpdateInFirestore !== 'string' || idToUpdateInFirestore.trim() === '') {
@@ -1039,32 +1163,33 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         return;
     }
     
-    // Optimistic UI update
     setDesignState(prev => {
         const newLayouts = (prev.savedLayouts || []).map(l =>
             l.layoutId === layoutId ? { ...l, name: newName } : l
         ).sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
         return { ...prev, savedLayouts: newLayouts };
     });
-    toast({ title: "Layout Renamed", description: `Layout renamed to "${newName}" locally. Attempting to sync...` });
+    toast({ title: "Layout Renamed", description: `Layout renamed to "${newName}" locally.${db ? " Attempting to sync..." : ""}` });
 
-    try {
-        if (!idToUpdateInFirestore.startsWith("local-")) {
-            console.log(`Attempting to rename layout in Firestore with ID: ${idToUpdateInFirestore} to "${newName}"`);
-            const layoutRef = doc(db, SAVED_LAYOUTS_COLLECTION, idToUpdateInFirestore);
-            await updateDoc(layoutRef, { name: newName });
-            toast({ title: "Sync Successful", description: `Layout rename to "${newName}" synced with Firestore.` });
-        } else {
-             toast({ title: "Sync Successful", description: `Layout "${newName}" was local, no Firestore update needed.` });
+    if (db) {
+        try {
+            if (!idToUpdateInFirestore.startsWith("local-")) {
+                console.log(`Attempting to rename layout in Firestore with ID: ${idToUpdateInFirestore} to "${newName}"`);
+                const layoutRef = doc(db, SAVED_LAYOUTS_COLLECTION, idToUpdateInFirestore);
+                await updateDoc(layoutRef, { name: newName });
+                toast({ title: "Sync Successful", description: `Layout rename to "${newName}" synced with Firestore.` });
+            } else {
+                 toast({ title: "Sync Successful", description: `Layout "${newName}" was local, no Firestore update needed.` });
+            }
+        } catch (error) {
+            console.error("Firestore operation error (renameSavedLayout):", error);
+            let detail = "Could not rename layout in Firestore.";
+            if (error instanceof Error) {
+                const firebaseError = error as any;
+                detail += ` (Error: ${firebaseError.code || 'UNKNOWN'} - ${firebaseError.message || 'No message'})`;
+            }
+            toast({ title: "Rename Layout Failed (Firestore Sync)", description: `${detail}. Renamed locally.`, variant: "destructive" });
         }
-    } catch (error) {
-        console.error("Firestore operation error (renameSavedLayout):", error);
-        let detail = "Could not rename layout in Firestore.";
-        if (error instanceof Error) {
-            const firebaseError = error as any;
-            detail += ` (Error: ${firebaseError.code || 'UNKNOWN'} - ${firebaseError.message || 'No message'})`;
-        }
-        toast({ title: "Rename Layout Failed (Firestore Sync)", description: `${detail}. Renamed locally.`, variant: "destructive" });
     }
   }, [toast, designState.savedLayouts]);
 

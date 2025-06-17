@@ -36,12 +36,15 @@ interface AiComponentTreeNode {
 }
 
 // Helper to create a hierarchical structure for the AI (Jetpack Compose)
+// This function now expects allComponents to be the complete list from the DesignContext,
+// and customComponentTemplates for type checking.
+// The entry point (isRootCall = true) will find the ROOT_SCAFFOLD_ID.
 const buildComponentTreeForAi = (
   allComponents: DesignComponent[],
   customComponentTemplates: CustomComponentTemplate[],
-  parentId: string | null = null, // Start with parentId of the component we want to tree-ify
+  componentIdToBuildTreeFrom: string, // ID of the current component to process
   isRootCall: boolean = false
-): AiComponentTreeNode[] | AiComponentTreeNode => {
+): AiComponentTreeNode | AiComponentTreeNode[] => {
 
   if (isRootCall) {
     const rootScaffold = allComponents.find(c => c.id === ROOT_SCAFFOLD_ID && c.parentId === null);
@@ -50,52 +53,55 @@ const buildComponentTreeForAi = (
       return []; // Or throw error
     }
 
-    const topBar = allComponents.find(c => c.id === DEFAULT_TOP_APP_BAR_ID && c.parentId === ROOT_SCAFFOLD_ID);
-    const contentArea = allComponents.find(c => c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID && c.parentId === ROOT_SCAFFOLD_ID);
-    const bottomBar = allComponents.find(c => c.id === DEFAULT_BOTTOM_NAV_BAR_ID && c.parentId === ROOT_SCAFFOLD_ID);
-
+    // Find the TopAppBar, ContentLazyColumn, and BottomNavigationBar that are direct children of the Scaffold
+    const topBarComponent = allComponents.find(c => c.parentId === ROOT_SCAFFOLD_ID && c.type === 'TopAppBar');
+    const contentAreaComponent = allComponents.find(c => c.parentId === ROOT_SCAFFOLD_ID && c.type === 'LazyColumn' && c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID);
+    const bottomBarComponent = allComponents.find(c => c.parentId === ROOT_SCAFFOLD_ID && c.type === 'BottomNavigationBar');
+    
     const scaffoldNode: AiComponentTreeNode = {
       id: rootScaffold.id,
-      type: rootScaffold.type, // "Scaffold"
+      type: rootScaffold.type, // Should be "Scaffold"
       name: rootScaffold.name,
       properties: cleanEmptyOrNullProperties({ ...rootScaffold.properties }),
-      topBar: topBar ? buildComponentTreeForAi([topBar, ...allComponents.filter(c => c.parentId === topBar.id)], customComponentTemplates, topBar.id) as AiComponentTreeNode : null,
-      content: contentArea ? buildComponentTreeForAi([contentArea, ...allComponents.filter(c => c.parentId === contentArea.id)], customComponentTemplates, contentArea.id) as AiComponentTreeNode : null,
-      bottomBar: bottomBar ? buildComponentTreeForAi([bottomBar, ...allComponents.filter(c => c.parentId === bottomBar.id)], customComponentTemplates, bottomBar.id) as AiComponentTreeNode : null,
+      topBar: topBarComponent ? buildComponentTreeForAi(allComponents, customComponentTemplates, topBarComponent.id) as AiComponentTreeNode : null,
+      content: contentAreaComponent ? buildComponentTreeForAi(allComponents, customComponentTemplates, contentAreaComponent.id) as AiComponentTreeNode : null,
+      bottomBar: bottomBarComponent ? buildComponentTreeForAi(allComponents, customComponentTemplates, bottomBarComponent.id) as AiComponentTreeNode : null,
     };
-     // Remove children from scaffold properties as they are represented by slots
-    delete scaffoldNode.properties.children;
+    // Remove children property from Scaffold node itself, as slots are explicit
+    delete scaffoldNode.properties.children; 
     return scaffoldNode;
   }
 
-  // Logic for non-root calls (building sub-trees)
-  return allComponents
-    .filter(component => component.id === parentId) // Should be only one component for the given parentId (entry point)
-    .map(component => {
-      let nodeProperties = cleanEmptyOrNullProperties({ ...component.properties });
-      
-      const node: AiComponentTreeNode = {
-        id: component.id,
-        type: component.type,
-        name: component.name,
-        properties: nodeProperties,
-      };
+  // Logic for non-root calls (building sub-trees for slots or nested components)
+  const currentComponent = allComponents.find(c => c.id === componentIdToBuildTreeFrom);
+  if (!currentComponent) {
+    console.warn(`Component with ID ${componentIdToBuildTreeFrom} not found during AI tree build.`);
+    return []; // Or handle as appropriate
+  }
 
-      if (isContainerType(component.type, customComponentTemplates) && component.type !== 'Scaffold') {
-        const childrenOfThisComponent = allComponents.filter(c => c.parentId === component.id);
-        const childNodes = childrenOfThisComponent.flatMap(child => buildComponentTreeForAi(allComponents, customComponentTemplates, child.id) as AiComponentTreeNode);
+  let nodeProperties = cleanEmptyOrNullProperties({ ...currentComponent.properties });
+  
+  const node: AiComponentTreeNode = {
+    id: currentComponent.id,
+    type: currentComponent.type,
+    name: currentComponent.name,
+    properties: nodeProperties,
+  };
 
-        if (childNodes.length > 0) {
-          // For AI tree, standard containers use 'children' at top level of node for nesting
-          node.children = childNodes;
-          // Also remove the children ID array from properties if we're nesting objects
-          delete node.properties.children;
-        }
-      }
-      return node;
-    // If parentId pointed to a single component, this map returns an array of one. We take the first.
-    // If it's from a flatMap above, it's already a node.
-    })[0] || []; // Ensure it returns the single node or an empty array if not found.
+  // Recursively build children for container types (excluding Scaffold itself here)
+  if (isContainerType(currentComponent.type, customComponentTemplates) && currentComponent.type !== 'Scaffold') {
+    const childrenOfThisComponent = allComponents.filter(c => c.parentId === currentComponent.id);
+    const childNodes = childrenOfThisComponent
+      .map(child => buildComponentTreeForAi(allComponents, customComponentTemplates, child.id) as AiComponentTreeNode)
+      .filter(n => n && Object.keys(n).length > 0); // Filter out empty results
+
+    if (childNodes.length > 0) {
+      node.children = childNodes;
+      // Remove children ID array from properties if we're nesting full objects for AI
+      delete node.properties.children; 
+    }
+  }
+  return node;
 };
 
 
@@ -105,13 +111,14 @@ export async function generateJetpackComposeCodeAction(
 ): Promise<string> {
   try {
     // Build the tree starting from the root Scaffold.
-    const scaffoldStructureForAi = buildComponentTreeForAi(components, customComponentTemplates, null, true);
+    const scaffoldStructureForAi = buildComponentTreeForAi(components, customComponentTemplates, ROOT_SCAFFOLD_ID, true);
 
-    if (!scaffoldStructureForAi || Array.isArray(scaffoldStructureForAi) && scaffoldStructureForAi.length === 0) {
+    if (!scaffoldStructureForAi || (Array.isArray(scaffoldStructureForAi) && scaffoldStructureForAi.length === 0) || Object.keys(scaffoldStructureForAi).length === 0) {
       return "No valid Scaffold structure found to generate code from.";
     }
 
     const designJson = JSON.stringify(scaffoldStructureForAi, null, 2);
+    // console.log("JSON for AI (Jetpack Compose):", designJson); // For debugging
     const input: GenerateComposeCodeInput = { designJson };
     const result = await generateComposeCode(input);
     return result.composeCode;
@@ -145,6 +152,7 @@ const buildContentComponentTreeForModalJson = (
     .filter(component => component.parentId === currentParentIdForContext)
     .map(component => {
       const componentBaseProperties = { ...component.properties };
+      // Remove the 'children' array of IDs, as we are nesting full objects for the modal
       const { children: _childIdArrayFromProps, ...otherProperties } = componentBaseProperties;
       const cleanedOtherProperties = cleanEmptyOrNullProperties(otherProperties);
 
@@ -152,14 +160,15 @@ const buildContentComponentTreeForModalJson = (
         id: component.id,
         type: component.type,
         name: component.name,
-        parentId: component.parentId,
+        parentId: component.parentId, // This parentId is correct for components *within* the content area
         properties: cleanedOtherProperties,
       };
 
+      // Recursively build for children if this component is a container
       if (isContainerType(component.type, customComponentTemplates)) {
         const childrenObjectNodes = buildContentComponentTreeForModalJson(allComponents, customComponentTemplates, component.id);
         if (childrenObjectNodes.length > 0) {
-          node.properties.children = childrenObjectNodes as any;
+          node.properties.children = childrenObjectNodes as any; // Nest full child objects
         }
       }
       return node;
@@ -216,9 +225,12 @@ const buildFlatContentTreeForRemoteConfig = (
         ...component,
         properties: cleanEmptyOrNullProperties({ ...component.properties }),
       };
+      // For remote config, we still use the array of child IDs in properties.children
+      // The hierarchical nesting is only for the AI and View JSON modal.
       contentAreaComponents.push(cleanedComponent);
 
       // If this component is a container and has children (IDs), add them to the queue
+      // This refers to the `properties.children` which should be an array of IDs.
       if (component.properties.children && Array.isArray(component.properties.children)) {
         component.properties.children.forEach(childId => {
           const childComponentExists = allComponents.find(c => c.id === childId);
@@ -235,7 +247,7 @@ const buildFlatContentTreeForRemoteConfig = (
 
 export async function publishToRemoteConfigAction(
   components: DesignComponent[],
-  customComponentTemplates: CustomComponentTemplate[], // Kept for signature consistency, not used by buildFlatContentTreeForRemoteConfig
+  customComponentTemplates: CustomComponentTemplate[], // Kept for signature consistency
   parameterKey: string
 ): Promise<{ success: boolean; message: string; version?: string }> {
   console.log("publishToRemoteConfigAction: Initiating publish...");
@@ -263,10 +275,9 @@ export async function publishToRemoteConfigAction(
     console.log("publishToRemoteConfigAction: Building content component tree for Remote Config...");
     
     // Get only the components within the main content area (DEFAULT_CONTENT_LAZY_COLUMN_ID)
-    const contentComponentsForRemoteConfig = buildFlatContentTreeForRemoteConfig(components);
+    // This remains a flat list of components that are descendants of the content area.
+    const contentComponentsForRemoteConfig = buildFlatContentTreeForRemoteConfig(components, DEFAULT_CONTENT_LAZY_COLUMN_ID);
     
-    // The JSON to publish will be an array of these content components.
-    // If contentComponentsForRemoteConfig is empty, an empty array "[]" will be published.
     const designJsonString = JSON.stringify(contentComponentsForRemoteConfig, null, 2);
     
     console.log("publishToRemoteConfigAction: Content components for Remote Config. Count:", contentComponentsForRemoteConfig.length);
@@ -432,17 +443,23 @@ export async function convertCanvasToCustomJsonAction(
     // Get JSON for the content area only
     const canvasContentJsonString = await getDesignComponentsAsJsonAction(allComponents, customComponentTemplates);
 
-    if (canvasContentJsonString.startsWith("Error:") || 
-        (canvasContentJsonString === "[]" && allComponents.filter(c => c.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID).length > 0) ||
-        (canvasContentJsonString === "[]" && allComponents.filter(c => c.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID).length === 0 && allComponents.length > 4) // 4 = scaffold + 3 slots
-       ) {
-      const userComponentsInContentArea = allComponents.filter(c => c.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID);
-      if (userComponentsInContentArea.length === 0) {
-        return { error: "No user components in the content area to convert." };
-      }
-      if (canvasContentJsonString.startsWith("Error:")) {
-         return { error: "Failed to prepare canvas data for conversion: " + canvasContentJsonString };
-      }
+    // Validate if the content area JSON is meaningful before sending to AI
+    if (canvasContentJsonString.startsWith("Error:")) {
+        return { error: "Failed to prepare canvas data for conversion: " + canvasContentJsonString };
+    }
+    try {
+        const parsedContent = JSON.parse(canvasContentJsonString);
+        if (Array.isArray(parsedContent) && parsedContent.length === 0) {
+           // Only consider it an error if there are actually components on the canvas but none in the content area.
+           // The core scaffold components (4 of them) will always exist.
+           const userAddedComponentsExist = allComponents.length > 4; 
+           if (userAddedComponentsExist) {
+             return { error: "No user components in the content area to convert." };
+           }
+           // If only scaffold exists, an empty array is fine, AI should handle it (e.g., return empty custom JSON)
+        }
+    } catch (e) {
+        return { error: "Canvas content JSON is invalid and could not be parsed." };
     }
     
     const input: ConvertCanvasToCustomJsonInput = { designJson: canvasContentJsonString };

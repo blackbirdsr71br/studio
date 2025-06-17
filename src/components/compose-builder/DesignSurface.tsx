@@ -23,16 +23,16 @@ export function DesignSurface() {
   
   const rootScaffoldComponent = components.find(c => c.id === ROOT_SCAFFOLD_ID && c.parentId === null);
 
-  let showPlaceholder = false;
-  if (rootScaffoldComponent) {
-    const contentArea = components.find(c => c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID && c.parentId === ROOT_SCAFFOLD_ID);
-    if (contentArea && (!contentArea.properties.children || contentArea.properties.children.length === 0)) {
-      showPlaceholder = true;
-    }
-  } else {
-    // Should not happen if context initializes correctly
-    showPlaceholder = true; 
-  }
+  // Placeholder logic is now handled within RenderedComponentWrapper for the content area
+  // let showPlaceholder = false;
+  // if (rootScaffoldComponent) {
+  //   const contentArea = components.find(c => c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID && c.parentId === ROOT_SCAFFOLD_ID);
+  //   if (contentArea && (!contentArea.properties.children || contentArea.properties.children.length === 0)) {
+  //     showPlaceholder = true;
+  //   }
+  // } else {
+  //   showPlaceholder = true; 
+  // }
 
   return (
     <div
@@ -80,7 +80,6 @@ export function DesignSurface() {
       )}
 
       {/* Placeholder is now conceptually inside the content LazyColumn, managed by its RenderedComponentWrapper */}
-      {/* This placeholder logic might need to move or be adapted if DesignSurface no longer directly sees contentAreaComponent's children */}
     </div>
   );
 }

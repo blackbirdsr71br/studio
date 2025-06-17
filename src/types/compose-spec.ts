@@ -14,15 +14,16 @@ export type ComponentType =
   | 'LazyVerticalGrid'
   | 'LazyHorizontalGrid'
   | 'Spacer'
-  | 'TopAppBar'
-  | 'BottomNavigationBar'
-  | 'Scaffold';
+  | 'TopAppBar' // Added
+  | 'BottomNavigationBar' // Added
+  | 'Scaffold'; // Explicitly a root type
 
 export const CUSTOM_COMPONENT_TYPE_PREFIX = "custom/";
 export const ROOT_SCAFFOLD_ID = 'root-scaffold';
 export const DEFAULT_CONTENT_LAZY_COLUMN_ID = 'scaffold-content-lazy-column';
 export const DEFAULT_TOP_APP_BAR_ID = 'scaffold-top-app-bar';
 export const DEFAULT_BOTTOM_NAV_BAR_ID = 'scaffold-bottom-nav-bar';
+export const CORE_SCAFFOLD_ELEMENT_IDS = [ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_BOTTOM_NAV_BAR_ID];
 
 
 export interface ComponentPropertyOption {
@@ -89,9 +90,10 @@ export interface BaseComponentProps {
   title?: string;
   selfAlign?: 'Inherit' | 'Start' | 'Center' | 'End';
 
-  topBarId?: string;
-  contentId?: string;
-  bottomBarId?: string;
+  // Properties for Scaffold structure, used by AI generation
+  topBarId?: string; // ID of the TopAppBar component
+  contentId?: string; // ID of the main content container (e.g., LazyColumn)
+  bottomBarId?: string; // ID of the BottomNavigationBar component
 }
 
 export interface DesignComponent {
@@ -139,7 +141,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
       return {
         width: 'match_parent',
         height: 'match_parent',
-        backgroundColor: 'transparent',
+        backgroundColor: 'transparent', // Scaffold itself usually doesn't have its own BG, relies on content
         children: [DEFAULT_TOP_APP_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_BOTTOM_NAV_BAR_ID]
       };
     case 'Text':
@@ -234,14 +236,14 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
       return {
         ...commonLayout,
         children: [],
-        padding: isContentArea ? 8 : 0,
+        padding: isContentArea ? 8 : 0, // Default padding for content area
         backgroundColor: isContentArea ? 'transparent' : 'rgba(200, 240, 200, 0.3)',
-        width: 'match_parent',
-        height: 'match_parent',
+        width: 'match_parent', // Content area should fill width
+        height: 'match_parent', // Content area should fill height (of its slot)
         itemSpacing: 8,
         userScrollEnabled: true, reverseLayout: false,
         verticalArrangement: 'Top', horizontalAlignment: 'Start',
-        paddingBottom: isContentArea ? (8) : 8,
+        paddingBottom: isContentArea ? (8) : 8, // Add some bottom padding for scroll room
         selfAlign: 'Inherit',
       };
     case 'LazyRow':
@@ -284,36 +286,36 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         height: 8,
         selfAlign: undefined, 
       };
-    case 'TopAppBar':
+    case 'TopAppBar': // New default for TopAppBar
       return {
         layoutWeight: 0,
         padding: 0, paddingTop: 0, paddingBottom: 0, paddingStart: 0, paddingEnd: 0,
-        fillMaxWidth: true, fillMaxHeight: false,
+        fillMaxWidth: true, fillMaxHeight: false, // Usually fills width
         selfAlign: undefined,
-        children: [],
+        children: [], // For action items or navigation icon
         title: 'Screen Title',
         titleFontSize: 20,
-        width: 'match_parent',
-        height: 56,
-        backgroundColor: '#3F51B5',
-        contentColor: '#FFFFFF',
+        width: 'match_parent', // Default to match_parent
+        height: 56, // Standard height
+        backgroundColor: '#3F51B5', // Example primary color
+        contentColor: '#FFFFFF', // Example contrasting color for title/icons
         itemSpacing: 8,
-        horizontalArrangement: 'Start',
+        horizontalArrangement: 'Start', // For title and actions
         verticalAlignment: 'CenterVertically'
       };
-    case 'BottomNavigationBar':
+    case 'BottomNavigationBar': // New default for BottomNavigationBar
       return {
         layoutWeight: 0,
         padding: 0, paddingTop: 0, paddingBottom: 0, paddingStart: 0, paddingEnd: 0,
-        fillMaxWidth: true, fillMaxHeight: false,
+        fillMaxWidth: true, fillMaxHeight: false, // Usually fills width
         selfAlign: undefined,
-        children: [],
+        children: [], // For navigation items
         width: 'match_parent',
-        height: 56,
-        backgroundColor: '#F0F0F0',
-        contentColor: '#000000',
-        itemSpacing: 0,
-        horizontalArrangement: 'SpaceAround',
+        height: 56, // Standard height
+        backgroundColor: '#F0F0F0', // Example light color
+        contentColor: '#000000', // Example contrasting color
+        itemSpacing: 0, // Items usually have their own padding
+        horizontalArrangement: 'SpaceAround', // Common for nav items
         verticalAlignment: 'CenterVertically'
       };
     default:
@@ -412,6 +414,9 @@ const columnSpecificLayoutProperties: (Omit<ComponentProperty, 'value'>)[] = [
 
 export const propertyDefinitions: Record<ComponentType | string, (Omit<ComponentProperty, 'value'>)[]> = {
   Scaffold: [
+    // Scaffold backgroundColor is usually transparent, the content area gets its own.
+    // No direct layout properties for Scaffold itself other than it fills the screen.
+    // Slot assignment is structural, not a typical "property".
     { name: 'backgroundColor', type: 'color', label: 'Background Color (Scaffold Body)', group: 'Appearance' },
   ],
   Text: [
@@ -536,7 +541,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
   ],
   Card: [
     ...commonLayoutProperties,
-    ...columnSpecificLayoutProperties,
+    ...columnSpecificLayoutProperties, // Card often behaves like a Column for its children
     selfAlignProperty,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (Overrides default contrast)', group: 'Appearance' },
@@ -548,8 +553,8 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     { name: 'borderWidth', type: 'number', label: 'Border Width (dp)', placeholder: '0', group: 'Appearance' },
     { name: 'borderColor', type: 'color', label: 'Border Color', group: 'Appearance' },
   ],
-  LazyColumn: [
-    ...commonLayoutProperties,
+  LazyColumn: [ // Properties for the content area LazyColumn
+    ...commonLayoutProperties.filter(p => !p.name.startsWith('selfAlign')), // selfAlign not relevant for root content
     ...columnSpecificLayoutProperties,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'userScrollEnabled', type: 'boolean', label: 'Enable Scrolling', group: 'Behavior' },
@@ -558,19 +563,22 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
   LazyRow: [
     ...commonLayoutProperties,
     ...rowSpecificLayoutProperties,
+    selfAlignProperty,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'userScrollEnabled', type: 'boolean', label: 'Enable Scrolling', group: 'Behavior' },
     { name: 'reverseLayout', type: 'boolean', label: 'Reverse Layout', group: 'Behavior' },
   ],
   LazyVerticalGrid: [
     ...commonLayoutProperties,
-    ...columnSpecificLayoutProperties,
+    ...columnSpecificLayoutProperties, // Grids often share column-like child alignment
+    selfAlignProperty,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'columns', type: 'number', label: 'Number of Columns', placeholder: '2', group: 'Layout' },
   ],
   LazyHorizontalGrid: [
     ...commonLayoutProperties,
-    ...rowSpecificLayoutProperties,
+    ...rowSpecificLayoutProperties, // And row-like child alignment
+    selfAlignProperty,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'rows', type: 'number', label: 'Number of Rows', placeholder: '2', group: 'Layout' },
   ],
@@ -579,21 +587,23 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '8', group: 'Layout' },
     { name: 'layoutWeight', type: 'number', label: 'Layout Weight', placeholder: '0 (no weight)', group: 'Layout' },
   ],
-  TopAppBar: [
-    ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd', 'layoutWeight', 'fillMaxHeight', 'height'].includes(p.name) ),
+  TopAppBar: [ // Properties specific to TopAppBar slot component
+    ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd', 'layoutWeight', 'fillMaxHeight', 'height'].includes(p.name) ), // Basic layout, but height is fixed/managed
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '56', group: 'Layout' },
     { name: 'title', type: 'string', label: 'Title', placeholder: 'Screen Title', group: 'Content' },
     { name: 'titleFontSize', type: 'number', label: 'Title Font Size (sp)', placeholder: '20', group: 'Appearance' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (Title, Icons)', group: 'Appearance' },
-    ...rowSpecificLayoutProperties.filter(p => p.name !== 'itemSpacing'),
+    // TopAppBar behaves like a Row for its children (title, actions)
+    ...rowSpecificLayoutProperties.filter(p => p.name !== 'itemSpacing'), // Use its own itemSpacing definition
     { name: 'itemSpacing', type: 'number', label: 'Action Item Spacing (dp)', placeholder: '8', group: 'Layout' },
   ],
-  BottomNavigationBar: [
+  BottomNavigationBar: [ // Properties specific to BottomNavigationBar slot component
      ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd', 'layoutWeight', 'fillMaxHeight', 'height'].includes(p.name) ),
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '56', group: 'Layout' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (Icons, Labels)', group: 'Appearance' },
+    // BottomNavigationBar behaves like a Row for its children (nav items)
     ...rowSpecificLayoutProperties,
   ],
 };
@@ -605,8 +615,8 @@ export const isCustomComponentType = (type: string): boolean => {
 export const CONTAINER_TYPES: ReadonlyArray<ComponentType | string > = [
   'Column', 'Row', 'Box', 'Card',
   'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid',
-  'TopAppBar', 'BottomNavigationBar',
-  'Scaffold'
+  'TopAppBar', 'BottomNavigationBar', // These are now containers for their items
+  'Scaffold' // Scaffold is the root container
 ];
 
 export function isContainerType(type: ComponentType | string, customTemplates?: CustomComponentTemplate[]): boolean {
@@ -617,17 +627,21 @@ export function isContainerType(type: ComponentType | string, customTemplates?: 
       if (template && template.rootComponentId) {
         const rootOfTemplate = template.componentTree.find(c => c.id === template.rootComponentId);
         if (rootOfTemplate) {
-
+          // Recursively check if the root of the custom component is a container
           return isContainerType(rootOfTemplate.type, customTemplates);
         }
       }
     }
+    // If template not found or no root, assume not a container by default for safety,
+    // or decide based on a property of the custom component itself if you add one.
     return false;
   }
   return CONTAINER_TYPES.includes(type as ComponentType);
 }
 
 
+// Schema for validating JSON that is pasted into the "View JSON" modal
+// This JSON represents the *content area* of the scaffold (children of DEFAULT_CONTENT_LAZY_COLUMN_ID)
 const BaseModalPropertiesSchema = z.object({
   text: z.string().optional(),
   fontSize: z.number().optional(),
@@ -674,40 +688,44 @@ const BaseModalPropertiesSchema = z.object({
   lineHeight: z.number().min(0).optional(),
   title: z.string().optional(),
   selfAlign: z.enum(['Inherit', 'Start', 'Center', 'End']).optional(),
+  // children property is handled by the recursive schema definition below
+}).catchall(z.any()); // Allow other properties not explicitly defined, for flexibility
 
-}).catchall(z.any());
 
-
+// Recursive type for component nodes in the "View JSON" modal (content area only)
 type ModalComponentNodePlain = {
   id: string;
-  type: string;
+  type: string; // Could be ComponentType or custom template ID string
   name: string;
-  parentId: string | null;
+  parentId: string | null; // For content area items, parentId would be their container *within* the content area
   properties?: Partial<BaseComponentProps> & { children?: ModalComponentNodePlain[] };
 };
 
+// Zod schema for a single component node in the "View JSON" modal (content area)
 const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =>
   z.object({
     id: z.string().min(1, "Component ID cannot be empty"),
-    type: z.string().min(1, "Component type cannot be empty"),
+    type: z.string().min(1, "Component type cannot be empty"), // Validate against known types if stricter control is needed
     name: z.string().min(1, "Component name cannot be empty"),
-    parentId: z.string().nullable(),
+    parentId: z.string().nullable(), // This parentId is relative to other components in the content area JSON
     properties: BaseModalPropertiesSchema.extend({
-      children: z.array(ModalComponentNodeSchema).optional(),
+      children: z.array(ModalComponentNodeSchema).optional(), // Recursively define children
     }).optional(),
   }).refine(data => {
-
+    // Example custom validation: if type is Image, src should ideally exist
     if (data.type === 'Image') {
       if (data.properties?.src && !z.string().url().or(z.string().startsWith("data:image/")).safeParse(data.properties.src).success) {
         // This would be caught by BaseModalPropertiesSchema's .url() or .startsWith()
       }
     }
-
+    // Example for Spacer: must have width, height, or weight if not filling
     if (data.type === 'Spacer') {
         const props = data.properties || {};
         const hasWeight = typeof props.layoutWeight === 'number' && props.layoutWeight > 0;
         const hasWidth = typeof props.width === 'number' && props.width > 0;
         const hasHeight = typeof props.height === 'number' && props.height > 0;
+        // If it's not weighted, it should have explicit dimensions
+        // This is more complex than a simple refine, might need to be checked post-parse or by AI.
         if (!hasWeight && !hasWidth && !hasHeight) {
           // This is a validation, not a type error. Zod's .refine needs to return false for error.
         }
@@ -716,4 +734,7 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
   })
 );
 
+// The schema for the entire JSON content of the "View JSON" modal (content area)
+// It's an array of root-level components within the content area.
 export const ModalJsonSchema = z.array(ModalComponentNodeSchema);
+

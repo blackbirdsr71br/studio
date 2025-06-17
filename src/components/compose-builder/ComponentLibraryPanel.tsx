@@ -37,8 +37,8 @@ import {
   Space,
   LayoutDashboard, 
   Download, 
-  PanelTop,
-  PanelBottom,
+  PanelTop, // Icon for TopAppBar
+  PanelBottom, // Icon for BottomNavigationBar
   // AppWindow, // Icon for Scaffold structure - Scaffold item removed from palette
 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
@@ -57,8 +57,8 @@ const availableBaseComponents: { type: ComponentType; icon: React.ElementType; d
   { type: "LazyVerticalGrid", icon: Grid3x3 },
   { type: "LazyHorizontalGrid", icon: GalleryThumbnails },
   { type: "Spacer", icon: Space },
-  { type: "TopAppBar", icon: PanelTop },
-  { type: "BottomNavigationBar", icon: PanelBottom },
+  { type: "TopAppBar", icon: PanelTop }, // Added TopAppBar
+  { type: "BottomNavigationBar", icon: PanelBottom }, // Added BottomNavigationBar
 ];
 
 export function ComponentLibraryPanel() {
