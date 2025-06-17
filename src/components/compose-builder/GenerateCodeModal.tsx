@@ -19,7 +19,7 @@ export interface GenerateCodeModalRef {
 
 export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [generatedCode, setGeneratedCode] = useState<string>(""); 
+  const [generatedCode, setGeneratedCode] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const { components, customComponentTemplates } = useDesign();
   const { toast } = useToast();
@@ -30,7 +30,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
   }, []);
 
   const handleGenerateCode = useCallback(async () => {
-    const userComponentsExist = components.some(c => c.id !== 'default-root-lazy-column') || 
+    const userComponentsExist = components.some(c => c.id !== 'default-root-lazy-column') ||
                                (components.find(c => c.id === 'default-root-lazy-column')?.properties.children?.length || 0) > 0;
 
     if (!userComponentsExist) {
@@ -39,7 +39,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
       return;
     }
     setIsLoading(true);
-    setGeneratedCode(""); 
+    setGeneratedCode("");
     try {
       const code = await generateJetpackComposeCodeAction(components, customComponentTemplates);
       setGeneratedCode(code);
@@ -60,18 +60,18 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
   useImperativeHandle(ref, () => ({
     openModal: () => {
       setIsOpen(true);
-      const userComponentsExist = components.some(c => c.id !== 'default-root-lazy-column') || 
+      const userComponentsExist = components.some(c => c.id !== 'default-root-lazy-column') ||
                                  (components.find(c => c.id === 'default-root-lazy-column')?.properties.children?.length || 0) > 0;
 
       if (userComponentsExist) {
         if (!generatedCode || generatedCode.startsWith("// Error") || generatedCode.startsWith("No user components on the canvas")) {
-          handleGenerateCode(); 
+          handleGenerateCode();
         } else {
-          setIsLoading(false); 
+          setIsLoading(false);
         }
       } else {
         setGeneratedCode("No user components on the canvas to generate code from.");
-        setIsLoading(false); 
+        setIsLoading(false);
       }
     }
   }));
@@ -116,21 +116,21 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
       });
     }
   };
-  
+
   const canPerformActions = !isLoading && generatedCode && !generatedCode.startsWith("// Error") && !generatedCode.startsWith("No components");
-  const userComponentsExistForRegeneration = components.some(c => c.id !== 'default-root-lazy-column') || 
+  const userComponentsExistForRegeneration = components.some(c => c.id !== 'default-root-lazy-column') ||
                                            (components.find(c => c.id === 'default-root-lazy-column')?.properties.children?.length || 0) > 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col">
+      <DialogContent className="sm:max-w-4xl max-h-[80vh] flex flex-col"> {/* Increased width to 4xl */}
         <DialogHeader>
           <DialogTitle className="font-headline">Generated Jetpack Compose Code</DialogTitle>
           <DialogDescription>
             Edit, copy, or download the code below to use in your Android project.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex-grow my-4 rounded-md border bg-muted/30 overflow-hidden min-h-[300px] relative">
+        <div className="flex-grow my-4 rounded-md border bg-muted/30 overflow-y-auto min-h-[300px] relative"> {/* Changed overflow-hidden to overflow-y-auto */}
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -139,11 +139,11 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
           ) : (
             <CodeMirror
               value={generatedCode}
-              height="100%" 
+              height="100%"
               extensions={[javaLang()]}
               theme={resolvedTheme === 'dark' ? githubDark : githubLight}
               onChange={handleCodeChange}
-              className="text-sm h-full" 
+              className="text-sm h-full"
               basicSetup={{
                 lineNumbers: true,
                 foldGutter: true,
