@@ -127,8 +127,8 @@ export const ThemeEditorModal = forwardRef<ThemeEditorModalRef, {}>((props, ref)
           </DialogDescription>
         </DialogHeader>
         
-        <ScrollArea className="flex-grow min-h-0 my-4 pr-3"> {/* Added min-h-0 for robust flex scroll */}
-          <div className="space-y-4">
+        <ScrollArea className="flex-grow min-h-0"> {/* Removed my-4, pr-3 */}
+          <div className="space-y-4 py-4 pr-4"> {/* Added py-4 and pr-4 here */}
             <div>
               <h4 className="text-sm font-medium mb-2 text-foreground">Light Theme</h4>
               <div className="space-y-3 p-1">
@@ -153,7 +153,7 @@ export const ThemeEditorModal = forwardRef<ThemeEditorModalRef, {}>((props, ref)
           </div>
         </ScrollArea>
         
-        <DialogFooter>
+        <DialogFooter className="mt-auto pt-4"> {/* Ensure footer doesn't overlap scroll content due to ScrollArea's margin removal */}
           <Button onClick={handleApplyStylesheet} disabled={isUpdatingStylesheet} className="w-full">
             {isUpdatingStylesheet ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Palette className="mr-2 h-4 w-4" />}
             Apply & Update Stylesheet
