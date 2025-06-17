@@ -494,10 +494,12 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
                 <AlertTitle>Note</AlertTitle>
                 <AlertDescription>This JSON is generated for use with server-driven UI systems expecting the custom command format. It's read-only here.</AlertDescription>
             </Alert>
-            <Button onClick={handleOpenPublishCustomJsonDialog} disabled={!canPublishCustomJsonValue} className="w-1/2 mt-2">
-                {isPublishingCustomJson ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
-                Publish Custom JSON to Remote Config
-            </Button>
+            <div className="flex flex-col sm:flex-row sm:justify-start gap-2 mt-2">
+              <Button onClick={handleOpenPublishCustomJsonDialog} disabled={!canPublishCustomJsonValue} className="w-full sm:w-auto">
+                  {isPublishingCustomJson ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
+                  Publish Custom JSON to Remote Config
+              </Button>
+            </div>
           </TabsContent>
         </Tabs>
 
