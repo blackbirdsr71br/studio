@@ -21,7 +21,7 @@ import {
   getDesignComponentsAsJsonAction,
   convertCanvasToCustomJsonAction,
   publishCustomJsonToRemoteConfigAction,
-  publishToRemoteConfigAction // Import this existing action
+  publishToRemoteConfigAction
 } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Copy, Download, Wand2, FileJson, Info, Save, AlertTriangle, UploadCloud } from 'lucide-react';
@@ -494,7 +494,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
                 <AlertTitle>Note</AlertTitle>
                 <AlertDescription>This JSON is generated for use with server-driven UI systems expecting the custom command format. It's read-only here.</AlertDescription>
             </Alert>
-            <Button onClick={handleOpenPublishCustomJsonDialog} disabled={!canPublishCustomJsonValue} className="w-full sm:w-auto mt-2">
+            <Button onClick={handleOpenPublishCustomJsonDialog} disabled={!canPublishCustomJsonValue} className="w-1/2 mx-auto mt-2">
                 {isPublishingCustomJson ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
                 Publish Custom JSON to Remote Config
             </Button>
@@ -574,6 +574,3 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
 });
 
 ViewJsonModal.displayName = 'ViewJsonModal';
-
-
-    
