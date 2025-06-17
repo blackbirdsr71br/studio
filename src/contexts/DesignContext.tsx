@@ -166,12 +166,10 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const templates: CustomComponentTemplate[] = [];
         templatesSnapshot.forEach((docSnap) => {
           const data = docSnap.data();
-          // data.templateId should have the "custom/" prefix
-          // docSnap.id is the Firestore document ID (without prefix)
           if (data.templateId && data.name && data.rootComponentId && data.componentTree) {
             templates.push({
-              firestoreId: docSnap.id, // ID of the document (without prefix)
-              templateId: data.templateId as string, // ID used in the app (with prefix)
+              firestoreId: docSnap.id,
+              templateId: data.templateId as string,
               name: data.name as string,
               rootComponentId: data.rootComponentId as string,
               componentTree: data.componentTree as DesignComponent[],
@@ -201,10 +199,9 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const layouts: SavedLayout[] = [];
         layoutsSnapshot.forEach((docSnap) => {
           const data = docSnap.data();
-           // data.layoutId is the ID used in the app and as Firestore doc ID (no prefix)
           if (data.layoutId && data.name && data.components && typeof data.nextId === 'number') {
             layouts.push({
-              firestoreId: docSnap.id, // Should be same as data.layoutId
+              firestoreId: docSnap.id,
               layoutId: data.layoutId as string,
               name: data.name as string,
               components: data.components as DesignComponent[],
@@ -305,22 +302,11 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           newInstanceComp.id = newInstanceCompId;
           newInstanceComp.name = templateComp.name;
 
-          // Crucially, the 'type' of the instantiated root component (and any nested custom ones)
-          // should be the appTemplateId (e.g., "custom/my_template-123")
-          // For base components within the template, their type remains (e.g., "Text", "Column")
-          // The template.componentTree already has the correct 'type' for its root component
-          // IF it was saved correctly. The template.rootComponentId refers to a component
-          // in template.componentTree whose 'type' might be a base type.
-          // We need to ensure the *instance* of the template root has the template's ID as its type.
-          // This is implicitly handled if the DraggableComponentItem for custom templates uses template.templateId as its 'type'
-          // and the 'type' property of DesignComponent is what we mean.
-
           if (templateComp.id === template.rootComponentId) {
             newInstanceComp.name = `${template.name} Instance`;
             instantiatedTemplateRootId = newInstanceCompId;
             newInstanceComp.parentId = parentToUpdateId;
-            // The type of this root instance should reflect it's an instance of THIS template
-            newInstanceComp.type = appTemplateId; // Ensure instance type IS the template's app ID
+            newInstanceComp.type = appTemplateId;
           } else {
             newInstanceComp.parentId = templateComp.parentId ? finalIdMap[templateComp.parentId] : null;
           }
@@ -442,22 +428,20 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     const baseName = name.replace(/\s+/g, '_').toLowerCase();
     const timestamp = Date.now();
-    const firestoreDocId = `${baseName}-${timestamp}`; // ID for Firestore (no prefix, no '/')
-    const appUsableTemplateId = `${CUSTOM_COMPONENT_TYPE_PREFIX}${firestoreDocId}`; // ID for application logic (with prefix)
+    const firestoreDocId = `${baseName}-${timestamp}`;
+    const appUsableTemplateId = `${CUSTOM_COMPONENT_TYPE_PREFIX}${firestoreDocId}`;
 
 
-    // Data to be stored IN the Firestore document
     const newTemplateDataForFirestore = {
-      templateId: appUsableTemplateId, // Store the app-usable ID with prefix
+      templateId: appUsableTemplateId,
       name: name,
-      rootComponentId: templateRootComponent.id, // This is the internal ID within the componentTree
+      rootComponentId: templateRootComponent.id,
       componentTree: templateComponentTree,
     };
 
-    // Object for the local state in DesignContext
     const newTemplateForState: CustomComponentTemplate = {
-      firestoreId: firestoreDocId,       // Firestore document ID (clean)
-      templateId: appUsableTemplateId,  // App-usable ID (with prefix)
+      firestoreId: firestoreDocId,
+      templateId: appUsableTemplateId,
       name: name,
       rootComponentId: templateRootComponent.id,
       componentTree: templateComponentTree,
@@ -474,9 +458,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         }));
         return;
       }
-      // Use firestoreDocId (clean ID) for the document reference
       const templateRef = doc(db, CUSTOM_TEMPLATES_COLLECTION, firestoreDocId);
-      await setDoc(templateRef, newTemplateDataForFirestore); // Save data containing appUsableTemplateId
+      await setDoc(templateRef, newTemplateDataForFirestore);
 
       toast({ title: "Custom Template Saved", description: `"${name}" saved to library and Firestore.` });
       setDesignState(prev => ({
@@ -492,7 +475,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         detail += ` (${error.message})`;
       }
       toast({ title: "Save Failed", description: `${detail}. Saved locally.`, variant: "destructive" });
-       setDesignState(prev => ({ // Still add to local state on Firestore error
+       setDesignState(prev => ({
         ...prev,
         customComponentTemplates: [...prev.customComponentTemplates, newTemplateForState],
       }));
@@ -750,7 +733,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         draggedComponent.properties = { ...draggedComponent.properties };
         const oldParentId = draggedComponent.parentId;
 
-        // Prevent dropping component into itself or its own children
         let checkParentLoop = newParentId;
         while(checkParentLoop) {
             if (checkParentLoop === draggedId) {
@@ -761,7 +743,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             checkParentLoop = parentComp ? parentComp.parentId : null;
         }
 
-        // 1. Remove from old parent's children array
         if (oldParentId) {
             const oldParentIndexInState = currentComponents.findIndex(c => c.id === oldParentId);
             if (oldParentIndexInState !== -1) {
@@ -776,11 +757,9 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             }
         }
 
-        // 2. Update dragged component's parentId
         draggedComponent.parentId = newParentId;
-        currentComponents[draggedComponentIndexInState] = draggedComponent; // Update the component in the main list
+        currentComponents[draggedComponentIndexInState] = draggedComponent;
 
-        // 3. Add to new parent's children array
         if (newParentId) {
             const newParentActualIndexInState = currentComponents.findIndex(c => c.id === newParentId);
             if (newParentActualIndexInState !== -1) {
@@ -789,36 +768,32 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
                 if (isContainerType(newParent.type, prev.customComponentTemplates)) {
                     let childrenArray = Array.isArray(newParent.properties.children) ? [...newParent.properties.children] : [];
-                    childrenArray = childrenArray.filter(id => id !== draggedId); // Remove if already present (e.g. reordering)
+                    childrenArray = childrenArray.filter(id => id !== draggedId);
 
                     if (newIndex !== undefined && newIndex >= 0 && newIndex <= childrenArray.length) {
                         childrenArray.splice(newIndex, 0, draggedId);
                     } else {
-                        childrenArray.push(draggedId); // Add to end if no index or invalid index
+                        childrenArray.push(draggedId);
                     }
                     newParent.properties.children = childrenArray;
                     currentComponents[newParentActualIndexInState] = newParent;
                 } else {
                     console.warn(`moveComponent: Attempted to move component ${draggedId} into non-container ${newParentId}.`);
-                    // Revert parentId change if new parent is not a container (should be caught by canDrop)
                     draggedComponent.parentId = oldParentId;
-                    currentComponents[draggedComponentIndexInState] = prev.components[draggedComponentIndexInState]; // Revert to original dragged component state from prev
-                    // Also need to re-add to old parent if it was removed
+                    currentComponents[draggedComponentIndexInState] = prev.components[draggedComponentIndexInState];
                      if (oldParentId) {
                         const oldParentIndex = currentComponents.findIndex(c => c.id === oldParentId);
                         if (oldParentIndex !== -1) {
-                           currentComponents[oldParentIndex] = prev.components[oldParentIndex]; // Revert old parent too
+                           currentComponents[oldParentIndex] = prev.components[oldParentIndex];
                         }
                      }
                     return prev;
                 }
             } else {
                  console.warn(`moveComponent: New parent with ID ${newParentId} not found. Dragged component might be orphaned.`);
-                 // If new parent not found, perhaps revert parentId? For now, it stays with newParentId but won't be in children.
             }
         }
 
-        // Filter out any potential undefined components from list before setting state
         const finalComponents = currentComponents.filter(Boolean);
 
         return { ...prev, components: finalComponents, selectedComponentId: draggedId };
@@ -826,14 +801,13 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, []);
 
   const deleteCustomComponentTemplate = useCallback(async (appTemplateId: string, firestoreDocId?: string) => {
-    const idToDeleteInFirestore = firestoreDocId; // This is the clean ID for Firestore
+    const idToDeleteInFirestore = firestoreDocId;
     try {
-      if (db && idToDeleteInFirestore && !idToDeleteInFirestore.startsWith("local-")) { // Check if it's a Firestore ID
+      if (db && idToDeleteInFirestore && !idToDeleteInFirestore.startsWith("local-")) {
         await deleteDoc(doc(db, CUSTOM_TEMPLATES_COLLECTION, idToDeleteInFirestore));
       }
       setDesignState(prev => ({
         ...prev,
-        // Filter local state using appTemplateId (which includes prefix)
         customComponentTemplates: prev.customComponentTemplates.filter(t => t.templateId !== appTemplateId),
       }));
       toast({ title: "Custom Template Deleted", description: `Template removed from library.` });
@@ -850,15 +824,14 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, [toast]);
 
   const renameCustomComponentTemplate = useCallback(async (appTemplateId: string, newName: string, firestoreDocId?: string) => {
-    const idToUpdateInFirestore = firestoreDocId; // This is the clean ID for Firestore
+    const idToUpdateInFirestore = firestoreDocId;
     try {
-      if (db && idToUpdateInFirestore && !idToUpdateInFirestore.startsWith("local-")) { // Check if it's a Firestore ID
+      if (db && idToUpdateInFirestore && !idToUpdateInFirestore.startsWith("local-")) {
         const templateRef = doc(db, CUSTOM_TEMPLATES_COLLECTION, idToUpdateInFirestore);
         await updateDoc(templateRef, { name: newName });
       }
       setDesignState(prev => ({
         ...prev,
-        // Update local state using appTemplateId (which includes prefix)
         customComponentTemplates: prev.customComponentTemplates.map(t =>
           t.templateId === appTemplateId ? { ...t, name: newName } : t
         ),
@@ -877,44 +850,52 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, [toast]);
 
   const saveCurrentCanvasAsLayout = useCallback(async (name: string) => {
-    const newLayoutId = `layout-${Date.now()}`; // Clean ID for Firestore and app
+    const currentTimestamp = Date.now();
+    const newLayoutId = `layout-${currentTimestamp}`; // Unique ID using timestamp
+    const clonedComponents = deepClone(designState.components); // Clone current components once
 
-    // Data for Firestore (layoutId is the doc ID, so not included as a field)
     const newLayoutDataForFirestore = {
-      layoutId: newLayoutId, // Store layoutId as a field as well for consistency
+      layoutId: newLayoutId, // Store layoutId as a field for consistency
       name,
-      components: deepClone(designState.components),
+      components: clonedComponents,
       nextId: designState.nextId,
-      timestamp: Date.now(),
+      timestamp: currentTimestamp,
     };
 
-    // Object for local state
     const newLayoutForState: SavedLayout = {
-      firestoreId: newLayoutId, // Same as layoutId
+      firestoreId: newLayoutId, // firestoreId is the same as layoutId for layouts
       layoutId: newLayoutId,
       name,
-      components: deepClone(designState.components),
+      components: clonedComponents, // Use the same cloned components
       nextId: designState.nextId,
-      timestamp: newLayoutDataForFirestore.timestamp,
+      timestamp: currentTimestamp,
     };
 
     try {
       if (!db) {
         console.warn("Firestore not initialized. Layout saved to local state only.");
         toast({ title: "Layout Saved (Locally)", description: `"${name}" saved. Firestore not connected.`});
-        setDesignState(prev => ({
-          ...prev,
-          savedLayouts: [newLayoutForState, ...prev.savedLayouts].sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0)),
-        }));
+        setDesignState(prev => {
+          const updatedSavedLayouts = [newLayoutForState, ...prev.savedLayouts];
+          updatedSavedLayouts.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+          return {
+            ...prev,
+            savedLayouts: updatedSavedLayouts,
+          };
+        });
         return;
       }
       const layoutRef = doc(db, SAVED_LAYOUTS_COLLECTION, newLayoutId);
       await setDoc(layoutRef, newLayoutDataForFirestore);
       toast({ title: "Layout Saved", description: `Layout "${name}" has been saved to Firestore.` });
-      setDesignState(prev => ({
-        ...prev,
-        savedLayouts: [newLayoutForState, ...prev.savedLayouts].sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0)),
-      }));
+      setDesignState(prev => {
+        const updatedSavedLayouts = [newLayoutForState, ...prev.savedLayouts];
+        updatedSavedLayouts.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        return {
+          ...prev,
+          savedLayouts: updatedSavedLayouts,
+        };
+      });
     } catch (error) {
       console.error("Error saving layout to Firestore:", error);
       let detail = "Could not save layout to Firestore.";
@@ -924,10 +905,14 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         detail += ` (${error.message})`;
       }
       toast({ title: "Save Layout Failed", description: `${detail}. Saved locally.`, variant: "destructive" });
-      setDesignState(prev => ({ // Still add to local state on Firestore error
+      setDesignState(prev => {
+        const updatedSavedLayouts = [newLayoutForState, ...prev.savedLayouts];
+        updatedSavedLayouts.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        return {
           ...prev,
-          savedLayouts: [newLayoutForState, ...prev.savedLayouts].sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0)),
-      }));
+          savedLayouts: updatedSavedLayouts,
+        };
+      });
     }
   }, [designState.components, designState.nextId, toast]);
 
@@ -937,9 +922,9 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setDesign({
         components: deepClone(layoutToLoad.components),
         nextId: layoutToLoad.nextId,
-        selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID, // Default selection after load
-        customComponentTemplates: designState.customComponentTemplates, // Keep current templates
-        savedLayouts: designState.savedLayouts, // Keep current layouts list
+        selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID,
+        customComponentTemplates: designState.customComponentTemplates,
+        savedLayouts: designState.savedLayouts,
       });
       toast({ title: "Layout Loaded", description: `Layout "${layoutToLoad.name}" has been loaded onto the canvas.` });
     } else {
@@ -948,7 +933,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, [designState.savedLayouts, designState.customComponentTemplates, toast, setDesign]);
 
   const deleteSavedLayout = useCallback(async (layoutId: string, firestoreDocId?: string) => {
-    const idToDeleteInFirestore = firestoreDocId || layoutId; // layoutId is already clean
+    const idToDeleteInFirestore = firestoreDocId || layoutId;
     try {
       if (db && idToDeleteInFirestore && !idToDeleteInFirestore.startsWith("local-")) {
         await deleteDoc(doc(db, SAVED_LAYOUTS_COLLECTION, idToDeleteInFirestore));
@@ -971,7 +956,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, [toast]);
 
   const renameSavedLayout = useCallback(async (layoutId: string, newName: string, firestoreDocId?: string) => {
-    const idToUpdateInFirestore = firestoreDocId || layoutId; // layoutId is already clean
+    const idToUpdateInFirestore = firestoreDocId || layoutId;
     try {
       if (db && idToUpdateInFirestore && !idToUpdateInFirestore.startsWith("local-")) {
         const layoutRef = doc(db, SAVED_LAYOUTS_COLLECTION, idToUpdateInFirestore);
