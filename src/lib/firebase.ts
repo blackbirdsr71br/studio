@@ -14,6 +14,17 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
+// Log para depuración
+console.log("Firebase Config Used by Client SDK:", firebaseConfig);
+if (!firebaseConfig.projectId || firebaseConfig.projectId.trim() === "") {
+  console.error(
+    "CRITICAL: NEXT_PUBLIC_FIREBASE_PROJECT_ID is not set or is empty. " +
+    "Firestore operations will likely fail with a 400 error due to a malformed database URL. " +
+    "Please ensure this variable is correctly set in your .env (or .env.local) file and restart your development server."
+  );
+}
+
+
 // Initialize Firebase
 let app: FirebaseApp;
 if (getApps().length === 0) {
@@ -25,3 +36,4 @@ if (getApps().length === 0) {
 const db: Firestore = getFirestore(app);
 
 export { app, db };
+
