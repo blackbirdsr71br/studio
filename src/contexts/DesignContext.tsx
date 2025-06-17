@@ -166,10 +166,11 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const templates: CustomComponentTemplate[] = [];
         templatesSnapshot.forEach((docSnap) => {
           const data = docSnap.data();
+          // Ensure templateId (application-usable ID with prefix) is loaded from the document's field
           if (data.templateId && data.name && data.rootComponentId && data.componentTree) {
             templates.push({
-              firestoreId: docSnap.id,
-              templateId: data.templateId as string,
+              firestoreId: docSnap.id, // This is the clean Firestore document ID
+              templateId: data.templateId as string, // This is the ID like "custom/clean-id-123"
               name: data.name as string,
               rootComponentId: data.rootComponentId as string,
               componentTree: data.componentTree as DesignComponent[],
@@ -199,9 +200,10 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const layouts: SavedLayout[] = [];
         layoutsSnapshot.forEach((docSnap) => {
           const data = docSnap.data();
+          // layoutId is already clean and is used as firestoreId as well
           if (data.layoutId && data.name && data.components && typeof data.nextId === 'number') {
             layouts.push({
-              firestoreId: docSnap.id,
+              firestoreId: docSnap.id, // or data.layoutId, should be the same
               layoutId: data.layoutId as string,
               name: data.name as string,
               components: data.components as DesignComponent[],
@@ -227,7 +229,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       }
     };
     loadInitialData();
-  }, [toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Changed dependency from [toast] to []
 
   const getComponentById = useCallback(
     (id: string) => designState.components.find(comp => comp.id === id),
@@ -428,25 +431,23 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     const baseName = name.replace(/\s+/g, '_').toLowerCase();
     const timestamp = Date.now();
-    const firestoreDocId = `${baseName}-${timestamp}`;
-    const appUsableTemplateId = `${CUSTOM_COMPONENT_TYPE_PREFIX}${firestoreDocId}`;
-
+    const firestoreDocumentId = `${baseName}-${timestamp}`; // Clean ID for Firestore
+    const applicationTemplateId = `${CUSTOM_COMPONENT_TYPE_PREFIX}${firestoreDocumentId}`; // ID used by the app
 
     const newTemplateDataForFirestore = {
-      templateId: appUsableTemplateId,
+      templateId: applicationTemplateId, // Store the app-facing ID
       name: name,
       rootComponentId: templateRootComponent.id,
       componentTree: templateComponentTree,
     };
 
     const newTemplateForState: CustomComponentTemplate = {
-      firestoreId: firestoreDocId,
-      templateId: appUsableTemplateId,
+      firestoreId: firestoreDocumentId, // Store the clean Firestore ID
+      templateId: applicationTemplateId,
       name: name,
       rootComponentId: templateRootComponent.id,
       componentTree: templateComponentTree,
     };
-
 
     try {
       if (!db) {
@@ -458,7 +459,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         }));
         return;
       }
-      const templateRef = doc(db, CUSTOM_TEMPLATES_COLLECTION, firestoreDocId);
+      // Use the clean firestoreDocumentId for the doc reference
+      const templateRef = doc(db, CUSTOM_TEMPLATES_COLLECTION, firestoreDocumentId);
       await setDoc(templateRef, newTemplateDataForFirestore);
 
       toast({ title: "Custom Template Saved", description: `"${name}" saved to library and Firestore.` });
@@ -801,14 +803,14 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, []);
 
   const deleteCustomComponentTemplate = useCallback(async (appTemplateId: string, firestoreDocId?: string) => {
-    const idToDeleteInFirestore = firestoreDocId;
+    const idToDeleteInFirestore = firestoreDocId; // This is the clean ID
     try {
       if (db && idToDeleteInFirestore && !idToDeleteInFirestore.startsWith("local-")) {
         await deleteDoc(doc(db, CUSTOM_TEMPLATES_COLLECTION, idToDeleteInFirestore));
       }
       setDesignState(prev => ({
         ...prev,
-        customComponentTemplates: prev.customComponentTemplates.filter(t => t.templateId !== appTemplateId),
+        customComponentTemplates: prev.customComponentTemplates.filter(t => t.templateId !== appTemplateId), // Filter by app-facing ID
       }));
       toast({ title: "Custom Template Deleted", description: `Template removed from library.` });
     } catch (error) {
@@ -824,7 +826,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, [toast]);
 
   const renameCustomComponentTemplate = useCallback(async (appTemplateId: string, newName: string, firestoreDocId?: string) => {
-    const idToUpdateInFirestore = firestoreDocId;
+    const idToUpdateInFirestore = firestoreDocId; // This is the clean ID
     try {
       if (db && idToUpdateInFirestore && !idToUpdateInFirestore.startsWith("local-")) {
         const templateRef = doc(db, CUSTOM_TEMPLATES_COLLECTION, idToUpdateInFirestore);
@@ -833,7 +835,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setDesignState(prev => ({
         ...prev,
         customComponentTemplates: prev.customComponentTemplates.map(t =>
-          t.templateId === appTemplateId ? { ...t, name: newName } : t
+          t.templateId === appTemplateId ? { ...t, name: newName } : t // Match by app-facing ID
         ),
       }));
       toast({ title: "Custom Template Renamed", description: `Template renamed to "${newName}".` });
@@ -851,11 +853,11 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const saveCurrentCanvasAsLayout = useCallback(async (name: string) => {
     const currentTimestamp = Date.now();
-    const newLayoutId = `layout-${currentTimestamp}`; // Unique ID using timestamp
-    const clonedComponents = deepClone(designState.components); // Clone current components once
+    const newLayoutId = `layout-${currentTimestamp}`; // This is already a clean ID for Firestore
+    const clonedComponents = deepClone(designState.components);
 
     const newLayoutDataForFirestore = {
-      layoutId: newLayoutId, // Store layoutId as a field for consistency
+      layoutId: newLayoutId, // Store layoutId as a field for consistency and querying
       name,
       components: clonedComponents,
       nextId: designState.nextId,
@@ -866,7 +868,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       firestoreId: newLayoutId, // firestoreId is the same as layoutId for layouts
       layoutId: newLayoutId,
       name,
-      components: clonedComponents, // Use the same cloned components
+      components: clonedComponents,
       nextId: designState.nextId,
       timestamp: currentTimestamp,
     };
@@ -885,8 +887,10 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         });
         return;
       }
+      // Use newLayoutId (which is clean) for the doc reference
       const layoutRef = doc(db, SAVED_LAYOUTS_COLLECTION, newLayoutId);
       await setDoc(layoutRef, newLayoutDataForFirestore);
+
       toast({ title: "Layout Saved", description: `Layout "${name}" has been saved to Firestore.` });
       setDesignState(prev => {
         const updatedSavedLayouts = [newLayoutForState, ...prev.savedLayouts];
@@ -919,12 +923,12 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const loadLayoutToCanvas = useCallback((layoutId: string) => {
     const layoutToLoad = designState.savedLayouts.find(l => l.layoutId === layoutId);
     if (layoutToLoad) {
-      setDesign({
+      setDesign({ // setDesign will adapt to scaffold structure if needed
         components: deepClone(layoutToLoad.components),
         nextId: layoutToLoad.nextId,
-        selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID,
-        customComponentTemplates: designState.customComponentTemplates,
-        savedLayouts: designState.savedLayouts,
+        selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID, // Always select content area after load
+        customComponentTemplates: designState.customComponentTemplates, // Preserve custom templates
+        savedLayouts: designState.savedLayouts, // Preserve saved layouts
       });
       toast({ title: "Layout Loaded", description: `Layout "${layoutToLoad.name}" has been loaded onto the canvas.` });
     } else {
@@ -932,8 +936,9 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   }, [designState.savedLayouts, designState.customComponentTemplates, toast, setDesign]);
 
+
   const deleteSavedLayout = useCallback(async (layoutId: string, firestoreDocId?: string) => {
-    const idToDeleteInFirestore = firestoreDocId || layoutId;
+    const idToDeleteInFirestore = firestoreDocId || layoutId; // layoutId is already clean
     try {
       if (db && idToDeleteInFirestore && !idToDeleteInFirestore.startsWith("local-")) {
         await deleteDoc(doc(db, SAVED_LAYOUTS_COLLECTION, idToDeleteInFirestore));
@@ -956,7 +961,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, [toast]);
 
   const renameSavedLayout = useCallback(async (layoutId: string, newName: string, firestoreDocId?: string) => {
-    const idToUpdateInFirestore = firestoreDocId || layoutId;
+    const idToUpdateInFirestore = firestoreDocId || layoutId; // layoutId is already clean
     try {
       if (db && idToUpdateInFirestore && !idToUpdateInFirestore.startsWith("local-")) {
         const layoutRef = doc(db, SAVED_LAYOUTS_COLLECTION, idToUpdateInFirestore);
