@@ -57,6 +57,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     borderColor,
     title, 
     titleFontSize, 
+    horizontalAlignment, // For Column/LazyColumn: aligns children
   } = properties;
 
   const defaultAllSidesPadding = (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID ? 8 : (type === 'Card' ? 16 : 0));
@@ -170,7 +171,6 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     case 'LazyColumn':
     case 'LazyVerticalGrid':
       flexDirection = reverseLayout ? 'column-reverse' : 'column';
-      // Only apply overflowY if it's NOT the main content area, which is handled by RenderedComponentWrapper
       if (componentId !== DEFAULT_CONTENT_LAZY_COLUMN_ID) {
           specificStyles.overflowY = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
       }
@@ -185,11 +185,12 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
         case 'SpaceEvenly': specificStyles.justifyContent = 'space-evenly'; break;
         default: specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start';
       }
-      switch (properties.horizontalAlignment) {
+      // horizontalAlignment for Column/LazyColumn maps to alignItems
+      switch (horizontalAlignment) {
         case 'Start': specificStyles.alignItems = 'flex-start'; break;
         case 'CenterHorizontally': specificStyles.alignItems = 'center'; break;
         case 'End': specificStyles.alignItems = 'flex-end'; break;
-        default: specificStyles.alignItems = 'flex-start';
+        default: specificStyles.alignItems = 'flex-start'; // Default for children if not overridden by selfAlign
       }
       if (type === 'LazyVerticalGrid') {
         flexDirection = 'row'; 
@@ -246,7 +247,8 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
             case 'SpaceEvenly': specificStyles.justifyContent = 'space-evenly'; break;
             default: specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start';
           }
-          switch (properties.horizontalAlignment) {
+          // horizontalAlignment for Column/LazyColumn maps to alignItems
+          switch (horizontalAlignment) {
             case 'Start': specificStyles.alignItems = 'flex-start'; break;
             case 'CenterHorizontally': specificStyles.alignItems = 'center'; break;
             case 'End': specificStyles.alignItems = 'flex-end'; break;
@@ -291,12 +293,11 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
 
   if (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
     baseStyle.backgroundColor = containerBackgroundColor || 'transparent'; 
-    // Remove explicit overflowY from here; it's handled by RenderedComponentWrapper for the content slot
     baseStyle.overflowX = 'hidden';
     baseStyle.width = '100%'; 
     baseStyle.height = '100%'; 
-    delete baseStyle.overflow; // Remove if set by cornerRadius logic
-    delete baseStyle.overflowY; // Explicitly remove
+    delete baseStyle.overflow; 
+    delete baseStyle.overflowY; 
   }
   
   const showPlaceholder = (componentId === DEFAULT_TOP_APP_BAR_ID && !title && childrenComponents.length === 0) ||
@@ -306,7 +307,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
 
   const placeholderText = `Drop components into this ${getComponentDisplayName(type, customComponentTemplates.find(t => t.templateId === type)?.name)}`;
 
-  const isWeightedContainer = type === 'Row' || type === 'Column';
+  const isParentColumnLike = type === 'Column' || type === 'LazyColumn' || componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID;
 
   const topAppBarTitleElement = type === 'TopAppBar' && title ? (
     <div style={{ flexShrink: 0, marginRight: (childrenComponents.length > 0 ? (itemSpacing || 8) : 0) + 'px' }} className="top-app-bar-title-container">
@@ -325,20 +326,48 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
       )}
       {topAppBarTitleElement}
       {childrenComponents.map(child => {
-        let childSpecificStyle: React.CSSProperties = {};
-        if (isWeightedContainer && child.properties.layoutWeight && child.properties.layoutWeight > 0) {
+        let childWrapperStyle: React.CSSProperties = {};
+        let childSpecificStyle: React.CSSProperties = {}; // For layoutWeight
+
+        if (isParentColumnLike) {
+          childWrapperStyle.display = 'flex';
+          childWrapperStyle.width = '100%'; // Wrapper takes full width of the column cell
+          switch (child.properties.selfAlign) {
+            case 'Center':
+              childWrapperStyle.justifyContent = 'center';
+              break;
+            case 'End':
+              childWrapperStyle.justifyContent = 'flex-end';
+              break;
+            case 'Start':
+            default:
+              childWrapperStyle.justifyContent = 'flex-start';
+              break;
+          }
+        } else { // Parent is Row-like
+            childWrapperStyle.display = 'flex'; // Children of row are also flex items
+            // selfAlign could be used for vertical alignment if we define it for rows.
+            // For now, row's verticalAlignment property controls all children.
+        }
+
+        if ((type === 'Row' || type === 'Column') && child.properties.layoutWeight && child.properties.layoutWeight > 0) {
             childSpecificStyle.flexGrow = child.properties.layoutWeight;
             childSpecificStyle.flexShrink = 1; 
             childSpecificStyle.flexBasis = '0%'; 
-            if (flexDirection === 'row') {
-                childSpecificStyle.width = 'auto'; 
-            } else {
-                childSpecificStyle.height = 'auto'; 
+            if (flexDirection === 'row') { // Parent is Row
+                childSpecificStyle.height = '100%'; // Child takes full height of row cell
+                childSpecificStyle.width = 'auto'; // Width is determined by weight
+            } else { // Parent is Column
+                childSpecificStyle.width = '100%'; // Child takes full width of column cell
+                childSpecificStyle.height = 'auto'; // Height is determined by weight
             }
         }
+        
         return (
-          <div key={child.id} style={childSpecificStyle} className="flex"> 
-            <RenderedComponentWrapper component={child} />
+          <div key={child.id} style={childWrapperStyle} className={isParentColumnLike ? "w-full" : ""}> 
+            <div style={childSpecificStyle} className="flex"> {/* This inner div applies layoutWeight */}
+              <RenderedComponentWrapper component={child} />
+            </div>
           </div>
         );
       })}
@@ -346,3 +375,5 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
   );
 }
 
+
+    
