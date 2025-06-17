@@ -874,7 +874,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setDesignState(prev => ({
         ...prev,
         savedLayouts: prev.savedLayouts.map(l =>
-          l.layoutId === layoutId ? { ...l, name: newName } : l
+          l.layoutId === layoutId ? { ...l, name: newName } : t
         ).sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0)),
       }));
       toast({ title: "Layout Renamed", description: `Layout renamed to "${newName}".` });
@@ -948,4 +948,3 @@ export const useDesign = (): DesignContextType => {
   }
   return context;
 };
-

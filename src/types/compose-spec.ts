@@ -87,7 +87,7 @@ export interface BaseComponentProps {
   textDecoration?: 'None' | 'Underline' | 'LineThrough';
   lineHeight?: number;
   title?: string;
-  selfAlign?: 'Inherit' | 'Start' | 'Center' | 'End'; // Updated property
+  selfAlign?: 'Inherit' | 'Start' | 'Center' | 'End'; 
 
   topBarId?: string;
   contentId?: string;
@@ -103,7 +103,7 @@ export interface DesignComponent {
 }
 
 export interface CustomComponentTemplate {
-  firestoreId?: string;
+  firestoreId?: string; // ID of the document in Firestore
   templateId: string;
   name: string;
   rootComponentId: string;
@@ -111,12 +111,12 @@ export interface CustomComponentTemplate {
 }
 
 export interface SavedLayout {
-  firestoreId?: string;
+  firestoreId?: string; // ID of the document in Firestore
   layoutId: string;
   name: string;
   components: DesignComponent[];
   nextId: number;
-  timestamp?: number;
+  timestamp?: number; // For sorting and display
 }
 
 export interface DesignState {
@@ -158,6 +158,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         textAlign: 'Start',
         textDecoration: 'None',
         lineHeight: 1.4,
+        selfAlign: 'Inherit',
       };
     case 'Button':
       return {
@@ -168,7 +169,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         textColor: undefined,
         padding: 12, 
         width: 'wrap_content',
-        height: 'wrap_content'
+        height: 'wrap_content',
+        selfAlign: 'Inherit',
       };
     case 'Image':
       return {
@@ -181,6 +183,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         contentScale: 'Crop',
         cornerRadiusTopLeft: 0, cornerRadiusTopRight: 0, cornerRadiusBottomRight: 0, cornerRadiusBottomLeft: 0,
         padding: 0,
+        selfAlign: 'Inherit',
       };
     case 'Column':
       return {
@@ -189,7 +192,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         padding: 8,
         backgroundColor: 'rgba(224, 224, 224, 0.5)',
         width: 200, height: 200, itemSpacing: 8,
-        verticalArrangement: 'Top', horizontalAlignment: 'Start'
+        verticalArrangement: 'Top', horizontalAlignment: 'Start',
+        selfAlign: 'Inherit',
       };
     case 'Row':
       return {
@@ -198,7 +202,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         padding: 8,
         backgroundColor: 'rgba(224, 224, 224, 0.5)',
         width: 200, height: 100, itemSpacing: 8,
-        horizontalArrangement: 'Start', verticalAlignment: 'Top'
+        horizontalArrangement: 'Start', verticalAlignment: 'Top',
+        selfAlign: 'Inherit',
       };
     case 'Box':
       return {
@@ -207,7 +212,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         padding: 0,
         backgroundColor: 'rgba(220, 220, 220, 0.3)',
         width: 100, height: 100,
-        cornerRadiusTopLeft: 4, cornerRadiusTopRight: 4, cornerRadiusBottomRight: 4, cornerRadiusBottomLeft: 4
+        cornerRadiusTopLeft: 4, cornerRadiusTopRight: 4, cornerRadiusBottomRight: 4, cornerRadiusBottomLeft: 4,
+        selfAlign: 'Inherit',
       };
     case 'Card':
       return {
@@ -217,7 +223,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         backgroundColor: '#FFFFFF', contentColor: undefined,
         width: 200, height: 150, elevation: 2,
         cornerRadiusTopLeft: 8, cornerRadiusTopRight: 8, cornerRadiusBottomRight: 8, cornerRadiusBottomLeft: 8,
-        borderWidth: 0, borderColor: '#000000'
+        borderWidth: 0, borderColor: '#000000',
+        selfAlign: 'Inherit',
       };
     case 'LazyColumn':
       const isContentArea = componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID;
@@ -231,7 +238,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         itemSpacing: 8,
         userScrollEnabled: true, reverseLayout: false,
         verticalArrangement: 'Top', horizontalAlignment: 'Start', 
-        paddingBottom: isContentArea ? (8 + 60) : 8, 
+        paddingBottom: isContentArea ? (8) : 8, 
+        selfAlign: 'Inherit',
       };
     case 'LazyRow':
       return {
@@ -242,6 +250,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         width: 'match_parent', height: 120, itemSpacing: 8,
         userScrollEnabled: true, reverseLayout: false,
         horizontalArrangement: 'Start', verticalAlignment: 'Top',
+        selfAlign: 'Inherit',
       };
     case 'LazyVerticalGrid':
       return {
@@ -250,7 +259,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         padding: 8,
         backgroundColor: 'rgba(240, 200, 200, 0.3)',
         width: 'match_parent', height: 300, columns: 2, itemSpacing: 8,
-        verticalArrangement: 'Top', horizontalAlignment: 'Start'
+        verticalArrangement: 'Top', horizontalAlignment: 'Start',
+        selfAlign: 'Inherit',
       };
     case 'LazyHorizontalGrid':
       return {
@@ -259,45 +269,44 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         padding: 8,
         backgroundColor: 'rgba(240, 240, 200, 0.3)',
         width: 'match_parent', height: 200, rows: 2, itemSpacing: 8,
-        horizontalArrangement: 'Start', verticalAlignment: 'Top'
+        horizontalArrangement: 'Start', verticalAlignment: 'Top',
+        selfAlign: 'Inherit',
       };
     case 'Spacer':
       return {
-        // ...commonLayout, // Spacers don't need most commonLayout props like selfAlign
         layoutWeight: 0,
         padding: undefined, paddingTop: undefined, paddingBottom: undefined, paddingStart: undefined, paddingEnd: undefined,
         fillMaxWidth: false, fillMaxHeight: false,
         width: 8,
         height: 8,
+        selfAlign: undefined, // Spacers don't self-align in this context
       };
     case 'TopAppBar':
       return {
-        // ...commonLayout, // TopAppBar aligns children via its own properties.
         layoutWeight: 0,
-        padding: undefined, paddingTop: 0, paddingBottom: 0, paddingStart: 0, paddingEnd: 0,
-        fillMaxWidth: false, fillMaxHeight: false,
-        selfAlign: undefined, // TopAppBar aligns itself, children aligned by its arrangement props
+        padding: 0, paddingTop: 0, paddingBottom: 0, paddingStart: 0, paddingEnd: 0,
+        fillMaxWidth: true, fillMaxHeight: false,
+        selfAlign: undefined, 
         children: [],
         title: 'Screen Title',
         titleFontSize: 20,
         width: 'match_parent',
-        height: 30, 
+        height: 56, 
         backgroundColor: '#3F51B5',
         contentColor: '#FFFFFF',
         itemSpacing: 8,
-        horizontalArrangement: 'SpaceBetween', 
+        horizontalArrangement: 'Start', 
         verticalAlignment: 'CenterVertically'
       };
     case 'BottomNavigationBar':
       return {
-        // ...commonLayout,
         layoutWeight: 0,
-        padding: 0, paddingTop: undefined, paddingBottom: undefined, paddingStart: undefined, paddingEnd: undefined,
-        fillMaxWidth: false, fillMaxHeight: false,
+        padding: 0, paddingTop: 0, paddingBottom: 0, paddingStart: 0, paddingEnd: 0,
+        fillMaxWidth: true, fillMaxHeight: false,
         selfAlign: undefined, 
         children: [],
         width: 'match_parent',
-        height: 48,
+        height: 56,
         backgroundColor: '#F0F0F0',
         contentColor: '#000000',
         itemSpacing: 0,
@@ -568,17 +577,18 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     { name: 'layoutWeight', type: 'number', label: 'Layout Weight', placeholder: '0 (no weight)', group: 'Layout' },
   ],
   TopAppBar: [
-    ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'layoutWeight', 'fillMaxHeight', 'fillMaxWidth', 'height'].includes(p.name) ),
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '30', group: 'Layout' }, 
+    ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd', 'layoutWeight', 'fillMaxHeight', 'height'].includes(p.name) ),
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '56', group: 'Layout' }, 
     { name: 'title', type: 'string', label: 'Title', placeholder: 'Screen Title', group: 'Content' },
     { name: 'titleFontSize', type: 'number', label: 'Title Font Size (sp)', placeholder: '20', group: 'Appearance' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (Title, Icons)', group: 'Appearance' },
-    ...rowSpecificLayoutProperties, 
+    ...rowSpecificLayoutProperties.filter(p => p.name !== 'itemSpacing'), 
+    { name: 'itemSpacing', type: 'number', label: 'Action Item Spacing (dp)', placeholder: '8', group: 'Layout' },
   ],
   BottomNavigationBar: [
-     ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'layoutWeight', 'fillMaxHeight', 'fillMaxWidth', 'height'].includes(p.name) ),
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '48', group: 'Layout' },
+     ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd', 'layoutWeight', 'fillMaxHeight', 'height'].includes(p.name) ),
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '56', group: 'Layout' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (Icons, Labels)', group: 'Appearance' },
     ...rowSpecificLayoutProperties, 
@@ -704,9 +714,3 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
 );
 
 export const ModalJsonSchema = z.array(ModalComponentNodeSchema);
-
-    
-
-    
-
-    
