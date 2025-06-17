@@ -5,7 +5,18 @@ import React, { useState, useRef, ChangeEvent } from 'react';
 import { useDesign } from '@/contexts/DesignContext';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { propertyDefinitions, type ComponentType, type ComponentProperty, getComponentDisplayName, DEFAULT_CONTENT_LAZY_COLUMN_ID, ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID } from '@/types/compose-spec';
+import {
+  propertyDefinitions,
+  type ComponentType,
+  type ComponentProperty,
+  getComponentDisplayName,
+  DEFAULT_CONTENT_LAZY_COLUMN_ID,
+  ROOT_SCAFFOLD_ID,
+  DEFAULT_TOP_APP_BAR_ID,
+  DEFAULT_BOTTOM_NAV_BAR_ID,
+  isCustomComponentType, // Importar
+  CORE_SCAFFOLD_ELEMENT_IDS
+} from '@/types/compose-spec';
 import { PropertyEditor } from './PropertyEditor';
 import { Trash2, Save, Sparkles, Loader2, Upload, Search } from 'lucide-react';
 import { Input } from '../ui/input';
@@ -17,16 +28,17 @@ import { generateImageFromHintAction } from '@/app/actions';
 import { Separator } from '../ui/separator';
 import type { ImageSourceModalRef } from './ImageSourceModal';
 import { Switch } from '../ui/switch';
+import type { BaseComponentProps } from '@/types/compose-spec'; // Asegurar que BaseComponentProps esté disponible
 
 interface GroupedProperties {
   [groupName: string]: ReactNode[];
 }
 
 const PREFERRED_GROUP_ORDER = ['Layout', 'Appearance', 'Content', 'Behavior'];
-const CORE_SCAFFOLD_ELEMENT_IDS = [ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_BOTTOM_NAV_BAR_ID];
+// CORE_SCAFFOLD_ELEMENT_IDS ya se importa arriba.
 
 export function PropertyPanel() {
-  const { selectedComponentId, getComponentById, updateComponent, deleteComponent, saveSelectedAsCustomTemplate } = useDesign();
+  const { selectedComponentId, getComponentById, updateComponent, deleteComponent, saveSelectedAsCustomTemplate, customComponentTemplates } = useDesign();
   const selectedComponent = selectedComponentId ? getComponentById(selectedComponentId) : null;
   const { toast } = useToast();
 
@@ -49,7 +61,7 @@ export function PropertyPanel() {
 
   const getDefaultPropertyValue = (propDef: Omit<ComponentProperty, 'value'>) => {
     if (['paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd'].includes(propDef.name)) {
-        return selectedComponent.properties[propDef.name] ?? ''; 
+        return selectedComponent.properties[propDef.name] ?? '';
     }
     if (propDef.type === 'number') return 0;
     if (propDef.type === 'boolean') return false;
@@ -57,25 +69,35 @@ export function PropertyPanel() {
     return '';
   };
 
-  const componentPropsDef = (propertyDefinitions[selectedComponent.type as ComponentType] || []) as (Omit<ComponentProperty, 'value'> & { group: string })[];
+  let componentPropsDefSourceType = selectedComponent.type;
+  if (isCustomComponentType(selectedComponent.type)) {
+    const template = customComponentTemplates.find(t => t.templateId === selectedComponent.type);
+    if (template) {
+      const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
+      if (rootTemplateComponent) {
+        componentPropsDefSourceType = rootTemplateComponent.type; // Use type of the template's root
+      }
+    }
+  }
+  const componentPropsDef = (propertyDefinitions[componentPropsDefSourceType as ComponentType] || []) as (Omit<ComponentProperty, 'value'> & { group: string })[];
+
 
   const handlePropertyChange = (propName: string, value: string | number | boolean) => {
     let actualValue = value;
     const propDefinition = componentPropsDef.find(p => p.name === propName);
     if (propDefinition?.type === 'number' && value === '') {
-      actualValue = undefined as any; 
+      actualValue = undefined as any;
     }
-    
+
     const updates: Partial<BaseComponentProps> = { [propName]: actualValue };
 
-    // If fillMaxWidth is being set to true, ensure width is not a number (set to wrap_content or similar)
     if (propName === 'fillMaxWidth' && actualValue === true) {
-      // updates.width = 'match_parent'; // Or 'wrap_content', depending on desired default when un-filling
+      // updates.width = 'match_parent';
     }
     if (propName === 'fillMaxHeight' && actualValue === true) {
       // updates.height = 'match_parent';
     }
-    
+
     updateComponent(selectedComponent.id, { properties: updates });
   };
 
@@ -105,7 +127,6 @@ export function PropertyPanel() {
     const name = window.prompt("Enter a name for your custom component:", selectedComponent.name);
     if (name && name.trim() !== "") {
       saveSelectedAsCustomTemplate(name.trim());
-      // Toast is handled within saveSelectedAsCustomTemplate in DesignContext
     } else if (name !== null) {
       toast({
         title: "Save Failed",
@@ -161,7 +182,7 @@ export function PropertyPanel() {
         toast({ title: "Image Source Updated", description: "Image source set from modal." });
     }
   };
-  
+
   const openImageSourceModal = () => {
     if (imageSourceModalRef.current) {
         imageSourceModalRef.current.openModal(handleImageFromModal, selectedComponent?.properties.src as string || '');
@@ -173,7 +194,11 @@ export function PropertyPanel() {
   const groupedProperties: GroupedProperties = {};
   const propertyGroups: string[] = [];
 
-  if (['Image', 'Box', 'Card'].includes(selectedComponent.type)) {
+  const sourceComponentForCornerRadius = isCustomComponentType(selectedComponent.type)
+    ? customComponentTemplates.find(t => t.templateId === selectedComponent.type)?.componentTree.find(c => c.id === customComponentTemplates.find(t => t.templateId === selectedComponent.type)?.rootComponentId)
+    : selectedComponent;
+
+  if (sourceComponentForCornerRadius && ['Image', 'Box', 'Card'].includes(sourceComponentForCornerRadius.type)) {
     const { cornerRadiusTopLeft, cornerRadiusTopRight, cornerRadiusBottomRight, cornerRadiusBottomLeft } = selectedComponent.properties;
     const allCornersHaveValue = typeof cornerRadiusTopLeft === 'number' && typeof cornerRadiusTopRight === 'number' && typeof cornerRadiusBottomRight === 'number' && typeof cornerRadiusBottomLeft === 'number';
     const allCornersAreEqual = allCornersHaveValue && cornerRadiusTopLeft === cornerRadiusTopRight && cornerRadiusTopLeft === cornerRadiusBottomRight && cornerRadiusTopLeft === cornerRadiusBottomLeft;
@@ -207,16 +232,15 @@ export function PropertyPanel() {
   componentPropsDef.forEach((propDef) => {
     const group = propDef.group || 'General';
     if (!groupedProperties[group]) { groupedProperties[group] = []; if (!propertyGroups.includes(group)) { propertyGroups.push(group); } }
-    
+
     let currentValue = selectedComponent.properties[propDef.name];
     if (['paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd'].includes(propDef.name) && currentValue === undefined) {
         currentValue = '';
     } else {
         currentValue = currentValue ?? getDefaultPropertyValue(propDef);
     }
-    
-    // Disable width/height input if corresponding fillMaxWidth/Height is true
-    const isDisabled = 
+
+    const isDisabled =
       (propDef.name === 'width' && selectedComponent.properties.fillMaxWidth) ||
       (propDef.name === 'height' && selectedComponent.properties.fillMaxHeight);
 
@@ -228,17 +252,15 @@ export function PropertyPanel() {
         onChange={(value) => handlePropertyChange(propDef.name, value)}
       />
     );
-    
-    // For boolean (Switch), wrap with Label for alignment
+
     if (propDef.type === 'boolean') {
        groupedProperties[group].push(
          <div key={`${propDef.name}-div`} className="flex items-center justify-between py-1">
            <Label htmlFor={`prop-${propDef.name}`} className="text-xs">{propDef.label}</Label>
-           {editorElement} {/* PropertyEditor itself returns the Switch for boolean */}
+           {editorElement}
          </div>
        );
     } else if (propDef.name === 'width' || propDef.name === 'height') {
-      // For width and height, render them only if their fill counterpart is false
       const shouldShow = propDef.name === 'width' ? !selectedComponent.properties.fillMaxWidth : !selectedComponent.properties.fillMaxHeight;
       if (shouldShow) {
         groupedProperties[group].push(editorElement);
@@ -249,7 +271,7 @@ export function PropertyPanel() {
     }
 
 
-    if (propDef.name === 'src' && selectedComponent.type === 'Image') {
+    if (propDef.name === 'src' && (selectedComponent.type === 'Image' || (sourceComponentForCornerRadius && sourceComponentForCornerRadius.type === 'Image'))) {
       const imageButtons = (
         <div key="src-buttons" className="mt-1.5 space-y-1.5">
            <div className="flex gap-1.5">
@@ -276,7 +298,7 @@ export function PropertyPanel() {
     return a.localeCompare(b);
   });
 
-  const componentDisplayName = getComponentDisplayName(selectedComponent.type);
+  const componentDisplayName = getComponentDisplayName(selectedComponent.type, customComponentTemplates.find(t => t.templateId === selectedComponent.type)?.name);
   const isCoreScaffoldElement = CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponent.id);
 
   return (
@@ -286,7 +308,7 @@ export function PropertyPanel() {
           {selectedComponent.name}
         </h2>
         <div className="flex items-center">
-          {!isCoreScaffoldElement && (
+          {!isCoreScaffoldElement && !isCustomComponentType(selectedComponent.type) && (
             <Button variant="ghost" size="icon" onClick={handleSaveAsCustom} className="text-sidebar-primary hover:bg-primary/10 h-7 w-7" aria-label="Save as custom component">
               <Save className="h-4 w-4" />
             </Button>
@@ -300,7 +322,7 @@ export function PropertyPanel() {
 
       <div className="mb-4">
         <Label htmlFor="componentName" className="text-xs">Instance Name</Label>
-        <Input id="componentName" type="text" value={selectedComponent.name} onChange={handleNameChange} className="h-8 text-sm mt-1.5" disabled={isCoreScaffoldElement} />
+        <Input id="componentName" type="text" value={selectedComponent.name} onChange={handleNameChange} className="h-8 text-sm mt-1.5" disabled={isCoreScaffoldElement && !isCustomComponentType(selectedComponent.type)} />
       </div>
 
       <ScrollArea className="flex-grow pr-2">
@@ -315,7 +337,7 @@ export function PropertyPanel() {
               <TabsContent key={group} value={group}>
                 <div className="space-y-3 pt-4">
                   {groupedProperties[group]}
-                   {selectedComponent.type === 'Image' && group === 'Content' && !groupedProperties[group].find(el => (el as React.ReactElement)?.key === 'src-buttons') 
+                   {(selectedComponent.type === 'Image' || (sourceComponentForCornerRadius && sourceComponentForCornerRadius.type === 'Image')) && group === 'Content' && !groupedProperties[group].find(el => (el as React.ReactElement)?.key === 'src-buttons')
                    && (
                     <div className="mt-3 pt-3 border-t border-sidebar-border">
                       <Button onClick={handleGenerateImage} disabled={isGeneratingImage || !selectedComponent.properties['data-ai-hint']} className="w-full" size="sm" >
@@ -334,3 +356,4 @@ export function PropertyPanel() {
     </aside>
   );
 }
+
