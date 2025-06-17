@@ -20,7 +20,7 @@ interface DesignContextType extends DesignState {
   clearDesign: () => void;
   setDesign: (newDesign: DesignState) => void;
   overwriteComponents: (hierarchicalUserComponentsJson: any[]) => { success: boolean, error?: string };
-  moveComponent: (draggedId: string, targetParentId: string | null, newPosition?: { x: number, y: number}) => void;
+  moveComponent: (draggedId: string, newParentId: string | null, newIndex?: number) => void;
   saveSelectedAsCustomTemplate: (name: string) => void;
   deleteCustomComponentTemplate: (templateId: string, firestoreId?: string) => Promise<void>;
   renameCustomComponentTemplate: (templateId: string, newName: string, firestoreId?: string) => Promise<void>;
@@ -229,21 +229,20 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         parentToUpdateId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
       }
 
-      let parentComponent = getComponentById(parentToUpdateId);
+      let parentComponent = updatedComponentsList.find(c => c.id === parentToUpdateId);
+
 
       if (!parentComponent) {
          console.warn(`Target parent ${parentToUpdateId} for addComponent not found. Defaulting to content area.`);
          parentToUpdateId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
-         parentComponent = getComponentById(parentToUpdateId); // Re-fetch after defaulting
+         parentComponent = updatedComponentsList.find(c => c.id === parentToUpdateId); 
       }
       
-      // If the direct drop target is not a container (e.g., a Text inside TopAppBar),
-      // use its parent if it's a valid container (TopAppBar, BottomNavBar, ContentArea).
       if (parentComponent && !isContainerType(parentComponent.type, prev.customComponentTemplates)) {
          const grandParentId = parentComponent.parentId;
-         const grandParentComponent = grandParentId ? getComponentById(grandParentId) : null;
+         const grandParentComponent = grandParentId ? updatedComponentsList.find(c=> c.id === grandParentId) : null;
          if (grandParentComponent && isContainerType(grandParentComponent.type, prev.customComponentTemplates) && 
-             (grandParentId === DEFAULT_TOP_APP_BAR_ID || grandParentId === DEFAULT_BOTTOM_NAV_BAR_ID || grandParentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || getComponentById(grandParentId)?.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID)) {
+             (grandParentId === DEFAULT_TOP_APP_BAR_ID || grandParentId === DEFAULT_BOTTOM_NAV_BAR_ID || grandParentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || updatedComponentsList.find(c=> c.id === grandParentId)?.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID)) {
             parentToUpdateId = grandParentId;
          } else {
             console.warn(`Parent of target ${parentComponent.id} is also not a valid drop zone. Defaulting to content area.`);
@@ -670,96 +669,94 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, [designState.components, designState.nextId]);
 
 
-  const moveComponent = useCallback((draggedId: string, targetParentIdOrNull: string | null, _newPosition?: { x: number, y: number}) => {
-    if (CORE_SCAFFOLD_ELEMENT_IDS.includes(draggedId)) {
-        console.warn("Cannot move core scaffold elements.");
-        return;
-    }
-    
-    let actualTargetParentId = targetParentIdOrNull;
-
-    if (!actualTargetParentId || actualTargetParentId === ROOT_SCAFFOLD_ID) {
-        actualTargetParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
-    }
-
-    let targetParentComponent = getComponentById(actualTargetParentId);
-
-    if (!targetParentComponent) {
-        console.warn(`Target parent ${actualTargetParentId} for moveComponent not found. Defaulting to content area.`);
-        actualTargetParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
-    } else if (!isContainerType(targetParentComponent.type, designState.customComponentTemplates)) {
-        // If the direct target is not a container (e.g., a Text inside TopAppBar),
-        // try to use its parent.
-        const grandParentId = targetParentComponent.parentId;
-        const grandParentComponent = grandParentId ? getComponentById(grandParentId) : null;
-
-        if (grandParentComponent && isContainerType(grandParentComponent.type, designState.customComponentTemplates) &&
-            (grandParentId === DEFAULT_TOP_APP_BAR_ID || grandParentId === DEFAULT_BOTTOM_NAV_BAR_ID || grandParentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || getComponentById(grandParentId)?.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID)) {
-            actualTargetParentId = grandParentId;
-        } else {
-            console.warn(`Target ${actualTargetParentId} and its parent are not valid drop zones. Defaulting to content area.`);
-            actualTargetParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
-        }
-    }
-
+  const moveComponent = useCallback((draggedId: string, newParentId: string | null, newIndex?: number) => {
     setDesignState(prev => {
         let currentComponents = [...prev.components];
-        const draggedComponentIndex = currentComponents.findIndex(c => c.id === draggedId);
+        const draggedComponentIndexInState = currentComponents.findIndex(c => c.id === draggedId);
 
-        if (draggedComponentIndex === -1) return prev;
+        if (draggedComponentIndexInState === -1) {
+             console.warn(`moveComponent: Dragged component with ID ${draggedId} not found.`);
+             return prev;
+        }
 
-        let draggedComponent = {...currentComponents[draggedComponentIndex]};
-        draggedComponent.properties = {...draggedComponent.properties};
+        let draggedComponent = { ...currentComponents[draggedComponentIndexInState] };
+        draggedComponent.properties = { ...draggedComponent.properties };
         const oldParentId = draggedComponent.parentId;
-        
-        if (actualTargetParentId === draggedId) return prev;
 
-        let tempParentCheck = actualTargetParentId;
-        while(tempParentCheck) {
-            if (tempParentCheck === draggedId) {
-                console.warn("Cannot move component into its own descendant.");
+        // Prevent dropping component into itself or its own children
+        let checkParentLoop = newParentId;
+        while(checkParentLoop) {
+            if (checkParentLoop === draggedId) {
+                console.warn("Cannot move component into itself or its descendants.");
                 return prev;
             }
-            const parentComponent = currentComponents.find(c => c.id === tempParentCheck);
-            tempParentCheck = parentComponent ? parentComponent.parentId : null;
+            const parentComp = currentComponents.find(c => c.id === checkParentLoop);
+            checkParentLoop = parentComp ? parentComp.parentId : null;
         }
 
-        draggedComponent.parentId = actualTargetParentId;
-        currentComponents[draggedComponentIndex] = draggedComponent;
-
-        if (oldParentId && oldParentId !== actualTargetParentId) {
-            const oldParentIndex = currentComponents.findIndex(c => c.id === oldParentId);
-            if (oldParentIndex !== -1) {
-                const oldParent = {...currentComponents[oldParentIndex]};
-                oldParent.properties = {...oldParent.properties};
+        // 1. Remove from old parent's children array
+        if (oldParentId) {
+            const oldParentIndexInState = currentComponents.findIndex(c => c.id === oldParentId);
+            if (oldParentIndexInState !== -1) {
+                const oldParent = { ...currentComponents[oldParentIndexInState] };
+                oldParent.properties = { ...oldParent.properties };
                 if (Array.isArray(oldParent.properties.children)) {
                     oldParent.properties.children = oldParent.properties.children.filter(childId => childId !== draggedId);
-                    currentComponents[oldParentIndex] = oldParent;
+                    currentComponents[oldParentIndexInState] = oldParent;
                 }
+            } else {
+                 console.warn(`moveComponent: Old parent with ID ${oldParentId} not found.`);
             }
         }
 
-        if (actualTargetParentId) {
-            const newParentIndex = currentComponents.findIndex(c => c.id === actualTargetParentId);
-            if (newParentIndex !== -1) {
-                 const newParent = {...currentComponents[newParentIndex]};
-                 newParent.properties = {...newParent.properties};
-                 if (isContainerType(newParent.type, prev.customComponentTemplates)) {
-                    let existingChildren = Array.isArray(newParent.properties.children) ? newParent.properties.children : [];
-                    existingChildren = existingChildren.filter(childId => childId !== draggedId); 
-                    newParent.properties.children = [...existingChildren, draggedId];
-                    currentComponents[newParentIndex] = newParent;
-                 } else {
-                    console.warn(`Attempted to move component ${draggedId} into non-container ${actualTargetParentId}. Reverting.`);
-                     draggedComponent.parentId = oldParentId;
-                     currentComponents[draggedComponentIndex] = prev.components[draggedComponentIndex];
-                     return prev;
-                 }
+        // 2. Update dragged component's parentId
+        draggedComponent.parentId = newParentId;
+        currentComponents[draggedComponentIndexInState] = draggedComponent; // Update the component in the main list
+
+        // 3. Add to new parent's children array
+        if (newParentId) {
+            const newParentActualIndexInState = currentComponents.findIndex(c => c.id === newParentId);
+            if (newParentActualIndexInState !== -1) {
+                const newParent = { ...currentComponents[newParentActualIndexInState] };
+                newParent.properties = { ...newParent.properties };
+
+                if (isContainerType(newParent.type, prev.customComponentTemplates)) {
+                    let childrenArray = Array.isArray(newParent.properties.children) ? [...newParent.properties.children] : [];
+                    childrenArray = childrenArray.filter(id => id !== draggedId); // Remove if already present (e.g. reordering)
+
+                    if (newIndex !== undefined && newIndex >= 0 && newIndex <= childrenArray.length) {
+                        childrenArray.splice(newIndex, 0, draggedId);
+                    } else {
+                        childrenArray.push(draggedId); // Add to end if no index or invalid index
+                    }
+                    newParent.properties.children = childrenArray;
+                    currentComponents[newParentActualIndexInState] = newParent;
+                } else {
+                    console.warn(`moveComponent: Attempted to move component ${draggedId} into non-container ${newParentId}.`);
+                    // Revert parentId change if new parent is not a container (should be caught by canDrop)
+                    draggedComponent.parentId = oldParentId;
+                    currentComponents[draggedComponentIndexInState] = prev.components[draggedComponentIndexInState]; // Revert to original dragged component state from prev
+                    // Also need to re-add to old parent if it was removed
+                     if (oldParentId) {
+                        const oldParentIndex = currentComponents.findIndex(c => c.id === oldParentId);
+                        if (oldParentIndex !== -1) {
+                           currentComponents[oldParentIndex] = prev.components[oldParentIndex]; // Revert old parent too
+                        }
+                     }
+                    return prev;
+                }
+            } else {
+                 console.warn(`moveComponent: New parent with ID ${newParentId} not found. Dragged component might be orphaned.`);
+                 // If new parent not found, perhaps revert parentId? For now, it stays with newParentId but won't be in children.
             }
         }
-        return { ...prev, components: currentComponents, selectedComponentId: draggedId };
+        
+        // Filter out any potential undefined components from list before setting state
+        const finalComponents = currentComponents.filter(Boolean);
+
+        return { ...prev, components: finalComponents, selectedComponentId: draggedId };
     });
-  }, [getComponentById, designState.customComponentTemplates]);
+  }, []);
 
   const deleteCustomComponentTemplate = useCallback(async (templateId: string, firestoreId?: string) => {
     const idToDelete = firestoreId || templateId;
@@ -951,3 +948,4 @@ export const useDesign = (): DesignContextType => {
   }
   return context;
 };
+
