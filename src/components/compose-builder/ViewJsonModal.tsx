@@ -451,15 +451,6 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
                 </AlertDescription>
               </Alert>
             )}
-            <div className="flex flex-col sm:flex-row sm:justify-between gap-2 mt-2">
-                <Button onClick={handleSaveChangesToCanvas} disabled={!canSaveChangesValue} className="w-full sm:w-auto">
-                    <Save className="mr-2" /> Save Changes to Canvas
-                </Button>
-                <Button onClick={handleOpenPublishCanvasJsonDialog} disabled={!canPublishCanvasJsonValue} className="w-full sm:w-auto">
-                    {isPublishingCanvasJson ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
-                    Publish Canvas JSON to Remote Config
-                </Button>
-            </div>
           </TabsContent>
 
           <TabsContent value="generateCustomJsonFromCanvas" className="flex-grow flex flex-col space-y-2 min-h-0">
@@ -494,23 +485,42 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
                 <AlertTitle>Note</AlertTitle>
                 <AlertDescription>This JSON is generated for use with server-driven UI systems expecting the custom command format. It's read-only here.</AlertDescription>
             </Alert>
-            <div className="flex flex-col sm:flex-row sm:justify-start gap-2 mt-2">
-              <Button onClick={handleOpenPublishCustomJsonDialog} disabled={!canPublishCustomJsonValue} className="w-full sm:w-auto">
-                  {isPublishingCustomJson ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
-                  Publish Custom JSON to Remote Config
-              </Button>
-            </div>
           </TabsContent>
         </Tabs>
 
-        <DialogFooter className="sm:justify-end gap-2 mt-2">
-          <Button onClick={handleCopyToClipboard} variant="outline" disabled={!canPerformCopyDownloadActionsValue}>
-            <Copy className="mr-2" /> Copy JSON
-          </Button>
-          <Button onClick={handleDownloadJson} variant="outline" disabled={!canPerformCopyDownloadActionsValue}>
-            <Download className="mr-2" /> Download .json
-          </Button>
+        <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2 mt-4 pt-4 border-t">
+          {/* Left side: Tab-specific primary actions */}
+          <div className="flex flex-col sm:flex-row sm:justify-start gap-2">
+            {activeTab === 'canvasJson' && (
+              <>
+                <Button onClick={handleSaveChangesToCanvas} disabled={!canSaveChangesValue} className="w-full sm:w-auto">
+                  <Save className="mr-2 h-4 w-4" /> Save to Canvas
+                </Button>
+                <Button onClick={handleOpenPublishCanvasJsonDialog} disabled={!canPublishCanvasJsonValue} className="w-full sm:w-auto">
+                  {isPublishingCanvasJson ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
+                  Publish Canvas JSON
+                </Button>
+              </>
+            )}
+            {activeTab === 'generateCustomJsonFromCanvas' && (
+              <Button onClick={handleOpenPublishCustomJsonDialog} disabled={!canPublishCustomJsonValue} className="w-full sm:w-auto">
+                {isPublishingCustomJson ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
+                Publish Custom JSON
+              </Button>
+            )}
+          </div>
+
+          {/* Right side: Common secondary actions */}
+          <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
+            <Button onClick={handleCopyToClipboard} variant="outline" disabled={!canPerformCopyDownloadActionsValue} className="w-full sm:w-auto">
+              <Copy className="mr-2 h-4 w-4" /> Copy JSON
+            </Button>
+            <Button onClick={handleDownloadJson} variant="outline" disabled={!canPerformCopyDownloadActionsValue} className="w-full sm:w-auto">
+              <Download className="mr-2 h-4 w-4" /> Download .json
+            </Button>
+          </div>
         </DialogFooter>
+
 
         {/* Dialog for Custom JSON Publishing */}
         <AlertDialog open={showPublishCustomJsonDialog} onOpenChange={setShowPublishCustomJsonDialog}>
