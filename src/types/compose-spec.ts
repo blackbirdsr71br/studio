@@ -42,8 +42,8 @@ export interface ComponentProperty {
 export interface BaseComponentProps {
   [key: string]: any;
   text?: string;
-  fontSize?: number; 
-  titleFontSize?: number; 
+  fontSize?: number;
+  titleFontSize?: number;
   textColor?: string;
   backgroundColor?: string;
   contentColor?: string;
@@ -87,7 +87,7 @@ export interface BaseComponentProps {
   textDecoration?: 'None' | 'Underline' | 'LineThrough';
   lineHeight?: number;
   title?: string;
-  selfAlign?: 'Inherit' | 'Start' | 'Center' | 'End'; 
+  selfAlign?: 'Inherit' | 'Start' | 'Center' | 'End';
 
   topBarId?: string;
   contentId?: string;
@@ -132,14 +132,14 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
     layoutWeight: 0,
     padding: undefined, paddingTop: undefined, paddingBottom: undefined, paddingStart: undefined, paddingEnd: undefined,
     fillMaxWidth: false, fillMaxHeight: false,
-    selfAlign: 'Inherit' as 'Inherit' | 'Start' | 'Center' | 'End', 
+    selfAlign: 'Inherit' as 'Inherit' | 'Start' | 'Center' | 'End',
   };
   switch (type) {
     case 'Scaffold':
       return {
         width: 'match_parent',
         height: 'match_parent',
-        backgroundColor: 'transparent', 
+        backgroundColor: 'transparent',
         children: [DEFAULT_TOP_APP_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_BOTTOM_NAV_BAR_ID]
       };
     case 'Text':
@@ -167,7 +167,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         fontSize: 14,
         backgroundColor: '#3F51B5',
         textColor: undefined,
-        padding: 12, 
+        padding: 12,
         width: 'wrap_content',
         height: 'wrap_content',
         selfAlign: 'Inherit',
@@ -218,6 +218,9 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
     case 'Card':
       return {
         ...commonLayout,
+        horizontalAlignment: 'Start', 
+        verticalArrangement: 'Top',   
+        itemSpacing: 8,               
         children: [],
         padding: 16,
         backgroundColor: '#FFFFFF', contentColor: undefined,
@@ -232,13 +235,13 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         ...commonLayout,
         children: [],
         padding: isContentArea ? 8 : 0,
-        backgroundColor: isContentArea ? 'transparent' : 'rgba(200, 240, 200, 0.3)', 
+        backgroundColor: isContentArea ? 'transparent' : 'rgba(200, 240, 200, 0.3)',
         width: 'match_parent',
         height: 'match_parent',
         itemSpacing: 8,
         userScrollEnabled: true, reverseLayout: false,
-        verticalArrangement: 'Top', horizontalAlignment: 'Start', 
-        paddingBottom: isContentArea ? (8) : 8, 
+        verticalArrangement: 'Top', horizontalAlignment: 'Start',
+        paddingBottom: isContentArea ? (8) : 8,
         selfAlign: 'Inherit',
       };
     case 'LazyRow':
@@ -279,23 +282,23 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         fillMaxWidth: false, fillMaxHeight: false,
         width: 8,
         height: 8,
-        selfAlign: undefined, // Spacers don't self-align in this context
+        selfAlign: undefined, 
       };
     case 'TopAppBar':
       return {
         layoutWeight: 0,
         padding: 0, paddingTop: 0, paddingBottom: 0, paddingStart: 0, paddingEnd: 0,
         fillMaxWidth: true, fillMaxHeight: false,
-        selfAlign: undefined, 
+        selfAlign: undefined,
         children: [],
         title: 'Screen Title',
         titleFontSize: 20,
         width: 'match_parent',
-        height: 56, 
+        height: 56,
         backgroundColor: '#3F51B5',
         contentColor: '#FFFFFF',
         itemSpacing: 8,
-        horizontalArrangement: 'Start', 
+        horizontalArrangement: 'Start',
         verticalAlignment: 'CenterVertically'
       };
     case 'BottomNavigationBar':
@@ -303,7 +306,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         layoutWeight: 0,
         padding: 0, paddingTop: 0, paddingBottom: 0, paddingStart: 0, paddingEnd: 0,
         fillMaxWidth: true, fillMaxHeight: false,
-        selfAlign: undefined, 
+        selfAlign: undefined,
         children: [],
         width: 'match_parent',
         height: 56,
@@ -513,13 +516,13 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
   Column: [
     ...commonLayoutProperties,
     ...columnSpecificLayoutProperties,
-    selfAlignProperty, 
+    selfAlignProperty,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
   ],
   Row: [
     ...commonLayoutProperties,
     ...rowSpecificLayoutProperties,
-    selfAlignProperty, 
+    selfAlignProperty,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
   ],
   Box: [
@@ -533,7 +536,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
   ],
   Card: [
     ...commonLayoutProperties,
-    ...columnSpecificLayoutProperties, 
+    ...columnSpecificLayoutProperties,
     selfAlignProperty,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (Overrides default contrast)', group: 'Appearance' },
@@ -571,19 +574,19 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'rows', type: 'number', label: 'Number of Rows', placeholder: '2', group: 'Layout' },
   ],
-  Spacer: [ 
+  Spacer: [
     { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '8', group: 'Layout' },
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '8', group: 'Layout' },
     { name: 'layoutWeight', type: 'number', label: 'Layout Weight', placeholder: '0 (no weight)', group: 'Layout' },
   ],
   TopAppBar: [
     ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd', 'layoutWeight', 'fillMaxHeight', 'height'].includes(p.name) ),
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '56', group: 'Layout' }, 
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '56', group: 'Layout' },
     { name: 'title', type: 'string', label: 'Title', placeholder: 'Screen Title', group: 'Content' },
     { name: 'titleFontSize', type: 'number', label: 'Title Font Size (sp)', placeholder: '20', group: 'Appearance' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (Title, Icons)', group: 'Appearance' },
-    ...rowSpecificLayoutProperties.filter(p => p.name !== 'itemSpacing'), 
+    ...rowSpecificLayoutProperties.filter(p => p.name !== 'itemSpacing'),
     { name: 'itemSpacing', type: 'number', label: 'Action Item Spacing (dp)', placeholder: '8', group: 'Layout' },
   ],
   BottomNavigationBar: [
@@ -591,7 +594,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '56', group: 'Layout' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (Icons, Labels)', group: 'Appearance' },
-    ...rowSpecificLayoutProperties, 
+    ...rowSpecificLayoutProperties,
   ],
 };
 
@@ -670,7 +673,7 @@ const BaseModalPropertiesSchema = z.object({
   textDecoration: z.enum(['None', 'Underline', 'LineThrough']).optional(),
   lineHeight: z.number().min(0).optional(),
   title: z.string().optional(),
-  selfAlign: z.enum(['Inherit', 'Start', 'Center', 'End']).optional(), 
+  selfAlign: z.enum(['Inherit', 'Start', 'Center', 'End']).optional(),
 
 }).catchall(z.any());
 
