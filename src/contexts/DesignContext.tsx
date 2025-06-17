@@ -174,7 +174,14 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         });
         setDesignState(prev => ({ ...prev, customComponentTemplates: templates }));
       } catch (error) {
-        console.error("Error loading custom templates:", error);
+        console.error("Error loading custom templates from Firestore:", error);
+        let detail = "Could not load custom templates.";
+        if (error instanceof Error && 'code' in error) {
+          detail += ` (Error: ${ (error as any).code } - ${error.message})`;
+        } else if (error instanceof Error) {
+          detail += ` (${error.message})`;
+        }
+        toast({ title: "Loading Failed", description: detail, variant: "destructive" });
       } finally {
         setIsLoadingTemplates(false);
       }
@@ -194,13 +201,20 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         });
         setDesignState(prev => ({ ...prev, savedLayouts: layouts }));
       } catch (error) {
-        console.error("Error loading saved layouts:", error);
+        console.error("Error loading saved layouts from Firestore:", error);
+        let detail = "Could not load saved layouts.";
+         if (error instanceof Error && 'code' in error) {
+          detail += ` (Error: ${ (error as any).code } - ${error.message})`;
+        } else if (error instanceof Error) {
+          detail += ` (${error.message})`;
+        }
+        toast({ title: "Loading Failed", description: detail, variant: "destructive" });
       } finally {
         setIsLoadingLayouts(false);
       }
     };
     loadInitialData();
-  }, []);
+  }, [toast]); // Added toast to dependency array
 
   const getComponentById = useCallback(
     (id: string) => designState.components.find(comp => comp.id === id),
@@ -424,7 +438,13 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       }));
     } catch (error) {
       console.error("Error saving custom template to Firestore:", error);
-      toast({ title: "Save Failed", description: "Could not save template to Firestore. Saved locally.", variant: "destructive" });
+      let detail = "Could not save template to Firestore.";
+      if (error instanceof Error && 'code' in error) {
+        detail += ` (Error: ${ (error as any).code } - ${error.message})`;
+      } else if (error instanceof Error) {
+        detail += ` (${error.message})`;
+      }
+      toast({ title: "Save Failed", description: `${detail}. Saved locally.`, variant: "destructive" });
        setDesignState(prev => ({
         ...prev,
         customComponentTemplates: [...prev.customComponentTemplates, { ...newTemplate, firestoreId: `local-error-${newTemplate.templateId}` }],
@@ -770,8 +790,14 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       }));
       toast({ title: "Custom Template Deleted", description: `Template removed from library.` });
     } catch (error) {
-      console.error("Error deleting custom template:", error);
-      toast({ title: "Delete Failed", description: "Could not delete template.", variant: "destructive" });
+      console.error("Error deleting custom template from Firestore:", error);
+      let detail = "Could not delete template.";
+      if (error instanceof Error && 'code' in error) {
+        detail += ` (Error: ${ (error as any).code } - ${error.message})`;
+      } else if (error instanceof Error) {
+        detail += ` (${error.message})`;
+      }
+      toast({ title: "Delete Failed", description: detail, variant: "destructive" });
     }
   }, [toast]);
 
@@ -790,8 +816,14 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       }));
       toast({ title: "Custom Template Renamed", description: `Template renamed to "${newName}".` });
     } catch (error) {
-      console.error("Error renaming custom template:", error);
-      toast({ title: "Rename Failed", description: "Could not rename template.", variant: "destructive" });
+      console.error("Error renaming custom template in Firestore:", error);
+      let detail = "Could not rename template.";
+      if (error instanceof Error && 'code' in error) {
+        detail += ` (Error: ${ (error as any).code } - ${error.message})`;
+      } else if (error instanceof Error) {
+        detail += ` (${error.message})`;
+      }
+      toast({ title: "Rename Failed", description: detail, variant: "destructive" });
     }
   }, [toast]);
 
@@ -823,7 +855,13 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       }));
     } catch (error) {
       console.error("Error saving layout to Firestore:", error);
-      toast({ title: "Save Layout Failed", description: "Could not save layout to Firestore. Saved locally.", variant: "destructive" });
+      let detail = "Could not save layout to Firestore.";
+      if (error instanceof Error && 'code' in error) {
+        detail += ` (Error: ${ (error as any).code } - ${error.message})`;
+      } else if (error instanceof Error) {
+        detail += ` (${error.message})`;
+      }
+      toast({ title: "Save Layout Failed", description: `${detail}. Saved locally.`, variant: "destructive" });
       setDesignState(prev => ({
           ...prev,
           savedLayouts: [newLayout, ...prev.savedLayouts].sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0)),
@@ -859,8 +897,14 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       }));
       toast({ title: "Layout Deleted", description: "Layout removed from library." });
     } catch (error) {
-      console.error("Error deleting saved layout:", error);
-      toast({ title: "Delete Layout Failed", description: "Could not delete layout.", variant: "destructive" });
+      console.error("Error deleting saved layout from Firestore:", error);
+      let detail = "Could not delete layout.";
+      if (error instanceof Error && 'code' in error) {
+        detail += ` (Error: ${ (error as any).code } - ${error.message})`;
+      } else if (error instanceof Error) {
+        detail += ` (${error.message})`;
+      }
+      toast({ title: "Delete Layout Failed", description: detail, variant: "destructive" });
     }
   }, [toast]);
 
@@ -874,13 +918,19 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setDesignState(prev => ({
         ...prev,
         savedLayouts: prev.savedLayouts.map(l =>
-          l.layoutId === layoutId ? { ...l, name: newName } : t
+          l.layoutId === layoutId ? { ...l, name: newName } : l // Changed 't' to 'l'
         ).sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0)),
       }));
       toast({ title: "Layout Renamed", description: `Layout renamed to "${newName}".` });
     } catch (error) {
-      console.error("Error renaming saved layout:", error);
-      toast({ title: "Rename Layout Failed", description: "Could not rename layout.", variant: "destructive" });
+      console.error("Error renaming saved layout in Firestore:", error);
+      let detail = "Could not rename layout.";
+      if (error instanceof Error && 'code' in error) {
+        detail += ` (Error: ${ (error as any).code } - ${error.message})`;
+      } else if (error instanceof Error) {
+        detail += ` (${error.message})`;
+      }
+      toast({ title: "Rename Layout Failed", description: detail, variant: "destructive" });
     }
   }, [toast]);
 
@@ -948,3 +998,4 @@ export const useDesign = (): DesignContextType => {
   }
   return context;
 };
+
