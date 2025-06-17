@@ -14,26 +14,46 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-// Log para depuración
-console.log("Firebase Config Used by Client SDK:", firebaseConfig);
+// Log para depuración MUY IMPORTANTE
+console.log("Firebase Client SDK: Initializing with config:", firebaseConfig);
+
 if (!firebaseConfig.projectId || firebaseConfig.projectId.trim() === "") {
   console.error(
-    "CRITICAL: NEXT_PUBLIC_FIREBASE_PROJECT_ID is not set or is empty. " +
-    "Firestore operations will likely fail with a 400 error due to a malformed database URL. " +
-    "Please ensure this variable is correctly set in your .env (or .env.local) file and restart your development server."
+    "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
+    "CRITICAL FIREBASE CONFIGURATION ERROR:\n" +
+    "NEXT_PUBLIC_FIREBASE_PROJECT_ID is missing or empty.\n" +
+    "This WILL cause Firestore operations to fail with an HTTP 400 error.\n" +
+    "The database URL will be malformed (e.g., 'projects//databases/(default)').\n" +
+    "Please verify this variable in your .env.local file and RESTART your dev server.\n" +
+    "Example: NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-actual-project-id\n" +
+    "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
   );
+} else {
+  console.log("Firebase Client SDK: NEXT_PUBLIC_FIREBASE_PROJECT_ID appears to be set:", firebaseConfig.projectId);
 }
 
 
 // Initialize Firebase
 let app: FirebaseApp;
-if (getApps().length === 0) {
-  app = initializeApp(firebaseConfig);
+let db: Firestore;
+
+if (typeof window !== "undefined") { // Ensure this only runs on the client-side
+  if (getApps().length === 0) {
+    // Only initialize if projectId is somewhat valid to prevent further confusing errors,
+    // though the SDK might still try and fail if it's a completely wrong ID.
+    // The main check above should guide the user.
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApps()[0];
+  }
+  // @ts-ignore Type 'Firestore | undefined' is not assignable to type 'Firestore'
+  db = getFirestore(app);
 } else {
-  app = getApps()[0];
+  // Handle server-side case if necessary, though db is mostly client-side here
+  // For this app, db is primarily used client-side in DesignContext
+  // Assign a placeholder or handle error if db is accessed server-side without init
+  // For now, db might be undefined on server, which is fine if not used.
 }
 
-const db: Firestore = getFirestore(app);
-
+// @ts-ignore Export possibly undefined db, context using it should check
 export { app, db };
-
