@@ -87,7 +87,7 @@ export interface BaseComponentProps {
   textDecoration?: 'None' | 'Underline' | 'LineThrough';
   lineHeight?: number;
   title?: string;
-  selfAlign?: 'Start' | 'Center' | 'End'; // New property
+  selfAlign?: 'Inherit' | 'Start' | 'Center' | 'End'; // Updated property
 
   topBarId?: string;
   contentId?: string;
@@ -132,7 +132,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
     layoutWeight: 0,
     padding: undefined, paddingTop: undefined, paddingBottom: undefined, paddingStart: undefined, paddingEnd: undefined,
     fillMaxWidth: false, fillMaxHeight: false,
-    selfAlign: 'Start' as 'Start' | 'Center' | 'End', // Default self-alignment
+    selfAlign: 'Inherit' as 'Inherit' | 'Start' | 'Center' | 'End', 
   };
   switch (type) {
     case 'Scaffold':
@@ -263,23 +263,25 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
       };
     case 'Spacer':
       return {
-        ...commonLayout,
+        // ...commonLayout, // Spacers don't need most commonLayout props like selfAlign
+        layoutWeight: 0,
+        padding: undefined, paddingTop: undefined, paddingBottom: undefined, paddingStart: undefined, paddingEnd: undefined,
+        fillMaxWidth: false, fillMaxHeight: false,
         width: 8,
         height: 8,
-        layoutWeight: 0,
       };
     case 'TopAppBar':
       return {
-        ...commonLayout,
+        // ...commonLayout, // TopAppBar aligns children via its own properties.
+        layoutWeight: 0,
+        padding: undefined, paddingTop: 0, paddingBottom: 0, paddingStart: 0, paddingEnd: 0,
+        fillMaxWidth: false, fillMaxHeight: false,
         selfAlign: undefined, // TopAppBar aligns itself, children aligned by its arrangement props
         children: [],
         title: 'Screen Title',
         titleFontSize: 20,
         width: 'match_parent',
         height: 30, 
-        padding: 0,
-        paddingStart: 0,
-        paddingEnd: 0,
         backgroundColor: '#3F51B5',
         contentColor: '#FFFFFF',
         itemSpacing: 8,
@@ -288,12 +290,14 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
       };
     case 'BottomNavigationBar':
       return {
-        ...commonLayout,
-        selfAlign: undefined, // BottomNavBar aligns itself, children aligned by its arrangement props
+        // ...commonLayout,
+        layoutWeight: 0,
+        padding: 0, paddingTop: undefined, paddingBottom: undefined, paddingStart: undefined, paddingEnd: undefined,
+        fillMaxWidth: false, fillMaxHeight: false,
+        selfAlign: undefined, 
         children: [],
         width: 'match_parent',
         height: 48,
-        padding: 0, 
         backgroundColor: '#F0F0F0',
         contentColor: '#000000',
         itemSpacing: 0,
@@ -302,9 +306,9 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
       };
     default:
       if (isCustomComponentType(type)) {
-        return { ...commonLayout, children: [], width: 'wrap_content', height: 'wrap_content', padding: 0, fillMaxWidth: false, fillMaxHeight: false, selfAlign: 'Start' };
+        return { ...commonLayout, children: [], width: 'wrap_content', height: 'wrap_content', padding: 0, fillMaxWidth: false, fillMaxHeight: false, selfAlign: 'Inherit' };
       }
-      return {...commonLayout, width: 'wrap_content', height: 'wrap_content', padding: 0, fillMaxWidth: false, fillMaxHeight: false, selfAlign: 'Start' };
+      return {...commonLayout, width: 'wrap_content', height: 'wrap_content', padding: 0, fillMaxWidth: false, fillMaxHeight: false, selfAlign: 'Inherit' };
   }
 };
 
@@ -338,11 +342,12 @@ const selfAlignProperty: Omit<ComponentProperty, 'value'> = {
   label: 'Self Horizontal Alignment',
   group: 'Layout',
   options: [
-    { label: 'Start (Default)', value: 'Start' },
+    { label: 'Inherit from Parent', value: 'Inherit' },
+    { label: 'Start', value: 'Start' },
     { label: 'Center', value: 'Center' },
     { label: 'End', value: 'End' },
   ],
-  placeholder: 'Start',
+  placeholder: 'Inherit from Parent',
 };
 
 const commonLayoutProperties: (Omit<ComponentProperty, 'value'>)[] = [
@@ -499,13 +504,13 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
   Column: [
     ...commonLayoutProperties,
     ...columnSpecificLayoutProperties,
-    selfAlignProperty, // Columns themselves can be aligned if they are children of another Column.
+    selfAlignProperty, 
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
   ],
   Row: [
     ...commonLayoutProperties,
     ...rowSpecificLayoutProperties,
-    selfAlignProperty, // Rows themselves can be aligned if they are children of a Column.
+    selfAlignProperty, 
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
   ],
   Box: [
@@ -519,7 +524,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
   ],
   Card: [
     ...commonLayoutProperties,
-    ...columnSpecificLayoutProperties, // Cards often behave like columns for their content
+    ...columnSpecificLayoutProperties, 
     selfAlignProperty,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (Overrides default contrast)', group: 'Appearance' },
@@ -534,8 +539,6 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
   LazyColumn: [
     ...commonLayoutProperties,
     ...columnSpecificLayoutProperties,
-    // selfAlignProperty is not typically applied to LazyColumn itself, but to its parent if it's in a Column.
-    // The `horizontalAlignment` property of LazyColumn controls alignment of its children.
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'userScrollEnabled', type: 'boolean', label: 'Enable Scrolling', group: 'Behavior' },
     { name: 'reverseLayout', type: 'boolean', label: 'Reverse Layout', group: 'Behavior' },
@@ -543,8 +546,6 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
   LazyRow: [
     ...commonLayoutProperties,
     ...rowSpecificLayoutProperties,
-    // selfAlignProperty is not typically applied to LazyRow itself.
-    // The `verticalAlignment` property of LazyRow controls alignment of its children.
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'userScrollEnabled', type: 'boolean', label: 'Enable Scrolling', group: 'Behavior' },
     { name: 'reverseLayout', type: 'boolean', label: 'Reverse Layout', group: 'Behavior' },
@@ -561,7 +562,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'rows', type: 'number', label: 'Number of Rows', placeholder: '2', group: 'Layout' },
   ],
-  Spacer: [ // Spacer usually doesn't have selfAlign as it's about creating space.
+  Spacer: [ 
     { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '8', group: 'Layout' },
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '8', group: 'Layout' },
     { name: 'layoutWeight', type: 'number', label: 'Layout Weight', placeholder: '0 (no weight)', group: 'Layout' },
@@ -659,7 +660,7 @@ const BaseModalPropertiesSchema = z.object({
   textDecoration: z.enum(['None', 'Underline', 'LineThrough']).optional(),
   lineHeight: z.number().min(0).optional(),
   title: z.string().optional(),
-  selfAlign: z.enum(['Start', 'Center', 'End']).optional(), // New property in Zod schema
+  selfAlign: z.enum(['Inherit', 'Start', 'Center', 'End']).optional(), 
 
 }).catchall(z.any());
 
@@ -703,6 +704,8 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
 );
 
 export const ModalJsonSchema = z.array(ModalComponentNodeSchema);
+
+    
 
     
 
