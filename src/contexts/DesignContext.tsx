@@ -168,8 +168,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           const data = docSnap.data();
           if (data.templateId && data.name && data.rootComponentId && data.componentTree) {
             templates.push({
-              firestoreId: docSnap.id, 
-              templateId: data.templateId as string, 
+              firestoreId: docSnap.id,
+              templateId: data.templateId as string,
               name: data.name as string,
               rootComponentId: data.rootComponentId as string,
               componentTree: data.componentTree as DesignComponent[],
@@ -182,10 +182,13 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       } catch (error) {
         console.error("Error loading custom templates from Firestore:", error);
         let detail = "Could not load custom templates.";
-        if (error instanceof Error && 'code' in error && typeof (error as any).code === 'string') {
-            detail += ` (Error: ${(error as any).code} - ${error.message})`;
-        } else if (error instanceof Error) {
-            detail += ` (${error.message})`;
+        if (error instanceof Error) {
+            const firebaseError = error as any;
+            if (firebaseError.code) {
+                detail += ` (Error: ${firebaseError.code} - ${firebaseError.message})`;
+            } else {
+                detail += ` (${firebaseError.message})`;
+            }
         }
         toast({ title: "Loading Failed", description: detail, variant: "destructive" });
       } finally {
@@ -201,7 +204,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           const data = docSnap.data();
           if (data.layoutId && data.name && data.components && typeof data.nextId === 'number') {
             layouts.push({
-              firestoreId: docSnap.id, 
+              firestoreId: docSnap.id,
               layoutId: data.layoutId as string,
               name: data.name as string,
               components: data.components as DesignComponent[],
@@ -216,10 +219,13 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       } catch (error) {
         console.error("Error loading saved layouts from Firestore:", error);
         let detail = "Could not load saved layouts.";
-         if (error instanceof Error && 'code' in error && typeof (error as any).code === 'string') {
-            detail += ` (Error: ${(error as any).code} - ${error.message})`;
-        } else if (error instanceof Error) {
-            detail += ` (${error.message})`;
+         if (error instanceof Error) {
+            const firebaseError = error as any;
+            if (firebaseError.code) {
+                detail += ` (Error: ${firebaseError.code} - ${firebaseError.message})`;
+            } else {
+                detail += ` (${firebaseError.message})`;
+            }
         }
         toast({ title: "Loading Failed", description: detail, variant: "destructive" });
       } finally {
@@ -227,7 +233,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       }
     };
     loadInitialData();
-  }, []); 
+  }, []);
 
   const getComponentById = useCallback(
     (id: string) => designState.components.find(comp => comp.id === id),
@@ -240,7 +246,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
 
   const addComponent = useCallback((
-    type: ComponentType | string, 
+    type: ComponentType | string,
     parentIdOrNull: string | null = DEFAULT_CONTENT_LAZY_COLUMN_ID,
     _dropPosition?: { x: number; y: number }
   ) => {
@@ -278,7 +284,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       }
 
       if (isCustomComponentType(type as string)) {
-        const appTemplateId = type as string; 
+        const appTemplateId = type as string;
         const template = prev.customComponentTemplates.find(t => t.templateId === appTemplateId);
 
         if (!template) {
@@ -428,18 +434,18 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     const baseName = name.replace(/\s+/g, '_').toLowerCase().replace(/[^a-z0-9_-]/g, '');
     const timestamp = Date.now();
-    const firestoreDocumentId = `${baseName}-${timestamp}`; 
-    const applicationTemplateId = `${CUSTOM_COMPONENT_TYPE_PREFIX}${firestoreDocumentId}`; 
+    const firestoreDocumentId = `${baseName}-${timestamp}`;
+    const applicationTemplateId = `${CUSTOM_COMPONENT_TYPE_PREFIX}${firestoreDocumentId}`;
 
     const newTemplateDataForFirestore = {
-      templateId: applicationTemplateId, 
+      templateId: applicationTemplateId,
       name: name,
       rootComponentId: templateRootComponent.id,
       componentTree: templateComponentTree,
     };
 
     const newTemplateForState: CustomComponentTemplate = {
-      firestoreId: firestoreDocumentId, 
+      firestoreId: firestoreDocumentId,
       templateId: applicationTemplateId,
       name: name,
       rootComponentId: templateRootComponent.id,
@@ -456,7 +462,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         toast({ title: "Template Saved (Locally)", description: `"${name}" saved. Firestore not connected.` });
         return;
       }
-      
+      console.log(`Attempting to save custom template to Firestore with ID: ${firestoreDocumentId}`, newTemplateDataForFirestore);
       const templateRef = doc(db, CUSTOM_TEMPLATES_COLLECTION, firestoreDocumentId);
       await setDoc(templateRef, newTemplateDataForFirestore);
 
@@ -466,12 +472,15 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       }));
       toast({ title: "Custom Template Saved", description: `"${name}" saved to library and Firestore.` });
     } catch (error) {
-      console.error("Error saving custom template to Firestore:", error);
+      console.error("Firestore operation error (saveSelectedAsCustomTemplate):", error);
       let detail = "Could not save template to Firestore.";
-      if (error instanceof Error && 'code' in error && typeof (error as any).code === 'string') {
-        detail += ` (Error: ${(error as any).code} - ${error.message})`;
-      } else if (error instanceof Error) {
-        detail += ` (${error.message})`;
+      if (error instanceof Error) {
+        const firebaseError = error as any;
+        if (firebaseError.code) {
+          detail += ` (Error: ${firebaseError.code} - ${firebaseError.message})`;
+        } else {
+          detail += ` (${firebaseError.message})`;
+        }
       }
       setDesignState(prev => ({
         ...prev,
@@ -800,35 +809,40 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, []);
 
   const deleteCustomComponentTemplate = useCallback(async (appTemplateId: string, firestoreDocId?: string) => {
-    const idToDeleteInFirestore = firestoreDocId; 
+    const idToDeleteInFirestore = firestoreDocId;
     try {
       let deletedFromFirestore = false;
       if (db && idToDeleteInFirestore && !idToDeleteInFirestore.startsWith("local-")) {
+        console.log(`Attempting to delete custom template from Firestore with ID: ${idToDeleteInFirestore}`);
         await deleteDoc(doc(db, CUSTOM_TEMPLATES_COLLECTION, idToDeleteInFirestore));
         deletedFromFirestore = true;
       }
       setDesignState(prev => ({
         ...prev,
-        customComponentTemplates: prev.customComponentTemplates.filter(t => t.templateId !== appTemplateId), 
+        customComponentTemplates: prev.customComponentTemplates.filter(t => t.templateId !== appTemplateId),
       }));
       toast({ title: "Custom Template Deleted", description: `Template removed from library${deletedFromFirestore ? " and Firestore" : " (local only)"}.` });
     } catch (error) {
-      console.error("Error deleting custom template from Firestore:", error);
+      console.error("Firestore operation error (deleteCustomComponentTemplate):", error);
       let detail = "Could not delete template.";
-      if (error instanceof Error && 'code' in error && typeof (error as any).code === 'string') {
-        detail += ` (Error: ${(error as any).code} - ${error.message})`;
-      } else if (error instanceof Error) {
-        detail += ` (${error.message})`;
+      if (error instanceof Error) {
+        const firebaseError = error as any;
+        if (firebaseError.code) {
+          detail += ` (Error: ${firebaseError.code} - ${firebaseError.message})`;
+        } else {
+          detail += ` (${firebaseError.message})`;
+        }
       }
       toast({ title: "Delete Failed", description: detail, variant: "destructive" });
     }
   }, [toast]);
 
   const renameCustomComponentTemplate = useCallback(async (appTemplateId: string, newName: string, firestoreDocId?: string) => {
-    const idToUpdateInFirestore = firestoreDocId; 
+    const idToUpdateInFirestore = firestoreDocId;
     try {
       let renamedInFirestore = false;
       if (db && idToUpdateInFirestore && !idToUpdateInFirestore.startsWith("local-")) {
+        console.log(`Attempting to rename custom template in Firestore with ID: ${idToUpdateInFirestore} to "${newName}"`);
         const templateRef = doc(db, CUSTOM_TEMPLATES_COLLECTION, idToUpdateInFirestore);
         await updateDoc(templateRef, { name: newName });
         renamedInFirestore = true;
@@ -836,17 +850,20 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setDesignState(prev => ({
         ...prev,
         customComponentTemplates: prev.customComponentTemplates.map(t =>
-          t.templateId === appTemplateId ? { ...t, name: newName } : t 
+          t.templateId === appTemplateId ? { ...t, name: newName } : t
         ),
       }));
       toast({ title: "Custom Template Renamed", description: `Template renamed to "${newName}"${renamedInFirestore ? " in Firestore" : " (local only)"}.` });
     } catch (error) {
-      console.error("Error renaming custom template in Firestore:", error);
+      console.error("Firestore operation error (renameCustomComponentTemplate):", error);
       let detail = "Could not rename template.";
-      if (error instanceof Error && 'code' in error && typeof (error as any).code === 'string') {
-        detail += ` (Error: ${(error as any).code} - ${error.message})`;
-      } else if (error instanceof Error) {
-        detail += ` (${error.message})`;
+      if (error instanceof Error) {
+        const firebaseError = error as any;
+        if (firebaseError.code) {
+          detail += ` (Error: ${firebaseError.code} - ${firebaseError.message})`;
+        } else {
+          detail += ` (${firebaseError.message})`;
+        }
       }
       toast({ title: "Rename Failed", description: detail, variant: "destructive" });
     }
@@ -854,11 +871,11 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const saveCurrentCanvasAsLayout = useCallback(async (name: string) => {
     const currentTimestamp = Date.now();
-    const newLayoutId = `layout-${currentTimestamp}`; 
+    const layoutId = `layout-${currentTimestamp}`; // This is the ID for Firestore document
     const clonedComponents = deepClone(designState.components);
 
-    const newLayoutDataForFirestore = {
-      layoutId: newLayoutId, 
+    const layoutBaseData = {
+      layoutId: layoutId, // Store the clean ID also as a field in the document
       name,
       components: clonedComponents,
       nextId: designState.nextId,
@@ -866,13 +883,11 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     };
 
     const newLayoutForState: SavedLayout = {
-      firestoreId: newLayoutId, 
-      layoutId: newLayoutId,
-      name,
-      components: clonedComponents,
-      nextId: designState.nextId,
-      timestamp: currentTimestamp,
+      ...layoutBaseData,
+      firestoreId: layoutId, // firestoreId is the document ID
     };
+    
+    const newLayoutDataForFirestore = layoutBaseData; // Data to save in Firestore
     
     let savedToFirestore = false;
     try {
@@ -890,7 +905,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         return;
       }
       
-      const layoutRef = doc(db, SAVED_LAYOUTS_COLLECTION, newLayoutId);
+      console.log(`Attempting to save layout to Firestore with ID: ${layoutId}`, newLayoutDataForFirestore);
+      const layoutRef = doc(db, SAVED_LAYOUTS_COLLECTION, layoutId);
       await setDoc(layoutRef, newLayoutDataForFirestore);
       savedToFirestore = true;
 
@@ -905,15 +921,18 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       toast({ title: "Layout Saved", description: `Layout "${name}" has been saved${savedToFirestore ? " to Firestore" : ""}.` });
 
     } catch (error) {
-      console.error("Error saving layout to Firestore:", error);
+      console.error("Firestore operation error (saveCurrentCanvasAsLayout):", error);
       let detail = "Could not save layout to Firestore.";
-      if (error instanceof Error && 'code' in error && typeof (error as any).code === 'string') {
-        detail += ` (Error: ${(error as any).code} - ${error.message})`;
-      } else if (error instanceof Error) {
-        detail += ` (${error.message})`;
+      if (error instanceof Error) {
+        const firebaseError = error as any;
+        if (firebaseError.code) {
+          detail += ` (Error: ${firebaseError.code} - ${firebaseError.message})`;
+        } else {
+          detail += ` (${firebaseError.message})`;
+        }
       }
       
-      setDesignState(prev => {
+      setDesignState(prev => { // Still update local state on Firestore failure
         const updatedSavedLayouts = [newLayoutForState, ...(prev.savedLayouts || [])]
           .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
         return {
@@ -928,12 +947,12 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const loadLayoutToCanvas = useCallback((layoutId: string) => {
     const layoutToLoad = designState.savedLayouts.find(l => l.layoutId === layoutId);
     if (layoutToLoad) {
-      setDesign({ 
+      setDesign({
         components: deepClone(layoutToLoad.components),
         nextId: layoutToLoad.nextId,
-        selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID, 
-        customComponentTemplates: designState.customComponentTemplates, 
-        savedLayouts: designState.savedLayouts, 
+        selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID,
+        customComponentTemplates: designState.customComponentTemplates,
+        savedLayouts: designState.savedLayouts,
       });
       toast({ title: "Layout Loaded", description: `Layout "${layoutToLoad.name}" has been loaded onto the canvas.` });
     } else {
@@ -943,10 +962,17 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
 
   const deleteSavedLayout = useCallback(async (layoutId: string, firestoreDocId?: string) => {
-    const idToDeleteInFirestore = firestoreDocId || layoutId; 
+    const idToDeleteInFirestore = firestoreDocId || layoutId;
+    if (!idToDeleteInFirestore || typeof idToDeleteInFirestore !== 'string' || idToDeleteInFirestore.trim() === '') {
+        console.error("deleteSavedLayout: No valid ID (firestoreDocId or layoutId) provided for deletion.");
+        toast({ title: "Delete Error", description: "Cannot delete layout: Invalid ID.", variant: "destructive" });
+        return;
+    }
+
     let deletedFromFirestore = false;
     try {
       if (db && idToDeleteInFirestore && !idToDeleteInFirestore.startsWith("local-")) {
+        console.log(`Attempting to delete layout from Firestore with ID: ${idToDeleteInFirestore}`);
         await deleteDoc(doc(db, SAVED_LAYOUTS_COLLECTION, idToDeleteInFirestore));
         deletedFromFirestore = true;
       }
@@ -956,22 +982,31 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       }));
       toast({ title: "Layout Deleted", description: `Layout removed from library${deletedFromFirestore ? " and Firestore" : " (local only)"}.` });
     } catch (error) {
-      console.error("Error deleting saved layout from Firestore:", error);
+      console.error("Firestore operation error (deleteSavedLayout):", error);
       let detail = "Could not delete layout.";
-      if (error instanceof Error && 'code' in error && typeof (error as any).code === 'string') {
-        detail += ` (Error: ${(error as any).code} - ${error.message})`;
-      } else if (error instanceof Error) {
-        detail += ` (${error.message})`;
+      if (error instanceof Error) {
+        const firebaseError = error as any;
+        if (firebaseError.code) {
+          detail += ` (Error: ${firebaseError.code} - ${firebaseError.message})`;
+        } else {
+          detail += ` (${firebaseError.message})`;
+        }
       }
       toast({ title: "Delete Layout Failed", description: detail, variant: "destructive" });
     }
   }, [toast]);
 
   const renameSavedLayout = useCallback(async (layoutId: string, newName: string, firestoreDocId?: string) => {
-    const idToUpdateInFirestore = firestoreDocId || layoutId; 
+    const idToUpdateInFirestore = firestoreDocId || layoutId;
+     if (!idToUpdateInFirestore || typeof idToUpdateInFirestore !== 'string' || idToUpdateInFirestore.trim() === '') {
+        console.error("renameSavedLayout: No valid ID (firestoreDocId or layoutId) provided for renaming.");
+        toast({ title: "Rename Error", description: "Cannot rename layout: Invalid ID.", variant: "destructive" });
+        return;
+    }
     let renamedInFirestore = false;
     try {
       if (db && idToUpdateInFirestore && !idToUpdateInFirestore.startsWith("local-")) {
+        console.log(`Attempting to rename layout in Firestore with ID: ${idToUpdateInFirestore} to "${newName}"`);
         const layoutRef = doc(db, SAVED_LAYOUTS_COLLECTION, idToUpdateInFirestore);
         await updateDoc(layoutRef, { name: newName });
         renamedInFirestore = true;
@@ -984,12 +1019,15 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       }));
       toast({ title: "Layout Renamed", description: `Layout renamed to "${newName}"${renamedInFirestore ? " in Firestore" : " (local only)"}.` });
     } catch (error) {
-      console.error("Error renaming saved layout in Firestore:", error);
+      console.error("Firestore operation error (renameSavedLayout):", error);
       let detail = "Could not rename layout.";
-      if (error instanceof Error && 'code' in error && typeof (error as any).code === 'string') {
-        detail += ` (Error: ${(error as any).code} - ${error.message})`;
-      } else if (error instanceof Error) {
-        detail += ` (${error.message})`;
+      if (error instanceof Error) {
+        const firebaseError = error as any;
+        if (firebaseError.code) {
+          detail += ` (Error: ${firebaseError.code} - ${firebaseError.message})`;
+        } else {
+          detail += ` (${firebaseError.message})`;
+        }
       }
       toast({ title: "Rename Layout Failed", description: detail, variant: "destructive" });
     }
