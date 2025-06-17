@@ -146,6 +146,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
   useImperativeHandle(ref, () => ({
     openModal: () => {
       setIsOpen(true);
+      // Reset all states when modal opens to ensure fresh data on tab switch or reopen
       setCanvasJsonString("");
       setCanvasJsonError(null);
       setSyntaxError(null);
@@ -159,6 +160,10 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
       setIsCustomJsonFromCanvasLoading(false);
       setIsPublishingCustomJson(false);
       setShowPublishCustomJsonDialog(false);
+      
+      // setActiveTab("canvasJson"); // Optionally reset to the first tab
+      // If not resetting activeTab, ensure the effect for the current activeTab runs
+      // This is handled by the useEffect dependency on isOpen and activeTab already.
     }
   }));
 
@@ -334,7 +339,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
 
   // Publish Canvas JSON (content area) from "Canvas JSON" tab
   const handleOpenPublishCanvasJsonDialog = () => {
-    const contentAreaComponentsExist = components.some(c => c.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID && (c.properties.children?.length || 0) > 0);
+    const contentAreaComponentsExist = components.some(c => c.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || (c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID && (c.properties.children?.length || 0) > 0));
     if (!isCanvasJsonLoading && !canvasJsonError && contentAreaComponentsExist) {
         setShowPublishCanvasJsonDialog(true);
     } else {
