@@ -491,7 +491,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
         'p-0.5 border border-transparent', 
         flexItemClass,
         {
-          'ring-4 ring-primary ring-offset-[6px] ring-offset-background shadow-lg': isSelected && ![ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_BOTTOM_NAV_BAR_ID].includes(component.id),
+          'ring-4 ring-primary ring-offset-2 ring-offset-background shadow-lg': isSelected && ![ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_BOTTOM_NAV_BAR_ID].includes(component.id),
           'ring-2 ring-accent ring-offset-2 ring-offset-background': isSelected && [DEFAULT_TOP_APP_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_BOTTOM_NAV_BAR_ID].includes(component.id),
           'opacity-50': isDragging,
           'cursor-grab': !isResizing && ![ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_BOTTOM_NAV_BAR_ID, 'Spacer'].includes(component.id) && component.type !== 'Spacer',
@@ -529,4 +529,5 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     </div>
   );
 }
+
 
