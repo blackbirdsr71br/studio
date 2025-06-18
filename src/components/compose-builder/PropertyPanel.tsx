@@ -14,7 +14,7 @@ import {
   ROOT_SCAFFOLD_ID,
   DEFAULT_TOP_APP_BAR_ID,
   DEFAULT_BOTTOM_NAV_BAR_ID,
-  isCustomComponentType, // Importar
+  isCustomComponentType, 
   CORE_SCAFFOLD_ELEMENT_IDS
 } from '@/types/compose-spec';
 import { PropertyEditor } from './PropertyEditor';
@@ -27,15 +27,13 @@ import { useToast } from '@/hooks/use-toast';
 import { generateImageFromHintAction } from '@/app/actions';
 import { Separator } from '../ui/separator';
 import type { ImageSourceModalRef } from './ImageSourceModal';
-import { Switch } from '../ui/switch';
-import type { BaseComponentProps } from '@/types/compose-spec'; // Asegurar que BaseComponentProps esté disponible
+import type { BaseComponentProps } from '@/types/compose-spec'; 
 
 interface GroupedProperties {
   [groupName: string]: ReactNode[];
 }
 
 const PREFERRED_GROUP_ORDER = ['Layout', 'Appearance', 'Content', 'Behavior'];
-// CORE_SCAFFOLD_ELEMENT_IDS ya se importa arriba.
 
 export function PropertyPanel() {
   const { selectedComponentId, getComponentById, updateComponent, deleteComponent, saveSelectedAsCustomTemplate, customComponentTemplates } = useDesign();
@@ -75,7 +73,7 @@ export function PropertyPanel() {
     if (template) {
       const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
       if (rootTemplateComponent) {
-        componentPropsDefSourceType = rootTemplateComponent.type; // Use type of the template's root
+        componentPropsDefSourceType = rootTemplateComponent.type; 
       }
     }
   }
@@ -240,10 +238,6 @@ export function PropertyPanel() {
         currentValue = currentValue ?? getDefaultPropertyValue(propDef);
     }
 
-    const isDisabled =
-      (propDef.name === 'width' && selectedComponent.properties.fillMaxWidth) ||
-      (propDef.name === 'height' && selectedComponent.properties.fillMaxHeight);
-
     const editorElement = (
       <PropertyEditor
         key={propDef.name}
@@ -303,7 +297,8 @@ export function PropertyPanel() {
 
   return (
     <aside className="w-72 border-l bg-sidebar p-4 flex flex-col shrink-0">
-      <div className="flex items-center justify-between mb-1">
+      {/* Fixed Part: Component Info & Actions */}
+      <div className="flex items-center justify-between mb-1 shrink-0">
          <h2 className="text-lg font-semibold text-sidebar-foreground font-headline truncate mr-2" title={`${selectedComponent.name} (${componentDisplayName})`}>
           {selectedComponent.name}
         </h2>
@@ -318,24 +313,31 @@ export function PropertyPanel() {
           </Button>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground mb-3 -mt-1">{componentDisplayName}</p>
+      <p className="text-xs text-muted-foreground mb-3 -mt-1 shrink-0">{componentDisplayName}</p>
 
-      <div className="mb-4">
+      {/* Fixed Part: Instance Name */}
+      <div className="mb-4 shrink-0">
         <Label htmlFor="componentName" className="text-xs">Instance Name</Label>
         <Input id="componentName" type="text" value={selectedComponent.name} onChange={handleNameChange} className="h-8 text-sm mt-1.5" disabled={isCoreScaffoldElement && !isCustomComponentType(selectedComponent.type)} />
       </div>
 
-      <ScrollArea className="flex-grow pr-2">
-        {componentPropsDef.length === 0 ? (
+      {/* Scrollable Part: Tabs with Properties */}
+      {componentPropsDef.length === 0 ? (
+        <div className="flex-grow flex items-center justify-center min-h-0">
           <p className="text-sm text-muted-foreground">No editable properties for this component type.</p>
-        ) : (
-          <Tabs defaultValue={propertyGroups[0] || 'General'} className="w-full">
-            <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${Math.min(propertyGroups.length, 3)}, minmax(0, 1fr))` }}>
-              {propertyGroups.map((group) => ( <TabsTrigger key={group} value={group} className="text-xs px-2 py-1.5"> {group} </TabsTrigger> ))}
-            </TabsList>
+        </div>
+      ) : (
+        <Tabs defaultValue={propertyGroups[0] || 'General'} className="w-full flex flex-col flex-grow min-h-0">
+          {/* Fixed: TabsList (Group Buttons) */}
+          <TabsList className="grid w-full shrink-0" style={{ gridTemplateColumns: `repeat(${Math.min(propertyGroups.length, 3)}, minmax(0, 1fr))` }}>
+            {propertyGroups.map((group) => ( <TabsTrigger key={group} value={group} className="text-xs px-2 py-1.5"> {group} </TabsTrigger> ))}
+          </TabsList>
+
+          {/* Scrollable: TabsContent */}
+          <ScrollArea className="flex-grow min-h-0 mt-3 pr-2">
             {propertyGroups.map((group) => (
-              <TabsContent key={group} value={group}>
-                <div className="space-y-3 pt-4">
+              <TabsContent key={group} value={group} className="mt-0 focus-visible:ring-0 focus-visible:ring-offset-0">
+                <div className="space-y-3">
                   {groupedProperties[group]}
                    {(selectedComponent.type === 'Image' || (sourceComponentForCornerRadius && sourceComponentForCornerRadius.type === 'Image')) && group === 'Content' && !groupedProperties[group].find(el => (el as React.ReactElement)?.key === 'src-buttons')
                    && (
@@ -350,10 +352,9 @@ export function PropertyPanel() {
                 </div>
               </TabsContent>
             ))}
-          </Tabs>
-        )}
-      </ScrollArea>
+          </ScrollArea>
+        </Tabs>
+      )}
     </aside>
   );
 }
-
