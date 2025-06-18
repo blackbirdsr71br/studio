@@ -92,7 +92,9 @@ The output JSON MUST strictly follow this pattern:
   - If the input \`designJson\` array (representing the children of the main canvas content area) contains only ONE component, that component's type (lowercase) should be the root key of the output JSON. Its properties and children should be mapped accordingly.
   - If the input \`designJson\` array contains MULTIPLE components, the root key of the output JSON MUST be "column". The components from the input array should become the children of this root "column".
 - Each component object (including the root and any children) must contain:
-  - A "modifier" object. This "modifier" object MUST have a "base" object for common modifiers. It can also have component-specific modifiers as direct children.
+  - A "modifier" object (unless it would be completely empty according to omission rules).
+  - The "modifier" object MUST have a "base" object for common modifiers (unless "base" itself would be empty).
+  - Component-specific modifiers can be direct children of "modifier".
   - Component-specific properties (e.g., "content" for Text, "clickId" for Button).
   - If the component is a container (like "column", "row", "card", "box", "grid"), it should have a "children" array. Each element in "children" must be an object structured in the same way (e.g., { "text": { "modifier": {...}, "content": "Hello" } }). Spacers do not have children.
 
@@ -103,7 +105,7 @@ Component Type Mapping (Canvas Type -> Output Key):
 - "Row" -> "row"
 - "Box" -> "box"
 - "Card" -> "card"
-- "Image" -> "image" (You need to define mapping for Image properties if it's used)
+- "Image" -> "image"
 - "Spacer" -> "spacer"
 - "LazyColumn" -> "column" (add \`"scrollable": true\` to \`modifier.base\`)
 - "LazyRow" -> "row" (add \`"scrollable": true\` to \`modifier.base\`)
@@ -115,8 +117,8 @@ Modifier and Property Mapping Rules (from input component properties to output "
 1.  **General Modifier Structure**:
     \`\`\`json
     "componentType": {
-      "modifier": {
-        "base": { /* common modifiers */ },
+      "modifier": { // This "modifier" key is omitted if all its contents (base and specific) would be empty
+        "base": { /* common modifiers; this "base" key is omitted if it would be empty */ },
         /* component-specific modifiers like verticalArrangement */
       },
       /* component-specific properties like content, clickId */
@@ -125,36 +127,33 @@ Modifier and Property Mapping Rules (from input component properties to output "
     \`\`\`
 
 2.  **Base Modifiers (\`modifier.base\`):**
-    *   **Size**:
-        *   \`width: X\` (number, canvas) -> \`width: X\` (dp, in \`modifier.base\`).
-        *   \`height: X\` (number, canvas) -> \`height: X\` (dp, in \`modifier.base\`).
-        *   If canvas \`width\` and \`height\` are equal numbers (e.g., 150), use \`size: 150\` in \`modifier.base\`.
-        *   \`fillMaxWidth: true\` (canvas) -> \`fillMaxWidth: true\` in \`modifier.base\`. Do NOT set \`width\` if this is true.
-        *   \`fillMaxHeight: true\` (canvas) -> \`fillMaxHeight: true\` in \`modifier.base\`. Do NOT set \`height\` if this is true.
-        *   If canvas has \`fillMaxWidth: true\` AND \`fillMaxHeight: true\`, use \`fillMaxSize: true\` in \`modifier.base\`.
-        *   \`width: "match_parent"\` (canvas) -> \`fillMaxWidth: true\` in \`modifier.base\`.
-        *   \`height: "match_parent"\` (canvas) -> \`fillMaxHeight: true\` in \`modifier.base\`.
-        *   \`width: "wrap_content"\` (canvas) -> \`wrapContentWidth: true\` in \`modifier.base\`.
-        *   \`height: "wrap_content"\` (canvas) -> \`wrapContentHeight: true\` in \`modifier.base\`.
-        *   \`aspectRatio: X\` (canvas, if present) -> \`aspectRatio: X\` in \`modifier.base\`.
+    *   **Size (Priority: \`fillMaxSize\` > \`fillMaxWidth\`/\`fillMaxHeight\` > explicit \`width\`/\`height\`/\`size\` > \`wrapContentWidth\`/\`wrapContentHeight\`)**:
+        *   If canvas has \`fillMaxWidth: true\` AND \`fillMaxHeight: true\`, use \`fillMaxSize: true\` in \`modifier.base\`. Do NOT set \`width\`, \`height\`, \`size\`, \`wrapContentWidth\`, or \`wrapContentHeight\`.
+        *   Else if canvas \`fillMaxWidth: true\`, use \`fillMaxWidth: true\` in \`modifier.base\`. Do NOT set \`width\` or \`wrapContentWidth\`.
+        *   Else if canvas \`width: "match_parent"\`, use \`fillMaxWidth: true\` in \`modifier.base\`. Do NOT set \`width\` or \`wrapContentWidth\`.
+        *   Else if canvas \`width: "wrap_content"\`, use \`wrapContentWidth: true\` in \`modifier.base\`. Do NOT set \`width\`.
+        *   Else if canvas \`width: X\` (number), use \`width: X\` (dp) in \`modifier.base\`.
+        *   (Similar logic for \`fillMaxHeight\`, \`height: "match_parent"\`, \`height: "wrap_content"\`, and \`height: Y\`)
+        *   If canvas \`width\` and \`height\` are equal numbers (e.g., 150) AND neither \`fillMaxWidth\` nor \`fillMaxHeight\` (nor \`fillMaxSize\`) are true, use \`size: 150\` in \`modifier.base\` instead of separate \`width\` and \`height\`.
+        *   \`aspectRatio: X\` (canvas, if present and no fill directives are fully overriding) -> \`aspectRatio: X\` in \`modifier.base\`.
     *   **Padding**:
-        *   If \`padding: X\` (canvas, for all sides) exists -> \`padding: { "all": X }\` in \`modifier.base\`.
-        *   Else, map \`paddingTop\`, \`paddingBottom\`, \`paddingStart\`, \`paddingEnd\` (canvas) to \`padding: { "top": Y, "start": X, ... }\` in \`modifier.base\`. Omit sides with zero or undefined padding.
-    *   **Margin**: If canvas properties like \`marginStart\`, \`marginTop\` exist (uncommon in current spec, but if added), map similarly to \`margin: { ... }\` in \`modifier.base\`.
+        *   If \`padding: X\` (canvas, for all sides) exists and X > 0 -> \`padding: { "all": X }\` in \`modifier.base\`.
+        *   Else, map \`paddingTop\`, \`paddingBottom\`, \`paddingStart\`, \`paddingEnd\` (canvas) to \`padding: { "top": Y, "start": X, ... }\` in \`modifier.base\`. Omit sides with zero or undefined padding. If the resulting padding object is empty, omit it.
+    *   **Margin**: If canvas properties like \`marginStart\`, \`marginTop\` exist map similarly to \`margin: { ... }\` in \`modifier.base\`. Omit if empty.
     *   **Background**:
         *   \`backgroundColor: "#RRGGBB"\` (canvas) -> \`background: { "color": "#RRGGBB", "shape": "rectangle" }\` in \`modifier.base\`.
         *   If \`cornerRadiusTopLeft\` (etc.) > 0 (canvas):
             *   Set \`modifier.base.background.shape\` to \`"roundedcorner"\`.
             *   If all canvas \`cornerRadius...\` properties are equal to C: use \`modifier.base.background.radius: C\`.
-            *   (The target spec for background only shows a single \`radius\`. If corners differ, choose the primary one or average if appropriate, or default to a common value like 8 if any corner is rounded). For now, if any corner is rounded, use a default radius like 8 if no single value is obvious.
+            *   If corners differ, use a default radius like 8 if any corner is rounded and a specific radius is not obvious from a single value.
     *   **Border**:
         *   If \`borderWidth: W > 0\` and \`borderColor: "#HEX"\` (canvas) -> \`border: { "width": W, "color": "#HEX" }\` in \`modifier.base\`.
-        *   If border exists and \`cornerRadiusTopLeft\` (etc.) > 0 (canvas): add \`shape: { "type": "roundedcorner", "cornerRadius": C }\` to \`modifier.base.border\`. If all corners are equal to C, use that for \`cornerRadius\`. Otherwise, pick a representative value.
+        *   If border exists and \`cornerRadiusTopLeft\` (etc.) > 0 (canvas): add \`shape: { "type": "roundedcorner", "cornerRadius": C }\` to \`modifier.base.border\`. If all corners are equal to C, use that for \`cornerRadius\`. Otherwise, pick a representative value like 8.
     *   **Shadow (Mainly for Card)**:
         *   If \`type: "Card"\` and \`elevation: E > 0\` (canvas) -> \`shadow: { "elevation": E }\` in \`modifier.base\`.
         *   If card also has rounded corners (canvas \`cornerRadius... > 0\`): add \`shape: { "type": "roundedcorner", "cornerRadius": C }\` to \`modifier.base.shadow\`.
     *   **Scrolling**:
-        *   For "LazyColumn", "LazyRow", "LazyVerticalGrid", "LazyHorizontalGrid" (canvas): add \`scrollable: true\` to \`modifier.base\`.
+        *   For "LazyColumn", "LazyRow", "LazyVerticalGrid", "LazyHorizontalGrid" (canvas type): add \`scrollable: true\` to \`modifier.base\`.
     *   **Click Interaction**:
         *   If \`clickId: "someId"\` is relevant for a component in the target spec (e.g., Card, Box), map it to \`clickId: "someId"\` in \`modifier.base\`. (Button \`clickId\` is a direct property, not modifier).
     *   **Transformations**: (Map if present in canvas properties and relevant to target spec)
@@ -195,10 +194,9 @@ Modifier and Property Mapping Rules (from input component properties to output "
     *   **Spacer**:
         *   \`width\` (canvas) -> \`width\` (direct property in "spacer").
         *   \`height\` (canvas) -> \`height\` (direct property in "spacer").
-        *   If \`layoutWeight > 0\` (canvas), omit \`width\`/\`height\` for Spacer if the target spec implies weighted spacers don't need explicit dimensions. (The spec shows \`height\` and \`width\` for Spacer, so include them unless weight is the primary factor).
-    *   **Image**: (Assuming similar properties to Text for things like alt text or placeholders if they exist in canvas)
-        *   \`src\` (canvas) -> \`url\` (output, if target Image uses 'url'). *The spec is missing for Image, inferring from other components or common practices.* If 'src' is the target, map to 'src'.  **Let's assume target spec uses \`src\` for Image like Text uses \`content\` for Text.**
-        *   \`contentDescription\` (canvas) -> \`alt\` or \`contentDescription\` (output property for "image").
+    *   **Image**:
+        *   \`src\` (canvas) -> \`src\` (output property for "image", as per your guide).
+        *   \`contentDescription\` (canvas) -> \`alt\` or \`contentDescription\` (output property for "image", let's use \`alt\` if target spec is like HTML img, or \`contentDescription\` if closer to Compose). Assume \`contentDescription\` for now.
 
 5.  **Children**:
     *   For container components (Column, Row, Box, Card, Grid from LazyGrids), recursively transform their children from the canvas \`properties.children\` array and place them into the output component's \`children\` array.
@@ -208,6 +206,8 @@ Modifier and Property Mapping Rules (from input component properties to output "
     *   Also, omit properties if their value would represent a default or implicit state in the target "Compose Remote Layout" (e.g., padding of 0, elevation of 0 for non-Card components, an empty \`children\` array if the component has no children).
     *   Only include properties in the output if they have meaningful, non-default, non-empty values derived from the input that actively affect the visual representation or behavior according to the target "Compose Remote Layout" specification.
     *   Omit canvas-specific properties like the original \`id\`, \`name\`, \`parentId\` (from the canvas structure), \`x\`, and \`y\` from the output JSON.
+    *   **If the \`modifier.base\` object is empty after applying all rules and omissions, then the \`"base"\` key itself (and its empty object value) MUST be omitted from the \`"modifier"\` object.**
+    *   **If the entire \`"modifier"\` object (containing \`base\` and/or component-specific modifiers) becomes empty as a result of these omissions, then the \`"modifier"\` key itself MUST be omitted from the component's JSON object.**
 
 Input Canvas Design JSON (Content Area):
 \`\`\`json
@@ -231,23 +231,33 @@ Example: A card with \`fillMaxWidth: true\` and padding \`16\` from canvas:
   }
 }
 \`\`\`
-Another example: A text component from canvas where the original text was "" (empty string):
-The input \`designJson\` would likely NOT have a "text" property for that component (due to prior cleaning).
-The AI should NOT output a "content": "" property for the text component. It should be omitted.
-If the canvas had \`{ "type": "Text", "properties": { "text": "Hello", "paddingTop": 8 } }\`, the output should be:
+Example: A Text component with no meaningful modifiers:
+Canvas: \`{ "type": "Text", "properties": { "text": "Hello" } }\`
+Output:
 \`\`\`json
 {
   "text": {
-    "modifier": {
-      "base": {
-        "padding": { "top": 8 } /* Assuming paddingBottom/Start/End were 0 or undefined */
-      }
-    },
-    "content": "Hello World" /* Corrected to match prior example, but the point about empty strings holds */
+    "content": "Hello"
+    /* "modifier" key is OMITTED because it would be empty */
   }
 }
 \`\`\`
-If the canvas text was empty, and paddingTop was 8:
+Example: A Box component with only padding (no other base or specific modifiers):
+Canvas: \`{ "type": "Box", "properties": { "padding": 8 } }\`
+Output:
+\`\`\`json
+{
+  "box": {
+    "modifier": {
+      "base": {
+        "padding": { "all": 8 }
+      }
+      /* No Box-specific modifiers like contentAlignment were present or non-default */
+    }
+  }
+}
+\`\`\`
+If canvas text was empty, and paddingTop was 8:
 \`\`\`json
 {
   "text": {
