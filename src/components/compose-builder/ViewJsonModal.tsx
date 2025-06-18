@@ -418,7 +418,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
           </TabsList>
 
           <TabsContent value="canvasJson" className="flex-grow flex flex-col space-y-2 min-h-0">
-            <Label htmlFor="canvasJsonEditor" className="text-sm font-medium">Canvas Content JSON (Editable)</Label>
+            {/* Label removed */}
             <div className="flex-grow rounded-md border bg-muted/30 overflow-auto min-h-[200px] relative">
               {isCanvasJsonLoading ? (
                 <div className="flex items-center justify-center h-full">
@@ -454,7 +454,6 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
           </TabsContent>
 
           <TabsContent value="generateCustomJsonFromCanvas" className="flex-grow flex flex-col space-y-2 min-h-0">
-            {/* Label and Regenerate button previously here are removed/moved */}
             <div className="flex-grow rounded-md border bg-muted/30 overflow-auto min-h-[200px] relative">
               {isCustomJsonFromCanvasLoading ? (
                 <div className="flex items-center justify-center h-full">
@@ -480,7 +479,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
 
         <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2 mt-4 pt-4 border-t">
           {/* Left side: Tab-specific primary actions */}
-          <div className="flex flex-col sm:flex-row sm:justify-start gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-start gap-2">
             {activeTab === 'canvasJson' && (
               <>
                 <Button onClick={handleSaveChangesToCanvas} disabled={!canSaveChangesValue} className="w-full sm:w-auto">
@@ -493,7 +492,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
               </>
             )}
             {activeTab === 'generateCustomJsonFromCanvas' && (
-              <>
+               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-start gap-2 w-full">
                 <Button onClick={handleGenerateCustomJsonFromCanvas} variant="outline" disabled={isCustomJsonFromCanvasLoading || isPublishingCustomJson} className="w-full sm:w-auto">
                   {isCustomJsonFromCanvasLoading ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin"/> : <Wand2 className="mr-1.5 h-4 w-4"/>} Regenerate
                 </Button>
@@ -501,7 +500,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
                   {isPublishingCustomJson ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
                   Publish Custom JSON
                 </Button>
-              </>
+              </div>
             )}
           </div>
 
