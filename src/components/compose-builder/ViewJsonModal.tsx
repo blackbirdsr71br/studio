@@ -24,7 +24,7 @@ import {
   publishToRemoteConfigAction
 } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Copy, Download, Wand2, FileJson, Info, Save, AlertTriangle, UploadCloud } from 'lucide-react';
+import { Loader2, Copy, Download, Wand2, FileJson, Save, AlertTriangle, UploadCloud } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
 import { json as jsonLang } from '@codemirror/lang-json';
 import { githubLight, githubDark } from '@uiw/codemirror-theme-github';
@@ -454,12 +454,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
           </TabsContent>
 
           <TabsContent value="generateCustomJsonFromCanvas" className="flex-grow flex flex-col space-y-2 min-h-0">
-            <div className="flex justify-between items-center">
-              <Label htmlFor="customJsonFromCanvasEditor" className="text-sm font-medium">Custom Command JSON (from Canvas)</Label>
-              <Button onClick={handleGenerateCustomJsonFromCanvas} variant="outline" size="sm" disabled={isCustomJsonFromCanvasLoading || isPublishingCustomJson}>
-                {isCustomJsonFromCanvasLoading ? <Loader2 className="mr-1.5 animate-spin"/> : <Wand2 className="mr-1.5"/>} Regenerate
-              </Button>
-            </div>
+            {/* Label and Regenerate button previously here are removed/moved */}
             <div className="flex-grow rounded-md border bg-muted/30 overflow-auto min-h-[200px] relative">
               {isCustomJsonFromCanvasLoading ? (
                 <div className="flex items-center justify-center h-full">
@@ -498,10 +493,15 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
               </>
             )}
             {activeTab === 'generateCustomJsonFromCanvas' && (
-               <Button onClick={handleOpenPublishCustomJsonDialog} disabled={!canPublishCustomJsonValue} className="w-full sm:w-auto">
-                {isPublishingCustomJson ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
-                Publish Custom JSON
-              </Button>
+              <>
+                <Button onClick={handleGenerateCustomJsonFromCanvas} variant="outline" disabled={isCustomJsonFromCanvasLoading || isPublishingCustomJson} className="w-full sm:w-auto">
+                  {isCustomJsonFromCanvasLoading ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin"/> : <Wand2 className="mr-1.5 h-4 w-4"/>} Regenerate
+                </Button>
+                <Button onClick={handleOpenPublishCustomJsonDialog} disabled={!canPublishCustomJsonValue} className="w-full sm:w-auto">
+                  {isPublishingCustomJson ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
+                  Publish Custom JSON
+                </Button>
+              </>
             )}
           </div>
 
