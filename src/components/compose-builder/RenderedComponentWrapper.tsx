@@ -68,8 +68,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
-    // Prevent dragging core scaffold elements themselves
-    canDrag: () => ![ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_BOTTOM_NAV_BAR_ID].includes(component.id),
+    canDrag: () => ![ROOT_SCAFFOLD_ID, ...CORE_SCAFFOLD_ELEMENT_IDS].includes(component.id),
   }));
 
   const [{ isOverCurrent, canDropCurrent }, drop] = useDrop(() => ({
@@ -91,19 +90,16 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
         const draggedId = draggedInternalItem.id;
         const targetId = component.id;
 
-        // Cannot reorder with self
         if (draggedId === targetId) {
             setDropIndicator(null);
             return;
         }
 
         const draggedComponent = getComponentById(draggedId);
-        // Show reorder indicator only if dragging over a sibling in a valid reorderable parent container
-        // (not ROOT_SCAFFOLD_ID itself, but its children like DEFAULT_CONTENT_LAZY_COLUMN_ID are valid parents for reordering).
         if (draggedComponent &&
             draggedComponent.parentId === component.parentId &&
             component.parentId &&
-            component.parentId !== ROOT_SCAFFOLD_ID) { // Allow reorder within content, topbar, bottomnav
+            component.parentId !== ROOT_SCAFFOLD_ID) { 
             
             const hoverBoundingRect = ref.current.getBoundingClientRect();
             const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
@@ -118,7 +114,6 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
             setDropIndicator(null);
         }
       } else {
-        // For library items, no reorder indicator, but drag-over-container class will apply if it's a container
         setDropIndicator(null);
       }
     },
@@ -126,22 +121,19 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       if (!monitor.isOver({ shallow: true })) return false;
 
       const itemTypeFromMonitor = monitor.getItemType();
-      const targetId = component.id; // The ID of the component this wrapper is for
+      const targetId = component.id; 
 
-      // Special handling for scaffold slots
       if (targetId === DEFAULT_TOP_APP_BAR_ID) {
-        return (item as DraggedLibraryItem).type === 'TopAppBar' || (item as DraggedLibraryItem).type === 'Text' || (item as DraggedLibraryItem).type === 'Image' || (item as DraggedLibraryItem).type === 'Button' || (item as DraggedLibraryItem).type === 'Icon'; // Example, refine for action items
+        return (item as DraggedLibraryItem).type === 'TopAppBar' || (item as DraggedLibraryItem).type === 'Text' || (item as DraggedLibraryItem).type === 'Image' || (item as DraggedLibraryItem).type === 'Button';
       }
       if (targetId === DEFAULT_BOTTOM_NAV_BAR_ID) {
-        return (item as DraggedLibraryItem).type === 'BottomNavigationBar' || (item as DraggedLibraryItem).type === 'Text' || (item as DraggedLibraryItem).type === 'Image' || (item as DraggedLibraryItem).type === 'Button' || (item as DraggedLibraryItem).type === 'Icon'; // Example, refine for nav items
+        return (item as DraggedLibraryItem).type === 'BottomNavigationBar' || (item as DraggedLibraryItem).type === 'Text' || (item as DraggedLibraryItem).type === 'Image' || (item as DraggedLibraryItem).type === 'Button';
       }
-      // DEFAULT_CONTENT_LAZY_COLUMN_ID is a primary drop zone for most things
       if (targetId === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
         const libItemType = (item as DraggedLibraryItem).type;
         return libItemType !== 'Scaffold' && libItemType !== 'TopAppBar' && libItemType !== 'BottomNavigationBar';
       }
       
-      // Prevent dropping scaffold or slot containers into other components
       if (itemTypeFromMonitor === ItemTypes.COMPONENT_LIBRARY_ITEM) {
         const libItemType = (item as DraggedLibraryItem).type;
         if (libItemType === 'Scaffold' ||
@@ -154,12 +146,11 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
 
       if (itemTypeFromMonitor === ItemTypes.CANVAS_COMPONENT_ITEM) {
         const draggedId = (item as DraggedCanvasItem).id;
-        if (draggedId === targetId) return false; // Cannot drop on itself
+        if (draggedId === targetId) return false; 
 
         const draggedComponent = getComponentById(draggedId);
         const targetComponent = component;
 
-        // Prevent dropping a parent into its child
         let currentParentIdToCheck = targetComponent.parentId;
         while (currentParentIdToCheck) {
           if (currentParentIdToCheck === draggedId) return false;
@@ -167,16 +158,14 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
           currentParentIdToCheck = parentComp ? parentComp.parentId : null;
         }
         
-        // Allow drop if it's a sibling for reordering (within valid reorderable parent)
         if (draggedComponent &&
             draggedComponent.parentId === targetComponent.parentId &&
             targetComponent.parentId &&
-            targetComponent.parentId !== ROOT_SCAFFOLD_ID) { // Reordering within content, topbar, bottomnav
+            targetComponent.parentId !== ROOT_SCAFFOLD_ID) { 
           return true;
         }
       }
       
-      // General rule: allow drop into container types or onto items whose parent is a container
       if (isContainerType(component.type, customComponentTemplates)) return true;
 
       let parent = component.parentId ? getComponentById(component.parentId) : null;
@@ -193,19 +182,17 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       }
       
       const itemTypeFromMonitor = monitor.getItemType();
-      const targetComponentInstance = component; // The component instance being dropped onto/hovered over
+      const targetComponentInstance = component; 
 
       if (itemTypeFromMonitor === ItemTypes.COMPONENT_LIBRARY_ITEM) {
         const libraryItem = item as DraggedLibraryItem;
         let targetParentIdForNewComponent = targetComponentInstance.id;
 
-        // Determine actual parent for new component
         if (targetComponentInstance.id === DEFAULT_TOP_APP_BAR_ID || targetComponentInstance.id === DEFAULT_BOTTOM_NAV_BAR_ID || targetComponentInstance.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
             targetParentIdForNewComponent = targetComponentInstance.id;
         } else if (isContainerType(targetComponentInstance.type, customComponentTemplates)) {
             targetParentIdForNewComponent = targetComponentInstance.id;
         } else {
-            // Dropped on a non-container item, add to its parent
             targetParentIdForNewComponent = targetComponentInstance.parentId || DEFAULT_CONTENT_LAZY_COLUMN_ID;
         }
         addComponent(libraryItem.type, targetParentIdForNewComponent);
@@ -220,7 +207,6 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
             return;
         }
 
-        // Scenario 1: Reordering within the same parent (content, topbar, bottomnav items)
         if (draggedComponent.parentId === targetComponentInstance.parentId &&
             targetComponentInstance.parentId &&
             targetComponentInstance.parentId !== ROOT_SCAFFOLD_ID &&
@@ -241,11 +227,9 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
                 moveComponent(draggedId, targetComponentInstance.parentId, targetIndex);
             }
         }
-        // Scenario 2: Moving to become a child of this component (if it's a container, e.g., content area, or a Card)
         else if (isContainerType(targetComponentInstance.type, customComponentTemplates)) {
-            moveComponent(draggedId, targetComponentInstance.id); // Adds to end by default
+            moveComponent(draggedId, targetComponentInstance.id); 
         }
-        // Scenario 3: Moving to become a sibling of this component (when dropping on a non-container, or for reordering)
         else if (targetComponentInstance.parentId && targetComponentInstance.parentId !== draggedId) {
             const parentOfTarget = getComponentById(targetComponentInstance.parentId);
             if (parentOfTarget && isContainerType(parentOfTarget.type, customComponentTemplates)) {
@@ -284,7 +268,6 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
   const handleMouseDownOnResizeHandle = useCallback((event: React.MouseEvent<HTMLDivElement>, handle: HandleType) => {
     event.stopPropagation();
     event.preventDefault();
-    // Prevent resizing of core scaffold elements or if component fills parent
     if (CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) || component.properties.fillMaxWidth || component.properties.fillMaxHeight) return;
 
     selectComponent(component.id);
@@ -323,7 +306,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       const updatedProps: Record<string, any> = {
         width: Math.round(newWidth),
         height: Math.round(newHeight),
-        fillMaxWidth: false, // Turn off fill when resizing explicitly
+        fillMaxWidth: false, 
         fillMaxHeight: false,
       };
       
@@ -350,7 +333,6 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
 
 
   const renderSpecificComponent = () => {
-    // Get actual child component objects, not just IDs
     const childrenToRender = (component.properties.children || [])
       .map(id => getComponentById(id))
       .filter(Boolean) as DesignComponent[];
@@ -371,7 +353,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
             {contentChild && (
               <div
                 style={{ flexGrow: 1, minHeight: 0, width: '100%' }}
-                className={cn("flex w-full", "overflow-y-auto overflow-x-hidden")} 
+                className={cn("flex w-full", "overflow-y-auto overflow-x-hidden")} // scrollbar-hidden removed for diagnosis
               >
                 <RenderedComponentWrapper component={contentChild} />
               </div>
@@ -393,15 +375,15 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       case 'Column':
       case 'Box':
       case 'Card':
-      case 'LazyColumn': // This applies to user-added LazyColumns, content area is special
+      case 'LazyColumn': 
         return <ContainerView component={component} childrenComponents={childrenToRender} isRow={false} />;
 
       case 'Row':
       case 'LazyRow':
       case 'LazyVerticalGrid':
       case 'LazyHorizontalGrid':
-      case 'TopAppBar': // TopAppBar renders its own children (actions, title)
-      case 'BottomNavigationBar': // BottomNav renders its own children (nav items)
+      case 'TopAppBar': 
+      case 'BottomNavigationBar': 
         return <ContainerView component={component} childrenComponents={childrenToRender} isRow={true} />;
       
       case 'Spacer':
@@ -410,7 +392,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
             style={{
               width: isNumericValue(component.properties.width) ? `${component.properties.width}px` : '8px',
               height: isNumericValue(component.properties.height) ? `${component.properties.height}px` : '8px',
-              flexShrink: 0, // Spacers should not shrink by default
+              flexShrink: 0, 
             }}
             className="select-none"
           />
@@ -420,11 +402,8 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
         if (isCustomComponentType(component.type)) {
            const template = customComponentTemplates.find(t => t.templateId === component.type);
            if (template) {
-             // Find the root component definition within the template's tree
              const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
-             // Determine if the root of the custom component is row-like
              const isTemplateRootRowLike = rootTemplateComponent ? ['Row', 'LazyRow', 'LazyVerticalGrid', 'TopAppBar', 'BottomNavigationBar'].includes(rootTemplateComponent.type) : false;
-             // Render as a container, passing its actual children (not from template)
              return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isTemplateRootRowLike} />;
            }
         }
@@ -432,7 +411,6 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     }
   };
   
-  // Helper function to determine dimension style value
   const getDimensionValue = (
     propName: 'width' | 'height',
     propValue: any,
@@ -440,7 +418,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     componentType: string,
     componentId: string,
     parentId: string | null,
-    getLocalComponentById: (id: string) => DesignComponent | undefined // Pass getter
+    getLocalComponentById: (id: string) => DesignComponent | undefined
   ): string => {
     if (componentId === ROOT_SCAFFOLD_ID) return '100%';
   
@@ -456,48 +434,98 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
   
     const parentComponent = parentId ? getLocalComponentById(parentId) : null;
   
-    // For children of horizontal scrolling containers, 'fillMaxWidth' or 'match_parent' should behave like 'wrap_content'
     if (propName === 'width' && parentComponent) {
       const parentType = parentComponent.type;
-      if (parentType === 'LazyRow' || parentType === 'LazyHorizontalGrid' || parentType === 'TopAppBar' || parentType === 'BottomNavigationBar') {
+      const parentIsRowLike = ['LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar', 'Row'].includes(parentType) || 
+                              (isCustomComponentType(parentType) && customComponentTemplates.find(t=>t.templateId === parentType)?.componentTree.find(c => c.id === customComponentTemplates.find(t=>t.templateId === parentType)?.rootComponentId)?.type === 'Row');
+      if (parentIsRowLike) {
         if (fillValue || propValue === 'match_parent') {
-          return 'auto'; // Treat as wrap_content
+          // For children of row-like containers, fillMaxWidth should still be 100% IF the row itself has space,
+          // but typically for scrolling rows, children have intrinsic/fixed widths or wrap_content.
+          // If layoutWeight is used, it will govern. If not, 'auto' is safer for row children than '100%'.
+          return component.properties.layoutWeight && component.properties.layoutWeight > 0 ? '100%' : 'auto';
         }
       }
     }
-  
-    // For children of vertical scrolling containers, 'fillMaxHeight' or 'match_parent' should behave like 'wrap_content'
-    // This is generally less of an issue unless the LazyColumn/LazyVerticalGrid itself has a fixed height
-    // and children are expected to scroll within it.
-    // if (propName === 'height' && parentComponent) {
-    //   const parentType = parentComponent.type;
-    //   if (parentType === 'LazyColumn' || parentType === 'LazyVerticalGrid') {
-    //     if (fillValue || propValue === 'match_parent') {
-    //       return 'auto'; 
-    //     }
-    //   }
-    // }
   
     if (fillValue) return '100%';
     if (propValue === 'match_parent') return '100%';
     if (propValue === 'wrap_content') return 'auto';
     if (isNumericValue(propValue)) return `${propValue}px`;
-    return 'auto';
+    return 'auto'; // Default to auto if no specific value or fill directive
   };
   
   const wrapperStyle: React.CSSProperties = {
     transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
     width: getDimensionValue('width', component.properties.width, component.properties.fillMaxWidth, component.type, component.id, component.parentId, getComponentById),
     height: getDimensionValue('height', component.properties.height, component.properties.fillMaxHeight, component.type, component.id, component.parentId, getComponentById),
-    position: 'relative',
+    position: 'relative', // Needed for resize handles and drop indicator
+    display: 'flex', // Make wrapper a flex container to help manage its direct child (the specific component renderer)
   };
   
-  if (component.id === ROOT_SCAFFOLD_ID) {
-    wrapperStyle.backgroundColor = component.properties.backgroundColor || 'transparent';
+  // Handle flex-grow for layoutWeight
+  if (component.properties.layoutWeight && component.properties.layoutWeight > 0) {
+    wrapperStyle.flexGrow = component.properties.layoutWeight;
+    wrapperStyle.flexShrink = 1; // Allow shrinking
+    wrapperStyle.flexBasis = '0%'; // Standard practice with flex-grow
+    
+    // If weighted, width/height might need to be 100% of the flex item's allocated space
+    const parentComp = component.parentId ? getComponentById(component.parentId) : null;
+    if (parentComp) {
+        const parentIsRowLike = ['Row', 'LazyRow', 'TopAppBar', 'BottomNavigationBar', 'LazyHorizontalGrid'].includes(parentComp.type) || 
+                                (isCustomComponentType(parentComp.type) && customComponentTemplates.find(t=>t.templateId === parentComp.type)?.componentTree.find(c => c.id === customComponentTemplates.find(t=>t.templateId === parentComp.type)?.rootComponentId)?.type === 'Row');
+        if (parentIsRowLike) { // Parent is row-like, child is weighted horizontally
+            wrapperStyle.height = '100%'; // Weighted item fills height of the row
+            if (!component.properties.fillMaxWidth && !isNumericValue(component.properties.width) && component.properties.width !=='wrap_content') {
+                 // If width is not explicitly set and it's weighted in a row, let flex-basis and flex-grow determine width.
+                 // explicit 'auto' might be better than relying on previous getDimensionValue if it wasn't 'auto'
+                 wrapperStyle.width = 'auto'; 
+            }
+        } else { // Parent is column-like, child is weighted vertically
+            wrapperStyle.width = '100%'; // Weighted item fills width of the column
+             if (!component.properties.fillMaxHeight && !isNumericValue(component.properties.height) && component.properties.height !=='wrap_content') {
+                 wrapperStyle.height = 'auto';
+            }
+        }
+    }
   }
 
-  if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
-    // Background for content area is handled by ContainerView
+  // Handle self-alignment (alignSelf)
+  const parent = component.parentId ? getComponentById(component.parentId) : null;
+  if (parent && isContainerType(parent.type, customComponentTemplates)) {
+    const parentIsRowLike = ['Row', 'LazyRow', 'TopAppBar', 'BottomNavigationBar', 'LazyHorizontalGrid'].includes(parent.type) || 
+                            (isCustomComponentType(parent.type) && customComponentTemplates.find(t=>t.templateId === parent.type)?.componentTree.find(c => c.id === customComponentTemplates.find(t=>t.templateId === parent.type)?.rootComponentId)?.type === 'Row');
+    const selfAlignProp = component.properties.selfAlign;
+
+    if (selfAlignProp && selfAlignProp !== 'Inherit') {
+      if (parentIsRowLike) { // Parent is Row, selfAlign controls vertical alignment
+        if (selfAlignProp === 'Start') wrapperStyle.alignSelf = 'flex-start';
+        else if (selfAlignProp === 'Center') wrapperStyle.alignSelf = 'center';
+        else if (selfAlignProp === 'End') wrapperStyle.alignSelf = 'flex-end';
+        // If fillMaxHeight is true, alignSelf: 'stretch' would be appropriate
+        else if (component.properties.fillMaxHeight) wrapperStyle.alignSelf = 'stretch';
+
+      } else { // Parent is Column, selfAlign controls horizontal alignment
+        if (selfAlignProp === 'Start') wrapperStyle.alignSelf = 'flex-start';
+        else if (selfAlignProp === 'Center') wrapperStyle.alignSelf = 'center';
+        else if (selfAlignProp === 'End') wrapperStyle.alignSelf = 'flex-end';
+        // If fillMaxWidth is true, alignSelf: 'stretch' is appropriate
+        else if (component.properties.fillMaxWidth) wrapperStyle.alignSelf = 'stretch';
+      }
+    } else { // selfAlign is 'Inherit' or undefined
+      if (parentIsRowLike && component.properties.fillMaxHeight) {
+        wrapperStyle.alignSelf = 'stretch';
+      } else if (!parentIsRowLike && component.properties.fillMaxWidth) {
+        // This is the key for fillMaxWidth in a column
+        wrapperStyle.alignSelf = 'stretch';
+      }
+      // If no fill directive and no explicit selfAlign, it will align based on parent's alignItems
+    }
+  }
+
+
+  if (component.id === ROOT_SCAFFOLD_ID) {
+    wrapperStyle.backgroundColor = component.properties.backgroundColor || 'transparent';
   }
 
   const hasCornerRadius = (component.properties.cornerRadiusTopLeft || 0) > 0 ||
@@ -510,12 +538,12 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     wrapperStyle.borderTopRightRadius = `${component.properties.cornerRadiusTopRight || 0}px`;
     wrapperStyle.borderBottomRightRadius = `${component.properties.cornerRadiusBottomRight || 0}px`;
     wrapperStyle.borderBottomLeftRadius = `${component.properties.cornerRadiusBottomLeft || 0}px`;
-
-    if (component.type === 'Image') { // Only apply overflow:hidden if it's an Image.
+    // Apply overflow:hidden only if it's an Image, or if the specific component view (ContainerView) handles it.
+    // RenderedComponentWrapper should not apply overflow:hidden generally for containers.
+    if (component.type === 'Image') {
       wrapperStyle.overflow = 'hidden';
     }
   }
-
 
   const containerDropTargetStyle = (isContainerType(component.type, customComponentTemplates) || CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id)) && isOverCurrent && canDropCurrent
     ? 'drag-over-container'
@@ -531,17 +559,19 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
   const canResizeHorizontally = isSelected && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxWidth && isNumericValue(component.properties.width);
   const canResizeVertically = isSelected && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxHeight && isNumericValue(component.properties.height);
 
-  const flexItemClass = (component.parentId === ROOT_SCAFFOLD_ID || component.id === ROOT_SCAFFOLD_ID) ? 'flex w-full' : '';
-
   const isReorderTarget = isOverCurrent && canDropCurrent && dropIndicator !== null;
+
+  // The direct child of this RenderedComponentWrapper will be what's rendered by renderSpecificComponent().
+  // That child needs to fill this wrapper. Most component views (TextView, ImageView, ButtonView, ContainerView)
+  // are styled to take up 100% width/height of their parent by default or via specific styling.
+  // For example, ContainerView's baseStyle has width/height set which will make it fill this wrapper.
 
   return (
     <div
       ref={ref}
       style={wrapperStyle}
       className={cn(
-        'p-0.5 border border-transparent', 
-        flexItemClass,
+        'p-0.5 border border-transparent', // Minimal padding for selection outline not to be cut off
         { 
           'ring-4 ring-primary ring-offset-2 ring-offset-background shadow-lg': isSelected && ![ROOT_SCAFFOLD_ID, ...CORE_SCAFFOLD_ELEMENT_IDS].includes(component.id),
           'ring-2 ring-accent ring-offset-2 ring-offset-background': isSelected && CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && component.id !== ROOT_SCAFFOLD_ID,
@@ -549,10 +579,11 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
           'cursor-grab': !isResizing && ![ROOT_SCAFFOLD_ID, ...CORE_SCAFFOLD_ELEMENT_IDS, 'Spacer'].includes(component.id) && component.type !== 'Spacer',
           'cursor-default': component.type === 'Spacer' || [ROOT_SCAFFOLD_ID, ...CORE_SCAFFOLD_ELEMENT_IDS].includes(component.id),
           'cursor-grabbing': isDragging,
-          'relative': isReorderTarget,
+          'relative': isReorderTarget, // For drop indicator positioning
         },
         containerDropTargetStyle,
-        (component.id === ROOT_SCAFFOLD_ID || component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) ? 'flex' : ''
+        // If this wrapper is a direct child of a flex container (which it is, via ContainerView's map),
+        // it behaves as a flex item. The 'display: flex' on wrapperStyle itself is for its *own* children.
       )}
       onClick={handleClick}
       data-component-id={component.id}
@@ -561,7 +592,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       {isReorderTarget && dropIndicator === 'top' && (
           <div className="absolute top-[-2px] left-0 right-0 h-[4px] bg-primary z-20 pointer-events-none" />
       )}
-      {renderSpecificComponent()}
+      {renderSpecificComponent()} {/* This child should fill the wrapper */}
       {isReorderTarget && dropIndicator === 'bottom' && (
           <div className="absolute bottom-[-2px] left-0 right-0 h-[4px] bg-primary z-20 pointer-events-none" />
       )}
@@ -581,4 +612,3 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     </div>
   );
 }
-    

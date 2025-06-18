@@ -10,10 +10,10 @@ import { TextView } from './TextView';
 interface ContainerViewProps {
   component: DesignComponent;
   childrenComponents: DesignComponent[];
-  isRow: boolean;
+  isRow: boolean; // Determines default flex-direction if not overridden by specific type
 }
 
-const isNumericString = (value: any): boolean => {
+const isNumericValue = (value: any): boolean => { // Renamed from isNumericString for clarity
   if (value === null || value === undefined || typeof value === 'boolean') {
     return false;
   }
@@ -56,8 +56,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     borderWidth,
     borderColor,
     title, 
-    titleFontSize, 
-    horizontalAlignment, // This is the property from the component itself
+    titleFontSize,
   } = properties;
 
   const defaultAllSidesPadding = (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID ? 8 : (type === 'Card' ? 16 : 0));
@@ -79,7 +78,7 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     if (typeof dimValue === 'number') return `${dimValue}px`;
     if (dimValue === 'match_parent') return '100%';
     if (dimValue === 'wrap_content') return 'auto';
-    if (typeof dimValue === 'string' && isNumericString(dimValue)) return `${Number(dimValue)}px`;
+    if (typeof dimValue === 'string' && isNumericValue(dimValue)) return `${Number(dimValue)}px`;
     if (typeof dimValue === 'string' && dimValue.endsWith('%')) return dimValue;
 
     if (typeof defaultValueIfUndefined === 'number') return `${defaultValueIfUndefined}px`;
@@ -127,241 +126,217 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
   const styleWidth = processDimension(properties.width, defaultWidth);
   const styleHeight = processDimension(properties.height, defaultHeight);
 
-  let flexDirection: 'row' | 'column' = isRow ? 'row' : 'column';
+  let finalFlexDirection: 'row' | 'column' = isRow ? 'row' : 'column';
   if (reverseLayout) {
-    flexDirection = isRow ? 'row-reverse' : 'column-reverse';
+    finalFlexDirection = isRow ? 'row-reverse' : 'column-reverse';
   }
 
-  let specificStyles: React.CSSProperties = {
-    borderTopLeftRadius: `${cornerRadiusTopLeft}px`,
-    borderTopRightRadius: `${cornerRadiusTopRight}px`,
-    borderBottomRightRadius: `${cornerRadiusBottomRight}px`,
-    borderBottomLeftRadius: `${cornerRadiusBottomLeft}px`,
-    gap: `${itemSpacing}px`,
-  };
-
-  if (componentId !== DEFAULT_CONTENT_LAZY_COLUMN_ID &&
-      (cornerRadiusTopLeft > 0 || cornerRadiusTopRight > 0 || cornerRadiusBottomLeft > 0 || cornerRadiusBottomRight > 0)) {
-    specificStyles.overflow = 'hidden';
-  }
-
-
-  if (explicitContentColor && typeof explicitContentColor === 'string' && explicitContentColor.trim() !== '') {
-    (specificStyles as any)['--effective-foreground-color'] = explicitContentColor;
-  } else if (containerBackgroundColor && typeof containerBackgroundColor === 'string' && containerBackgroundColor !== 'transparent') {
-    const contrastingColor = getContrastingTextColor(containerBackgroundColor);
-    (specificStyles as any)['--effective-foreground-color'] = contrastingColor;
-  } else {
-    if (type === 'TopAppBar' || type === 'BottomNavigationBar') {
-      (specificStyles as any)['--effective-foreground-color'] = 'hsl(var(--foreground))';
-    }
-  }
-
-
-  switch (type) {
-    case 'Card':
-      specificStyles.boxShadow = `0 ${elevation}px ${elevation * 1.5}px rgba(0,0,0,0.1), 0 ${elevation/2}px ${elevation/2}px rgba(0,0,0,0.06)`;
-      specificStyles.backgroundColor = containerBackgroundColor || '#FFFFFF';
-      if (typeof borderWidth === 'number' && borderWidth > 0 && borderColor) {
-        specificStyles.border = `${borderWidth}px solid ${borderColor}`;
-      } else {
-         specificStyles.border = (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || type.startsWith('Lazy')) ? 'none' : '1px solid hsl(var(--border) / 0.5)';
-      }
-      flexDirection = reverseLayout ? 'column-reverse' : 'column';
-
-      switch (properties.verticalArrangement) {
-        case 'Top': specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
-        case 'Bottom': specificStyles.justifyContent = reverseLayout ? 'flex-start' : 'flex-end'; break;
-        case 'Center': specificStyles.justifyContent = 'center'; break;
-        case 'SpaceAround': specificStyles.justifyContent = 'space-around'; break;
-        case 'SpaceBetween': specificStyles.justifyContent = 'space-between'; break;
-        case 'SpaceEvenly': specificStyles.justifyContent = 'space-evenly'; break;
-        default: specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start';
-      }
-      
-      switch (horizontalAlignment) { // horizontalAlignment of the Card itself
-        case 'Start': specificStyles.alignItems = 'flex-start'; break;
-        case 'CenterHorizontally': specificStyles.alignItems = 'center'; break;
-        case 'End': specificStyles.alignItems = 'flex-end'; break;
-        default: specificStyles.alignItems = 'flex-start'; 
-      }
-      break;
-    case 'LazyColumn':
-    case 'LazyVerticalGrid':
-    case 'Column': 
-      flexDirection = reverseLayout ? 'column-reverse' : 'column';
-      if (componentId !== DEFAULT_CONTENT_LAZY_COLUMN_ID && (type === 'LazyColumn' || type === 'LazyVerticalGrid')) {
-          specificStyles.overflowY = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
-      }
-      specificStyles.minHeight = (type === 'LazyColumn' || type === 'LazyVerticalGrid') ? '100px' : undefined; 
-
-      switch (properties.verticalArrangement) {
-        case 'Top': specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
-        case 'Bottom': specificStyles.justifyContent = reverseLayout ? 'flex-start' : 'flex-end'; break;
-        case 'Center': specificStyles.justifyContent = 'center'; break;
-        case 'SpaceAround': specificStyles.justifyContent = 'space-around'; break;
-        case 'SpaceBetween': specificStyles.justifyContent = 'space-between'; break;
-        case 'SpaceEvenly': specificStyles.justifyContent = 'space-evenly'; break;
-        default: specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start';
-      }
-      
-      switch (horizontalAlignment) { // horizontalAlignment of the Column/LazyColumn itself
-        case 'Start': specificStyles.alignItems = 'flex-start'; break;
-        case 'CenterHorizontally': specificStyles.alignItems = 'center'; break;
-        case 'End': specificStyles.alignItems = 'flex-end'; break;
-        default: specificStyles.alignItems = 'flex-start'; 
-      }
-      if (type === 'LazyVerticalGrid') {
-        // For LazyVerticalGrid, children are arranged in columns, and the columns flow vertically.
-        // If it behaves like a CSS grid, flexDirection might not be the primary driver.
-        // However, for flexbox simulation of a grid that scrolls vertically:
-        flexDirection = 'row'; // Items form rows first
-        specificStyles.flexWrap = 'wrap'; // Then wrap to new rows
-      }
-      break;
-    case 'LazyRow':
-      flexDirection = reverseLayout ? 'row-reverse' : 'row';
-      specificStyles.overflowX = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
-      specificStyles.flexWrap = 'nowrap'; // Ensure items stay in a single line for scrolling
-      specificStyles.minHeight = properties.height ? undefined : '80px'; 
-
-      switch (properties.horizontalArrangement) {
-        case 'Start': specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
-        case 'End': specificStyles.justifyContent = reverseLayout ? 'flex-start' : 'flex-end'; break;
-        case 'Center': specificStyles.justifyContent = 'center'; break;
-        case 'SpaceAround': specificStyles.justifyContent = 'space-around'; break;
-        case 'SpaceBetween': specificStyles.justifyContent = 'space-between'; break;
-        case 'SpaceEvenly': specificStyles.justifyContent = 'space-evenly'; break;
-        default: specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start';
-      }
-      switch (properties.verticalAlignment) {
-        case 'Top': specificStyles.alignItems = 'flex-start'; break;
-        case 'CenterVertically': specificStyles.alignItems = 'center'; break;
-        case 'Bottom': specificStyles.alignItems = 'flex-end'; break;
-        default: specificStyles.alignItems = 'flex-start';
-      }
-      break;
-    case 'LazyHorizontalGrid':
-      flexDirection = 'column'; // Children form columns first
-      specificStyles.flexWrap = 'wrap';   // Columns wrap horizontally
-      specificStyles.overflowX = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
-      specificStyles.height = styleHeight; // Controlled height for the grid's rows
-      specificStyles.minHeight = properties.height ? undefined : '150px';
-
-      // justifyContent would control spacing of columns if width allows (for flexbox model)
-      // alignItems would control alignment of items within their conceptual column cells
-      switch (properties.horizontalArrangement) { /* Potentially map to justifyContent if overall grid width is fixed */ }
-      switch (properties.verticalAlignment) { /* Potentially map to alignItems */ }
-      break;
-    case 'Row': 
-      flexDirection = reverseLayout ? 'row-reverse' : 'row';
-      // Standard Row usually wraps by default if children exceed width.
-      // If explicit scrolling is needed, overflowX would be set by properties (not typical for 'Row')
-      // specificStyles.flexWrap = 'wrap'; // Default for a non-scrolling Row
-      switch (properties.horizontalArrangement) {
-          case 'Start': specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
-          case 'End': specificStyles.justifyContent = reverseLayout ? 'flex-start' : 'flex-end'; break;
-          case 'Center': specificStyles.justifyContent = 'center'; break;
-          case 'SpaceAround': specificStyles.justifyContent = 'space-around'; break;
-          case 'SpaceBetween': specificStyles.justifyContent = 'space-between'; break;
-          case 'SpaceEvenly': specificStyles.justifyContent = 'space-evenly'; break;
-          default: specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start';
-      }
-      switch (properties.verticalAlignment) {
-          case 'Top': specificStyles.alignItems = 'flex-start'; break;
-          case 'CenterVertically': specificStyles.alignItems = 'center'; break;
-          case 'Bottom': specificStyles.alignItems = 'flex-end'; break;
-          default: specificStyles.alignItems = 'flex-start';
-      }
-      break;
-    case 'Box':
-      specificStyles.backgroundColor = containerBackgroundColor || 'transparent';
-      // For Box, contentAlignment is more relevant than flex arrangement/alignment if children are overlaid.
-      // However, if children are meant to be positioned, Box acts as a simple container.
-      // The current model places children in a flex layout for Box too.
-      // Let's assume default flex behavior for now.
-      break;
-    case 'TopAppBar':
-    case 'BottomNavigationBar':
-      specificStyles.backgroundColor = containerBackgroundColor || 'hsl(var(--secondary))';
-      specificStyles.alignItems = properties.verticalAlignment ? (properties.verticalAlignment.toLowerCase().includes('center') ? 'center' : properties.verticalAlignment.toLowerCase() as any) : 'center';
-      specificStyles.justifyContent = properties.horizontalArrangement ? properties.horizontalArrangement.toLowerCase().replace('space', 'space-') as any : (type === 'TopAppBar' ? 'flex-start' : 'space-around');
-      specificStyles.color = explicitContentColor || getContrastingTextColor(specificStyles.backgroundColor as string);
-      (specificStyles as any)['--effective-foreground-color'] = specificStyles.color; 
-      flexDirection = 'row'; // These are always rows
-      specificStyles.flexWrap = 'nowrap'; // Items in app/nav bars should not wrap
-      break;
-    default: 
-      specificStyles.backgroundColor = containerBackgroundColor || 'transparent';
-      if (isCustomComponentType(type) && !isRow ) { // Assuming custom components are column-like by default unless `isRow` is passed true
-          switch (properties.verticalArrangement) {
-            case 'Top': specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
-            case 'Bottom': specificStyles.justifyContent = reverseLayout ? 'flex-start' : 'flex-end'; break;
-            case 'Center': specificStyles.justifyContent = 'center'; break;
-            case 'SpaceAround': specificStyles.justifyContent = 'space-around'; break;
-            case 'SpaceBetween': specificStyles.justifyContent = 'space-between'; break;
-            case 'SpaceEvenly': specificStyles.justifyContent = 'space-evenly'; break;
-            default: specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start';
-          }
-          switch (horizontalAlignment) {
-            case 'Start': specificStyles.alignItems = 'flex-start'; break;
-            case 'CenterHorizontally': specificStyles.alignItems = 'center'; break;
-            case 'End': specificStyles.alignItems = 'flex-end'; break;
-            default: specificStyles.alignItems = 'flex-start';
-          }
-      } else if (isCustomComponentType(type) && isRow) {
-          switch (properties.horizontalArrangement) {
-              case 'Start': specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
-              case 'End': specificStyles.justifyContent = reverseLayout ? 'flex-start' : 'flex-end'; break;
-              case 'Center': specificStyles.justifyContent = 'center'; break;
-              case 'SpaceAround': specificStyles.justifyContent = 'space-around'; break;
-              case 'SpaceBetween': specificStyles.justifyContent = 'space-between'; break;
-              case 'SpaceEvenly': specificStyles.justifyContent = 'space-evenly'; break;
-              default: specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start';
-          }
-          switch (properties.verticalAlignment) {
-              case 'Top': specificStyles.alignItems = 'flex-start'; break;
-              case 'CenterVertically': specificStyles.alignItems = 'center'; break;
-              case 'Bottom': specificStyles.alignItems = 'flex-end'; break;
-              default: specificStyles.alignItems = 'flex-start';
-          }
-      }
-      break;
-  }
-
+  // Base styles for the container itself
   const baseStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: finalFlexDirection,
     paddingTop: `${effectivePaddingTop}px`,
     paddingBottom: `${effectivePaddingBottom}px`,
     paddingLeft: `${effectivePaddingStart}px`,
     paddingRight: `${effectivePaddingEnd}px`,
     width: styleWidth,
     height: styleHeight,
-    display: 'flex',
-    flexDirection: flexDirection,
-    border: (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || type.startsWith('Lazy') || type === 'Card' || type === 'TopAppBar' || type === 'BottomNavigationBar') ? specificStyles.border || 'none' : '1px dashed hsl(var(--border) / 0.3)',
-    position: 'relative',
-    minWidth: (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || properties.width === 'match_parent' ) ? '100%' : (properties.width === 'wrap_content' || !isNumericString(properties.width) ? 'auto' : '60px'),
-    minHeight: (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || properties.height === 'match_parent' || type === 'TopAppBar' || type === 'BottomNavigationBar') ? styleHeight : (properties.height === 'wrap_content' || !isNumericString(properties.height) ? 'auto' : '60px'),
+    borderTopLeftRadius: `${cornerRadiusTopLeft}px`,
+    borderTopRightRadius: `${cornerRadiusTopRight}px`,
+    borderBottomRightRadius: `${cornerRadiusBottomRight}px`,
+    borderBottomLeftRadius: `${cornerRadiusBottomLeft}px`,
+    gap: `${itemSpacing}px`,
     boxSizing: 'border-box',
-    ...specificStyles,
+    position: 'relative', // For placeholder positioning
+    border: (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || type.startsWith('Lazy') || type === 'Card' || type === 'TopAppBar' || type === 'BottomNavigationBar') ? 'none' : '1px dashed hsl(var(--border) / 0.3)',
+    minWidth: (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || properties.width === 'match_parent' ) ? '100%' : (properties.width === 'wrap_content' || !isNumericValue(properties.width) ? 'auto' : '60px'),
+    minHeight: (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || properties.height === 'match_parent' || type === 'TopAppBar' || type === 'BottomNavigationBar') ? styleHeight : (properties.height === 'wrap_content' || !isNumericValue(properties.height) ? 'auto' : '60px'),
   };
 
+  if (componentId !== DEFAULT_CONTENT_LAZY_COLUMN_ID &&
+      (cornerRadiusTopLeft > 0 || cornerRadiusTopRight > 0 || cornerRadiusBottomLeft > 0 || cornerRadiusBottomRight > 0)) {
+    baseStyle.overflow = 'hidden'; // Apply overflow hidden to the container itself for rounded corners
+  }
+
+  if (explicitContentColor && typeof explicitContentColor === 'string' && explicitContentColor.trim() !== '') {
+    (baseStyle as any)['--effective-foreground-color'] = explicitContentColor;
+     baseStyle.color = explicitContentColor; // Directly set color for text within this container if contentColor is specified
+  } else if (containerBackgroundColor && typeof containerBackgroundColor === 'string' && containerBackgroundColor !== 'transparent') {
+    const contrastingColor = getContrastingTextColor(containerBackgroundColor);
+    (baseStyle as any)['--effective-foreground-color'] = contrastingColor;
+    baseStyle.color = contrastingColor;
+  } else {
+    if (type === 'TopAppBar' || type === 'BottomNavigationBar') {
+      (baseStyle as any)['--effective-foreground-color'] = 'hsl(var(--foreground))';
+      baseStyle.color = 'hsl(var(--foreground))';
+    }
+  }
+  baseStyle.backgroundColor = containerBackgroundColor || 'transparent';
+
+
+  // Flex alignment and arrangement properties
+  switch (type) {
+    case 'Card':
+      baseStyle.boxShadow = `0 ${elevation}px ${elevation * 1.5}px rgba(0,0,0,0.1), 0 ${elevation/2}px ${elevation/2}px rgba(0,0,0,0.06)`;
+      if (typeof borderWidth === 'number' && borderWidth > 0 && borderColor) {
+        baseStyle.border = `${borderWidth}px solid ${borderColor}`;
+      } else if (!baseStyle.border || baseStyle.border === 'none') { // Only set default if no border already from above
+         baseStyle.border = '1px solid hsl(var(--border) / 0.5)';
+      }
+      // Card behaves like a Column for its children by default
+      baseStyle.flexDirection = reverseLayout ? 'column-reverse' : 'column';
+      switch (properties.verticalArrangement) {
+        case 'Top': baseStyle.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
+        case 'Bottom': baseStyle.justifyContent = reverseLayout ? 'flex-start' : 'flex-end'; break;
+        case 'Center': baseStyle.justifyContent = 'center'; break;
+        case 'SpaceAround': baseStyle.justifyContent = 'space-around'; break;
+        case 'SpaceBetween': baseStyle.justifyContent = 'space-between'; break;
+        case 'SpaceEvenly': baseStyle.justifyContent = 'space-evenly'; break;
+        default: baseStyle.justifyContent = reverseLayout ? 'flex-end' : 'flex-start';
+      }
+      switch (properties.horizontalAlignment) {
+        case 'Start': baseStyle.alignItems = 'flex-start'; break;
+        case 'CenterHorizontally': baseStyle.alignItems = 'center'; break;
+        case 'End': baseStyle.alignItems = 'flex-end'; break;
+        default: baseStyle.alignItems = 'stretch'; // Stretch by default for card children
+      }
+      break;
+    case 'LazyColumn':
+    case 'LazyVerticalGrid':
+    case 'Column': 
+      baseStyle.flexDirection = reverseLayout ? 'column-reverse' : 'column';
+      if (componentId !== DEFAULT_CONTENT_LAZY_COLUMN_ID && (type === 'LazyColumn' || type === 'LazyVerticalGrid')) {
+          baseStyle.overflowY = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
+      }
+      baseStyle.minHeight = (type === 'LazyColumn' || type === 'LazyVerticalGrid') ? (properties.height && isNumericValue(properties.height) ? `${properties.height}px` : '100px') : baseStyle.minHeight;
+      switch (properties.verticalArrangement) {
+        case 'Top': baseStyle.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
+        case 'Bottom': baseStyle.justifyContent = reverseLayout ? 'flex-start' : 'flex-end'; break;
+        case 'Center': baseStyle.justifyContent = 'center'; break;
+        case 'SpaceAround': baseStyle.justifyContent = 'space-around'; break;
+        case 'SpaceBetween': baseStyle.justifyContent = 'space-between'; break;
+        case 'SpaceEvenly': baseStyle.justifyContent = 'space-evenly'; break;
+        default: baseStyle.justifyContent = reverseLayout ? 'flex-end' : 'flex-start';
+      }
+      switch (properties.horizontalAlignment) { // Cross-axis alignment for Column
+        case 'Start': baseStyle.alignItems = 'flex-start'; break;
+        case 'CenterHorizontally': baseStyle.alignItems = 'center'; break;
+        case 'End': baseStyle.alignItems = 'flex-end'; break;
+        default: baseStyle.alignItems = 'stretch'; // Default for Column children
+      }
+      if (type === 'LazyVerticalGrid') {
+        baseStyle.flexDirection = 'row'; // Grid items form rows
+        baseStyle.flexWrap = 'wrap';    // Then wrap to new rows
+        // justifyContent and alignItems for grid would be complex, often managed by grid layout itself
+        // For flex fallback, these might affect row/column alignment if grid not full
+      }
+      break;
+    case 'LazyRow':
+    case 'LazyHorizontalGrid':
+    case 'Row':
+      baseStyle.flexDirection = reverseLayout ? 'row-reverse' : 'row';
+      if (type === 'LazyRow' || type === 'LazyHorizontalGrid') {
+        baseStyle.overflowX = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
+        baseStyle.flexWrap = 'nowrap';
+         baseStyle.minHeight = properties.height ? undefined : '80px'; 
+      } else { // Regular Row
+        baseStyle.flexWrap = 'wrap'; // Rows typically wrap
+      }
+      switch (properties.horizontalArrangement) { // Main-axis arrangement for Row
+        case 'Start': baseStyle.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
+        case 'End': baseStyle.justifyContent = reverseLayout ? 'flex-start' : 'flex-end'; break;
+        case 'Center': baseStyle.justifyContent = 'center'; break;
+        case 'SpaceAround': baseStyle.justifyContent = 'space-around'; break;
+        case 'SpaceBetween': baseStyle.justifyContent = 'space-between'; break;
+        case 'SpaceEvenly': baseStyle.justifyContent = 'space-evenly'; break;
+        default: baseStyle.justifyContent = reverseLayout ? 'flex-end' : 'flex-start';
+      }
+      switch (properties.verticalAlignment) { // Cross-axis alignment for Row
+        case 'Top': baseStyle.alignItems = 'flex-start'; break;
+        case 'CenterVertically': baseStyle.alignItems = 'center'; break;
+        case 'Bottom': baseStyle.alignItems = 'flex-end'; break;
+        default: baseStyle.alignItems = 'stretch'; // Default for Row children
+      }
+       if (type === 'LazyHorizontalGrid') {
+        baseStyle.flexDirection = 'column'; // Grid items form columns
+        baseStyle.flexWrap = 'wrap';   // Then wrap to new columns
+        baseStyle.height = styleHeight;
+        baseStyle.minHeight = properties.height ? undefined : '150px';
+      }
+      break;
+    case 'Box':
+      // Box typically uses contentAlignment from properties to align children if they overlay.
+      // If used as a simple flex container:
+      switch (properties.contentAlignment) { // Assuming maps to justify-content and align-items for center
+        case 'TopStart': baseStyle.justifyContent = 'flex-start'; baseStyle.alignItems = 'flex-start'; break;
+        case 'TopCenter': baseStyle.justifyContent = 'flex-start'; baseStyle.alignItems = 'center'; break;
+        case 'TopEnd': baseStyle.justifyContent = 'flex-start'; baseStyle.alignItems = 'flex-end'; break;
+        case 'CenterStart': baseStyle.justifyContent = 'center'; baseStyle.alignItems = 'flex-start'; break;
+        case 'Center': baseStyle.justifyContent = 'center'; baseStyle.alignItems = 'center'; break;
+        case 'CenterEnd': baseStyle.justifyContent = 'center'; baseStyle.alignItems = 'flex-end'; break;
+        case 'BottomStart': baseStyle.justifyContent = 'flex-end'; baseStyle.alignItems = 'flex-start'; break;
+        case 'BottomCenter': baseStyle.justifyContent = 'flex-end'; baseStyle.alignItems = 'center'; break;
+        case 'BottomEnd': baseStyle.justifyContent = 'flex-end'; baseStyle.alignItems = 'flex-end'; break;
+        default: baseStyle.justifyContent = 'flex-start'; baseStyle.alignItems = 'flex-start';
+      }
+      break;
+    case 'TopAppBar':
+    case 'BottomNavigationBar':
+      baseStyle.flexDirection = 'row';
+      baseStyle.flexWrap = 'nowrap';
+      baseStyle.alignItems = properties.verticalAlignment ? (properties.verticalAlignment.toLowerCase().includes('center') ? 'center' : properties.verticalAlignment.toLowerCase() as any) : 'center';
+      baseStyle.justifyContent = properties.horizontalArrangement ? properties.horizontalArrangement.toLowerCase().replace('space', 'space-') as any : (type === 'TopAppBar' ? 'flex-start' : 'space-around');
+      break;
+    default: 
+      if (isCustomComponentType(type)) {
+          const template = customComponentTemplates.find(t => t.templateId === type);
+          const rootTemplateComp = template?.componentTree.find(c => c.id === template.rootComponentId);
+          const isTemplateRootRowLike = rootTemplateComp ? ['Row', 'LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar'].includes(rootTemplateComp.type) : isRow;
+
+          if (!isTemplateRootRowLike) { // Column-like custom component
+              baseStyle.flexDirection = reverseLayout ? 'column-reverse' : 'column';
+              switch (properties.verticalArrangement) { /* main axis */
+                  case 'Top': baseStyle.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
+                  // ... other cases for verticalArrangement
+                  default: baseStyle.justifyContent = reverseLayout ? 'flex-end' : 'flex-start';
+              }
+              switch (properties.horizontalAlignment) { /* cross axis */
+                  case 'Start': baseStyle.alignItems = 'flex-start'; break;
+                  // ... other cases for horizontalAlignment
+                  default: baseStyle.alignItems = 'stretch';
+              }
+          } else { // Row-like custom component
+              baseStyle.flexDirection = reverseLayout ? 'row-reverse' : 'row';
+              switch (properties.horizontalArrangement) { /* main axis */
+                  case 'Start': baseStyle.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
+                  // ... other cases for horizontalArrangement
+                  default: baseStyle.justifyContent = reverseLayout ? 'flex-end' : 'flex-start';
+              }
+              switch (properties.verticalAlignment) { /* cross axis */
+                  case 'Top': baseStyle.alignItems = 'flex-start'; break;
+                  // ... other cases for verticalAlignment
+                  default: baseStyle.alignItems = 'stretch';
+              }
+          }
+      }
+      break;
+  }
+  
   if (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
     baseStyle.backgroundColor = containerBackgroundColor || 'transparent'; 
     baseStyle.width = '100%'; 
     baseStyle.height = '100%'; 
     delete baseStyle.overflow; 
     delete baseStyle.overflowY; 
+    baseStyle.alignItems = properties.horizontalAlignment === 'Start' ? 'flex-start' : properties.horizontalAlignment === 'CenterHorizontally' ? 'center' : properties.horizontalAlignment === 'End' ? 'flex-end' : 'stretch'; // Default for content children
   }
-  
+
   const showPlaceholder = (componentId === DEFAULT_TOP_APP_BAR_ID && !title && childrenComponents.length === 0) ||
                         (componentId === DEFAULT_BOTTOM_NAV_BAR_ID && childrenComponents.length === 0) ||
                         (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID && childrenComponents.length === 0) ||
                         (![DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID].includes(componentId) && childrenComponents.length === 0 && type !== 'Box');
 
   const placeholderText = `Drop components into this ${getComponentDisplayName(type, customComponentTemplates.find(t => t.templateId === type)?.name)}`;
-
-  const isParentColumnLike = type === 'Column' || type === 'LazyColumn' || componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || type === 'Card' || (isCustomComponentType(type) && !isRow);
 
 
   const topAppBarTitleElement = type === 'TopAppBar' && title ? (
@@ -380,70 +355,9 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
         </div>
       )}
       {topAppBarTitleElement}
-      {childrenComponents.map(child => {
-        let childWrapperStyle: React.CSSProperties = {};
-        let childSpecificStyle: React.CSSProperties = {}; 
-
-        const childSelfAlign = child.properties.selfAlign;
-
-        if (isParentColumnLike) {
-            // If child wants to fill width, its direct container div needs to be full width
-            if (child.properties.fillMaxWidth) {
-                childSpecificStyle.width = '100%';
-            }
-            if (childSelfAlign && childSelfAlign !== 'Inherit') {
-                childWrapperStyle.display = 'flex';
-                childWrapperStyle.width = '100%'; 
-                switch (childSelfAlign) {
-                    case 'Center':
-                        childWrapperStyle.justifyContent = 'center';
-                        break;
-                    case 'End':
-                        childWrapperStyle.justifyContent = 'flex-end';
-                        break;
-                    case 'Start':
-                    default:
-                        childWrapperStyle.justifyContent = 'flex-start';
-                        break;
-                }
-            }
-        } else { // Parent is Row-like
-            childWrapperStyle.display = 'flex'; // For vertical alignment of items within the row cell
-            // If child wants to fill height (less common for row children usually)
-            if (child.properties.fillMaxHeight) {
-                childSpecificStyle.height = '100%';
-            }
-            // selfAlign for row children would typically be vertical alignment within the row's height.
-            // This is handled by parent's alignItems (verticalAlignment prop for Row)
-            // Individual child vertical self-alignment might be less common or complex here.
-        }
-
-        if ((type === 'Row' || type === 'Column' || type === 'Card' || type === 'LazyRow' || type === 'LazyColumn' || type === 'TopAppBar' || type === 'BottomNavigationBar') && child.properties.layoutWeight && child.properties.layoutWeight > 0) {
-            childSpecificStyle.flexGrow = child.properties.layoutWeight;
-            childSpecificStyle.flexShrink = 1; 
-            childSpecificStyle.flexBasis = '0%'; 
-            if (flexDirection === 'row') { 
-                childSpecificStyle.height = '100%'; 
-                if (!child.properties.fillMaxWidth) childSpecificStyle.width = 'auto'; // Respect fillMaxWidth if set on child
-                else childSpecificStyle.width = '100%'; // This implies weight takes precedence for width in a row
-            } else { 
-                childSpecificStyle.width = '100%'; 
-                if (!child.properties.fillMaxHeight) childSpecificStyle.height = 'auto';
-                else childSpecificStyle.height = '100%';
-            }
-        } else if (type === 'LazyRow' || type === 'LazyHorizontalGrid' || type === 'TopAppBar' || type === 'BottomNavigationBar') {
-            childSpecificStyle.flexShrink = 0;
-        }
-        
-        return (
-          <div key={child.id} style={childWrapperStyle} className={ (isParentColumnLike && (childSelfAlign && childSelfAlign !== 'Inherit')) ? "w-full" : ""}> 
-            <div style={childSpecificStyle} className="flex"> 
-              <RenderedComponentWrapper component={child} />
-            </div>
-          </div>
-        );
-      })}
+      {childrenComponents.map(child => (
+        <RenderedComponentWrapper key={child.id} component={child} />
+      ))}
     </div>
   );
 }
-
