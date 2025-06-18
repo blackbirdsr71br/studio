@@ -387,6 +387,10 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
         const childSelfAlign = child.properties.selfAlign;
 
         if (isParentColumnLike) {
+            // If child wants to fill width, its direct container div needs to be full width
+            if (child.properties.fillMaxWidth) {
+                childSpecificStyle.width = '100%';
+            }
             if (childSelfAlign && childSelfAlign !== 'Inherit') {
                 childWrapperStyle.display = 'flex';
                 childWrapperStyle.width = '100%'; 
@@ -403,8 +407,15 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
                         break;
                 }
             }
-        } else { 
-            childWrapperStyle.display = 'flex'; 
+        } else { // Parent is Row-like
+            childWrapperStyle.display = 'flex'; // For vertical alignment of items within the row cell
+            // If child wants to fill height (less common for row children usually)
+            if (child.properties.fillMaxHeight) {
+                childSpecificStyle.height = '100%';
+            }
+            // selfAlign for row children would typically be vertical alignment within the row's height.
+            // This is handled by parent's alignItems (verticalAlignment prop for Row)
+            // Individual child vertical self-alignment might be less common or complex here.
         }
 
         if ((type === 'Row' || type === 'Column' || type === 'Card' || type === 'LazyRow' || type === 'LazyColumn' || type === 'TopAppBar' || type === 'BottomNavigationBar') && child.properties.layoutWeight && child.properties.layoutWeight > 0) {
@@ -413,10 +424,12 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
             childSpecificStyle.flexBasis = '0%'; 
             if (flexDirection === 'row') { 
                 childSpecificStyle.height = '100%'; 
-                childSpecificStyle.width = 'auto'; 
+                if (!child.properties.fillMaxWidth) childSpecificStyle.width = 'auto'; // Respect fillMaxWidth if set on child
+                else childSpecificStyle.width = '100%'; // This implies weight takes precedence for width in a row
             } else { 
                 childSpecificStyle.width = '100%'; 
-                childSpecificStyle.height = 'auto'; 
+                if (!child.properties.fillMaxHeight) childSpecificStyle.height = 'auto';
+                else childSpecificStyle.height = '100%';
             }
         } else if (type === 'LazyRow' || type === 'LazyHorizontalGrid' || type === 'TopAppBar' || type === 'BottomNavigationBar') {
             childSpecificStyle.flexShrink = 0;
@@ -433,3 +446,4 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     </div>
   );
 }
+
