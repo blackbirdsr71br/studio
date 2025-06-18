@@ -212,19 +212,52 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
         default: specificStyles.alignItems = 'flex-start'; 
       }
       if (type === 'LazyVerticalGrid') {
-        flexDirection = 'row'; 
-        specificStyles.flexWrap = 'wrap';
+        // For LazyVerticalGrid, children are arranged in columns, and the columns flow vertically.
+        // If it behaves like a CSS grid, flexDirection might not be the primary driver.
+        // However, for flexbox simulation of a grid that scrolls vertically:
+        flexDirection = 'row'; // Items form rows first
+        specificStyles.flexWrap = 'wrap'; // Then wrap to new rows
       }
       break;
     case 'LazyRow':
+      flexDirection = reverseLayout ? 'row-reverse' : 'row';
+      specificStyles.overflowX = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
+      specificStyles.flexWrap = 'nowrap'; // Ensure items stay in a single line for scrolling
+      specificStyles.minHeight = properties.height ? undefined : '80px'; 
+
+      switch (properties.horizontalArrangement) {
+        case 'Start': specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
+        case 'End': specificStyles.justifyContent = reverseLayout ? 'flex-start' : 'flex-end'; break;
+        case 'Center': specificStyles.justifyContent = 'center'; break;
+        case 'SpaceAround': specificStyles.justifyContent = 'space-around'; break;
+        case 'SpaceBetween': specificStyles.justifyContent = 'space-between'; break;
+        case 'SpaceEvenly': specificStyles.justifyContent = 'space-evenly'; break;
+        default: specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start';
+      }
+      switch (properties.verticalAlignment) {
+        case 'Top': specificStyles.alignItems = 'flex-start'; break;
+        case 'CenterVertically': specificStyles.alignItems = 'center'; break;
+        case 'Bottom': specificStyles.alignItems = 'flex-end'; break;
+        default: specificStyles.alignItems = 'flex-start';
+      }
+      break;
     case 'LazyHorizontalGrid':
+      flexDirection = 'column'; // Children form columns first
+      specificStyles.flexWrap = 'wrap';   // Columns wrap horizontally
+      specificStyles.overflowX = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
+      specificStyles.height = styleHeight; // Controlled height for the grid's rows
+      specificStyles.minHeight = properties.height ? undefined : '150px';
+
+      // justifyContent would control spacing of columns if width allows (for flexbox model)
+      // alignItems would control alignment of items within their conceptual column cells
+      switch (properties.horizontalArrangement) { /* Potentially map to justifyContent if overall grid width is fixed */ }
+      switch (properties.verticalAlignment) { /* Potentially map to alignItems */ }
+      break;
     case 'Row': 
       flexDirection = reverseLayout ? 'row-reverse' : 'row';
-      if (type === 'LazyRow' || type === 'LazyHorizontalGrid') {
-        specificStyles.overflowX = properties.userScrollEnabled !== false ? 'auto' : 'hidden';
-      }
-      specificStyles.minHeight = (type === 'LazyRow' || type === 'LazyHorizontalGrid') ? '80px' : undefined; 
-
+      // Standard Row usually wraps by default if children exceed width.
+      // If explicit scrolling is needed, overflowX would be set by properties (not typical for 'Row')
+      // specificStyles.flexWrap = 'wrap'; // Default for a non-scrolling Row
       switch (properties.horizontalArrangement) {
           case 'Start': specificStyles.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
           case 'End': specificStyles.justifyContent = reverseLayout ? 'flex-start' : 'flex-end'; break;
@@ -240,14 +273,13 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
           case 'Bottom': specificStyles.alignItems = 'flex-end'; break;
           default: specificStyles.alignItems = 'flex-start';
       }
-       if (type === 'LazyHorizontalGrid') {
-          flexDirection = 'column'; 
-          specificStyles.flexWrap = 'wrap';
-          specificStyles.height = styleHeight; 
-      }
       break;
     case 'Box':
       specificStyles.backgroundColor = containerBackgroundColor || 'transparent';
+      // For Box, contentAlignment is more relevant than flex arrangement/alignment if children are overlaid.
+      // However, if children are meant to be positioned, Box acts as a simple container.
+      // The current model places children in a flex layout for Box too.
+      // Let's assume default flex behavior for now.
       break;
     case 'TopAppBar':
     case 'BottomNavigationBar':
@@ -256,6 +288,8 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
       specificStyles.justifyContent = properties.horizontalArrangement ? properties.horizontalArrangement.toLowerCase().replace('space', 'space-') as any : (type === 'TopAppBar' ? 'flex-start' : 'space-around');
       specificStyles.color = explicitContentColor || getContrastingTextColor(specificStyles.backgroundColor as string);
       (specificStyles as any)['--effective-foreground-color'] = specificStyles.color; 
+      flexDirection = 'row'; // These are always rows
+      specificStyles.flexWrap = 'nowrap'; // Items in app/nav bars should not wrap
       break;
     default: 
       specificStyles.backgroundColor = containerBackgroundColor || 'transparent';
@@ -368,18 +402,12 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
                         childWrapperStyle.justifyContent = 'flex-start';
                         break;
                 }
-            } else {
-                 // When selfAlign is 'Inherit', the parent's alignItems (derived from horizontalAlignment)
-                 // will control the child's position. The childWrapperStyle doesn't need width: 100% here.
-                 // The RenderedComponentWrapper for the child will take its natural or defined width.
             }
-        } else { // Parent is Row-like
+        } else { 
             childWrapperStyle.display = 'flex'; 
-            // For rows, selfAlign would typically control vertical alignment if implemented for that axis.
-            // For now, the row's verticalAlignment property on the parent controls all children.
         }
 
-        if ((type === 'Row' || type === 'Column' || type === 'Card') && child.properties.layoutWeight && child.properties.layoutWeight > 0) {
+        if ((type === 'Row' || type === 'Column' || type === 'Card' || type === 'LazyRow' || type === 'LazyColumn' || type === 'TopAppBar' || type === 'BottomNavigationBar') && child.properties.layoutWeight && child.properties.layoutWeight > 0) {
             childSpecificStyle.flexGrow = child.properties.layoutWeight;
             childSpecificStyle.flexShrink = 1; 
             childSpecificStyle.flexBasis = '0%'; 
@@ -390,6 +418,8 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
                 childSpecificStyle.width = '100%'; 
                 childSpecificStyle.height = 'auto'; 
             }
+        } else if (type === 'LazyRow' || type === 'LazyHorizontalGrid' || type === 'TopAppBar' || type === 'BottomNavigationBar') {
+            childSpecificStyle.flexShrink = 0;
         }
         
         return (
