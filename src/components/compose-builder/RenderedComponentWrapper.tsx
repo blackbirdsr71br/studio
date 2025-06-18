@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { DesignComponent } from '@/types/compose-spec';
@@ -371,7 +370,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
             {contentChild && (
               <div
                 style={{ flexGrow: 1, minHeight: 0, width: '100%' }}
-                className={cn("flex w-full", "overflow-y-auto overflow-x-hidden")} // scrollbar-hidden removed for diagnosis
+                className={cn("flex w-full", "overflow-y-auto overflow-x-hidden")} 
               >
                 <RenderedComponentWrapper component={contentChild} />
               </div>
@@ -471,14 +470,26 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     // bg handled by ContainerView for LazyColumn
   }
 
+  const hasCornerRadius = (component.properties.cornerRadiusTopLeft || 0) > 0 ||
+                          (component.properties.cornerRadiusTopRight || 0) > 0 ||
+                          (component.properties.cornerRadiusBottomRight || 0) > 0 ||
+                          (component.properties.cornerRadiusBottomLeft || 0) > 0;
 
-  if (component.type === 'Image' || component.type === 'Card' || (component.properties.cornerRadiusTopLeft || 0) > 0 || (component.properties.cornerRadiusTopRight || 0) > 0 || (component.properties.cornerRadiusBottomLeft || 0) > 0 || (component.properties.cornerRadiusBottomRight || 0) > 0) {
-    wrapperStyle.overflow = 'hidden';
+  if (hasCornerRadius) {
     wrapperStyle.borderTopLeftRadius = `${component.properties.cornerRadiusTopLeft || 0}px`;
     wrapperStyle.borderTopRightRadius = `${component.properties.cornerRadiusTopRight || 0}px`;
     wrapperStyle.borderBottomRightRadius = `${component.properties.cornerRadiusBottomRight || 0}px`;
     wrapperStyle.borderBottomLeftRadius = `${component.properties.cornerRadiusBottomLeft || 0}px`;
+
+    // Only apply overflow:hidden if it's an Image.
+    // Other containers (Card, Box, LazyRow, LazyColumn) will not have overflow:hidden
+    // applied by the wrapper just for having rounded corners. They rely on their internal
+    // ContainerView's styles for clipping and overflow management.
+    if (component.type === 'Image') {
+      wrapperStyle.overflow = 'hidden';
+    }
   }
+
 
   const containerDropTargetStyle = (isContainerType(component.type, customComponentTemplates) || CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id)) && isOverCurrent && canDropCurrent
     ? 'drag-over-container'
@@ -549,3 +560,4 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
 
 
     
+
