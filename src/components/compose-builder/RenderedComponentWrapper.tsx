@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { DesignComponent } from '@/types/compose-spec';
@@ -431,43 +432,72 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     }
   };
   
-  // Determine width/height based on properties or defaults for slot components
-  const getDimensionValue = (propName: 'width' | 'height', propValue: any, fillValue: boolean | undefined, componentType: string, componentId: string): string => {
-    if (componentId === ROOT_SCAFFOLD_ID) return '100%'; // Scaffold always fills its container (MobileFrame)
-    
-    // Slot components have specific behaviors
+  // Helper function to determine dimension style value
+  const getDimensionValue = (
+    propName: 'width' | 'height',
+    propValue: any,
+    fillValue: boolean | undefined,
+    componentType: string,
+    componentId: string,
+    parentId: string | null,
+    getLocalComponentById: (id: string) => DesignComponent | undefined // Pass getter
+  ): string => {
+    if (componentId === ROOT_SCAFFOLD_ID) return '100%';
+  
     if (componentId === DEFAULT_TOP_APP_BAR_ID || componentType === 'TopAppBar') {
-        return propName === 'width' ? '100%' : (isNumericValue(propValue) ? `${propValue}px` : '56px');
+      return propName === 'width' ? '100%' : (isNumericValue(propValue) ? `${propValue}px` : '56px');
     }
     if (componentId === DEFAULT_BOTTOM_NAV_BAR_ID || componentType === 'BottomNavigationBar') {
-        return propName === 'width' ? '100%' : (isNumericValue(propValue) ? `${propValue}px` : '56px');
+      return propName === 'width' ? '100%' : (isNumericValue(propValue) ? `${propValue}px` : '56px');
     }
     if (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
-        return '100%'; // Content area should fill its slot
+      return '100%';
     }
-
-    // General components
+  
+    const parentComponent = parentId ? getLocalComponentById(parentId) : null;
+  
+    // For children of horizontal scrolling containers, 'fillMaxWidth' or 'match_parent' should behave like 'wrap_content'
+    if (propName === 'width' && parentComponent) {
+      const parentType = parentComponent.type;
+      if (parentType === 'LazyRow' || parentType === 'LazyHorizontalGrid' || parentType === 'TopAppBar' || parentType === 'BottomNavigationBar') {
+        if (fillValue || propValue === 'match_parent') {
+          return 'auto'; // Treat as wrap_content
+        }
+      }
+    }
+  
+    // For children of vertical scrolling containers, 'fillMaxHeight' or 'match_parent' should behave like 'wrap_content'
+    // This is generally less of an issue unless the LazyColumn/LazyVerticalGrid itself has a fixed height
+    // and children are expected to scroll within it.
+    // if (propName === 'height' && parentComponent) {
+    //   const parentType = parentComponent.type;
+    //   if (parentType === 'LazyColumn' || parentType === 'LazyVerticalGrid') {
+    //     if (fillValue || propValue === 'match_parent') {
+    //       return 'auto'; 
+    //     }
+    //   }
+    // }
+  
     if (fillValue) return '100%';
     if (propValue === 'match_parent') return '100%';
     if (propValue === 'wrap_content') return 'auto';
     if (isNumericValue(propValue)) return `${propValue}px`;
-    return 'auto'; // Default for non-slot, non-filled components
+    return 'auto';
   };
   
   const wrapperStyle: React.CSSProperties = {
     transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
-    width: getDimensionValue('width', component.properties.width, component.properties.fillMaxWidth, component.type, component.id),
-    height: getDimensionValue('height', component.properties.height, component.properties.fillMaxHeight, component.type, component.id),
+    width: getDimensionValue('width', component.properties.width, component.properties.fillMaxWidth, component.type, component.id, component.parentId, getComponentById),
+    height: getDimensionValue('height', component.properties.height, component.properties.fillMaxHeight, component.type, component.id, component.parentId, getComponentById),
     position: 'relative',
   };
   
   if (component.id === ROOT_SCAFFOLD_ID) {
-    // Scaffold's background is usually transparent, content area gets its own
     wrapperStyle.backgroundColor = component.properties.backgroundColor || 'transparent';
   }
-  // Background for content area, top/bottom bars are handled by ContainerView if set
+
   if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
-    // bg handled by ContainerView for LazyColumn
+    // Background for content area is handled by ContainerView
   }
 
   const hasCornerRadius = (component.properties.cornerRadiusTopLeft || 0) > 0 ||
@@ -481,11 +511,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     wrapperStyle.borderBottomRightRadius = `${component.properties.cornerRadiusBottomRight || 0}px`;
     wrapperStyle.borderBottomLeftRadius = `${component.properties.cornerRadiusBottomLeft || 0}px`;
 
-    // Only apply overflow:hidden if it's an Image.
-    // Other containers (Card, Box, LazyRow, LazyColumn) will not have overflow:hidden
-    // applied by the wrapper just for having rounded corners. They rely on their internal
-    // ContainerView's styles for clipping and overflow management.
-    if (component.type === 'Image') {
+    if (component.type === 'Image') { // Only apply overflow:hidden if it's an Image.
       wrapperStyle.overflow = 'hidden';
     }
   }
@@ -495,9 +521,8 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     ? 'drag-over-container'
     : '';
 
-  // Determine if resize handles should be shown
   const canResize = isSelected &&
-                    !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && // Cannot resize core slots
+                    !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) &&
                     !component.properties.fillMaxWidth &&
                     !component.properties.fillMaxHeight &&
                     isNumericValue(component.properties.width) &&
@@ -506,7 +531,6 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
   const canResizeHorizontally = isSelected && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxWidth && isNumericValue(component.properties.width);
   const canResizeVertically = isSelected && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxHeight && isNumericValue(component.properties.height);
 
-  // Flex item class only if it's a direct child of a flex container (like slots in Scaffold) or root itself
   const flexItemClass = (component.parentId === ROOT_SCAFFOLD_ID || component.id === ROOT_SCAFFOLD_ID) ? 'flex w-full' : '';
 
   const isReorderTarget = isOverCurrent && canDropCurrent && dropIndicator !== null;
@@ -516,11 +540,11 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       ref={ref}
       style={wrapperStyle}
       className={cn(
-        'p-0.5 border border-transparent', // Minimal padding/border for visual separation
+        'p-0.5 border border-transparent', 
         flexItemClass,
-        { // Conditional classes
-          'ring-4 ring-primary ring-offset-2 ring-offset-background shadow-lg': isSelected && ![ROOT_SCAFFOLD_ID, ...CORE_SCAFFOLD_ELEMENT_IDS].includes(component.id), // Regular selected items
-          'ring-2 ring-accent ring-offset-2 ring-offset-background': isSelected && CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && component.id !== ROOT_SCAFFOLD_ID, // Selected slots
+        { 
+          'ring-4 ring-primary ring-offset-2 ring-offset-background shadow-lg': isSelected && ![ROOT_SCAFFOLD_ID, ...CORE_SCAFFOLD_ELEMENT_IDS].includes(component.id),
+          'ring-2 ring-accent ring-offset-2 ring-offset-background': isSelected && CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && component.id !== ROOT_SCAFFOLD_ID,
           'opacity-50': isDragging,
           'cursor-grab': !isResizing && ![ROOT_SCAFFOLD_ID, ...CORE_SCAFFOLD_ELEMENT_IDS, 'Spacer'].includes(component.id) && component.type !== 'Spacer',
           'cursor-default': component.type === 'Spacer' || [ROOT_SCAFFOLD_ID, ...CORE_SCAFFOLD_ELEMENT_IDS].includes(component.id),
@@ -528,7 +552,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
           'relative': isReorderTarget,
         },
         containerDropTargetStyle,
-        (component.id === ROOT_SCAFFOLD_ID || component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) ? 'flex' : '' // Ensure scaffold and content area are flex containers
+        (component.id === ROOT_SCAFFOLD_ID || component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) ? 'flex' : ''
       )}
       onClick={handleClick}
       data-component-id={component.id}
@@ -557,7 +581,4 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     </div>
   );
 }
-
-
     
-
