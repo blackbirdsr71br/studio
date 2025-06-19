@@ -4,7 +4,7 @@ import type { DesignComponent, ComponentType as OriginalComponentType } from '@/
 import { RenderedComponentWrapper } from '../RenderedComponentWrapper';
 import { getComponentDisplayName, DEFAULT_CONTENT_LAZY_COLUMN_ID, isCustomComponentType, ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID } from '@/types/compose-spec';
 import { useDesign } from '@/contexts/DesignContext';
-import { getContrastingTextColor } from '@/lib/utils';
+import { getContrastingTextColor, cn } from '@/lib/utils';
 import { TextView } from './TextView'; 
 
 interface ContainerViewProps {
@@ -34,26 +34,23 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   let effectiveType: OriginalComponentType | string = component.type;
   let basePropertiesFromTemplateRoot: DesignComponent['properties'] = {};
 
-  if (component.templateIdRef) { // Check templateIdRef instead of isCustomComponentType(component.type)
+  if (component.templateIdRef) {
     const template = customComponentTemplates.find(t => t.templateId === component.templateIdRef);
     if (template) {
       const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
       if (rootTemplateComponent) {
-        effectiveType = rootTemplateComponent.type; // Use the original type of the template's root
+        effectiveType = rootTemplateComponent.type; 
         basePropertiesFromTemplateRoot = { ...rootTemplateComponent.properties };
       } else {
         console.warn(`Root component for template ${component.templateIdRef} not found in its tree.`);
-        // Fallback to instance type if template root is missing, though this is an error state
         effectiveType = component.type; 
       }
     } else {
         console.warn(`Custom template with ID ${component.templateIdRef} not found.`);
-        // Fallback to instance type if template definition is missing
         effectiveType = component.type;
     }
   }
   
-  // Merge template root properties with instance properties, instance overrides.
   const effectiveProperties = { 
     ...basePropertiesFromTemplateRoot, 
     ...component.properties 
@@ -156,20 +153,18 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   }
 
   let finalFlexDirection: 'row' | 'column';
-  // Determine primary flex direction based on effectiveType, then consider isRowPropHint as a fallback
   if (effectiveType === 'Row' || effectiveType === 'LazyRow' || effectiveType === 'LazyHorizontalGrid' || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar') {
     finalFlexDirection = 'row';
   } else if (effectiveType === 'Column' || effectiveType === 'LazyColumn' || effectiveType === 'LazyVerticalGrid' || effectiveType === 'Card' || effectiveType === 'Box') {
     finalFlexDirection = 'column';
   } else {
-    finalFlexDirection = isRowPropHint ? 'row' : 'column'; // Fallback for unknown or generic custom types
+    finalFlexDirection = isRowPropHint ? 'row' : 'column'; 
   }
 
   if (reverseLayout) {
     finalFlexDirection = finalFlexDirection === 'row' ? 'row-reverse' : 'column-reverse';
   }
 
-  // Base styles for the container itself
   const baseStyle: React.CSSProperties = {
     display: 'flex',
     flexDirection: finalFlexDirection,
@@ -211,7 +206,9 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   }
   baseStyle.backgroundColor = containerBackgroundColor || 'transparent';
 
-  // Flex alignment and arrangement properties based on effectiveType
+  const isLazyRowType = effectiveType === 'LazyRow' || effectiveType === 'LazyHorizontalGrid';
+  const isLazyColumnType = effectiveType === 'LazyColumn' || effectiveType === 'LazyVerticalGrid';
+
   switch (effectiveType) {
     case 'Card':
       baseStyle.boxShadow = `0 ${elevation}px ${elevation * 1.5}px rgba(0,0,0,0.1), 0 ${elevation/2}px ${elevation/2}px rgba(0,0,0,0.06)`;
@@ -220,8 +217,8 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       } else if (!baseStyle.border || baseStyle.border === 'none') { 
          baseStyle.border = '1px solid hsl(var(--border) / 0.5)';
       }
-      baseStyle.flexDirection = reverseLayout ? 'column-reverse' : 'column'; // Card is column-like
-      switch (effectiveProperties.verticalArrangement) { // Main axis for Card (column)
+      baseStyle.flexDirection = reverseLayout ? 'column-reverse' : 'column'; 
+      switch (effectiveProperties.verticalArrangement) { 
         case 'Top': baseStyle.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
         case 'Bottom': baseStyle.justifyContent = reverseLayout ? 'flex-start' : 'flex-end'; break;
         case 'Center': baseStyle.justifyContent = 'center'; break;
@@ -230,7 +227,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
         case 'SpaceEvenly': baseStyle.justifyContent = 'space-evenly'; break;
         default: baseStyle.justifyContent = reverseLayout ? 'flex-end' : 'flex-start';
       }
-      switch (effectiveProperties.horizontalAlignment) { // Cross axis for Card (column)
+      switch (effectiveProperties.horizontalAlignment) { 
         case 'Start': baseStyle.alignItems = 'flex-start'; break;
         case 'CenterHorizontally': baseStyle.alignItems = 'center'; break;
         case 'End': baseStyle.alignItems = 'flex-end'; break;
@@ -240,12 +237,11 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     case 'LazyColumn':
     case 'LazyVerticalGrid':
     case 'Column': 
-      // baseStyle.flexDirection is already 'column' or 'column-reverse'
       if (component.id !== DEFAULT_CONTENT_LAZY_COLUMN_ID && (effectiveType === 'LazyColumn' || effectiveType === 'LazyVerticalGrid')) {
           baseStyle.overflowY = effectiveProperties.userScrollEnabled !== false ? 'auto' : 'hidden';
       }
       baseStyle.minHeight = (effectiveType === 'LazyColumn' || effectiveType === 'LazyVerticalGrid') ? (effectiveProperties.height && isNumericValue(effectiveProperties.height) ? `${effectiveProperties.height}px` : '100px') : baseStyle.minHeight;
-      switch (effectiveProperties.verticalArrangement) { // Main axis for Column
+      switch (effectiveProperties.verticalArrangement) { 
         case 'Top': baseStyle.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
         case 'Bottom': baseStyle.justifyContent = reverseLayout ? 'flex-start' : 'flex-end'; break;
         case 'Center': baseStyle.justifyContent = 'center'; break;
@@ -254,21 +250,20 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
         case 'SpaceEvenly': baseStyle.justifyContent = 'space-evenly'; break;
         default: baseStyle.justifyContent = reverseLayout ? 'flex-end' : 'flex-start';
       }
-      switch (effectiveProperties.horizontalAlignment) { // Cross-axis for Column
+      switch (effectiveProperties.horizontalAlignment) { 
         case 'Start': baseStyle.alignItems = 'flex-start'; break;
         case 'CenterHorizontally': baseStyle.alignItems = 'center'; break;
         case 'End': baseStyle.alignItems = 'flex-end'; break;
         default: baseStyle.alignItems = 'stretch'; 
       }
       if (effectiveType === 'LazyVerticalGrid') {
-        baseStyle.flexDirection = 'row'; // Grid items form rows
+        baseStyle.flexDirection = 'row'; 
         baseStyle.flexWrap = 'wrap';    
       }
       break;
     case 'LazyRow':
     case 'LazyHorizontalGrid':
     case 'Row':
-      // baseStyle.flexDirection is already 'row' or 'row-reverse'
       if (effectiveType === 'LazyRow' || effectiveType === 'LazyHorizontalGrid') {
         baseStyle.overflowX = effectiveProperties.userScrollEnabled !== false ? 'auto' : 'hidden';
         baseStyle.flexWrap = 'nowrap';
@@ -276,7 +271,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       } else { 
         baseStyle.flexWrap = 'wrap'; 
       }
-      switch (effectiveProperties.horizontalArrangement) { // Main-axis for Row
+      switch (effectiveProperties.horizontalArrangement) { 
         case 'Start': baseStyle.justifyContent = reverseLayout ? 'flex-end' : 'flex-start'; break;
         case 'End': baseStyle.justifyContent = reverseLayout ? 'flex-start' : 'flex-end'; break;
         case 'Center': baseStyle.justifyContent = 'center'; break;
@@ -285,7 +280,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
         case 'SpaceEvenly': baseStyle.justifyContent = 'space-evenly'; break;
         default: baseStyle.justifyContent = reverseLayout ? 'flex-end' : 'flex-start';
       }
-      switch (effectiveProperties.verticalAlignment) { // Cross-axis for Row
+      switch (effectiveProperties.verticalAlignment) { 
         case 'Top': baseStyle.alignItems = 'flex-start'; break;
         case 'CenterVertically': baseStyle.alignItems = 'center'; break;
         case 'Bottom': baseStyle.alignItems = 'flex-end'; break;
@@ -314,12 +309,11 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       break;
     case 'TopAppBar':
     case 'BottomNavigationBar':
-      baseStyle.flexDirection = 'row'; // Already set by finalFlexDirection
+      baseStyle.flexDirection = 'row'; 
       baseStyle.flexWrap = 'nowrap';
       baseStyle.alignItems = effectiveProperties.verticalAlignment ? (effectiveProperties.verticalAlignment.toLowerCase().includes('center') ? 'center' : effectiveProperties.verticalAlignment.toLowerCase() as any) : 'center';
       baseStyle.justifyContent = effectiveProperties.horizontalArrangement ? effectiveProperties.horizontalArrangement.toLowerCase().replace('space', 'space-') as any : (effectiveType === 'TopAppBar' ? 'flex-start' : 'space-around');
       break;
-    // No default case needed here as `finalFlexDirection` covers the base, and specific type overrides are above.
   }
   
   if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
@@ -344,9 +338,16 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       <TextView properties={{ text: title, fontSize: titleFontSize || 20, textColor: baseStyle.color as string }} />
     </div>
   ) : null;
+  
+  const containerClasses = cn(
+    "select-none component-container",
+    {
+      'scrollbar-hidden': (isLazyRowType && baseStyle.overflowX === 'auto') || (isLazyColumnType && baseStyle.overflowY === 'auto' && component.id !== DEFAULT_CONTENT_LAZY_COLUMN_ID)
+    }
+  );
 
   return (
-    <div style={baseStyle} className="select-none component-container" data-container-id={component.id} data-container-type={effectiveType}>
+    <div style={baseStyle} className={containerClasses} data-container-id={component.id} data-container-type={effectiveType}>
       {showPlaceholder && (
         <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground/70 text-xs pointer-events-none p-2 text-center leading-tight">
           {placeholderText}
