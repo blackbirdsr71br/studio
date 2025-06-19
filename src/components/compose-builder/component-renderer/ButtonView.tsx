@@ -18,6 +18,7 @@ export function ButtonView({ properties }: ButtonViewProps) {
     paddingBottom,
     paddingStart,
     paddingEnd,
+    fillMaxWidth, // Added to consume for styling
   } = properties;
 
   let effectiveTextColor;
@@ -38,14 +39,21 @@ export function ButtonView({ properties }: ButtonViewProps) {
     borderRadius: '4px',
     border: 'none',
     cursor: 'default',
-    display: 'inline-flex',
+    display: 'flex', // Changed from 'inline-flex'
     alignItems: 'center',
     justifyContent: 'center',
     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    width: '100%', // Fill the wrapper provided by RenderedComponentWrapper
-    height: '100%', // Fill the wrapper provided by RenderedComponentWrapper
-    boxSizing: 'border-box', // Ensure padding is included within width/height
+    width: '100%', 
+    height: '100%', 
+    boxSizing: 'border-box', 
   };
+
+  // If not fillMaxWidth and width is wrap_content (default or explicit), adjust width
+  if (!fillMaxWidth && (properties.width === 'wrap_content' || properties.width === undefined)) {
+    style.width = 'auto'; // Let the button size to its content + padding
+    style.display = 'inline-flex'; // Behave more like an inline element if not filling width
+  }
+
 
   return (
     <button style={style} className="select-none" disabled>

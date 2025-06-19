@@ -353,7 +353,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
             {contentChild && (
               <div
                 style={{ flexGrow: 1, minHeight: 0, width: '100%' }}
-                className={cn("flex w-full", "overflow-y-auto overflow-x-hidden")} // scrollbar-hidden removed for diagnosis
+                className={cn("flex w-full", "overflow-y-auto overflow-x-hidden")}
               >
                 <RenderedComponentWrapper component={contentChild} />
               </div>
@@ -434,15 +434,23 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
   
     const parentComponent = parentId ? getLocalComponentById(parentId) : null;
   
-    if (propName === 'width' && parentComponent) {
+    if (parentComponent) {
       const parentType = parentComponent.type;
-      const parentIsRowLike = ['LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar', 'Row'].includes(parentType) || 
-                              (isCustomComponentType(parentType) && customComponentTemplates.find(t=>t.templateId === parentType)?.componentTree.find(c => c.id === customComponentTemplates.find(t=>t.templateId === parentType)?.rootComponentId)?.type === 'Row');
-      if (parentIsRowLike) {
+      const isParentCustom = isCustomComponentType(parentType);
+      const rootOfParentCustomType = isParentCustom 
+        ? customComponentTemplates.find(t => t.templateId === parentType)?.componentTree.find(c => c.id === customComponentTemplates.find(t => t.templateId === parentType)?.rootComponentId)?.type
+        : null;
+      const effectiveParentType = rootOfParentCustomType || parentType;
+
+      const parentIsRowLike = ['LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar', 'Row'].includes(effectiveParentType);
+      
+      if (propName === 'width' && parentIsRowLike) {
         if (fillValue || propValue === 'match_parent') {
-          // For children of row-like containers, fillMaxWidth should still be 100% IF the row itself has space,
-          // but typically for scrolling rows, children have intrinsic/fixed widths or wrap_content.
-          // If layoutWeight is used, it will govern. If not, 'auto' is safer for row children than '100%'.
+          return component.properties.layoutWeight && component.properties.layoutWeight > 0 ? '100%' : 'auto';
+        }
+      }
+      if (propName === 'height' && !parentIsRowLike) { // Parent is Column-like
+         if (fillValue || propValue === 'match_parent') {
           return component.properties.layoutWeight && component.properties.layoutWeight > 0 ? '100%' : 'auto';
         }
       }
@@ -452,7 +460,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     if (propValue === 'match_parent') return '100%';
     if (propValue === 'wrap_content') return 'auto';
     if (isNumericValue(propValue)) return `${propValue}px`;
-    return 'auto'; // Default to auto if no specific value or fill directive
+    return 'auto'; 
   };
   
   const wrapperStyle: React.CSSProperties = {
@@ -460,29 +468,25 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     width: getDimensionValue('width', component.properties.width, component.properties.fillMaxWidth, component.type, component.id, component.parentId, getComponentById),
     height: getDimensionValue('height', component.properties.height, component.properties.fillMaxHeight, component.type, component.id, component.parentId, getComponentById),
     position: 'relative', // Needed for resize handles and drop indicator
-    display: 'flex', // Make wrapper a flex container to help manage its direct child (the specific component renderer)
+    display: 'block', // Changed from 'flex'
   };
   
-  // Handle flex-grow for layoutWeight
   if (component.properties.layoutWeight && component.properties.layoutWeight > 0) {
     wrapperStyle.flexGrow = component.properties.layoutWeight;
-    wrapperStyle.flexShrink = 1; // Allow shrinking
-    wrapperStyle.flexBasis = '0%'; // Standard practice with flex-grow
+    wrapperStyle.flexShrink = 1; 
+    wrapperStyle.flexBasis = '0%'; 
     
-    // If weighted, width/height might need to be 100% of the flex item's allocated space
     const parentComp = component.parentId ? getComponentById(component.parentId) : null;
     if (parentComp) {
         const parentIsRowLike = ['Row', 'LazyRow', 'TopAppBar', 'BottomNavigationBar', 'LazyHorizontalGrid'].includes(parentComp.type) || 
                                 (isCustomComponentType(parentComp.type) && customComponentTemplates.find(t=>t.templateId === parentComp.type)?.componentTree.find(c => c.id === customComponentTemplates.find(t=>t.templateId === parentComp.type)?.rootComponentId)?.type === 'Row');
-        if (parentIsRowLike) { // Parent is row-like, child is weighted horizontally
-            wrapperStyle.height = '100%'; // Weighted item fills height of the row
+        if (parentIsRowLike) { 
+            wrapperStyle.height = '100%'; 
             if (!component.properties.fillMaxWidth && !isNumericValue(component.properties.width) && component.properties.width !=='wrap_content') {
-                 // If width is not explicitly set and it's weighted in a row, let flex-basis and flex-grow determine width.
-                 // explicit 'auto' might be better than relying on previous getDimensionValue if it wasn't 'auto'
                  wrapperStyle.width = 'auto'; 
             }
-        } else { // Parent is column-like, child is weighted vertically
-            wrapperStyle.width = '100%'; // Weighted item fills width of the column
+        } else { 
+            wrapperStyle.width = '100%'; 
              if (!component.properties.fillMaxHeight && !isNumericValue(component.properties.height) && component.properties.height !=='wrap_content') {
                  wrapperStyle.height = 'auto';
             }
@@ -490,7 +494,6 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     }
   }
 
-  // Handle self-alignment (alignSelf)
   const parent = component.parentId ? getComponentById(component.parentId) : null;
   if (parent && isContainerType(parent.type, customComponentTemplates)) {
     const parentIsRowLike = ['Row', 'LazyRow', 'TopAppBar', 'BottomNavigationBar', 'LazyHorizontalGrid'].includes(parent.type) || 
@@ -498,28 +501,24 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     const selfAlignProp = component.properties.selfAlign;
 
     if (selfAlignProp && selfAlignProp !== 'Inherit') {
-      if (parentIsRowLike) { // Parent is Row, selfAlign controls vertical alignment
+      if (parentIsRowLike) { 
         if (selfAlignProp === 'Start') wrapperStyle.alignSelf = 'flex-start';
         else if (selfAlignProp === 'Center') wrapperStyle.alignSelf = 'center';
         else if (selfAlignProp === 'End') wrapperStyle.alignSelf = 'flex-end';
-        // If fillMaxHeight is true, alignSelf: 'stretch' would be appropriate
         else if (component.properties.fillMaxHeight) wrapperStyle.alignSelf = 'stretch';
 
-      } else { // Parent is Column, selfAlign controls horizontal alignment
+      } else { 
         if (selfAlignProp === 'Start') wrapperStyle.alignSelf = 'flex-start';
         else if (selfAlignProp === 'Center') wrapperStyle.alignSelf = 'center';
         else if (selfAlignProp === 'End') wrapperStyle.alignSelf = 'flex-end';
-        // If fillMaxWidth is true, alignSelf: 'stretch' is appropriate
         else if (component.properties.fillMaxWidth) wrapperStyle.alignSelf = 'stretch';
       }
-    } else { // selfAlign is 'Inherit' or undefined
+    } else { 
       if (parentIsRowLike && component.properties.fillMaxHeight) {
         wrapperStyle.alignSelf = 'stretch';
       } else if (!parentIsRowLike && component.properties.fillMaxWidth) {
-        // This is the key for fillMaxWidth in a column
         wrapperStyle.alignSelf = 'stretch';
       }
-      // If no fill directive and no explicit selfAlign, it will align based on parent's alignItems
     }
   }
 
@@ -538,8 +537,6 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     wrapperStyle.borderTopRightRadius = `${component.properties.cornerRadiusTopRight || 0}px`;
     wrapperStyle.borderBottomRightRadius = `${component.properties.cornerRadiusBottomRight || 0}px`;
     wrapperStyle.borderBottomLeftRadius = `${component.properties.cornerRadiusBottomLeft || 0}px`;
-    // Apply overflow:hidden only if it's an Image, or if the specific component view (ContainerView) handles it.
-    // RenderedComponentWrapper should not apply overflow:hidden generally for containers.
     if (component.type === 'Image') {
       wrapperStyle.overflow = 'hidden';
     }
@@ -561,17 +558,13 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
 
   const isReorderTarget = isOverCurrent && canDropCurrent && dropIndicator !== null;
 
-  // The direct child of this RenderedComponentWrapper will be what's rendered by renderSpecificComponent().
-  // That child needs to fill this wrapper. Most component views (TextView, ImageView, ButtonView, ContainerView)
-  // are styled to take up 100% width/height of their parent by default or via specific styling.
-  // For example, ContainerView's baseStyle has width/height set which will make it fill this wrapper.
 
   return (
     <div
       ref={ref}
       style={wrapperStyle}
       className={cn(
-        'p-0.5 border border-transparent', // Minimal padding for selection outline not to be cut off
+        'p-0.5 border border-transparent', 
         { 
           'ring-4 ring-primary ring-offset-2 ring-offset-background shadow-lg': isSelected && ![ROOT_SCAFFOLD_ID, ...CORE_SCAFFOLD_ELEMENT_IDS].includes(component.id),
           'ring-2 ring-accent ring-offset-2 ring-offset-background': isSelected && CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && component.id !== ROOT_SCAFFOLD_ID,
@@ -579,11 +572,9 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
           'cursor-grab': !isResizing && ![ROOT_SCAFFOLD_ID, ...CORE_SCAFFOLD_ELEMENT_IDS, 'Spacer'].includes(component.id) && component.type !== 'Spacer',
           'cursor-default': component.type === 'Spacer' || [ROOT_SCAFFOLD_ID, ...CORE_SCAFFOLD_ELEMENT_IDS].includes(component.id),
           'cursor-grabbing': isDragging,
-          'relative': isReorderTarget, // For drop indicator positioning
+          'relative': isReorderTarget, 
         },
         containerDropTargetStyle,
-        // If this wrapper is a direct child of a flex container (which it is, via ContainerView's map),
-        // it behaves as a flex item. The 'display: flex' on wrapperStyle itself is for its *own* children.
       )}
       onClick={handleClick}
       data-component-id={component.id}
@@ -592,7 +583,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       {isReorderTarget && dropIndicator === 'top' && (
           <div className="absolute top-[-2px] left-0 right-0 h-[4px] bg-primary z-20 pointer-events-none" />
       )}
-      {renderSpecificComponent()} {/* This child should fill the wrapper */}
+      {renderSpecificComponent()} 
       {isReorderTarget && dropIndicator === 'bottom' && (
           <div className="absolute bottom-[-2px] left-0 right-0 h-[4px] bg-primary z-20 pointer-events-none" />
       )}
@@ -612,3 +603,4 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     </div>
   );
 }
+
