@@ -57,6 +57,8 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     borderColor,
     title, 
     titleFontSize,
+    fillMaxWidth, // Added to directly use this property
+    fillMaxHeight // Added to directly use this property
   } = properties;
 
   const defaultAllSidesPadding = (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID ? 8 : (type === 'Card' ? 16 : 0));
@@ -123,8 +125,15 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     }
   }
 
-  const styleWidth = processDimension(properties.width, defaultWidth);
-  const styleHeight = processDimension(properties.height, defaultHeight);
+  let styleWidth = processDimension(properties.width, defaultWidth);
+  let styleHeight = processDimension(properties.height, defaultHeight);
+
+  if (fillMaxWidth) {
+    styleWidth = '100%';
+  }
+  if (fillMaxHeight) {
+    styleHeight = '100%';
+  }
 
   let finalFlexDirection: 'row' | 'column' = isRow ? 'row' : 'column';
   if (reverseLayout) {
@@ -149,8 +158,8 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     boxSizing: 'border-box',
     position: 'relative', // For placeholder positioning
     border: (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || type.startsWith('Lazy') || type === 'Card' || type === 'TopAppBar' || type === 'BottomNavigationBar') ? 'none' : '1px dashed hsl(var(--border) / 0.3)',
-    minWidth: (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || properties.width === 'match_parent' ) ? '100%' : (properties.width === 'wrap_content' || !isNumericValue(properties.width) ? 'auto' : '60px'),
-    minHeight: (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || properties.height === 'match_parent' || type === 'TopAppBar' || type === 'BottomNavigationBar') ? styleHeight : (properties.height === 'wrap_content' || !isNumericValue(properties.height) ? 'auto' : '60px'),
+    minWidth: (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || properties.width === 'match_parent' || fillMaxWidth ) ? '100%' : (properties.width === 'wrap_content' || !isNumericValue(properties.width) ? 'auto' : '60px'),
+    minHeight: (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || properties.height === 'match_parent' || fillMaxHeight || type === 'TopAppBar' || type === 'BottomNavigationBar') ? styleHeight : (properties.height === 'wrap_content' || !isNumericValue(properties.height) ? 'auto' : '60px'),
   };
 
   if (componentId !== DEFAULT_CONTENT_LAZY_COLUMN_ID &&
@@ -361,3 +370,4 @@ export function ContainerView({ component, childrenComponents, isRow }: Containe
     </div>
   );
 }
+
