@@ -14,7 +14,6 @@ import {
   ROOT_SCAFFOLD_ID,
   DEFAULT_TOP_APP_BAR_ID,
   DEFAULT_BOTTOM_NAV_BAR_ID,
-  isCustomComponentType, 
   CORE_SCAFFOLD_ELEMENT_IDS
 } from '@/types/compose-spec';
 import { PropertyEditor } from './PropertyEditor';
@@ -68,8 +67,8 @@ export function PropertyPanel() {
   };
 
   let componentPropsDefSourceType = selectedComponent.type;
-  if (isCustomComponentType(selectedComponent.type)) {
-    const template = customComponentTemplates.find(t => t.templateId === selectedComponent.type);
+  if (selectedComponent.templateIdRef) {
+    const template = customComponentTemplates.find(t => t.templateId === selectedComponent.templateIdRef);
     if (template) {
       const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
       if (rootTemplateComponent) {
@@ -104,7 +103,7 @@ export function PropertyPanel() {
   };
 
   const handleDelete = () => {
-    if (CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponent.id)) {
+    if (CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponent.id) && !selectedComponent.templateIdRef) {
         toast({ title: "Action Prevented", description: "Core scaffold elements cannot be deleted.", variant: "destructive" });
         return;
     }
@@ -114,13 +113,21 @@ export function PropertyPanel() {
   };
 
   const handleSaveAsCustom = () => {
-    if (CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponent.id)) {
+    if (CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponent.id) && !selectedComponent.templateIdRef) {
       toast({
         title: "Cannot Save Root Element",
         description: "Core scaffold elements cannot be saved as custom components.",
         variant: "destructive",
       });
       return;
+    }
+    if (selectedComponent.templateIdRef) { // Prevent saving an instance of a custom component as another custom component
+        toast({
+          title: "Action Prevented",
+          description: "Cannot save an instance of a custom component as a new custom component template.",
+          variant: "destructive",
+        });
+        return;
     }
     const name = window.prompt("Enter a name for your custom component:", selectedComponent.name);
     if (name && name.trim() !== "") {
@@ -192,11 +199,19 @@ export function PropertyPanel() {
   const groupedProperties: GroupedProperties = {};
   const propertyGroups: string[] = [];
 
-  const sourceComponentForCornerRadius = isCustomComponentType(selectedComponent.type)
-    ? customComponentTemplates.find(t => t.templateId === selectedComponent.type)?.componentTree.find(c => c.id === customComponentTemplates.find(t => t.templateId === selectedComponent.type)?.rootComponentId)
-    : selectedComponent;
+  let sourceComponentForCornerRadiusType = selectedComponent.type;
+   if (selectedComponent.templateIdRef) {
+    const template = customComponentTemplates.find(t => t.templateId === selectedComponent.templateIdRef);
+    if (template) {
+      const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
+      if (rootTemplateComponent) {
+        sourceComponentForCornerRadiusType = rootTemplateComponent.type; 
+      }
+    }
+  }
 
-  if (sourceComponentForCornerRadius && ['Image', 'Box', 'Card'].includes(sourceComponentForCornerRadius.type)) {
+
+  if (['Image', 'Box', 'Card'].includes(sourceComponentForCornerRadiusType)) {
     const { cornerRadiusTopLeft, cornerRadiusTopRight, cornerRadiusBottomRight, cornerRadiusBottomLeft } = selectedComponent.properties;
     const allCornersHaveValue = typeof cornerRadiusTopLeft === 'number' && typeof cornerRadiusTopRight === 'number' && typeof cornerRadiusBottomRight === 'number' && typeof cornerRadiusBottomLeft === 'number';
     const allCornersAreEqual = allCornersHaveValue && cornerRadiusTopLeft === cornerRadiusTopRight && cornerRadiusTopLeft === cornerRadiusBottomRight && cornerRadiusTopLeft === cornerRadiusBottomLeft;
@@ -265,7 +280,7 @@ export function PropertyPanel() {
     }
 
 
-    if (propDef.name === 'src' && (selectedComponent.type === 'Image' || (sourceComponentForCornerRadius && sourceComponentForCornerRadius.type === 'Image'))) {
+    if (propDef.name === 'src' && (selectedComponent.type === 'Image' || (sourceComponentForCornerRadiusType === 'Image'))) {
       const imageButtons = (
         <div key="src-buttons" className="mt-1.5 space-y-1.5">
            <div className="flex gap-1.5">
@@ -292,8 +307,14 @@ export function PropertyPanel() {
     return a.localeCompare(b);
   });
 
-  const componentDisplayName = getComponentDisplayName(selectedComponent.type, customComponentTemplates.find(t => t.templateId === selectedComponent.type)?.name);
-  const isCoreScaffoldElement = CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponent.id);
+  let componentDisplayName;
+  if (selectedComponent.templateIdRef) {
+    componentDisplayName = customComponentTemplates.find(t => t.templateId === selectedComponent.templateIdRef)?.name || getComponentDisplayName(selectedComponent.type as ComponentType);
+  } else {
+    componentDisplayName = getComponentDisplayName(selectedComponent.type as ComponentType);
+  }
+  const isCoreScaffoldElement = CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponent.id) && !selectedComponent.templateIdRef;
+
 
   return (
     <aside className="w-72 border-l bg-sidebar p-4 flex flex-col shrink-0">
@@ -303,7 +324,7 @@ export function PropertyPanel() {
           {selectedComponent.name}
         </h2>
         <div className="flex items-center">
-          {!isCoreScaffoldElement && !isCustomComponentType(selectedComponent.type) && (
+          {!isCoreScaffoldElement && !selectedComponent.templateIdRef && ( // Also check !selectedComponent.templateIdRef
             <Button variant="ghost" size="icon" onClick={handleSaveAsCustom} className="text-sidebar-primary hover:bg-primary/10 h-7 w-7" aria-label="Save as custom component">
               <Save className="h-4 w-4" />
             </Button>
@@ -318,7 +339,7 @@ export function PropertyPanel() {
       {/* Fixed Part: Instance Name */}
       <div className="mb-4 shrink-0">
         <Label htmlFor="componentName" className="text-xs">Instance Name</Label>
-        <Input id="componentName" type="text" value={selectedComponent.name} onChange={handleNameChange} className="h-8 text-sm mt-1.5" disabled={isCoreScaffoldElement && !isCustomComponentType(selectedComponent.type)} />
+        <Input id="componentName" type="text" value={selectedComponent.name} onChange={handleNameChange} className="h-8 text-sm mt-1.5" disabled={isCoreScaffoldElement} />
       </div>
 
       {/* Scrollable Part: Tabs with Properties */}
@@ -339,7 +360,7 @@ export function PropertyPanel() {
               <TabsContent key={group} value={group} className="mt-0 focus-visible:ring-0 focus-visible:ring-offset-0">
                 <div className="space-y-3">
                   {groupedProperties[group]}
-                   {(selectedComponent.type === 'Image' || (sourceComponentForCornerRadius && sourceComponentForCornerRadius.type === 'Image')) && group === 'Content' && !groupedProperties[group].find(el => (el as React.ReactElement)?.key === 'src-buttons')
+                   {(selectedComponent.type === 'Image' || (sourceComponentForCornerRadiusType === 'Image')) && group === 'Content' && !groupedProperties[group].find(el => (el as React.ReactElement)?.key === 'src-buttons')
                    && (
                     <div className="mt-3 pt-3 border-t border-sidebar-border">
                       <Button onClick={handleGenerateImage} disabled={isGeneratingImage || !selectedComponent.properties['data-ai-hint']} className="w-full" size="sm" >
@@ -358,3 +379,4 @@ export function PropertyPanel() {
     </aside>
   );
 }
+

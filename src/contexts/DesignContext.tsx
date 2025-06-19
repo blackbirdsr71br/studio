@@ -4,17 +4,17 @@
 import type { ReactNode} from 'react';
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { DesignComponent, DesignState, ComponentType, BaseComponentProps, CustomComponentTemplate, SavedLayout } from '@/types/compose-spec';
-import { getDefaultProperties, CUSTOM_COMPONENT_TYPE_PREFIX, isCustomComponentType, isContainerType, getComponentDisplayName, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID } from '@/types/compose-spec';
+import { getDefaultProperties, CUSTOM_COMPONENT_TYPE_PREFIX, isCustomComponentType, isContainerType, getComponentDisplayName, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID, CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
 import { db } from '@/lib/firebase';
 import { collection, doc, setDoc, getDocs, deleteDoc, updateDoc, query, orderBy } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 
 
 interface DesignContextType extends DesignState {
-  addComponent: (type: ComponentType | string, parentId?: string | null, dropPosition?: { x: number; y: number }) => void;
+  addComponent: (typeOrTemplateId: ComponentType | string, parentId?: string | null, dropPosition?: { x: number; y: number }) => void;
   deleteComponent: (id: string) => void;
   selectComponent: (id: string | null) => void;
-  updateComponent: (id: string, updates: { name?: string; properties?: Partial<BaseComponentProps> }) => void;
+  updateComponent: (id: string, updates: { name?: string; properties?: Partial<BaseComponentProps>; templateIdRef?: string }) => void;
   updateComponentPosition: (id: string, position: { x: number; y: number }) => void;
   getComponentById: (id: string) => DesignComponent | undefined;
   clearDesign: () => void;
@@ -34,8 +34,6 @@ const DesignContext = createContext<DesignContextType | undefined>(undefined);
 
 const CUSTOM_TEMPLATES_COLLECTION = 'customComponentTemplates';
 const SAVED_LAYOUTS_COLLECTION = 'savedLayouts';
-
-const CORE_SCAFFOLD_ELEMENT_IDS = [ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_BOTTOM_NAV_BAR_ID];
 
 
 const deepClone = <T>(obj: T): T => {
@@ -142,7 +140,7 @@ const flattenComponentsFromModalJson = (
 
   for (const modalNode of modalNodes) {
     // Ensure modalNode and modalNode.properties exist before destructuring
-    const { properties: modalNodeProperties, parentId: _modalNodeOriginalParentId, ...baseModalNodeData } = modalNode || {};
+    const { properties: modalNodeProperties, parentId: _modalNodeOriginalParentId, templateIdRef, ...baseModalNodeData } = modalNode || {};
     const { children: nestedModalChildrenObjects, ...scalarModalProperties } = modalNodeProperties || {};
 
     // If essential baseModalNodeData (like id, type, name) is missing, skip this node
@@ -176,6 +174,7 @@ const flattenComponentsFromModalJson = (
         ...designComponentProperties,
         children: designComponentChildIds, // This should only contain direct children IDs
       },
+      templateIdRef: templateIdRef, // Carry over templateIdRef if present
     };
     flatList.push(newDesignComponent);
   }
@@ -282,15 +281,10 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     [designState.components]
   );
 
-  const getComponentDisplayNameResolved = useCallback((type: ComponentType | string): string => {
-    return getComponentDisplayName(type, designState.customComponentTemplates.find(t => t.templateId === type)?.name);
-  }, [designState.customComponentTemplates]);
-
-
   const addComponent = useCallback((
-    type: ComponentType | string,
+    typeOrTemplateId: ComponentType | string, // Can be base type like 'Text' or a templateId like 'custom/my-template'
     parentIdOrNull: string | null = DEFAULT_CONTENT_LAZY_COLUMN_ID,
-    _dropPosition?: { x: number; y: number } // dropPosition currently unused due to slot logic
+    _dropPosition?: { x: number; y: number }
   ) => {
     setDesignState(prev => {
       let currentNextId = prev.nextId;
@@ -298,23 +292,22 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       let finalSelectedComponentId = '';
       let componentsToAdd: DesignComponent[] = [];
       let effectiveParentId = parentIdOrNull;
-
+  
       const rootScaffold = updatedComponentsList.find(c => c.id === ROOT_SCAFFOLD_ID);
       if (!rootScaffold) {
         console.error("Root Scaffold not found. Cannot add component.");
         return prev;
       }
       
-      // Determine the correct parent based on type and target
-      if (type === 'TopAppBar') {
+      // Determine the correct parent based on typeOrTemplateId and target
+      if (typeOrTemplateId === 'TopAppBar') {
         effectiveParentId = ROOT_SCAFFOLD_ID;
-        // Prevent adding if a TopAppBar already exists as a child of Scaffold
         const existingTopAppBar = updatedComponentsList.find(c => c.parentId === ROOT_SCAFFOLD_ID && c.type === 'TopAppBar');
-        if (existingTopAppBar && existingTopAppBar.id !== DEFAULT_TOP_APP_BAR_ID) { // Allow replacing placeholder
+        if (existingTopAppBar && existingTopAppBar.id !== DEFAULT_TOP_APP_BAR_ID) {
              toast({title: "Info", description: "A TopAppBar already exists. Replace it or add items to it.", variant: "default"});
-             return prev; // Or select existing one
+             return prev;
         }
-      } else if (type === 'BottomNavigationBar') {
+      } else if (typeOrTemplateId === 'BottomNavigationBar') {
         effectiveParentId = ROOT_SCAFFOLD_ID;
         const existingBottomNav = updatedComponentsList.find(c => c.parentId === ROOT_SCAFFOLD_ID && c.type === 'BottomNavigationBar');
         if (existingBottomNav && existingBottomNav.id !== DEFAULT_BOTTOM_NAV_BAR_ID) {
@@ -322,18 +315,13 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
              return prev;
         }
       } else if (parentIdOrNull === ROOT_SCAFFOLD_ID) {
-        // General components cannot be direct children of Scaffold, redirect to content area
         effectiveParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
       } else if (!parentIdOrNull) {
-        // Default to content area if no parent specified
         effectiveParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
       }
-
-
-      // Ensure the effectiveParentId exists and is a valid container
+  
       let parentComponent = updatedComponentsList.find(c => c.id === effectiveParentId);
       if (!parentComponent || !isContainerType(parentComponent.type, prev.customComponentTemplates)) {
-        // If targeted parent is not a container (e.g. dropping on a Text), try its parent, or default to content.
         const originalTarget = updatedComponentsList.find(c => c.id === parentIdOrNull);
         if(originalTarget && originalTarget.parentId && updatedComponentsList.find(c => c.id === originalTarget.parentId && isContainerType(c.type, prev.customComponentTemplates))) {
             effectiveParentId = originalTarget.parentId;
@@ -342,85 +330,93 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             effectiveParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
         }
       }
-
-
-      if (isCustomComponentType(type as string)) {
-        const appTemplateId = type as string;
+  
+      if (isCustomComponentType(typeOrTemplateId)) {
+        const appTemplateId = typeOrTemplateId;
         const template = prev.customComponentTemplates.find(t => t.templateId === appTemplateId);
-
+  
         if (!template) {
           console.error(`Custom template ${appTemplateId} not found.`);
           return prev;
         }
-
+  
         const finalIdMap: Record<string, string> = {};
         const finalNewComponentsBatch: DesignComponent[] = [];
         let instantiatedTemplateRootId = "";
-
+  
         template.componentTree.forEach(templateComp => {
           const newInstanceCompId = `inst-${templateComp.type.toLowerCase().replace(/\s+/g, '-')}-${currentNextId}`;
           finalIdMap[templateComp.id] = newInstanceCompId;
           currentNextId++;
         });
-
+  
         template.componentTree.forEach(templateComp => {
           const newInstanceCompId = finalIdMap[templateComp.id];
-          const newInstanceComp = deepClone(templateComp);
-          newInstanceComp.id = newInstanceCompId;
-          newInstanceComp.name = templateComp.name;
-
+          const clonedTemplateComp = deepClone(templateComp); // Clone to avoid modifying template
+          
+          const newInstanceComp: DesignComponent = {
+            id: newInstanceCompId,
+            type: clonedTemplateComp.type, // Use original type from template
+            name: clonedTemplateComp.name, // Use original name from template
+            properties: { // Layer properties: default for type -> template's properties
+              ...getDefaultProperties(clonedTemplateComp.type as ComponentType, newInstanceCompId),
+              ...clonedTemplateComp.properties,
+            },
+            parentId: templateComp.parentId ? finalIdMap[templateComp.parentId] : null,
+            // templateIdRef will be set only for the root instance of the custom component
+          };
+  
           if (templateComp.id === template.rootComponentId) {
-            newInstanceComp.name = `${template.name} Instance`;
+            newInstanceComp.name = template.name; // Set name to template name, not "Instance"
             instantiatedTemplateRootId = newInstanceCompId;
-            newInstanceComp.parentId = effectiveParentId; // Correct parent assignment
-            newInstanceComp.type = appTemplateId; // Keep the custom type for the root
-          } else {
-            newInstanceComp.parentId = templateComp.parentId ? finalIdMap[templateComp.parentId] : null;
+            newInstanceComp.parentId = effectiveParentId;
+            newInstanceComp.templateIdRef = appTemplateId; // Store the reference to the custom template ID
+            // The type is already set to original type from template
           }
-
+  
           if (newInstanceComp.properties.children && Array.isArray(newInstanceComp.properties.children)) {
             newInstanceComp.properties.children = newInstanceComp.properties.children
               .map(childIdFromTemplate => finalIdMap[childIdFromTemplate])
               .filter(childId => !!childId);
           }
+          // Remove templateIdRef if it was on non-root parts of a saved template (should not happen)
+          if (templateComp.id !== template.rootComponentId) {
+            delete newInstanceComp.templateIdRef;
+          }
           finalNewComponentsBatch.push(newInstanceComp);
         });
-
+  
         finalSelectedComponentId = instantiatedTemplateRootId;
         componentsToAdd.push(...finalNewComponentsBatch);
         updatedComponentsList.push(...componentsToAdd);
-
-      } else {
+  
+      } else { // Adding a base component
         const newId = `comp-${currentNextId++}`;
         finalSelectedComponentId = newId;
-        const defaultProps = getDefaultProperties(type as ComponentType, newId);
-
+        const defaultProps = getDefaultProperties(typeOrTemplateId as ComponentType, newId);
+  
         const newComponent: DesignComponent = {
           id: newId,
-          type: type as ComponentType,
-          name: `${getComponentDisplayNameResolved(type as ComponentType)} ${newId.split('-')[1]}`,
+          type: typeOrTemplateId as ComponentType,
+          name: `${getComponentDisplayName(typeOrTemplateId as ComponentType)} ${newId.split('-')[1]}`,
           properties: { ...defaultProps },
-          parentId: effectiveParentId, // Correct parent assignment
+          parentId: effectiveParentId,
         };
-
+  
         componentsToAdd.push(newComponent);
         updatedComponentsList.push(...componentsToAdd);
       }
-
-      // Update parent's children array
+  
       if (effectiveParentId && componentsToAdd.length > 0) {
         const parentCompIndex = updatedComponentsList.findIndex(c => c.id === effectiveParentId);
         if (parentCompIndex !== -1) {
             const currentParent = updatedComponentsList[parentCompIndex];
-            if (isContainerType(currentParent.type, prev.customComponentTemplates)) {
+            if (isContainerType(currentParent.type, prev.customComponentTemplates) || currentParent.templateIdRef) { // Also check if parent is an instance of a custom container
                 const childrenIdsToAdd = componentsToAdd
-                    .filter(c => c.parentId === effectiveParentId) // Only direct children for this parent
+                    .filter(c => c.parentId === effectiveParentId)
                     .map(c => c.id);
                 const existingChildren = Array.isArray(currentParent.properties.children) ? currentParent.properties.children : [];
-                
-                // Prevent duplicates, though new IDs should be unique
                 const newChildrenSet = new Set([...existingChildren, ...childrenIdsToAdd]);
-
                 updatedComponentsList[parentCompIndex] = {
                     ...currentParent,
                     properties: {
@@ -432,21 +428,20 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         }
       }
       
-      // Ensure scaffold children array is correctly maintained for slot components
-      if (effectiveParentId === ROOT_SCAFFOLD_ID && (type === 'TopAppBar' || type === 'BottomNavigationBar')) {
+      if (effectiveParentId === ROOT_SCAFFOLD_ID && (typeOrTemplateId === 'TopAppBar' || typeOrTemplateId === 'BottomNavigationBar')) {
         const scaffoldIndex = updatedComponentsList.findIndex(c => c.id === ROOT_SCAFFOLD_ID);
         if (scaffoldIndex !== -1) {
           const scaffold = updatedComponentsList[scaffoldIndex];
-          const newChildId = componentsToAdd[0].id; // Assuming one slot component added at a time
+          const newChildId = componentsToAdd[0].id;
           let scaffoldChildren = [...(scaffold.properties.children || [])];
-          if (type === 'TopAppBar') {
+          if (typeOrTemplateId === 'TopAppBar') {
             const existingTopBarIndex = scaffoldChildren.indexOf(DEFAULT_TOP_APP_BAR_ID);
             if(existingTopBarIndex !== -1) scaffoldChildren.splice(existingTopBarIndex, 1, newChildId);
-            else scaffoldChildren.unshift(newChildId); // Add to beginning if placeholder was missing
-          } else if (type === 'BottomNavigationBar') {
+            else scaffoldChildren.unshift(newChildId);
+          } else if (typeOrTemplateId === 'BottomNavigationBar') {
              const existingBottomNavIndex = scaffoldChildren.indexOf(DEFAULT_BOTTOM_NAV_BAR_ID);
              if(existingBottomNavIndex !== -1) scaffoldChildren.splice(existingBottomNavIndex, 1, newChildId);
-             else scaffoldChildren.push(newChildId); // Add to end
+             else scaffoldChildren.push(newChildId);
           }
           updatedComponentsList[scaffoldIndex] = {
             ...scaffold,
@@ -454,10 +449,9 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           };
         }
       }
-
-
+  
       const finalUniqueComponents = updatedComponentsList.filter((comp, index, self) => index === self.findIndex(t => t.id === comp.id));
-
+  
       return {
         ...prev,
         components: finalUniqueComponents,
@@ -465,7 +459,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         nextId: currentNextId,
       };
     });
-  }, [getComponentById, designState.customComponentTemplates, getComponentDisplayNameResolved, isLoadingTemplates, toast]);
+  }, [getComponentById, designState.customComponentTemplates, toast]);
 
 
   const saveSelectedAsCustomTemplate = useCallback(async (name: string) => {
@@ -485,6 +479,15 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         });
         return;
     }
+     if (selectedComponent.templateIdRef) { // Check if it's already an instance of a custom component
+        toast({
+            title: "Action Prevented",
+            description: "Cannot save an instance of a custom component as a new custom component template directly. Consider detaching or rebuilding.",
+            variant: "destructive",
+        });
+        return;
+    }
+
 
     const templateComponentTree: DesignComponent[] = [];
     const idMap: Record<string, string> = {};
@@ -502,6 +505,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const clonedComp = deepClone(originalComp);
       clonedComp.id = templateLocalId;
       clonedComp.parentId = newTemplateParentId;
+      delete clonedComp.templateIdRef; // Templates themselves don't have templateIdRefs
 
 
       if (clonedComp.properties.children && Array.isArray(clonedComp.properties.children)) {
@@ -659,15 +663,14 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setDesignState(prev => ({ ...prev, selectedComponentId: id }));
   }, []);
 
-  const updateComponent = useCallback((id: string, updates: { name?: string; properties?: Partial<BaseComponentProps> }) => {
+  const updateComponent = useCallback((id: string, updates: { name?: string; properties?: Partial<BaseComponentProps>; templateIdRef?: string }) => {
     setDesignState(prev => ({
       ...prev,
       components: prev.components.map(comp => {
         if (comp.id === id) {
           let newComp = { ...comp, properties: { ...comp.properties} };
           if (updates.name !== undefined) {
-            if (CORE_SCAFFOLD_ELEMENT_IDS.includes(id)) {
-                // Prevent renaming core scaffold elements from user input
+            if (CORE_SCAFFOLD_ELEMENT_IDS.includes(id) && !comp.templateIdRef) { // Only prevent renaming core scaffold elements if they are not part of a custom template instance
                 if (id === ROOT_SCAFFOLD_ID) newComp.name = "Root Scaffold";
                 else if (id === DEFAULT_TOP_APP_BAR_ID) newComp.name = "Top App Bar";
                 else if (id === DEFAULT_CONTENT_LAZY_COLUMN_ID) newComp.name = "Main Content Area";
@@ -678,6 +681,9 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           }
           if (updates.properties !== undefined) {
             newComp.properties = { ...newComp.properties, ...updates.properties };
+          }
+          if (updates.templateIdRef !== undefined) { // Allow updating templateIdRef
+            newComp.templateIdRef = updates.templateIdRef;
           }
           return newComp;
         }
@@ -866,7 +872,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
              console.warn(`moveComponent: Dragged component with ID ${draggedId} not found.`);
              return prev;
         }
-        if (CORE_SCAFFOLD_ELEMENT_IDS.includes(draggedId)) {
+        if (CORE_SCAFFOLD_ELEMENT_IDS.includes(draggedId) && !currentComponents[draggedComponentIndexInState].templateIdRef) {
             toast({title: "Move Prevented", description: "Core scaffold elements cannot be moved arbitrarily.", variant: "destructive"});
             return prev;
         }
@@ -926,7 +932,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 const newParent = { ...currentComponents[newParentActualIndexInState] };
                 newParent.properties = { ...newParent.properties };
 
-                if (isContainerType(newParent.type, prev.customComponentTemplates)) {
+                if (isContainerType(newParent.type, prev.customComponentTemplates) || newParent.templateIdRef) { // Also check if newParent is an instance of a custom container
                     let childrenArray = Array.isArray(newParent.properties.children) ? [...newParent.properties.children] : [];
                     childrenArray = childrenArray.filter(id => id !== draggedId); // Remove if already exists (e.g., due to reordering)
 
@@ -959,7 +965,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         return { ...prev, components: finalComponents, selectedComponentId: draggedId };
     });
-  }, [toast]);
+  }, [toast, designState.customComponentTemplates]);
 
   const deleteCustomComponentTemplate = useCallback(async (appTemplateId: string, firestoreDocId?: string) => {
     if (!db) {

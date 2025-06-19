@@ -98,18 +98,19 @@ export interface BaseComponentProps {
 
 export interface DesignComponent {
   id: string;
-  type: ComponentType | string;
+  type: ComponentType | string; // For instances of custom components, this will be the original base type.
   name: string;
   properties: BaseComponentProps & { children?: string[] };
   parentId?: string | null;
+  templateIdRef?: string; // If this component is an instance of a custom template, this holds the templateId (e.g., "custom/my-template-123")
 }
 
 export interface CustomComponentTemplate {
   firestoreId?: string; // ID of the document in Firestore
-  templateId: string;
+  templateId: string; // The ID used as a reference (e.g., "custom/my-template-123")
   name: string;
-  rootComponentId: string;
-  componentTree: DesignComponent[];
+  rootComponentId: string; // The local ID of the root component within componentTree
+  componentTree: DesignComponent[]; // The structure of the template
 }
 
 export interface SavedLayout {
@@ -319,17 +320,19 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         verticalAlignment: 'CenterVertically'
       };
     default:
-      if (isCustomComponentType(type)) {
-        return { ...commonLayout, children: [], width: 'wrap_content', height: 'wrap_content', padding: 0, fillMaxWidth: false, fillMaxHeight: false, selfAlign: 'Inherit' };
+      // For unknown types (which shouldn't happen for base types, but could be a template ID passed inadvertently)
+      // or if a type string like `custom/...` is passed directly.
+      if (type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
+         console.warn(`getDefaultProperties called with a custom template ID '${type}'. This is unexpected. Returning generic defaults.`);
+         return { ...commonLayout, children: [], width: 'wrap_content', height: 'wrap_content', padding: 0, fillMaxWidth: false, fillMaxHeight: false, selfAlign: 'Inherit' };
       }
       return {...commonLayout, width: 'wrap_content', height: 'wrap_content', padding: 0, fillMaxWidth: false, fillMaxHeight: false, selfAlign: 'Inherit' };
   }
 };
 
-export const getComponentDisplayName = (type: ComponentType | string, templateName?: string): string => {
-  if (type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
-    return templateName || type.replace(CUSTOM_COMPONENT_TYPE_PREFIX, "").replace(/-\d+$/, "");
-  }
+// This function primarily provides display names for base component types.
+// The PropertyPanel will handle displaying the custom template's name for instances.
+export const getComponentDisplayName = (type: ComponentType | string): string => {
   switch (type as ComponentType) {
     case 'Scaffold': return 'Scaffold (Root)';
     case 'Text': return 'Text';
@@ -346,7 +349,12 @@ export const getComponentDisplayName = (type: ComponentType | string, templateNa
     case 'Spacer': return 'Spacer';
     case 'TopAppBar': return 'Top App Bar';
     case 'BottomNavigationBar': return 'Bottom Nav Bar';
-    default: return 'Unknown';
+    default: 
+      // If a custom type ID (e.g., "custom/...") was passed by mistake, try to make it readable.
+      if (type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
+        return type.replace(CUSTOM_COMPONENT_TYPE_PREFIX, "").replace(/-\d+$/, "").replace(/-/g, ' ');
+      }
+      return 'Unknown Component';
   }
 };
 
@@ -619,21 +627,24 @@ export const CONTAINER_TYPES: ReadonlyArray<ComponentType | string > = [
   'Scaffold' // Scaffold is the root container
 ];
 
+// Checks if a given component type string represents a container.
+// If type is a custom component ID, customTemplates must be provided to resolve its base type.
 export function isContainerType(type: ComponentType | string, customTemplates?: CustomComponentTemplate[]): boolean {
   if (type === 'Spacer') return false;
+
   if (isCustomComponentType(type)) {
     if (customTemplates) {
       const template = customTemplates.find(t => t.templateId === type);
       if (template && template.rootComponentId) {
         const rootOfTemplate = template.componentTree.find(c => c.id === template.rootComponentId);
         if (rootOfTemplate) {
-          // Recursively check if the root of the custom component is a container
+          // Recursively check if the root of the custom component is a container (passing customTemplates down)
           return isContainerType(rootOfTemplate.type, customTemplates);
         }
       }
     }
-    // If template not found or no root, assume not a container by default for safety,
-    // or decide based on a property of the custom component itself if you add one.
+    // If template not found or no root, or customTemplates not provided for a custom type string,
+    // assume not a container by default for safety.
     return false;
   }
   return CONTAINER_TYPES.includes(type as ComponentType);
@@ -698,6 +709,7 @@ type ModalComponentNodePlain = {
   type: string; // Could be ComponentType or custom template ID string
   name: string;
   parentId: string | null; // For content area items, parentId would be their container *within* the content area
+  templateIdRef?: string; // If it's an instance of a custom component
   properties?: Partial<BaseComponentProps> & { children?: ModalComponentNodePlain[] };
 };
 
@@ -708,6 +720,7 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
     type: z.string().min(1, "Component type cannot be empty"), // Validate against known types if stricter control is needed
     name: z.string().min(1, "Component name cannot be empty"),
     parentId: z.string().nullable(), // This parentId is relative to other components in the content area JSON
+    templateIdRef: z.string().startsWith(CUSTOM_COMPONENT_TYPE_PREFIX).optional(),
     properties: BaseModalPropertiesSchema.extend({
       children: z.array(ModalComponentNodeSchema).optional(), // Recursively define children
     }).optional(),

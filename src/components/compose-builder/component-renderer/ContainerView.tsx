@@ -34,20 +34,26 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   let effectiveType: OriginalComponentType | string = component.type;
   let basePropertiesFromTemplateRoot: DesignComponent['properties'] = {};
 
-  if (isCustomComponentType(component.type)) {
-    const template = customComponentTemplates.find(t => t.templateId === component.type);
+  if (component.templateIdRef) { // Check templateIdRef instead of isCustomComponentType(component.type)
+    const template = customComponentTemplates.find(t => t.templateId === component.templateIdRef);
     if (template) {
       const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
       if (rootTemplateComponent) {
-        effectiveType = rootTemplateComponent.type;
+        effectiveType = rootTemplateComponent.type; // Use the original type of the template's root
         basePropertiesFromTemplateRoot = { ...rootTemplateComponent.properties };
+      } else {
+        console.warn(`Root component for template ${component.templateIdRef} not found in its tree.`);
+        // Fallback to instance type if template root is missing, though this is an error state
+        effectiveType = component.type; 
       }
+    } else {
+        console.warn(`Custom template with ID ${component.templateIdRef} not found.`);
+        // Fallback to instance type if template definition is missing
+        effectiveType = component.type;
     }
   }
   
   // Merge template root properties with instance properties, instance overrides.
-  // Children from the instance (component.properties.children) should generally be used if available,
-  // as they represent the current children being passed for rendering, not template's internal structure.
   const effectiveProperties = { 
     ...basePropertiesFromTemplateRoot, 
     ...component.properties 
@@ -330,7 +336,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
                         (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID && childrenComponents.length === 0) ||
                         (![DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID].includes(component.id) && childrenComponents.length === 0 && effectiveType !== 'Box');
 
-  const placeholderText = `Drop components into this ${getComponentDisplayName(effectiveType, component.name)}`;
+  const placeholderText = `Drop components into this ${getComponentDisplayName(effectiveType as OriginalComponentType)}`;
 
 
   const topAppBarTitleElement = effectiveType === 'TopAppBar' && title ? (
@@ -355,3 +361,4 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     </div>
   );
 }
+
