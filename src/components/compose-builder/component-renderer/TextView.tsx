@@ -32,18 +32,45 @@ export function TextView({ properties }: TextViewProps) {
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
     lineHeight: lineHeight,
-    display: 'inline-block',
     fontWeight: fontWeight.toLowerCase() as 'normal' | 'bold',
     fontStyle: fontStyle.toLowerCase() as 'normal' | 'italic',
     textAlign: textAlign.toLowerCase() as 'left' | 'center' | 'right' | 'justify' | 'start' | 'end',
     textDecorationLine: textDecoration === 'LineThrough' ? 'line-through' : textDecoration.toLowerCase(),
+    // color is set below
+    // width and display are set below
   };
 
   if (textColor !== undefined) {
     style.color = textColor;
   } else {
+    // This var is set by ContainerView or RenderedComponentWrapper for context
     style.color = 'var(--effective-foreground-color, hsl(var(--foreground)))';
   }
+
+  if (properties.fillMaxWidth) {
+    style.width = '100%';
+    style.display = 'block'; // Use 'block' so textAlign works as expected over the full width
+  } else if (typeof properties.width === 'number') {
+    style.width = `${properties.width}px`;
+    style.display = 'block'; // If a specific width is set, it should behave as a block
+  } else if (properties.width === 'wrap_content') {
+    style.display = 'inline-block'; // Default wrap_content behavior
+    style.width = 'auto';
+  } else { // Fallback for undefined or other string values for width
+    style.display = 'inline-block';
+    style.width = 'auto';
+  }
+
+  // TextView typically wraps its height based on content, unless a specific height is given.
+  // If fillMaxHeight were relevant here, similar logic would apply for height.
+  if (typeof properties.height === 'number') {
+    style.height = `${properties.height}px`;
+    // Potentially add overflow handling if text exceeds fixed height
+  } else if (properties.fillMaxHeight) {
+    style.height = '100%';
+    // Potentially add overflow handling
+  }
+
 
   return (
     <div style={style} className="select-none">
