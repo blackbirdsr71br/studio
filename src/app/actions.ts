@@ -86,6 +86,7 @@ const buildComponentTreeForAi = (
     type: currentComponent.type,
     name: currentComponent.name,
     properties: nodeProperties,
+    ...(currentComponent.templateIdRef && { templateIdRef: currentComponent.templateIdRef }),
   };
 
   // Recursively build children for container types (excluding Scaffold itself here)
@@ -139,6 +140,7 @@ interface ModalJsonNode {
   name: string;
   parentId: string | null;
   properties: BaseComponentProps; // Will contain nested children: ModalJsonNode[] if container
+  templateIdRef?: string; // Added to ModalJsonNode
 }
 
 // Helper for "View JSON" modal (hierarchical, children in properties.children)
@@ -170,8 +172,8 @@ const buildContentComponentTreeForModalJson = (
         name: component.name,
         parentId: component.parentId, // This parentId is correct for components *within* the content area
         properties: cleanedOtherProperties,
-        templateIdRef: component.templateIdRef, // Include templateIdRef if present
-      } as ModalJsonNode; // Type assertion needed if templateIdRef is not in ModalJsonNode interface by default
+        ...(component.templateIdRef && { templateIdRef: component.templateIdRef }), // Include templateIdRef if present
+      };
 
       // Recursively build for children if this component is a container
       if (isContainerType(component.type, customComponentTemplates)) {
@@ -230,9 +232,19 @@ const buildFlatContentTreeForRemoteConfig = (
 
     const component = allComponents.find(c => c.id === currentId);
     if (component) {
+      const componentPropertiesCopy = { ...component.properties };
+
+      // Convert width/height to string if numeric for Remote Config JSON
+      if (typeof componentPropertiesCopy.width === 'number') {
+        componentPropertiesCopy.width = String(componentPropertiesCopy.width);
+      }
+      if (typeof componentPropertiesCopy.height === 'number') {
+        componentPropertiesCopy.height = String(componentPropertiesCopy.height);
+      }
+
       const cleanedComponent = {
         ...component,
-        properties: cleanEmptyOrNullProperties({ ...component.properties }),
+        properties: cleanEmptyOrNullProperties(componentPropertiesCopy),
       };
       // For remote config, we still use the array of child IDs in properties.children
       // The hierarchical nesting is only for the AI and View JSON modal.
@@ -285,6 +297,7 @@ export async function publishToRemoteConfigAction(
     
     // Get only the components within the main content area (DEFAULT_CONTENT_LAZY_COLUMN_ID)
     // This remains a flat list of components that are descendants of the content area.
+    // The buildFlatContentTreeForRemoteConfig function now handles stringifying numeric width/height.
     const contentComponentsForRemoteConfig = buildFlatContentTreeForRemoteConfig(components, DEFAULT_CONTENT_LAZY_COLUMN_ID);
     
     const designJsonString = JSON.stringify(contentComponentsForRemoteConfig, null, 2);
