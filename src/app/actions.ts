@@ -156,13 +156,22 @@ const buildContentComponentTreeForModalJson = (
       const { children: _childIdArrayFromProps, ...otherProperties } = componentBaseProperties;
       const cleanedOtherProperties = cleanEmptyOrNullProperties(otherProperties);
 
+      // Convert width/height to string if numeric for modal JSON
+      if (typeof cleanedOtherProperties.width === 'number') {
+        cleanedOtherProperties.width = String(cleanedOtherProperties.width);
+      }
+      if (typeof cleanedOtherProperties.height === 'number') {
+        cleanedOtherProperties.height = String(cleanedOtherProperties.height);
+      }
+
       const node: ModalJsonNode = {
         id: component.id,
         type: component.type,
         name: component.name,
         parentId: component.parentId, // This parentId is correct for components *within* the content area
         properties: cleanedOtherProperties,
-      };
+        templateIdRef: component.templateIdRef, // Include templateIdRef if present
+      } as ModalJsonNode; // Type assertion needed if templateIdRef is not in ModalJsonNode interface by default
 
       // Recursively build for children if this component is a container
       if (isContainerType(component.type, customComponentTemplates)) {
@@ -535,3 +544,5 @@ export async function updateGlobalStylesheetAction(
   }
 }
 
+
+      
