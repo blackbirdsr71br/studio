@@ -208,23 +208,32 @@ export async function getDesignComponentsAsJsonAction(
 }
 
 // Helper to get a flat list of components belonging to the content area for Remote Config
-// This function collects all components that are descendants of startParentId
+// This function collects all components that are descendants of startParentId in hierarchical order.
 const buildFlatContentTreeForRemoteConfig = (
   allComponents: DesignComponent[],
+  customComponentTemplates: CustomComponentTemplate[], // Added for isContainerType
   startParentId: string = DEFAULT_CONTENT_LAZY_COLUMN_ID
 ): DesignComponent[] => {
   const contentAreaComponents: DesignComponent[] = [];
   const queue: string[] = [];
+  const visited = new Set<string>();
 
-  // Start with direct children of the startParentId
-  allComponents.forEach(component => {
-    if (component.parentId === startParentId) {
-      queue.push(component.id);
-    }
-  });
+  // Find the starting parent component (e.g., DEFAULT_CONTENT_LAZY_COLUMN_ID)
+  const rootContentContainer = allComponents.find(c => c.id === startParentId);
+
+  if (rootContentContainer && rootContentContainer.properties.children && Array.isArray(rootContentContainer.properties.children)) {
+    // Enqueue direct children of the startParentId IN THEIR DEFINED ORDER
+    (rootContentContainer.properties.children as string[]).forEach(childId => {
+      if (!visited.has(childId)) { // Should not be necessary here but good for safety
+          queue.push(childId);
+      }
+    });
+  } else {
+    // Fallback or warning if the main content container or its children are not found
+    // This indicates an issue with the initial scaffold state or context data.
+    console.warn(`buildFlatContentTreeForRemoteConfig: Root content container (ID: ${startParentId}) not found or has no children array.`);
+  }
   
-  const visited = new Set<string>(); 
-
   while (queue.length > 0) {
     const currentId = queue.shift()!;
     if (visited.has(currentId)) continue;
@@ -232,7 +241,9 @@ const buildFlatContentTreeForRemoteConfig = (
 
     const component = allComponents.find(c => c.id === currentId);
     if (component) {
-      const componentPropertiesCopy = { ...component.properties };
+      // Create a copy of properties for modification, excluding 'children' initially
+      const { children: _originalChildren, ...otherProps } = component.properties;
+      const componentPropertiesCopy = { ...otherProps };
 
       // Convert width/height to string if numeric for Remote Config JSON
       if (typeof componentPropertiesCopy.width === 'number') {
@@ -242,20 +253,34 @@ const buildFlatContentTreeForRemoteConfig = (
         componentPropertiesCopy.height = String(componentPropertiesCopy.height);
       }
 
-      const cleanedComponent = {
-        ...component,
-        properties: cleanEmptyOrNullProperties(componentPropertiesCopy),
-      };
-      // For remote config, we still use the array of child IDs in properties.children
-      // The hierarchical nesting is only for the AI and View JSON modal.
-      contentAreaComponents.push(cleanedComponent);
+      let finalProperties = cleanEmptyOrNullProperties(componentPropertiesCopy);
 
-      // If this component is a container and has children (IDs), add them to the queue
-      // This refers to the `properties.children` which should be an array of IDs.
+      // Re-assign the original children array (of IDs) from the component state.
+      // This ensures the structure sent to Remote Config is flat regarding children objects.
+      if (component.properties.children && Array.isArray(component.properties.children) && component.properties.children.length > 0) {
+          finalProperties.children = component.properties.children as string[];
+      } else if (isContainerType(component.type, customComponentTemplates) && (!component.properties.children || component.properties.children.length === 0)) {
+          // If it's a known container type and has no children array or an empty one, explicitly add `children: []`.
+          finalProperties.children = [];
+      }
+      // If it's not a container and had no children, 'children' will be omitted from finalProperties by cleanEmptyOrNullProperties.
+
+      const componentToPush: DesignComponent = {
+        id: component.id,
+        type: component.type,
+        name: component.name,
+        parentId: component.parentId,
+        properties: finalProperties,
+        // Conditionally add templateIdRef only if it exists and is not empty
+        ...(component.templateIdRef && component.templateIdRef.trim() !== "" && { templateIdRef: component.templateIdRef }),
+      };
+
+      contentAreaComponents.push(componentToPush);
+
+      // Enqueue children using the original component's children array (must be string IDs)
       if (component.properties.children && Array.isArray(component.properties.children)) {
-        component.properties.children.forEach(childId => {
-          const childComponentExists = allComponents.find(c => c.id === childId);
-          if (childComponentExists && !visited.has(childId)) { 
+        (component.properties.children as string[]).forEach(childId => {
+          if (!visited.has(childId)) { // Check visited before enqueuing
             queue.push(childId);
           }
         });
@@ -268,7 +293,7 @@ const buildFlatContentTreeForRemoteConfig = (
 
 export async function publishToRemoteConfigAction(
   components: DesignComponent[],
-  customComponentTemplates: CustomComponentTemplate[], // Kept for signature consistency
+  customComponentTemplates: CustomComponentTemplate[], 
   parameterKey: string
 ): Promise<{ success: boolean; message: string; version?: string }> {
   console.log("publishToRemoteConfigAction: Initiating publish...");
@@ -295,10 +320,7 @@ export async function publishToRemoteConfigAction(
   try {
     console.log("publishToRemoteConfigAction: Building content component tree for Remote Config...");
     
-    // Get only the components within the main content area (DEFAULT_CONTENT_LAZY_COLUMN_ID)
-    // This remains a flat list of components that are descendants of the content area.
-    // The buildFlatContentTreeForRemoteConfig function now handles stringifying numeric width/height.
-    const contentComponentsForRemoteConfig = buildFlatContentTreeForRemoteConfig(components, DEFAULT_CONTENT_LAZY_COLUMN_ID);
+    const contentComponentsForRemoteConfig = buildFlatContentTreeForRemoteConfig(components, customComponentTemplates, DEFAULT_CONTENT_LAZY_COLUMN_ID);
     
     const designJsonString = JSON.stringify(contentComponentsForRemoteConfig, null, 2);
     
@@ -559,3 +581,5 @@ export async function updateGlobalStylesheetAction(
 
 
       
+
+    
