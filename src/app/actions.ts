@@ -158,20 +158,36 @@ const buildContentComponentTreeForModalJson = (
       const { children: _childIdArrayFromProps, ...otherProperties } = componentBaseProperties;
       const cleanedOtherProperties = cleanEmptyOrNullProperties(otherProperties);
 
-      // Convert width/height to string if numeric for modal JSON
-      if (typeof cleanedOtherProperties.width === 'number') {
-        cleanedOtherProperties.width = String(cleanedOtherProperties.width);
+      // Deconstruct and reconstruct to enforce property order
+      const {
+        width,
+        height,
+        fillMaxWidth,
+        fillMaxHeight,
+        ...restOfProperties
+      } = cleanedOtherProperties;
+
+      const orderedProperties: Record<string, any> = {};
+
+      // Add properties in the desired order, converting numbers to strings for width/height
+      if (width !== undefined) {
+        orderedProperties.width = typeof width === 'number' ? String(width) : width;
       }
-      if (typeof cleanedOtherProperties.height === 'number') {
-        cleanedOtherProperties.height = String(cleanedOtherProperties.height);
+      if (height !== undefined) {
+        orderedProperties.height = typeof height === 'number' ? String(height) : height;
       }
+      if (fillMaxWidth !== undefined) orderedProperties.fillMaxWidth = fillMaxWidth;
+      if (fillMaxHeight !== undefined) orderedProperties.fillMaxHeight = fillMaxHeight;
+      
+      // Add the rest of the properties
+      Object.assign(orderedProperties, restOfProperties);
 
       const node: ModalJsonNode = {
         id: component.id,
         type: component.type,
         name: component.name,
         parentId: component.parentId, // This parentId is correct for components *within* the content area
-        properties: cleanedOtherProperties,
+        properties: orderedProperties,
         ...(component.templateIdRef && { templateIdRef: component.templateIdRef }), // Include templateIdRef if present
       };
 
