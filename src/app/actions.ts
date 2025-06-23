@@ -158,7 +158,7 @@ const buildContentComponentTreeForModalJson = (
       const { children: _childIdArrayFromProps, ...otherProperties } = componentBaseProperties;
       const cleanedOtherProperties = cleanEmptyOrNullProperties(otherProperties);
 
-      // Deconstruct and reconstruct to enforce property order
+      // Deconstruct to isolate the properties we need to order
       const {
         width,
         height,
@@ -169,15 +169,37 @@ const buildContentComponentTreeForModalJson = (
 
       const orderedProperties: Record<string, any> = {};
 
-      // Add properties in the desired order, converting numbers to strings for width/height
-      if (width !== undefined) {
-        orderedProperties.width = typeof width === 'number' ? String(width) : width;
+      // Handle conditional ordering for width and fillMaxWidth
+      if (fillMaxWidth === true) {
+        if (width !== undefined) {
+          orderedProperties.width = typeof width === 'number' ? String(width) : width;
+        }
+        orderedProperties.fillMaxWidth = fillMaxWidth;
+      } else {
+        // If fillMaxWidth is false or undefined, place it before width
+        if (fillMaxWidth !== undefined) {
+          orderedProperties.fillMaxWidth = fillMaxWidth;
+        }
+        if (width !== undefined) {
+          orderedProperties.width = typeof width === 'number' ? String(width) : width;
+        }
       }
-      if (height !== undefined) {
-        orderedProperties.height = typeof height === 'number' ? String(height) : height;
+      
+      // Handle conditional ordering for height and fillMaxHeight
+      if (fillMaxHeight === true) {
+        if (height !== undefined) {
+          orderedProperties.height = typeof height === 'number' ? String(height) : height;
+        }
+        orderedProperties.fillMaxHeight = fillMaxHeight;
+      } else {
+        // If fillMaxHeight is false or undefined, place it before height
+        if (fillMaxHeight !== undefined) {
+          orderedProperties.fillMaxHeight = fillMaxHeight;
+        }
+        if (height !== undefined) {
+          orderedProperties.height = typeof height === 'number' ? String(height) : height;
+        }
       }
-      if (fillMaxWidth !== undefined) orderedProperties.fillMaxWidth = fillMaxWidth;
-      if (fillMaxHeight !== undefined) orderedProperties.fillMaxHeight = fillMaxHeight;
       
       // Add the rest of the properties
       Object.assign(orderedProperties, restOfProperties);
@@ -222,90 +244,6 @@ export async function getDesignComponentsAsJsonAction(
     return "An unknown error occurred while generating JSON for components.";
   }
 }
-
-// Helper to get a flat list of components belonging to the content area for Remote Config
-// This function collects all components that are descendants of startParentId in hierarchical order.
-const buildFlatContentTreeForRemoteConfig = (
-  allComponents: DesignComponent[],
-  customComponentTemplates: CustomComponentTemplate[], // Added for isContainerType
-  startParentId: string = DEFAULT_CONTENT_LAZY_COLUMN_ID
-): DesignComponent[] => {
-  const contentAreaComponents: DesignComponent[] = [];
-  const queue: string[] = [];
-  const visited = new Set<string>();
-
-  // Find the starting parent component (e.g., DEFAULT_CONTENT_LAZY_COLUMN_ID)
-  const rootContentContainer = allComponents.find(c => c.id === startParentId);
-
-  if (rootContentContainer && rootContentContainer.properties.children && Array.isArray(rootContentContainer.properties.children)) {
-    // Enqueue direct children of the startParentId IN THEIR DEFINED ORDER
-    (rootContentContainer.properties.children as string[]).forEach(childId => {
-      if (!visited.has(childId)) { // Should not be necessary here but good for safety
-          queue.push(childId);
-      }
-    });
-  } else {
-    // Fallback or warning if the main content container or its children are not found
-    // This indicates an issue with the initial scaffold state or context data.
-    console.warn(`buildFlatContentTreeForRemoteConfig: Root content container (ID: ${startParentId}) not found or has no children array.`);
-  }
-  
-  while (queue.length > 0) {
-    const currentId = queue.shift()!;
-    if (visited.has(currentId)) continue;
-    visited.add(currentId);
-
-    const component = allComponents.find(c => c.id === currentId);
-    if (component) {
-      // Create a copy of properties for modification, excluding 'children' initially
-      const { children: _originalChildren, ...otherProps } = component.properties;
-      const componentPropertiesCopy = { ...otherProps };
-
-      // Convert width/height to string if numeric for Remote Config JSON
-      if (typeof componentPropertiesCopy.width === 'number') {
-        componentPropertiesCopy.width = String(componentPropertiesCopy.width);
-      }
-      if (typeof componentPropertiesCopy.height === 'number') {
-        componentPropertiesCopy.height = String(componentPropertiesCopy.height);
-      }
-
-      let finalProperties = cleanEmptyOrNullProperties(componentPropertiesCopy);
-
-      // Re-assign the original children array (of IDs) from the component state.
-      // This ensures the structure sent to Remote Config is flat regarding children objects.
-      if (component.properties.children && Array.isArray(component.properties.children) && component.properties.children.length > 0) {
-          finalProperties.children = component.properties.children as string[];
-      } else if (isContainerType(component.type, customComponentTemplates) && (!component.properties.children || component.properties.children.length === 0)) {
-          // If it's a known container type and has no children array or an empty one, explicitly add `children: []`.
-          finalProperties.children = [];
-      }
-      // If it's not a container and had no children, 'children' will be omitted from finalProperties by cleanEmptyOrNullProperties.
-
-      const componentToPush: DesignComponent = {
-        id: component.id,
-        type: component.type,
-        name: component.name,
-        parentId: component.parentId,
-        properties: finalProperties,
-        // Conditionally add templateIdRef only if it exists and is not empty
-        ...(component.templateIdRef && component.templateIdRef.trim() !== "" && { templateIdRef: component.templateIdRef }),
-      };
-
-      contentAreaComponents.push(componentToPush);
-
-      // Enqueue children using the original component's children array (must be string IDs)
-      if (component.properties.children && Array.isArray(component.properties.children)) {
-        (component.properties.children as string[]).forEach(childId => {
-          if (!visited.has(childId)) { // Check visited before enqueuing
-            queue.push(childId);
-          }
-        });
-      }
-    }
-  }
-  return contentAreaComponents;
-};
-
 
 export async function publishToRemoteConfigAction(
   components: DesignComponent[],
