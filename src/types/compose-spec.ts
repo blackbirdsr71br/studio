@@ -48,8 +48,9 @@ export interface BaseComponentProps {
   textColor?: string;
   backgroundColor?: string;
   contentColor?: string;
-  width?: 'wrap_content' | 'match_parent' | number | string;
-  height?: 'wrap_content' | 'match_parent' | number | string;
+  width?: number | string | undefined;
+  height?: number | string | undefined;
+  fillMaxSize?: boolean;
   fillMaxWidth?: boolean;
   fillMaxHeight?: boolean;
   layoutWeight?: number;
@@ -139,14 +140,13 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
   const commonLayout = {
     layoutWeight: 0,
     padding: undefined, paddingTop: undefined, paddingBottom: undefined, paddingStart: undefined, paddingEnd: undefined,
-    fillMaxWidth: false, fillMaxHeight: false,
+    fillMaxSize: false, fillMaxWidth: false, fillMaxHeight: false,
     selfAlign: 'Inherit' as 'Inherit' | 'Start' | 'Center' | 'End',
   };
   switch (type) {
     case 'Scaffold':
       return {
-        width: 'match_parent',
-        height: 'match_parent',
+        fillMaxSize: true, fillMaxWidth: true, fillMaxHeight: true,
         backgroundColor: 'transparent', // Scaffold itself usually doesn't have its own BG, relies on content
         children: [DEFAULT_TOP_APP_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_BOTTOM_NAV_BAR_ID]
       };
@@ -157,8 +157,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         fontSize: 16,
         textColor: undefined,
         padding: 0,
-        width: 'wrap_content',
-        height: 'wrap_content',
+        width: undefined,
+        height: undefined,
         maxLines: undefined,
         textOverflow: 'Clip',
         fontWeight: 'Normal',
@@ -176,8 +176,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         backgroundColor: '#3F51B5',
         textColor: undefined,
         padding: 12,
-        width: 'wrap_content',
-        height: 'wrap_content',
+        width: undefined,
+        height: undefined,
         selfAlign: 'Inherit',
       };
     case 'Image':
@@ -241,11 +241,13 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
       const isContentArea = componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID;
       return {
         ...commonLayout,
+        fillMaxWidth: true,
+        fillMaxHeight: true,
         children: [],
         padding: isContentArea ? 8 : 0, // Default padding for content area
         backgroundColor: isContentArea ? 'transparent' : 'rgba(200, 240, 200, 0.3)',
-        width: 'match_parent', // Content area should fill width
-        height: 'match_parent', // Content area should fill height (of its slot)
+        width: undefined,
+        height: undefined,
         itemSpacing: 8,
         userScrollEnabled: true, reverseLayout: false,
         verticalArrangement: 'Top', horizontalAlignment: 'Start',
@@ -255,10 +257,11 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
     case 'LazyRow':
       return {
         ...commonLayout,
+        fillMaxWidth: true,
         children: [],
         padding: 8,
         backgroundColor: 'rgba(200, 200, 240, 0.3)',
-        width: 'match_parent', height: 120, itemSpacing: 8,
+        width: undefined, height: 120, itemSpacing: 8,
         userScrollEnabled: true, reverseLayout: false,
         horizontalArrangement: 'Start', verticalAlignment: 'Top',
         selfAlign: 'Inherit',
@@ -266,20 +269,22 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
     case 'LazyVerticalGrid':
       return {
         ...commonLayout,
+        fillMaxWidth: true,
         children: [],
         padding: 8,
         backgroundColor: 'rgba(240, 200, 200, 0.3)',
-        width: 'match_parent', height: 300, columns: 2, itemSpacing: 8,
+        width: undefined, height: 300, columns: 2, itemSpacing: 8,
         verticalArrangement: 'Top', horizontalAlignment: 'Start',
         selfAlign: 'Inherit',
       };
     case 'LazyHorizontalGrid':
       return {
         ...commonLayout,
+        fillMaxWidth: true,
         children: [],
         padding: 8,
         backgroundColor: 'rgba(240, 240, 200, 0.3)',
-        width: 'match_parent', height: 200, rows: 2, itemSpacing: 8,
+        width: undefined, height: 200, rows: 2, itemSpacing: 8,
         horizontalArrangement: 'Start', verticalAlignment: 'Top',
         selfAlign: 'Inherit',
       };
@@ -301,7 +306,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         children: [], // For action items or navigation icon
         title: 'Screen Title',
         titleFontSize: 20,
-        width: 'match_parent', // Default to match_parent
+        width: undefined,
         height: 56, // Standard height
         backgroundColor: '#3F51B5', // Example primary color
         contentColor: '#FFFFFF', // Example contrasting color for title/icons
@@ -316,7 +321,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         fillMaxWidth: true, fillMaxHeight: false, // Usually fills width
         selfAlign: undefined,
         children: [], // For navigation items
-        width: 'match_parent',
+        width: undefined,
         height: 56, // Standard height
         backgroundColor: '#F0F0F0', // Example light color
         contentColor: '#000000', // Example contrasting color
@@ -329,9 +334,9 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
       // or if a type string like `custom/...` is passed directly.
       if (type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
          console.warn(`getDefaultProperties called with a custom template ID '${type}'. This is unexpected. Returning generic defaults.`);
-         return { ...commonLayout, children: [], width: 'wrap_content', height: 'wrap_content', padding: 0, fillMaxWidth: false, fillMaxHeight: false, selfAlign: 'Inherit' };
+         return { ...commonLayout, children: [], width: undefined, height: undefined, padding: 0, fillMaxWidth: false, fillMaxHeight: false, selfAlign: 'Inherit' };
       }
-      return {...commonLayout, width: 'wrap_content', height: 'wrap_content', padding: 0, fillMaxWidth: false, fillMaxHeight: false, selfAlign: 'Inherit' };
+      return {...commonLayout, width: undefined, height: undefined, padding: 0, fillMaxWidth: false, fillMaxHeight: false, selfAlign: 'Inherit' };
   }
 };
 
@@ -378,10 +383,11 @@ const selfAlignProperty: Omit<ComponentProperty, 'value'> = {
 };
 
 const commonLayoutProperties: (Omit<ComponentProperty, 'value'>)[] = [
+    { name: 'fillMaxSize', type: 'boolean', label: 'Fill Max Size', group: 'Layout' },
     { name: 'fillMaxWidth', type: 'boolean', label: 'Fill Max Width', group: 'Layout' },
-    { name: 'width', type: 'string', label: 'Width (dp, match_parent, wrap_content)', placeholder: 'e.g., 100, match_parent', group: 'Layout' },
+    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: 'e.g., 100', group: 'Layout' },
     { name: 'fillMaxHeight', type: 'boolean', label: 'Fill Max Height', group: 'Layout' },
-    { name: 'height', type: 'string', label: 'Height (dp, match_parent, wrap_content)', placeholder: 'e.g., 100, wrap_content', group: 'Layout' },
+    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: 'e.g., 100', group: 'Layout' },
     { name: 'layoutWeight', type: 'number', label: 'Layout Weight', placeholder: '0 (no weight)', group: 'Layout' },
     { name: 'padding', type: 'number', label: 'Padding (All Sides, dp)', placeholder: 'e.g., 8', group: 'Layout' },
     { name: 'paddingStart', type: 'number', label: 'Padding Start (dp)', placeholder: 'Overrides "All Sides"', group: 'Layout' },
@@ -665,8 +671,9 @@ const BaseModalPropertiesSchema = z.object({
   textColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional().or(z.literal(undefined)),
   backgroundColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional(),
   contentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional().or(z.literal(undefined)),
-  width: z.union([z.literal('wrap_content'), z.literal('match_parent'), z.number().min(0), z.string()]).optional(),
-  height: z.union([z.literal('wrap_content'), z.literal('match_parent'), z.number().min(0), z.string()]).optional(),
+  width: z.union([z.number().min(0), z.string()]).optional(),
+  height: z.union([z.number().min(0), z.string()]).optional(),
+  fillMaxSize: z.boolean().optional(),
   fillMaxWidth: z.boolean().optional(),
   fillMaxHeight: z.boolean().optional(),
   layoutWeight: z.number().min(0).optional(),

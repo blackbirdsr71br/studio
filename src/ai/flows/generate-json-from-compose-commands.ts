@@ -79,10 +79,10 @@ Do NOT generate TopAppBar or BottomNavigationBar components, as those are handle
 
 Recognized properties include (but are not limited to):
 - For Text: text (string), fontSize (number), textColor (hex string, e.g., "#FF0000")
-- For Image: src (string URL, use "https://placehold.co/100x100.png" if a resource is mentioned but not a URL), contentDescription (string), width (number, "match_parent", or "wrap_content"), height (number, "match_parent", or "wrap_content"), fillMaxWidth (boolean), fillMaxHeight (boolean)
-- For Button: text (string), backgroundColor (hex string), textColor (hex string), fillMaxWidth (boolean), fillMaxHeight (boolean)
+- For Image: src (string URL, use "https://placehold.co/100x100.png" if a resource is mentioned but not a URL), contentDescription (string), width (number), height (number), fillMaxSize (boolean), fillMaxWidth (boolean), fillMaxHeight (boolean)
+- For Button: text (string), backgroundColor (hex string), textColor (hex string), fillMaxSize (boolean), fillMaxWidth (boolean), fillMaxHeight (boolean)
 - For Spacer: width (number), height (number), layoutWeight (number).
-- For Containers (Column, Row, Box, Card, Lazy*): padding (number), paddingTop (number), paddingBottom (number), paddingStart (number), paddingEnd (number), backgroundColor (hex string), width, height, itemSpacing, layoutWeight, fillMaxWidth, fillMaxHeight.
+- For Containers (Column, Row, Box, Card, Lazy*): padding (number), paddingTop (number), paddingBottom (number), paddingStart (number), paddingEnd (number), backgroundColor (hex string), width, height, itemSpacing, layoutWeight, fillMaxSize, fillMaxWidth, fillMaxHeight.
   - For Card: elevation (number), cornerRadius..., borderWidth, borderColor, contentColor.
   - For LazyVerticalGrid: columns (number).
   - For LazyHorizontalGrid: rows (number).
@@ -90,10 +90,9 @@ Recognized properties include (but are not limited to):
 Mapping common Modifiers:
 - Modifier.padding(X.dp) -> "padding": X
 - Modifier.padding(horizontal = X.dp, vertical = Y.dp) -> "paddingStart": X, "paddingEnd": X, "paddingTop": Y, "paddingBottom": Y
+- Modifier.fillMaxSize() -> "fillMaxSize": true
 - Modifier.fillMaxWidth() -> "fillMaxWidth": true
 - Modifier.fillMaxHeight() -> "fillMaxHeight": true
-- Modifier.wrapContentWidth() -> "width": "wrap_content"
-- Modifier.wrapContentHeight() -> "height": "wrap_content"
 - Modifier.width(X.dp) -> "width": X
 - Modifier.height(X.dp) -> "height": X
 - Modifier.weight(Xf) -> "layoutWeight": X

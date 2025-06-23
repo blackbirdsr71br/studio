@@ -66,11 +66,11 @@ General Component Generation Rules:
 - If a component has a "children" array in its properties, recursively generate Composables for those children within the parent Composable.
 
 Modifier Rules:
-- If a component has 'fillMaxWidth': true, use Modifier.fillMaxWidth().
-- Else if 'width' is "match_parent", use Modifier.fillMaxWidth().
-- Else if 'width' is "wrap_content", use Modifier.wrapContentWidth().
-- Else if 'width' is a number, use Modifier.width(X.dp).
-- Similar logic for 'fillMaxHeight', 'height'.
+- If 'fillMaxSize' is true, use Modifier.fillMaxSize().
+- Else if 'fillMaxWidth' is true, use Modifier.fillMaxWidth().
+- Else if 'fillMaxHeight' is true, use Modifier.fillMaxHeight().
+- If 'width' is a number, use Modifier.width(X.dp).
+- If 'height' is a number, use Modifier.height(Y.dp).
 - If 'layoutWeight' > 0, use Modifier.weight(Xf).
 - Padding:
     - effectiveTop = properties.paddingTop ?? properties.padding ?? 0
@@ -104,7 +104,7 @@ Example of Expected JSON Structure ({{{designJson}}}):
   },
   "content": {
     "type": "LazyColumn",
-    "properties": { "padding": 16, "itemSpacing": 8, "backgroundColor": "#EEEEEE" },
+    "properties": { "padding": 16, "itemSpacing": 8, "backgroundColor": "#EEEEEE", "fillMaxSize": true },
     "children": [
       { "type": "Text", "properties": { "text": "Hello" } },
       { "type": "Button", "properties": { "text": "Click" } }

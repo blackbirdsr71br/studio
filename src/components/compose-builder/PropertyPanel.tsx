@@ -88,12 +88,17 @@ export function PropertyPanel() {
 
     const updates: Partial<BaseComponentProps> = { [propName]: actualValue };
 
-    if (propName === 'fillMaxWidth' && actualValue === true) {
-      // updates.width = 'match_parent';
+    if (propName === 'fillMaxSize') {
+        const isChecked = actualValue as boolean;
+        updates.fillMaxWidth = isChecked;
+        updates.fillMaxHeight = isChecked;
+    } else if (propName === 'fillMaxWidth' || propName === 'fillMaxHeight') {
+        const isChecked = actualValue as boolean;
+        const otherPropName = propName === 'fillMaxWidth' ? 'fillMaxHeight' : 'fillMaxWidth';
+        const otherPropValue = selectedComponent.properties[otherPropName] ?? false;
+        updates.fillMaxSize = isChecked && otherPropValue;
     }
-    if (propName === 'fillMaxHeight' && actualValue === true) {
-      // updates.height = 'match_parent';
-    }
+
 
     updateComponent(selectedComponent.id, { properties: updates });
   };
@@ -252,6 +257,11 @@ export function PropertyPanel() {
     } else {
         currentValue = currentValue ?? getDefaultPropertyValue(propDef);
     }
+    
+    // Handle derived state for fillMaxSize switch
+    if (propDef.name === 'fillMaxSize') {
+        currentValue = !!(selectedComponent.properties.fillMaxWidth && selectedComponent.properties.fillMaxHeight);
+    }
 
     const editorElement = (
       <PropertyEditor
@@ -379,4 +389,3 @@ export function PropertyPanel() {
     </aside>
   );
 }
-

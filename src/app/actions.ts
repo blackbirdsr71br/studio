@@ -162,43 +162,29 @@ const buildContentComponentTreeForModalJson = (
       const {
         width,
         height,
+        fillMaxSize,
         fillMaxWidth,
         fillMaxHeight,
         ...restOfProperties
       } = cleanedOtherProperties;
 
       const orderedProperties: Record<string, any> = {};
-
-      // Handle conditional ordering for width and fillMaxWidth
-      if (fillMaxWidth === true) {
-        if (width !== undefined) {
-          orderedProperties.width = typeof width === 'number' ? String(width) : width;
-        }
-        orderedProperties.fillMaxWidth = fillMaxWidth;
-      } else {
-        // If fillMaxWidth is false or undefined, place it before width
-        if (fillMaxWidth !== undefined) {
-          orderedProperties.fillMaxWidth = fillMaxWidth;
-        }
-        if (width !== undefined) {
-          orderedProperties.width = typeof width === 'number' ? String(width) : width;
-        }
-      }
       
-      // Handle conditional ordering for height and fillMaxHeight
-      if (fillMaxHeight === true) {
-        if (height !== undefined) {
-          orderedProperties.height = typeof height === 'number' ? String(height) : height;
-        }
+      // Fixed order for size properties
+      if (width !== undefined) {
+        orderedProperties.width = typeof width === 'number' ? String(width) : width;
+      }
+      if (height !== undefined) {
+        orderedProperties.height = typeof height === 'number' ? String(height) : height;
+      }
+      if (fillMaxSize !== undefined) {
+        orderedProperties.fillMaxSize = fillMaxSize;
+      }
+      if (fillMaxWidth !== undefined) {
+        orderedProperties.fillMaxWidth = fillMaxWidth;
+      }
+      if (fillMaxHeight !== undefined) {
         orderedProperties.fillMaxHeight = fillMaxHeight;
-      } else {
-        // If fillMaxHeight is false or undefined, place it before height
-        if (fillMaxHeight !== undefined) {
-          orderedProperties.fillMaxHeight = fillMaxHeight;
-        }
-        if (height !== undefined) {
-          orderedProperties.height = typeof height === 'number' ? String(height) : height;
-        }
       }
       
       // Add the rest of the properties
