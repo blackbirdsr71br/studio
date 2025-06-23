@@ -564,7 +564,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       ref={ref}
       style={wrapperStyle}
       className={cn(
-        'p-0.5 border border-transparent', 
+        'border border-transparent',
         { 
           'ring-4 ring-primary ring-offset-2 ring-offset-background shadow-lg': isSelected && ![ROOT_SCAFFOLD_ID, ...CORE_SCAFFOLD_ELEMENT_IDS].includes(component.id),
           'ring-2 ring-accent ring-offset-2 ring-offset-background': isSelected && CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && component.id !== ROOT_SCAFFOLD_ID,
@@ -603,4 +603,5 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     </div>
   );
 }
+
 
