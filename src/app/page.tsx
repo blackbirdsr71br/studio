@@ -1,7 +1,6 @@
-
 'use client'; // Top-level client component for context and refs
 
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { DesignProvider } from '@/contexts/DesignContext';
@@ -15,6 +14,10 @@ import { ThemeEditorModal, type ThemeEditorModalRef } from '@/components/compose
 import { ImageSourceModal, type ImageSourceModalRef } from '@/components/compose-builder/ImageSourceModal';
 import { PublishConfigModal, type PublishConfigModalRef } from '@/components/compose-builder/PublishConfigModal';
 import { MobileFrame } from '@/components/compose-builder/MobileFrame';
+import { ZoomControls } from '@/components/compose-builder/ZoomControls';
+
+const MIN_ZOOM = 0.25;
+const MAX_ZOOM = 2.0;
 
 export default function ComposeBuilderPage() {
   const generateModalRef = useRef<GenerateCodeModalRef>(null);
@@ -22,6 +25,29 @@ export default function ComposeBuilderPage() {
   const themeEditorModalRef = useRef<ThemeEditorModalRef>(null);
   const imageSourceModalRef = useRef<ImageSourceModalRef>(null);
   const publishConfigModalRef = useRef<PublishConfigModalRef>(null);
+
+  const [zoomLevel, setZoomLevel] = useState(1);
+
+  useEffect(() => {
+    const mainElement = document.querySelector('main');
+    if (!mainElement) return;
+
+    const handleWheel = (event: WheelEvent) => {
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault();
+        setZoomLevel(prev => {
+          const newZoom = prev - event.deltaY * 0.002;
+          return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom));
+        });
+      }
+    };
+    
+    mainElement.addEventListener('wheel', handleWheel, { passive: false });
+    
+    return () => {
+      mainElement.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -35,10 +61,19 @@ export default function ComposeBuilderPage() {
           />
           <div className="flex flex-row flex-grow overflow-hidden">
             <ComponentLibraryPanel />
-            <main className="flex-grow flex flex-col overflow-hidden items-center justify-center bg-muted/20 p-4">
-              <MobileFrame>
-                <DesignSurface />
-              </MobileFrame>
+            <main className="flex-grow relative flex items-center justify-center overflow-auto bg-muted/20 p-8">
+              <div
+                className="transition-transform duration-150 ease-out"
+                style={{
+                  transform: `scale(${zoomLevel})`,
+                  transformOrigin: 'center',
+                }}
+              >
+                <MobileFrame>
+                  <DesignSurface zoomLevel={zoomLevel} />
+                </MobileFrame>
+              </div>
+              <ZoomControls zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} />
             </main>
             <PropertyPanel />
           </div>

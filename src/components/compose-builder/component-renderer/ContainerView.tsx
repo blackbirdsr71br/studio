@@ -1,4 +1,3 @@
-
 'use client';
 import type { DesignComponent, ComponentType as OriginalComponentType } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from '../RenderedComponentWrapper';
@@ -10,7 +9,8 @@ import { TextView } from './TextView';
 interface ContainerViewProps {
   component: DesignComponent;
   childrenComponents: DesignComponent[];
-  isRow: boolean; // Determines default flex-direction if not overridden by specific type (still useful for top-level RenderedComponentWrapper decisions)
+  isRow: boolean;
+  zoomLevel: number;
 }
 
 const isNumericValue = (value: any): boolean => {
@@ -21,14 +21,13 @@ const isNumericValue = (value: any): boolean => {
     return true;
   }
   if (typeof value === 'string' && value.trim() !== '') {
-    if (value === 'match_parent' || value === 'wrap_content') return false;
     return !isNaN(Number(value));
   }
   return false;
 };
 
 
-export function ContainerView({ component, childrenComponents, isRow: isRowPropHint }: ContainerViewProps) {
+export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, zoomLevel }: ContainerViewProps) {
   const { customComponentTemplates } = useDesign();
 
   let effectiveType: OriginalComponentType | string = component.type;
@@ -357,9 +356,8 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       )}
       {topAppBarTitleElement}
       {childrenComponents.map(child => (
-        <RenderedComponentWrapper key={child.id} component={child} />
+        <RenderedComponentWrapper key={child.id} component={child} zoomLevel={zoomLevel} />
       ))}
     </div>
   );
 }
-

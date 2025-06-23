@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { DesignComponent, CustomComponentTemplate } from '@/types/compose-spec';
@@ -15,6 +14,7 @@ import { isContainerType, isCustomComponentType, ROOT_SCAFFOLD_ID, DEFAULT_CONTE
 
 interface RenderedComponentWrapperProps {
   component: DesignComponent;
+  zoomLevel: number;
 }
 
 interface DraggedCanvasItem {
@@ -40,7 +40,6 @@ const isNumericValue = (value: any): boolean => {
     return true;
   }
   if (typeof value === 'string' && value.trim() !== '') {
-    if (value === 'match_parent' || value === 'wrap_content') return false;
     return !isNaN(Number(value));
   }
   return false;
@@ -94,14 +93,12 @@ const getDimensionValue = (
   
     // This part now implicitly handles the CROSS AXIS fill correctly, or just processes the value.
     if (fillValue) return '100%';
-    if (propValue === 'match_parent') return '100%';
-    if (propValue === 'wrap_content') return 'auto';
     if (isNumericValue(propValue)) return `${propValue}px`;
-    return 'auto'; // Default fallback
+    return 'auto'; // Default fallback (wrap_content behavior)
   };
   
 
-export function RenderedComponentWrapper({ component }: RenderedComponentWrapperProps) {
+export function RenderedComponentWrapper({ component, zoomLevel }: RenderedComponentWrapperProps) {
   const { selectedComponentId, selectComponent, getComponentById, addComponent, moveComponent, updateComponent, customComponentTemplates } = useDesign();
   const ref = useRef<HTMLDivElement>(null);
   const [dropIndicator, setDropIndicator] = useState<DropIndicatorPosition>(null);
@@ -325,11 +322,11 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     if (CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id)) return;
 
     selectComponent(component.id);
-    setIsResizing(true);
     
     const rect = ref.current?.getBoundingClientRect();
     if (!rect) return;
 
+    setIsResizing(true);
     setResizeDetails({
       handle,
       startX: event.clientX,
@@ -343,30 +340,35 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     const handleMouseMove = (event: MouseEvent) => {
       if (!isResizing || !resizeDetails || !ref.current) return;
 
-      const dx = event.clientX - resizeDetails.startX;
-      const dy = event.clientY - resizeDetails.startY;
+      const dx = (event.clientX - resizeDetails.startX) / zoomLevel;
+      const dy = (event.clientY - resizeDetails.startY) / zoomLevel;
       
       const updatedProps: Record<string, any> = {};
+
+      const initialUnscaledWidth = resizeDetails.initialWidth / zoomLevel;
+      const initialUnscaledHeight = resizeDetails.initialHeight / zoomLevel;
 
       const isHorizontalResize = resizeDetails.handle.includes('e') || resizeDetails.handle.includes('w');
       const isVerticalResize = resizeDetails.handle.includes('n') || resizeDetails.handle.includes('s');
 
       if (isHorizontalResize) {
-        let newWidth = resizeDetails.initialWidth;
-        if (resizeDetails.handle.includes('e')) newWidth = resizeDetails.initialWidth + dx;
-        if (resizeDetails.handle.includes('w')) newWidth = resizeDetails.initialWidth - dx;
+        let newWidth = initialUnscaledWidth;
+        if (resizeDetails.handle.includes('e')) newWidth += dx;
+        if (resizeDetails.handle.includes('w')) newWidth -= dx;
         
         updatedProps.width = Math.round(Math.max(newWidth, MIN_DIMENSION));
         updatedProps.fillMaxWidth = false; 
+        updatedProps.fillMaxSize = false;
       }
 
       if (isVerticalResize) {
-        let newHeight = resizeDetails.initialHeight;
-        if (resizeDetails.handle.includes('s')) newHeight = resizeDetails.initialHeight + dy;
-        if (resizeDetails.handle.includes('n')) newHeight = resizeDetails.initialHeight - dy;
+        let newHeight = initialUnscaledHeight;
+        if (resizeDetails.handle.includes('s')) newHeight += dy;
+        if (resizeDetails.handle.includes('n')) newHeight -= dy;
 
         updatedProps.height = Math.round(Math.max(newHeight, MIN_DIMENSION));
         updatedProps.fillMaxHeight = false; 
+        updatedProps.fillMaxSize = false;
       }
 
       if (Object.keys(updatedProps).length > 0) {
@@ -390,7 +392,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, resizeDetails, component.id, updateComponent]);
+  }, [isResizing, resizeDetails, component.id, updateComponent, zoomLevel]);
 
 
   const renderSpecificComponent = () => {
@@ -408,7 +410,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
           <div className="flex flex-col w-full h-full bg-[var(--scaffold-bg-color)]" style={{'--scaffold-bg-color': component.properties.backgroundColor || 'transparent'} as React.CSSProperties}>
             {topBarChild && (
               <div style={{ flexShrink: 0, width: '100%', height: `${topBarChild.properties.height || 56}px` }} className="flex w-full">
-                <RenderedComponentWrapper component={topBarChild} />
+                <RenderedComponentWrapper component={topBarChild} zoomLevel={zoomLevel} />
               </div>
             )}
             {contentChild && (
@@ -416,12 +418,12 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
                 style={{ flexGrow: 1, minHeight: 0, width: '100%' }}
                 className={cn("flex w-full", "overflow-y-auto overflow-x-hidden")}
               >
-                <RenderedComponentWrapper component={contentChild} />
+                <RenderedComponentWrapper component={contentChild} zoomLevel={zoomLevel} />
               </div>
             )}
             {bottomBarChild && (
               <div style={{ flexShrink: 0, width: '100%', height: `${bottomBarChild.properties.height || 56}px` }} className="flex w-full">
-                 <RenderedComponentWrapper component={bottomBarChild} />
+                 <RenderedComponentWrapper component={bottomBarChild} zoomLevel={zoomLevel} />
               </div>
             )}
           </div>
@@ -437,7 +439,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       case 'Box':
       case 'Card':
       case 'LazyColumn': 
-        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={false} />;
+        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={false} zoomLevel={zoomLevel} />;
 
       case 'Row':
       case 'LazyRow':
@@ -445,7 +447,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       case 'LazyHorizontalGrid':
       case 'TopAppBar': 
       case 'BottomNavigationBar': 
-        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={true} />;
+        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={true} zoomLevel={zoomLevel} />;
       
       case 'Spacer':
         return (
@@ -468,7 +470,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
              if (rootTemplateComponent) {
                 // Here, we trust ContainerView to determine the flex direction based on the root's original type
                 const isTemplateRootRowLike = ['Row', 'LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar'].includes(rootTemplateComponent.type);
-                return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isTemplateRootRowLike} />;
+                return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isTemplateRootRowLike} zoomLevel={zoomLevel} />;
              }
            }
         }
@@ -637,5 +639,3 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     </div>
   );
 }
-
-
