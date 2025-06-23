@@ -268,7 +268,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
   const handleMouseDownOnResizeHandle = useCallback((event: React.MouseEvent<HTMLDivElement>, handle: HandleType) => {
     event.stopPropagation();
     event.preventDefault();
-    if (CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) || component.properties.fillMaxWidth || component.properties.fillMaxHeight) return;
+    if (CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id)) return;
 
     selectComponent(component.id);
     setIsResizing(true);
@@ -283,7 +283,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       initialWidth: rect.width,
       initialHeight: rect.height,
     });
-  }, [component.id, component.properties.fillMaxWidth, component.properties.fillMaxHeight, selectComponent]);
+  }, [component.id, selectComponent]);
 
   useEffect(() => {
     const handleMouseMove = (event: MouseEvent) => {
@@ -291,26 +291,33 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
 
       const dx = event.clientX - resizeDetails.startX;
       const dy = event.clientY - resizeDetails.startY;
+      
+      const updatedProps: Record<string, any> = {};
 
-      let newWidth = resizeDetails.initialWidth;
-      let newHeight = resizeDetails.initialHeight;
-      
-      if (resizeDetails.handle.includes('e')) newWidth = resizeDetails.initialWidth + dx;
-      if (resizeDetails.handle.includes('w')) newWidth = resizeDetails.initialWidth - dx;
-      if (resizeDetails.handle.includes('s')) newHeight = resizeDetails.initialHeight + dy;
-      if (resizeDetails.handle.includes('n')) newHeight = resizeDetails.initialHeight - dy;
-      
-      newWidth = Math.max(newWidth, MIN_DIMENSION);
-      newHeight = Math.max(newHeight, MIN_DIMENSION);
+      const isHorizontalResize = resizeDetails.handle.includes('e') || resizeDetails.handle.includes('w');
+      const isVerticalResize = resizeDetails.handle.includes('n') || resizeDetails.handle.includes('s');
 
-      const updatedProps: Record<string, any> = {
-        width: Math.round(newWidth),
-        height: Math.round(newHeight),
-        fillMaxWidth: false, 
-        fillMaxHeight: false,
-      };
-      
-      updateComponent(component.id, { properties: updatedProps });
+      if (isHorizontalResize) {
+        let newWidth = resizeDetails.initialWidth;
+        if (resizeDetails.handle.includes('e')) newWidth = resizeDetails.initialWidth + dx;
+        if (resizeDetails.handle.includes('w')) newWidth = resizeDetails.initialWidth - dx;
+        
+        updatedProps.width = Math.round(Math.max(newWidth, MIN_DIMENSION));
+        updatedProps.fillMaxWidth = false; // User is manually setting width
+      }
+
+      if (isVerticalResize) {
+        let newHeight = resizeDetails.initialHeight;
+        if (resizeDetails.handle.includes('s')) newHeight = resizeDetails.initialHeight + dy;
+        if (resizeDetails.handle.includes('n')) newHeight = resizeDetails.initialHeight - dy;
+
+        updatedProps.height = Math.round(Math.max(newHeight, MIN_DIMENSION));
+        updatedProps.fillMaxHeight = false; // User is manually setting height
+      }
+
+      if (Object.keys(updatedProps).length > 0) {
+        updateComponent(component.id, { properties: updatedProps });
+      }
     };
 
     const handleMouseUp = () => {
@@ -399,12 +406,14 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
         );
 
       default:
-        if (isCustomComponentType(component.type)) {
-           const template = customComponentTemplates.find(t => t.templateId === component.type);
+        if (component.templateIdRef && isCustomComponentType(component.templateIdRef)) {
+           const template = customComponentTemplates.find(t => t.templateId === component.templateIdRef);
            if (template) {
              const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
-             const isTemplateRootRowLike = rootTemplateComponent ? ['Row', 'LazyRow', 'LazyVerticalGrid', 'TopAppBar', 'BottomNavigationBar'].includes(rootTemplateComponent.type) : false;
-             return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isTemplateRootRowLike} />;
+             if (rootTemplateComponent) {
+                const isTemplateRootRowLike = ['Row', 'LazyRow', 'LazyVerticalGrid', 'TopAppBar', 'BottomNavigationBar'].includes(rootTemplateComponent.type);
+                return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isTemplateRootRowLike} />;
+             }
            }
         }
         return <div className="p-2 border border-dashed border-red-500 text-xs">Unknown: {component.type}</div>;
@@ -435,12 +444,14 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     const parentComponent = parentId ? getLocalComponentById(parentId) : null;
   
     if (parentComponent) {
-      const parentType = parentComponent.type;
-      const isParentCustom = isCustomComponentType(parentType);
-      const rootOfParentCustomType = isParentCustom 
-        ? customComponentTemplates.find(t => t.templateId === parentType)?.componentTree.find(c => c.id === customComponentTemplates.find(t => t.templateId === parentType)?.rootComponentId)?.type
-        : null;
-      const effectiveParentType = rootOfParentCustomType || parentType;
+      let effectiveParentType = parentComponent.type;
+      if (parentComponent.templateIdRef && isCustomComponentType(parentComponent.templateIdRef)) {
+        const template = customComponentTemplates.find(t => t.templateId === parentComponent.templateIdRef);
+        if (template) {
+            const rootOfParentTemplate = template.componentTree.find(c => c.id === template.rootComponentId);
+            if(rootOfParentTemplate) effectiveParentType = rootOfParentTemplate.type;
+        }
+      }
 
       const parentIsRowLike = ['LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar', 'Row'].includes(effectiveParentType);
       
@@ -478,8 +489,15 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     
     const parentComp = component.parentId ? getComponentById(component.parentId) : null;
     if (parentComp) {
-        const parentIsRowLike = ['Row', 'LazyRow', 'TopAppBar', 'BottomNavigationBar', 'LazyHorizontalGrid'].includes(parentComp.type) || 
-                                (isCustomComponentType(parentComp.type) && customComponentTemplates.find(t=>t.templateId === parentComp.type)?.componentTree.find(c => c.id === customComponentTemplates.find(t=>t.templateId === parentComp.type)?.rootComponentId)?.type === 'Row');
+        let parentIsRowLike = ['Row', 'LazyRow', 'TopAppBar', 'BottomNavigationBar', 'LazyHorizontalGrid'].includes(parentComp.type);
+        if (parentComp.templateIdRef && isCustomComponentType(parentComp.templateIdRef)) {
+            const template = customComponentTemplates.find(t => t.templateId === parentComp.templateIdRef);
+            if (template) {
+                const rootOfTemplate = template.componentTree.find(c => c.id === template.rootComponentId);
+                if (rootOfTemplate) parentIsRowLike = ['Row', 'LazyRow', 'TopAppBar', 'BottomNavigationBar', 'LazyHorizontalGrid'].includes(rootOfTemplate.type);
+            }
+        }
+
         if (parentIsRowLike) { 
             wrapperStyle.height = '100%'; 
             if (!component.properties.fillMaxWidth && !isNumericValue(component.properties.width) && component.properties.width !=='wrap_content') {
@@ -496,8 +514,15 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
 
   const parent = component.parentId ? getComponentById(component.parentId) : null;
   if (parent && isContainerType(parent.type, customComponentTemplates)) {
-    const parentIsRowLike = ['Row', 'LazyRow', 'TopAppBar', 'BottomNavigationBar', 'LazyHorizontalGrid'].includes(parent.type) || 
-                            (isCustomComponentType(parent.type) && customComponentTemplates.find(t=>t.templateId === parent.type)?.componentTree.find(c => c.id === customComponentTemplates.find(t=>t.templateId === parent.type)?.rootComponentId)?.type === 'Row');
+    let parentIsRowLike = ['Row', 'LazyRow', 'TopAppBar', 'BottomNavigationBar', 'LazyHorizontalGrid'].includes(parent.type);
+    if (parent.templateIdRef && isCustomComponentType(parent.templateIdRef)) {
+        const template = customComponentTemplates.find(t => t.templateId === parent.templateIdRef);
+        if(template) {
+            const rootOfTemplate = template.componentTree.find(c => c.id === template.rootComponentId);
+            if(rootOfTemplate) parentIsRowLike = ['Row', 'LazyRow', 'TopAppBar', 'BottomNavigationBar', 'LazyHorizontalGrid'].includes(rootOfTemplate.type);
+        }
+    }
+
     const selfAlignProp = component.properties.selfAlign;
 
     if (selfAlignProp && selfAlignProp !== 'Inherit') {
@@ -603,5 +628,3 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     </div>
   );
 }
-
-
