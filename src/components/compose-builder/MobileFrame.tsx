@@ -1,4 +1,3 @@
-
 'use client';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
@@ -9,9 +8,9 @@ interface MobileFrameProps {
   className?: string;
 }
 
-// Target screen dimensions: 300px width, 600px height
-const SCREEN_WIDTH_TARGET = 300; // Pure screen width
-const SCREEN_HEIGHT_TARGET = 600; // Pure screen height
+// Target screen dimensions: 432px width, 896px height
+const SCREEN_WIDTH_TARGET = 432; // Pure screen width
+const SCREEN_HEIGHT_TARGET = 896; // Pure screen height
 
 const FRAME_BODY_PADDING = 8; // Equivalent to p-2 for the phone body's bezel around the screen area container
 const SPEAKER_BAR_HEIGHT = 24; // h-6
