@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 
 export function DesignSurface() {
-  const { components, selectComponent } = useDesign();
+  const { components, selectComponent, editingTemplateInfo } = useDesign();
   const surfaceRef = useRef<HTMLDivElement>(null);
 
   const handleSurfaceClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -21,18 +21,9 @@ export function DesignSurface() {
     }
   };
   
-  const rootScaffoldComponent = components.find(c => c.id === ROOT_SCAFFOLD_ID && c.parentId === null);
-
-  // Placeholder logic is now handled within RenderedComponentWrapper for the content area
-  // let showPlaceholder = false;
-  // if (rootScaffoldComponent) {
-  //   const contentArea = components.find(c => c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID && c.parentId === ROOT_SCAFFOLD_ID);
-  //   if (contentArea && (!contentArea.properties.children || contentArea.properties.children.length === 0)) {
-  //     showPlaceholder = true;
-  //   }
-  // } else {
-  //   showPlaceholder = true; 
-  // }
+  const rootComponent = editingTemplateInfo
+    ? components.find(c => c.parentId === null) // In template edit mode, find the template's root
+    : components.find(c => c.id === ROOT_SCAFFOLD_ID && c.parentId === null); // In normal mode, find the scaffold
 
   return (
     <div
@@ -40,7 +31,7 @@ export function DesignSurface() {
       className={cn(
         "bg-background relative border-2 border-transparent", 
         "w-full h-full", 
-        "flex flex-col overflow-hidden" // Ensures Scaffold (if it's the only root) fills space
+        "flex flex-col overflow-hidden" 
       )}
       onClick={handleSurfaceClick}
       id="design-surface"
@@ -70,17 +61,14 @@ export function DesignSurface() {
         .resize-handle.e { cursor: ew-resize; top: 50%; right: -6px; transform: translateY(-50%); } /* Adjusted offset */
       `}</style>
       
-      {/* DesignSurface now only renders the single root Scaffold component */}
-      {rootScaffoldComponent ? (
-        <RenderedComponentWrapper component={rootScaffoldComponent} />
+      {rootComponent ? (
+        <RenderedComponentWrapper component={rootComponent} />
       ) : (
          <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground pointer-events-none p-4 text-center">
-            <p className="text-lg">Scaffold not found. Initializing...</p>
+            <p className="text-lg">{editingTemplateInfo ? `Loading template "${editingTemplateInfo.name}"...` : 'Scaffold not found. Initializing...'}</p>
         </div>
       )}
 
-      {/* Placeholder is now conceptually inside the content LazyColumn, managed by its RenderedComponentWrapper */}
     </div>
   );
 }
-

@@ -128,6 +128,11 @@ export interface DesignState {
   nextId: number;
   customComponentTemplates: CustomComponentTemplate[];
   savedLayouts: SavedLayout[];
+  editingTemplateInfo?: {
+    templateId: string;
+    firestoreId?: string;
+    name: string;
+  } | null;
 }
 
 export const getDefaultProperties = (type: ComponentType | string, componentId?: string): BaseComponentProps => {
@@ -750,4 +755,3 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
 // The schema for the entire JSON content of the "View JSON" modal (content area)
 // It's an array of root-level components within the content area.
 export const ModalJsonSchema = z.array(ModalComponentNodeSchema);
-

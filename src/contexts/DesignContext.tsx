@@ -28,6 +28,8 @@ interface DesignContextType extends DesignState {
   loadLayoutToCanvas: (layoutId: string) => void;
   deleteSavedLayout: (layoutId: string, firestoreDocId?: string) => Promise<void>;
   renameSavedLayout: (layoutId: string, newName: string, firestoreDocId?: string) => Promise<void>;
+  loadTemplateForEditing: (templateId: string) => void;
+  updateCustomTemplate: () => Promise<void>;
 }
 
 const DesignContext = createContext<DesignContextType | undefined>(undefined);
@@ -129,6 +131,7 @@ const initialDesignState: DesignState = {
   nextId: initialNextId,
   customComponentTemplates: [],
   savedLayouts: [],
+  editingTemplateInfo: null,
 };
 
 
@@ -705,6 +708,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         components: newScaffoldComponents,
         selectedComponentId: newSelectedId,
         nextId: newNextId, // Reset nextId as well
+        editingTemplateInfo: null,
     }));
   }, []);
 
@@ -1198,6 +1202,95 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         }
     }
   }, [toast, designState.savedLayouts]);
+  
+  const loadTemplateForEditing = useCallback((templateId: string) => {
+    const template = designState.customComponentTemplates.find(t => t.templateId === templateId);
+    if (!template) {
+        toast({ title: "Error", description: "Could not find template to edit.", variant: "destructive" });
+        return;
+    }
+
+    if (window.confirm(`This will replace the current canvas with the "${template.name}" template for editing. Are you sure?`)) {
+        let maxId = 0;
+        template.componentTree.forEach(comp => {
+            const idNum = parseInt(comp.id.split('-').pop() || '0', 10);
+            if (!isNaN(idNum) && idNum > maxId) {
+                maxId = idNum;
+            }
+        });
+        
+        setDesignState(prev => ({
+            ...prev,
+            components: deepClone(template.componentTree),
+            nextId: maxId + 1,
+            selectedComponentId: template.rootComponentId,
+            editingTemplateInfo: {
+                templateId: template.templateId,
+                firestoreId: template.firestoreId,
+                name: template.name,
+            }
+        }));
+    }
+  }, [designState.customComponentTemplates, toast]);
+  
+  const updateCustomTemplate = useCallback(async () => {
+    if (!designState.editingTemplateInfo) return;
+    if (!db) {
+        toast({ title: "Update Failed", description: "Firestore not available. Cannot update template.", variant: "destructive" });
+        return;
+    }
+
+    const { templateId, firestoreId, name } = designState.editingTemplateInfo;
+    const currentComponents = deepClone(designState.components);
+    const rootComponent = currentComponents.find(c => c.parentId === null);
+
+    if (!rootComponent) {
+        toast({ title: "Update Failed", description: "Could not find root component in the edited template.", variant: "destructive" });
+        return;
+    }
+    
+    const updatedTemplate: CustomComponentTemplate = {
+        templateId,
+        firestoreId,
+        name,
+        rootComponentId: rootComponent.id,
+        componentTree: currentComponents
+    };
+    
+    const sanitizedTemplateForFirestore = sanitizeForFirestore({
+        templateId: updatedTemplate.templateId,
+        name: updatedTemplate.name,
+        rootComponentId: updatedTemplate.rootComponentId,
+        componentTree: updatedTemplate.componentTree
+    });
+
+    try {
+        if (firestoreId) {
+            console.log(`Attempting to update custom template in Firestore with ID: ${firestoreId}`);
+            const templateRef = doc(db, CUSTOM_TEMPLATES_COLLECTION, firestoreId);
+            await setDoc(templateRef, sanitizedTemplateForFirestore, { merge: true });
+            
+            setDesignState(prev => ({
+                ...prev,
+                customComponentTemplates: prev.customComponentTemplates.map(t => t.templateId === templateId ? updatedTemplate : t)
+            }));
+            
+            toast({ title: "Template Updated", description: `Template "${name}" has been updated successfully.` });
+            clearDesign(); // Exit editing mode
+        } else {
+             toast({ title: "Update Failed", description: "Firestore ID is missing for the template.", variant: "destructive" });
+        }
+
+    } catch (error) {
+        console.error("Firestore operation error (updateCustomTemplate):", error);
+        let detail = "Could not update template in Firestore.";
+        if (error instanceof Error) {
+            const firebaseError = error as any;
+            detail += ` (Error: ${firebaseError.code || 'UNKNOWN'} - ${firebaseError.message || 'No message'})`;
+        }
+        toast({ title: "Update Failed (Firestore Sync)", description: `${detail}.`, variant: "destructive" });
+    }
+  }, [designState.editingTemplateInfo, designState.components, toast, clearDesign]);
 
 
   const contextValue: DesignContextType = {
@@ -1219,6 +1312,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     loadLayoutToCanvas,
     deleteSavedLayout,
     renameSavedLayout,
+    loadTemplateForEditing,
+    updateCustomTemplate,
   };
 
   if (!isClient) {
@@ -1241,6 +1336,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       loadLayoutToCanvas: () => {},
       deleteSavedLayout: async () => {},
       renameSavedLayout: async () => {},
+      loadTemplateForEditing: () => {},
+      updateCustomTemplate: async () => {},
     };
     return (
       <DesignContext.Provider value={initialContextValueForSSR}>
@@ -1263,4 +1360,3 @@ export const useDesign = (): DesignContextType => {
   }
   return context;
 };
-

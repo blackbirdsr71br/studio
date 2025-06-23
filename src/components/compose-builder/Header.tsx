@@ -34,8 +34,9 @@ export function Header({
   themeEditorModalRef,
   publishConfigModalRef,
 }: HeaderProps) {
-  const { clearDesign, components, saveCurrentCanvasAsLayout } = useDesign();
+  const { clearDesign, components, saveCurrentCanvasAsLayout, editingTemplateInfo, updateCustomTemplate } = useDesign();
   const { toast } = useToast();
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleGenerateCode = () => {
     if (generateModalRef.current) {
@@ -59,7 +60,10 @@ export function Header({
   };
 
   const handleClearCanvas = () => {
-    if (window.confirm("Are you sure you want to clear the canvas? This action cannot be undone.")) {
+    const message = editingTemplateInfo
+      ? "Are you sure you want to discard changes and exit template editing?"
+      : "Are you sure you want to clear the canvas? This action cannot be undone.";
+    if (window.confirm(message)) {
       clearDesign();
     }
   };
@@ -77,30 +81,45 @@ export function Header({
   };
 
   const handleSaveLayout = async () => {
+    setIsSaving(true);
     const name = window.prompt("Enter a name for this layout:", "My Saved Layout");
     if (name && name.trim() !== "") {
       try {
         await saveCurrentCanvasAsLayout(name.trim());
-        // Toast is handled within saveCurrentCanvasAsLayout
       } catch (error) {
-        // Toast for unexpected error (though context should handle most)
         toast({
           title: "Save Layout Failed",
           description: error instanceof Error ? error.message : "An unexpected error occurred.",
           variant: "destructive",
         });
       }
-    } else if (name !== null) { // User didn't cancel, but entered empty name
+    } else if (name !== null) {
       toast({
         title: "Save Failed",
         description: "Layout name cannot be empty.",
         variant: "destructive",
       });
     }
+    setIsSaving(false);
+  };
+  
+  const handleUpdateTemplate = async () => {
+    setIsSaving(true);
+    try {
+      await updateCustomTemplate();
+    } catch(error) {
+       toast({
+          title: "Update Failed",
+          description: error instanceof Error ? error.message : "An unexpected error occurred while updating template.",
+          variant: "destructive",
+        });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const hasUserComponents = components.some(c => c.id !== 'default-root-lazy-column') ||
-                           (components.find(c => c.id === 'default-root-lazy-column')?.properties.children?.length || 0) > 0;
+  const hasUserComponents = components.some(c => !c.parentId); // Check for any root component
+  const isEditingTemplate = !!editingTemplateInfo;
 
   return (
     <header className="h-16 border-b bg-sidebar flex items-center justify-between px-6 shrink-0">
@@ -113,15 +132,15 @@ export function Header({
                 size="icon"
                 variant="outline"
                 onClick={handleClearCanvas}
-                disabled={!hasUserComponents}
-                aria-label="Clear Canvas"
+                disabled={!hasUserComponents && !isEditingTemplate}
+                aria-label={isEditingTemplate ? "Discard Template Changes" : "Clear Canvas"}
                 className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
               >
                 <Trash2 />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Clear Canvas</p>
+              <p>{isEditingTemplate ? "Discard Template Changes" : "Clear Canvas"}</p>
             </TooltipContent>
           </Tooltip>
 
@@ -130,16 +149,16 @@ export function Header({
               <Button
                 size="icon"
                 variant="outline"
-                onClick={handleSaveLayout}
-                disabled={!hasUserComponents}
-                aria-label="Save Current Layout"
+                onClick={isEditingTemplate ? handleUpdateTemplate : handleSaveLayout}
+                disabled={(!hasUserComponents && !isEditingTemplate) || isSaving}
+                aria-label={isEditingTemplate ? "Update Custom Component" : "Save Current Layout"}
                 className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
               >
-                <Save />
+                {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Save Current Layout</p>
+              <p>{isEditingTemplate ? `Update "${editingTemplateInfo.name}"` : "Save Current Layout"}</p>
             </TooltipContent>
           </Tooltip>
 
@@ -149,7 +168,7 @@ export function Header({
                 size="icon"
                 variant="outline"
                 onClick={handleOpenPublishConfigModal}
-                disabled={!hasUserComponents}
+                disabled={!hasUserComponents || isEditingTemplate}
                 aria-label="Publish to Remote Config"
                 className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
               >
@@ -208,6 +227,7 @@ export function Header({
                 variant="outline"
                 onClick={handleViewJson}
                 aria-label="View/Edit Design JSON"
+                disabled={isEditingTemplate}
                 className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
               >
                 <FileJson />

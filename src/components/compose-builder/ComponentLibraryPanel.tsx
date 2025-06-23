@@ -39,7 +39,7 @@ import {
   Download, 
   PanelTop, // Icon for TopAppBar
   PanelBottom, // Icon for BottomNavigationBar
-  // AppWindow, // Icon for Scaffold structure - Scaffold item removed from palette
+  FilePenLine, // Icon for Edit
 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 
@@ -63,7 +63,7 @@ const availableBaseComponents: { type: ComponentType; icon: React.ElementType; d
 
 export function ComponentLibraryPanel() {
   const {
-    customComponentTemplates, deleteCustomComponentTemplate, renameCustomComponentTemplate,
+    customComponentTemplates, deleteCustomComponentTemplate, renameCustomComponentTemplate, loadTemplateForEditing,
     savedLayouts, loadLayoutToCanvas, deleteSavedLayout, renameSavedLayout
   } = useDesign();
   const { toast } = useToast();
@@ -89,6 +89,10 @@ export function ComponentLibraryPanel() {
       setDeleteType(null);
     }
     setIsDeleteDialogOpen(false);
+  };
+  
+  const handleEditTemplateClick = (template: CustomComponentTemplate) => {
+    loadTemplateForEditing(template.templateId);
   };
 
   const handleRenameClick = async (item: CustomComponentTemplate | SavedLayout, type: 'template' | 'layout') => {
@@ -150,6 +154,15 @@ export function ComponentLibraryPanel() {
                         Icon={BoxSelect}
                       />
                       <div className="p-1 flex justify-end items-center space-x-1 border-t border-sidebar-border/50 bg-muted/30">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-sidebar-foreground hover:bg-sidebar-accent/20"
+                          onClick={(e) => { e.stopPropagation(); handleEditTemplateClick(template);}}
+                          aria-label={`Edit ${template.name}`}
+                        >
+                          <FilePenLine className="h-3.5 w-3.5" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
