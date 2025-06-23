@@ -56,8 +56,8 @@ const getDimensionValue = (
     parentId: string | null,
     getLocalComponentById: (id: string) => DesignComponent | undefined,
     customComponentTemplates: CustomComponentTemplate[],
-    componentProperties: DesignComponent['properties']
   ): string => {
+
     if (componentId === ROOT_SCAFFOLD_ID) return '100%';
   
     if (componentId === DEFAULT_TOP_APP_BAR_ID || componentType === 'TopAppBar') {
@@ -74,40 +74,25 @@ const getDimensionValue = (
   
     if (parentComponent) {
       let effectiveParentType = parentComponent.type;
-      if (parentComponent.templateIdRef && isCustomComponentType(parentComponent.templateIdRef)) {
+      if (parentComponent.templateIdRef) {
         const template = customComponentTemplates.find(t => t.templateId === parentComponent.templateIdRef);
         if (template) {
             const rootOfParentTemplate = template.componentTree.find(c => c.id === template.rootComponentId);
             if(rootOfParentTemplate) effectiveParentType = rootOfParentTemplate.type;
         }
       }
-
       const parentIsRowLike = ['LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar', 'Row'].includes(effectiveParentType);
-      
-      // If the parent is a row-like container, fillMaxWidth should not result in 100% width.
-      // Instead, it should let the component have its intrinsic width, so it doesn't break the row layout.
-      // The proper way to fill space in a flex row is with layoutWeight.
-      if (propName === 'width' && parentIsRowLike) {
-        if (fillValue && !(componentProperties.layoutWeight && componentProperties.layoutWeight > 0)) {
-          // If fillMaxWidth is true, we IGNORE it and fall through to the normal width logic
-          // as if fillValue was false. This makes it 'auto' or uses the explicit width.
-          fillValue = false; 
-        }
-      }
-      
       const parentIsColumnLike = ['LazyColumn', 'LazyVerticalGrid', 'Column', 'Card', 'Box'].includes(effectiveParentType);
-
-      // Symmetrical logic for height in a column-like container
-      // This is less common but good for consistency. fillMaxHeight in a Column should usually be handled by weight.
-      if (propName === 'height' && parentIsColumnLike) {
-         if (fillValue && !(componentProperties.layoutWeight && componentProperties.layoutWeight > 0)) {
-          // If fillMaxHeight is true, we IGNORE it and fall through.
-          fillValue = false;
-        }
+      
+      // If we want to fill along the MAIN AXIS of the parent, this is handled by layoutWeight.
+      // The actual dimension (width/height) should be 'auto' to not interfere with flex-basis.
+      if (fillValue) {
+        if (propName === 'width' && parentIsRowLike) return 'auto';
+        if (propName === 'height' && parentIsColumnLike) return 'auto';
       }
     }
   
-    // Default behavior if no specific parent context applies, or after `fillValue` has been potentially overridden
+    // This part now implicitly handles the CROSS AXIS fill correctly, or just processes the value.
     if (fillValue) return '100%';
     if (propValue === 'match_parent') return '100%';
     if (propValue === 'wrap_content') return 'auto';
@@ -372,7 +357,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
         if (resizeDetails.handle.includes('w')) newWidth = resizeDetails.initialWidth - dx;
         
         updatedProps.width = Math.round(Math.max(newWidth, MIN_DIMENSION));
-        updatedProps.fillMaxWidth = false; // User is manually setting width
+        updatedProps.fillMaxWidth = false; 
       }
 
       if (isVerticalResize) {
@@ -381,7 +366,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
         if (resizeDetails.handle.includes('n')) newHeight = resizeDetails.initialHeight - dy;
 
         updatedProps.height = Math.round(Math.max(newHeight, MIN_DIMENSION));
-        updatedProps.fillMaxHeight = false; // User is manually setting height
+        updatedProps.fillMaxHeight = false; 
       }
 
       if (Object.keys(updatedProps).length > 0) {
@@ -476,7 +461,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
 
       default:
         // This logic handles instances of custom components by deferring to ContainerView
-        if (component.templateIdRef && isCustomComponentType(component.templateIdRef)) {
+        if (component.templateIdRef) {
            const template = customComponentTemplates.find(t => t.templateId === component.templateIdRef);
            if (template) {
              const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
@@ -491,56 +476,66 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     }
   };
   
+  const parent = component.parentId ? getComponentById(component.parentId) : null;
+  let parentIsRowLike = false;
+  let parentIsColumnLike = false;
+  
+  if (parent) {
+      let effectiveParentType = parent.type;
+      if (parent.templateIdRef) {
+          const template = customComponentTemplates.find(t => t.templateId === parent.templateIdRef);
+          if (template) {
+              const rootOfTemplate = template.componentTree.find(c => c.id === template.rootComponentId);
+              if (rootOfTemplate) effectiveParentType = rootOfTemplate.type;
+          }
+      }
+      parentIsRowLike = ['LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar', 'Row'].includes(effectiveParentType);
+      parentIsColumnLike = ['LazyColumn', 'LazyVerticalGrid', 'Column', 'Card', 'Box', 'Scaffold'].includes(effectiveParentType);
+  }
+
   
   const wrapperStyle: React.CSSProperties = {
     transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
-    width: getDimensionValue('width', component.properties.width, component.properties.fillMaxWidth, component.type, component.id, component.parentId, getComponentById, customComponentTemplates, component.properties),
-    height: getDimensionValue('height', component.properties.height, component.properties.fillMaxHeight, component.type, component.id, component.parentId, getComponentById, customComponentTemplates, component.properties),
+    width: getDimensionValue('width', component.properties.width, component.properties.fillMaxWidth, component.type, component.id, component.parentId, getComponentById, customComponentTemplates),
+    height: getDimensionValue('height', component.properties.height, component.properties.fillMaxHeight, component.type, component.id, component.parentId, getComponentById, customComponentTemplates),
     position: 'relative', 
     display: 'block', 
   };
   
-  if (component.properties.layoutWeight && component.properties.layoutWeight > 0) {
-    wrapperStyle.flexGrow = component.properties.layoutWeight;
+  let effectiveLayoutWeight = component.properties.layoutWeight || 0;
+  if (parentIsRowLike && component.properties.fillMaxWidth) {
+    effectiveLayoutWeight = Math.max(effectiveLayoutWeight, 1);
+  }
+  if (parentIsColumnLike && component.properties.fillMaxHeight) {
+    effectiveLayoutWeight = Math.max(effectiveLayoutWeight, 1);
+  }
+
+  if (effectiveLayoutWeight > 0) {
+    wrapperStyle.flexGrow = effectiveLayoutWeight;
     wrapperStyle.flexShrink = 1; 
     wrapperStyle.flexBasis = '0%'; 
     
     const parentComp = component.parentId ? getComponentById(component.parentId) : null;
     if (parentComp) {
-        let parentIsRowLike = ['Row', 'LazyRow', 'TopAppBar', 'BottomNavigationBar', 'LazyHorizontalGrid'].includes(parentComp.type);
-        if (parentComp.templateIdRef && isCustomComponentType(parentComp.templateIdRef)) {
+        let currentParentIsRowLike = ['Row', 'LazyRow', 'TopAppBar', 'BottomNavigationBar', 'LazyHorizontalGrid'].includes(parentComp.type);
+        if (parentComp.templateIdRef) {
             const template = customComponentTemplates.find(t => t.templateId === parentComp.templateIdRef);
             if (template) {
                 const rootOfTemplate = template.componentTree.find(c => c.id === template.rootComponentId);
-                if (rootOfTemplate) parentIsRowLike = ['Row', 'LazyRow', 'TopAppBar', 'BottomNavigationBar', 'LazyHorizontalGrid'].includes(rootOfTemplate.type);
+                if (rootOfTemplate) currentParentIsRowLike = ['Row', 'LazyRow', 'TopAppBar', 'BottomNavigationBar', 'LazyHorizontalGrid'].includes(rootOfTemplate.type);
             }
         }
 
-        if (parentIsRowLike) { 
-            wrapperStyle.height = '100%'; 
-            if (!component.properties.fillMaxWidth && !isNumericValue(component.properties.width) && component.properties.width !=='wrap_content') {
-                 wrapperStyle.width = 'auto'; 
-            }
+        if (currentParentIsRowLike) { 
+            wrapperStyle.height = component.properties.fillMaxHeight ? '100%' : 'auto'; 
         } else { 
-            wrapperStyle.width = '100%'; 
-             if (!component.properties.fillMaxHeight && !isNumericValue(component.properties.height) && component.properties.height !=='wrap_content') {
-                 wrapperStyle.height = 'auto';
-            }
+            wrapperStyle.width = component.properties.fillMaxWidth ? '100%' : 'auto'; 
         }
     }
   }
 
-  const parent = component.parentId ? getComponentById(component.parentId) : null;
+  
   if (parent && (isContainerType(parent.type, customComponentTemplates) || parent.templateIdRef)) {
-    let parentIsRowLike = ['Row', 'LazyRow', 'TopAppBar', 'BottomNavigationBar', 'LazyHorizontalGrid'].includes(parent.type);
-    if (parent.templateIdRef && isCustomComponentType(parent.templateIdRef)) {
-        const template = customComponentTemplates.find(t => t.templateId === parent.templateIdRef);
-        if(template) {
-            const rootOfTemplate = template.componentTree.find(c => c.id === template.rootComponentId);
-            if(rootOfTemplate) parentIsRowLike = ['Row', 'LazyRow', 'TopAppBar', 'BottomNavigationBar', 'LazyHorizontalGrid'].includes(rootOfTemplate.type);
-        }
-    }
-
     const selfAlignProp = component.properties.selfAlign;
 
     if (selfAlignProp && selfAlignProp !== 'Inherit') {
@@ -590,8 +585,8 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     : '';
 
   
-  const canResizeHorizontally = isSelected && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxWidth && (isNumericValue(component.properties.width) || component.properties.width === undefined || component.properties.width === 'wrap_content');
-  const canResizeVertically = isSelected && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxHeight && (isNumericValue(component.properties.height) || component.properties.height === undefined || component.properties.height === 'wrap_content');
+  const canResizeHorizontally = isSelected && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxWidth;
+  const canResizeVertically = isSelected && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxHeight;
   const canResize = canResizeHorizontally && canResizeVertically;
   
 
@@ -642,4 +637,5 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     </div>
   );
 }
+
 
