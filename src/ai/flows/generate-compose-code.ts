@@ -92,14 +92,15 @@ Lazy List Handling (LazyColumn, LazyRow):
 - Use \`items(itemsList) { item -> MyListItem(item) }\`.
 
 AnimatedContent Handling:
-- If you see a component with type "AnimatedContent", generate an \`AnimatedVisibility\` composable.
-- The \`visible\` parameter should be set to \`true\`, with a comment like \`// TODO: Replace with your state boolean\`.
-- The children of the "AnimatedContent" JSON node should be placed inside the \`AnimatedVisibility\` block.
-- Use the \`animationType\` and \`animationDuration\` properties to construct the \`enter\` and \`exit\` transitions.
-- Example for "Fade": enter = fadeIn(animationSpec = tween(durationMillis = animationDuration)), exit = fadeOut(animationSpec = tween(durationMillis = animationDuration))
-- Example for "SlideFromTop": enter = slideInVertically(tween(animationDuration)) { -it } + fadeIn(tween(animationDuration)), exit = slideOutVertically(tween(animationDuration)) { -it } + fadeOut(tween(animationDuration))
-- Map the \`animationType\` values ('Fade', 'Scale', 'SlideFromTop', etc.) to the appropriate EnterTransition and ExitTransition combinations.
-- You will need to import from \`androidx.compose.animation.*\`.
+- If you see a component with type "AnimatedContent", generate an "@OptIn(ExperimentalAnimationApi::class) AnimatedContent" composable.
+- You must create a mutable state variable to control the animation, e.g., "var showContent by remember { mutableStateOf(true) }".
+- The generated UI should include a separate Composable (like a Button) to toggle this state variable, so the user can see the animation.
+- The "targetState" of the "AnimatedContent" should be bound to this state variable.
+- Inside the "AnimatedContent" lambda, which provides the target state as a parameter (e.g., "it" or "isVisible"), you MUST check this parameter before rendering the children. For example: "if (isVisible) { // Render children here }".
+- The "transitionSpec" should be configured based on the "animationType" property. Use a "ContentTransform" that combines enter and exit transitions with the "with" keyword.
+- Example "transitionSpec" for "Fade": "fadeIn(animationSpec = tween(animationDuration)) with fadeOut(animationSpec = tween(animationDuration))"
+- Example "transitionSpec" for "SlideFromTop": "(slideInVertically(tween(animationDuration)) { fullHeight -> -fullHeight } + fadeIn(tween(animationDuration))) with (slideOutVertically(tween(animationDuration)) { fullHeight -> -fullHeight } + fadeOut(tween(animationDuration)))"
+- Ensure all necessary imports from "androidx.compose.animation.*" are included.
 
 Example of Expected JSON Structure ({{{designJson}}}):
 \`\`\`json
