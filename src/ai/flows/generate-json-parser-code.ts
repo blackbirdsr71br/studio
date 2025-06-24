@@ -109,8 +109,38 @@ Output Requirements (Single Kotlin File):
         - **Component-specific Composables**: For **each type** in your \`ComponentType\` enum (except UNKNOWN), create a corresponding Composable function (e.g., \`TextComponent\`, \`ImageComponent\`, \`CardComponent\`, \`ColumnComponent\`, \`RowComponent\`, etc.). These functions are called by \`RenderNode\`. Container composables (e.g., \`ColumnComponent\`, \`RowComponent\`, \`CardComponent\`) **must recursively call \`RenderNode\`** for their children to build the nested UI. Image loading MUST use the Coil library.
         - **ColorUtils.kt**: Include utility functions for parsing color strings.
 
-Final Output:
-Generate a single, complete, and runnable Kotlin file. Do NOT include a \`package\` declaration at the top level, but use it in the commented file paths. Ensure ALL necessary imports for Koin, Firebase, Coroutines, Compose, etc., are present. The code should be clean, well-commented, and ready to be integrated. The repository implementation MUST include the actual logic to connect to and fetch from Firebase Remote Config.
+Final Output & Verification:
+
+**You must generate a single, complete, and runnable Kotlin file.** Before finishing, mentally review your generated code against this checklist to ensure completeness. The user expects a full, copy-paste ready solution.
+
+**Checklist:**
+1.  **Gradle Dependencies**: Does the output start with a large comment block containing both \`libs.versions.toml\` content and the \`build.gradle.kts\` dependencies block?
+2.  **All Architectural Layers**: Are all layers (Data, Domain, Presentation, DI) present as commented sections?
+3.  **Data Layer Completeness**:
+    - Are there \`@Serializable\` DTOs that match the input JSON?
+    - Is there a \`UiComponentMapper\` object to map DTOs to Domain models?
+    - Is there a complete \`RemoteConfigDataSourceImpl\` with Firebase fetch logic?
+    - Is there a complete \`UiComponentRepositoryImpl\` that uses the data source, parses JSON, and maps to domain models?
+4.  **Domain Layer Completeness**:
+    - Are there pure data classes for \`UiComponent\` and \`Properties\`?
+    - Does the \`ComponentType\` enum contain a case for **every unique component type** from the input JSON, plus \`UNKNOWN\`?
+    - Is the \`UiComponentRepository\` interface defined?
+    - Is the \`GetUiComponentsUseCase\` class defined?
+5.  **DI Layer Completeness**: Is there a complete Koin \`appModule\` that provides the \`DataSource\`, \`Repository\`, \`UseCase\`, and \`ViewModel\`?
+6.  **Presentation Layer Completeness**:
+    - Are the MVI \`UiState\`, \`UiEvent\`, \`UiEffect\` interfaces defined within a \`MainContract\`?
+    - Is the abstract \`BaseViewModel\` present?
+    - Is the \`MainViewModel\` fully implemented, inheriting from \`BaseViewModel\` and handling events?
+    - Is the \`MainScreen\` Composable present, observing the ViewModel's state?
+    - Is there a \`DynamicUiRenderer\` Composable?
+    - Is there a \`RenderNode\` Composable with a \`when\` statement that has a branch for **every single \`ComponentType\`** in the enum (except \`UNKNOWN\`)?
+    - For **every** \`ComponentType\` branch in the \`when\` statement, is there a corresponding Composable function (e.g., \`TextComponent\`, \`CardComponent\`, \`ColumnComponent\`)?
+    - Do container Composables (\`ColumnComponent\`, \`RowComponent\`, \`CardComponent\`, etc.) recursively call \`RenderNode\` for their children?
+7.  **Final Checks**:
+    - Is there NO \`package\` declaration at the top of the file? (But used in comments).
+    - Are all necessary imports included for all classes?
+
+Adhere strictly to this structure. The goal is a single, massive, and complete file that fulfills all requirements without omission.
 `,
 });
 
