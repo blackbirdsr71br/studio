@@ -312,6 +312,9 @@ export function PropertyPanel() {
       componentDisplayName = getComponentDisplayName(selectedComponent.type as ComponentType);
     }
     const isCoreScaffoldElement = CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponent.id) && !selectedComponent.templateIdRef;
+    
+    const gridCols = propertyGroups.length > 3 ? 3 : propertyGroups.length > 0 ? propertyGroups.length : 1;
+    const gridColsClass = `grid-cols-${gridCols}`;
 
     return (
       <div className="h-full flex flex-col">
@@ -344,28 +347,35 @@ export function PropertyPanel() {
             <p className="text-sm text-muted-foreground">No editable properties for this component type.</p>
           </div>
         ) : (
-          <ScrollArea className="flex-grow min-h-0 -mx-4">
-            <div className="px-4 space-y-3">
-              {propertyGroups.map((group) => (
-                <div key={group}>
-                  <h3 className="text-sm font-semibold text-sidebar-foreground mb-2">{group}</h3>
-                  <div className="space-y-3">
-                    {groupedProperties[group]}
-                     {(selectedComponent.type === 'Image' || (sourceComponentForCornerRadiusType === 'Image')) && group === 'Content' && !groupedProperties[group].find(el => (el as React.ReactElement)?.key === 'src-buttons')
-                     && (
-                      <div className="mt-3 pt-3 border-t border-sidebar-border">
-                        <Button onClick={handleGenerateImage} disabled={isGeneratingImage || !selectedComponent.properties['data-ai-hint']} className="w-full" size="sm" >
-                          {isGeneratingImage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                          Generate Image from Hint
-                        </Button>
-                        {generationError && <p className="text-xs text-destructive mt-1 text-center">{generationError}</p>}
-                      </div>
-                    )}
-                  </div>
+          <div className="flex-grow flex flex-col min-h-0">
+            <Tabs defaultValue={propertyGroups[0]} className="flex flex-col flex-grow min-h-0">
+              <TabsList className={`grid w-full ${gridColsClass}`}>
+                {propertyGroups.map((group) => (
+                  <TabsTrigger key={group} value={group} className="text-xs px-1 py-1.5 h-auto">
+                    {group}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              <ScrollArea className="flex-grow min-h-0 mt-3 -mx-4">
+                <div className="px-4">
+                  {propertyGroups.map((group) => (
+                    <TabsContent key={group} value={group} className="space-y-3 mt-0">
+                      {groupedProperties[group]}
+                      {(selectedComponent.type === 'Image' || (sourceComponentForCornerRadiusType === 'Image')) && group === 'Content' && !groupedProperties[group].find(el => (el as React.ReactElement)?.key === 'src-buttons') && (
+                        <div className="mt-3 pt-3 border-t border-sidebar-border">
+                          <Button onClick={handleGenerateImage} disabled={isGeneratingImage || !selectedComponent.properties['data-ai-hint']} className="w-full" size="sm">
+                            {isGeneratingImage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                            Generate Image from Hint
+                          </Button>
+                          {generationError && <p className="text-xs text-destructive mt-1 text-center">{generationError}</p>}
+                        </div>
+                      )}
+                    </TabsContent>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </ScrollArea>
+              </ScrollArea>
+            </Tabs>
+          </div>
         )}
       </div>
     );
