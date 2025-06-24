@@ -382,7 +382,7 @@ export function PropertyPanel() {
   };
 
   return (
-    <aside className="w-72 border-l bg-sidebar p-4 flex flex-col shrink-0">
+    <aside className="w-80 border-l bg-sidebar p-4 flex flex-col shrink-0">
         <Tabs defaultValue={selectedComponent ? "properties" : "structure"} value={selectedComponent ? undefined : "structure"} className="w-full flex flex-col flex-grow min-h-0">
             <TabsList className="grid w-full grid-cols-2 shrink-0">
                 <TabsTrigger value="properties" disabled={!selectedComponent}>Properties</TabsTrigger>
@@ -402,3 +402,5 @@ export function PropertyPanel() {
     </aside>
   );
 }
+
+    
