@@ -51,7 +51,7 @@ Each slot can either be null or contain a single component object (e.g., TopAppB
 
 Your output should be a single \`@Composable\` function representing the entire screen.
 Start with a function signature like \`@Composable fun MyGeneratedScreen() { ... }\`.
-Ensure all necessary imports are included if you can infer them (e.g., androidx.compose.material3.*, androidx.compose.foundation.layout.*, etc.), but prioritize the Composable body.
+Ensure all necessary imports are included if you can infer them (e.g., androidx.compose.material3.*, androidx.compose.foundation.layout.*, androidx.compose.animation.* etc.), but prioritize the Composable body.
 
 Scaffold Structure:
 Generate a \`Scaffold\` composable.
@@ -79,7 +79,7 @@ Modifier Rules:
     - effectiveEnd = properties.paddingEnd ?? properties.padding ?? 0
     - If all effective paddings are equal and non-zero, use Modifier.padding(all = commonValue.dp).
     - Else, use Modifier.padding(start = effectiveStart.dp, top = effectiveTop.dp, ...) omitting zero values.
-- Corner Radius (for Card, Box, Image): Use Modifier.clip(RoundedCornerShape(...)) if any cornerRadius... properties are set. If all are equal (value C), use RoundedCornerShape(C.dp). Otherwise, specify individual corners.
+- Corner Radius (for Card, Box, Image, AnimatedContent): Use Modifier.clip(RoundedCornerShape(...)) if any cornerRadius... properties are set. If all are equal (value C), use RoundedCornerShape(C.dp). Otherwise, specify individual corners.
 - Card: Use parameters like 'elevation', 'colors = CardDefaults.cardColors(containerColor = ...)', 'shape', 'border'.
 - Spacer: If 'layoutWeight' > 0, Spacer(Modifier.weight(Wf)). Otherwise, Spacer(Modifier.width(X.dp).height(Y.dp)) or just width/height if one is zero.
 - TopAppBar: Expect a 'title' string property. Render inside \`TopAppBar(...)\`. Its children (if any) are for actions or navigation icons.
@@ -90,6 +90,16 @@ Lazy List Handling (LazyColumn, LazyRow):
 - If a LazyColumn/LazyRow contains multiple (2+) structurally identical children, define a data class and an item Composable function.
 - Example: \`data class MyItemData(val title: String)\` and \`@Composable fun MyListItem(item: MyItemData) { Card { Text(item.title) } }\`.
 - Use \`items(itemsList) { item -> MyListItem(item) }\`.
+
+AnimatedContent Handling:
+- If you see a component with type "AnimatedContent", generate an \`AnimatedVisibility\` composable.
+- The \`visible\` parameter should be set to \`true\`, with a comment like \`// TODO: Replace with your state boolean\`.
+- The children of the "AnimatedContent" JSON node should be placed inside the \`AnimatedVisibility\` block.
+- Use the \`animationType\` and \`animationDuration\` properties to construct the \`enter\` and \`exit\` transitions.
+- Example for "Fade": enter = fadeIn(animationSpec = tween(durationMillis = animationDuration)), exit = fadeOut(animationSpec = tween(durationMillis = animationDuration))
+- Example for "SlideFromTop": enter = slideInVertically(tween(animationDuration)) { -it } + fadeIn(tween(animationDuration)), exit = slideOutVertically(tween(animationDuration)) { -it } + fadeOut(tween(animationDuration))
+- Map the \`animationType\` values ('Fade', 'Scale', 'SlideFromTop', etc.) to the appropriate EnterTransition and ExitTransition combinations.
+- You will need to import from \`androidx.compose.animation.*\`.
 
 Example of Expected JSON Structure ({{{designJson}}}):
 \`\`\`json

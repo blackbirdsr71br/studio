@@ -16,6 +16,7 @@ export type ComponentType =
   | 'Spacer'
   | 'TopAppBar' // Added
   | 'BottomNavigationBar' // Added
+  | 'AnimatedContent' // Added
   | 'Scaffold'; // Explicitly a root type
 
 export const CUSTOM_COMPONENT_TYPE_PREFIX = "custom/";
@@ -92,6 +93,8 @@ export interface BaseComponentProps {
   selfAlign?: 'Inherit' | 'Start' | 'Center' | 'End';
   clickable?: boolean;
   clickId?: string;
+  animationType?: 'Fade' | 'Scale' | 'SlideFromTop' | 'SlideFromBottom' | 'SlideFromStart' | 'SlideFromEnd';
+  animationDuration?: number;
 
   // Properties for Scaffold structure, used by AI generation
   topBarId?: string; // ID of the TopAppBar component
@@ -345,6 +348,20 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         horizontalArrangement: 'SpaceAround', // Common for nav items
         verticalAlignment: 'CenterVertically'
       };
+    case 'AnimatedContent':
+      return {
+        ...commonLayout,
+        children: [],
+        padding: 8,
+        backgroundColor: 'rgba(128, 128, 255, 0.1)',
+        width: 200, height: 200, itemSpacing: 8,
+        verticalArrangement: 'Top', horizontalAlignment: 'Start',
+        animationType: 'Fade',
+        animationDuration: 300,
+        selfAlign: 'Inherit',
+        clickable: false,
+        clickId: '',
+      };
     default:
       // For unknown types (which shouldn't happen for base types, but could be a template ID passed inadvertently)
       // or if a type string like `custom/...` is passed directly.
@@ -375,6 +392,7 @@ export const getComponentDisplayName = (type: ComponentType | string): string =>
     case 'Spacer': return 'Spacer';
     case 'TopAppBar': return 'Top App Bar';
     case 'BottomNavigationBar': return 'Bottom Nav Bar';
+    case 'AnimatedContent': return 'Animated Content';
     default: 
       // If a custom type ID (e.g., "custom/...") was passed by mistake, try to make it readable.
       if (type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
@@ -658,6 +676,29 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     // BottomNavigationBar behaves like a Row for its children (nav items)
     ...rowSpecificLayoutProperties,
   ],
+  AnimatedContent: [
+    ...commonLayoutProperties,
+    ...columnSpecificLayoutProperties,
+    selfAlignProperty,
+    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    {
+      name: 'animationType',
+      type: 'enum',
+      label: 'Animation Type',
+      group: 'Behavior',
+      options: [
+        { label: 'Fade', value: 'Fade' },
+        { label: 'Scale', value: 'Scale' },
+        { label: 'Slide From Top', value: 'SlideFromTop' },
+        { label: 'Slide From Bottom', value: 'SlideFromBottom' },
+        { label: 'Slide From Start', value: 'SlideFromStart' },
+        { label: 'Slide From End', value: 'SlideFromEnd' },
+      ]
+    },
+    { name: 'animationDuration', type: 'number', label: 'Animation Duration (ms)', placeholder: '300', group: 'Behavior' },
+    clickableProperty,
+    clickIdProperty,
+  ],
 };
 
 export const isCustomComponentType = (type: string): boolean => {
@@ -668,6 +709,7 @@ export const CONTAINER_TYPES: ReadonlyArray<ComponentType | string > = [
   'Column', 'Row', 'Box', 'Card',
   'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid',
   'TopAppBar', 'BottomNavigationBar', // These are now containers for their items
+  'AnimatedContent',
   'Scaffold' // Scaffold is the root container
 ];
 

@@ -1,3 +1,4 @@
+
 'use client';
 import type { DesignComponent, ComponentType as OriginalComponentType } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from '../RenderedComponentWrapper';
@@ -129,7 +130,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   } else if (effectiveType === 'LazyRow' || effectiveType === 'LazyHorizontalGrid') {
     defaultWidth = 'match_parent';
     defaultHeight = effectiveType === 'LazyRow' ? 120 : 200;
-  } else if (effectiveType === 'Card') {
+  } else if (effectiveType === 'Card' || effectiveType === 'AnimatedContent') {
     defaultWidth = 200;
     defaultHeight = 150;
   } else if (effectiveType === 'Box') {
@@ -154,7 +155,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   let finalFlexDirection: 'row' | 'column';
   if (effectiveType === 'Row' || effectiveType === 'LazyRow' || effectiveType === 'LazyHorizontalGrid' || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar') {
     finalFlexDirection = 'row';
-  } else if (effectiveType === 'Column' || effectiveType === 'LazyColumn' || effectiveType === 'LazyVerticalGrid' || effectiveType === 'Card' || effectiveType === 'Box') {
+  } else if (effectiveType === 'Column' || effectiveType === 'LazyColumn' || effectiveType === 'LazyVerticalGrid' || effectiveType === 'Card' || effectiveType === 'Box' || effectiveType === 'AnimatedContent') {
     finalFlexDirection = 'column';
   } else {
     finalFlexDirection = isRowPropHint ? 'row' : 'column'; 
@@ -210,6 +211,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
 
   switch (effectiveType) {
     case 'Card':
+    case 'AnimatedContent':
       baseStyle.boxShadow = `0 ${elevation}px ${elevation * 1.5}px rgba(0,0,0,0.1), 0 ${elevation/2}px ${elevation/2}px rgba(0,0,0,0.06)`;
       if (typeof borderWidth === 'number' && borderWidth > 0 && borderColor) {
         baseStyle.border = `${borderWidth}px solid ${borderColor}`;

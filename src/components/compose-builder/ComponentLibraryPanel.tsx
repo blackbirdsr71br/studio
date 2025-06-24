@@ -40,6 +40,7 @@ import {
   PanelTop, // Icon for TopAppBar
   PanelBottom, // Icon for BottomNavigationBar
   FilePenLine, // Icon for Edit
+  Film, // Icon for AnimatedContent
 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 
@@ -52,6 +53,7 @@ const availableBaseComponents: { type: ComponentType; icon: React.ElementType; d
   { type: "Row", icon: Rows },
   { type: "Box", icon: Box },
   { type: "Card", icon: CreditCard },
+  { type: "AnimatedContent", icon: Film },
   { type: "LazyColumn", icon: GalleryVertical },
   { type: "LazyRow", icon: GalleryHorizontal },
   { type: "LazyVerticalGrid", icon: Grid3x3 },

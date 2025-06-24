@@ -14,6 +14,7 @@ import {
   Space,
   PanelTop,
   PanelBottom,
+  Film,
   LayoutTemplate, // For Scaffold
 } from "lucide-react";
 import type { ComponentType } from "@/types/compose-spec";
@@ -35,6 +36,7 @@ export const getComponentIcon = (type: ComponentType | string): LucideIcon => {
         case 'Spacer': return Space;
         case 'TopAppBar': return PanelTop;
         case 'BottomNavigationBar': return PanelBottom;
+        case 'AnimatedContent': return Film;
         case 'Scaffold': return LayoutTemplate;
         default: return BoxSelect; // Default for custom components
     }

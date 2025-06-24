@@ -83,7 +83,7 @@ Each component object in the input array generally has:
 - "name": string (user-friendly name from canvas)
 - "parentId": string (ID of its parent within the input canvas structure, relative to other components in 'designJson')
 - "properties": object containing various attributes.
-  - If a component is a container (like "Column", "Row", "Card", "Box", "LazyColumn", "LazyRow", "LazyVerticalGrid", "LazyHorizontalGrid"), its "properties" object will have a "children" array. This "children" array contains the full JSON objects of its child components.
+  - If a component is a container (like "Column", "Row", "Card", "Box", "LazyColumn", "LazyRow", "LazyVerticalGrid", "LazyHorizontalGrid", "AnimatedContent"), its "properties" object will have a "children" array. This "children" array contains the full JSON objects of its child components.
   - Properties like "x", "y", "id", "name", and the original "parentId" from the input JSON are for the canvas's internal structure and should NOT be directly copied into the output "Compose Remote Layout" JSON unless explicitly mapped below. The output JSON structure dictates its own hierarchy and property names.
 
 Target "Compose Remote Layout" JSON Structure:
@@ -96,7 +96,7 @@ The output JSON MUST strictly follow this pattern:
   - The "modifier" object MUST have a "base" object for common modifiers (unless "base" itself would be empty).
   - Component-specific modifiers can be direct children of "modifier".
   - Component-specific properties (e.g., "content" for Text, "clickId" for Button).
-  - If the component is a container (like "column", "row", "card", "box", "grid"), it should have a "children" array. Each element in "children" must be an object structured in the same way (e.g., { "text": { "modifier": {...}, "content": "Hello" } }). Spacers do not have children.
+  - If the component is a container (like "column", "row", "card", "box", "grid", "animatedcontent"), it should have a "children" array. Each element in "children" must be an object structured in the same way (e.g., { "text": { "modifier": {...}, "content": "Hello" } }). Spacers do not have children.
 
 Component Type Mapping (Canvas Type -> Output Key):
 - "Text" -> "text"
@@ -107,6 +107,7 @@ Component Type Mapping (Canvas Type -> Output Key):
 - "Card" -> "card"
 - "Image" -> "image"
 - "Spacer" -> "spacer"
+- "AnimatedContent" -> "animatedcontent"
 - "LazyColumn" -> "column" (add '"scrollable": true' to 'modifier.base')
 - "LazyRow" -> "row" (add '"scrollable": true' to 'modifier.base')
 - "LazyVerticalGrid" -> "grid" (set 'modifier.orientation: "vertical"', 'modifier.base.scrollable: true', map 'columns' to 'modifier.columns')
@@ -195,9 +196,12 @@ Modifier and Property Mapping Rules (from input component properties to output "
     *   **Image**:
         *   'src' (canvas) -> 'src' (output property for "image", as per your guide).
         *   'contentDescription' (canvas) -> 'alt' or 'contentDescription' (output property for "image", let's use 'alt' if target spec is like HTML img, or 'contentDescription' if closer to Compose). Assume 'contentDescription' for now.
+    *   **AnimatedContent**:
+        *   'animationType' (canvas) -> 'animationType' (output).
+        *   'animationDuration' (canvas) -> 'animationDuration' (output).
 
 5.  **Children**:
-    *   For container components (Column, Row, Box, Card, Grid from LazyGrids), recursively transform their children from the canvas 'properties.children' array and place them into the output component's 'children' array.
+    *   For container components (Column, Row, Box, Card, Grid from LazyGrids, AnimatedContent), recursively transform their children from the canvas 'properties.children' array and place them into the output component's 'children' array.
 
 6.  **Omissions (VERY IMPORTANT)**:
     *   **Crucially, do NOT include any property (whether in 'modifier.base', component-specific modifiers, or direct properties) in the output JSON if its corresponding value from the input canvas JSON is 'null', 'undefined', or an empty string ('""').**
