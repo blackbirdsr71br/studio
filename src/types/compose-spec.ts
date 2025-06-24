@@ -464,15 +464,26 @@ const columnSpecificLayoutProperties: (Omit<ComponentProperty, 'value'>)[] = [
   },
 ];
 
-const clickableProperty: Omit<ComponentProperty, 'value'> = { name: 'clickable', type: 'boolean', label: 'Is Clickable', group: 'Behavior' };
-const clickIdProperty: Omit<ComponentProperty, 'value'> = { name: 'clickId', type: 'string', label: 'Click ID', placeholder: 'e.g., action_name', group: 'Behavior' };
+const clickableProperties: (Omit<ComponentProperty, 'value'>)[] = [
+    { name: 'clickable', type: 'boolean', label: 'Is Clickable', group: 'Behavior' },
+    { name: 'clickId', type: 'string', label: 'Click ID', placeholder: 'e.g., action_name', group: 'Behavior' },
+];
+
+const cornerRadiusProperties: (Omit<ComponentProperty, 'value'>)[] = [
+    { name: 'cornerRadiusTopLeft', type: 'number', label: 'Corner Radius TL (dp)', placeholder: '0', group: 'Appearance' },
+    { name: 'cornerRadiusTopRight', type: 'number', label: 'Corner Radius TR (dp)', placeholder: '0', group: 'Appearance' },
+    { name: 'cornerRadiusBottomRight', type: 'number', label: 'Corner Radius BR (dp)', placeholder: '0', group: 'Appearance' },
+    { name: 'cornerRadiusBottomLeft', type: 'number', label: 'Corner Radius BL (dp)', placeholder: '0', group: 'Appearance' },
+];
+
+const borderProperties: (Omit<ComponentProperty, 'value'>)[] = [
+    { name: 'borderWidth', type: 'number', label: 'Border Width (dp)', placeholder: '0', group: 'Appearance' },
+    { name: 'borderColor', type: 'color', label: 'Border Color', group: 'Appearance' },
+];
 
 
 export const propertyDefinitions: Record<ComponentType | string, (Omit<ComponentProperty, 'value'>)[]> = {
   Scaffold: [
-    // Scaffold backgroundColor is usually transparent, the content area gets its own.
-    // No direct layout properties for Scaffold itself other than it fills the screen.
-    // Slot assignment is structural, not a typical "property".
     { name: 'backgroundColor', type: 'color', label: 'Background Color (Scaffold Body)', group: 'Appearance' },
   ],
   Text: [
@@ -539,8 +550,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
         { label: 'LineThrough', value: 'LineThrough' },
       ]
     },
-    clickableProperty,
-    clickIdProperty,
+    ...clickableProperties,
   ],
   Button: [
     ...commonLayoutProperties,
@@ -549,8 +559,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     { name: 'fontSize', type: 'number', label: 'Font Size (sp)', placeholder: '14', group: 'Appearance' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'textColor', type: 'color', label: 'Text Color', group: 'Appearance' },
-    clickableProperty,
-    clickIdProperty,
+    ...clickableProperties,
   ],
   Image: [
     ...commonLayoutProperties,
@@ -558,10 +567,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     { name: 'src', type: 'string', label: 'Image URL', placeholder: 'https://example.com/image.png', group: 'Content' },
     { name: 'contentDescription', type: 'string', label: 'Content Description', placeholder: 'Image description', group: 'Content' },
     { name: 'data-ai-hint', type: 'string', label: 'AI Hint (for placeholder/generation)', placeholder: 'e.g. "landscape sunset"', group: 'Content'},
-    { name: 'cornerRadiusTopLeft', type: 'number', label: 'Corner Radius TL (dp)', placeholder: '0', group: 'Appearance' },
-    { name: 'cornerRadiusTopRight', type: 'number', label: 'Corner Radius TR (dp)', placeholder: '0', group: 'Appearance' },
-    { name: 'cornerRadiusBottomRight', type: 'number', label: 'Corner Radius BR (dp)', placeholder: '0', group: 'Appearance' },
-    { name: 'cornerRadiusBottomLeft', type: 'number', label: 'Corner Radius BL (dp)', placeholder: '0', group: 'Appearance' },
+    ...cornerRadiusProperties,
     {
       name: 'contentScale',
       type: 'enum',
@@ -577,35 +583,28 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
         { label: 'Fill Height', value: 'FillHeight' },
       ]
     },
-    clickableProperty,
-    clickIdProperty,
+    ...clickableProperties,
   ],
   Column: [
     ...commonLayoutProperties,
     ...columnSpecificLayoutProperties,
     selfAlignProperty,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    clickableProperty,
-    clickIdProperty,
+    ...clickableProperties,
   ],
   Row: [
     ...commonLayoutProperties,
     ...rowSpecificLayoutProperties,
     selfAlignProperty,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    clickableProperty,
-    clickIdProperty,
+    ...clickableProperties,
   ],
   Box: [
     ...commonLayoutProperties,
     selfAlignProperty,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    { name: 'cornerRadiusTopLeft', type: 'number', label: 'Corner Radius TL (dp)', placeholder: '0', group: 'Appearance' },
-    { name: 'cornerRadiusTopRight', type: 'number', label: 'Corner Radius TR (dp)', placeholder: '0', group: 'Appearance' },
-    { name: 'cornerRadiusBottomRight', type: 'number', label: 'Corner Radius BR (dp)', placeholder: '0', group: 'Appearance' },
-    { name: 'cornerRadiusBottomLeft', type: 'number', label: 'Corner Radius BL (dp)', placeholder: '0', group: 'Appearance' },
-    clickableProperty,
-    clickIdProperty,
+    ...cornerRadiusProperties,
+    ...clickableProperties,
   ],
   Card: [
     ...commonLayoutProperties,
@@ -613,15 +612,10 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     selfAlignProperty,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (Overrides default contrast)', group: 'Appearance' },
-    { name: 'cornerRadiusTopLeft', type: 'number', label: 'Corner Radius TL (dp)', placeholder: '8', group: 'Appearance' },
-    { name: 'cornerRadiusTopRight', type: 'number', label: 'Corner Radius TR (dp)', placeholder: '8', group: 'Appearance' },
-    { name: 'cornerRadiusBottomRight', type: 'number', label: 'Corner Radius BR (dp)', placeholder: '8', group: 'Appearance' },
-    { name: 'cornerRadiusBottomLeft', type: 'number', label: 'Corner Radius BL (dp)', placeholder: '8', group: 'Appearance' },
+    ...cornerRadiusProperties,
     { name: 'elevation', type: 'number', label: 'Elevation (dp)', placeholder: '2', group: 'Appearance' },
-    { name: 'borderWidth', type: 'number', label: 'Border Width (dp)', placeholder: '0', group: 'Appearance' },
-    { name: 'borderColor', type: 'color', label: 'Border Color', group: 'Appearance' },
-    clickableProperty,
-    clickIdProperty,
+    ...borderProperties,
+    ...clickableProperties,
   ],
   LazyColumn: [ // Properties for the content area LazyColumn
     ...commonLayoutProperties.filter(p => !p.name.startsWith('selfAlign')), // selfAlign not relevant for root content
@@ -696,8 +690,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
       ]
     },
     { name: 'animationDuration', type: 'number', label: 'Animation Duration (ms)', placeholder: '300', group: 'Behavior' },
-    clickableProperty,
-    clickIdProperty,
+    ...clickableProperties,
   ],
 };
 
