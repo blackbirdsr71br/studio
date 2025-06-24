@@ -153,7 +153,7 @@ Modifier and Property Mapping Rules (from input component properties to output "
         *   If card also has rounded corners (canvas 'cornerRadius... > 0'): add 'shape: { "type": "roundedcorner", "cornerRadius": C }' to 'modifier.base.shadow'.
     *   **Scrolling**:
         *   For "LazyColumn", "LazyRow", "LazyVerticalGrid", "LazyHorizontalGrid" (canvas type): add 'scrollable: true' to 'modifier.base'.
-    *   **Click Interaction**: If a component has a 'clickId' property with a non-empty string in the input JSON, map it to the output. For a "button", this is a direct property ('"clickId": "someId"'). For most other clickable components (like "card", "box", "image", "text", "row", "column"), place it inside 'modifier.base' as '"clickId": "someId"'.
+    *   **Click Interaction**: If a component has 'clickable: true' AND a 'clickId' property with a non-empty string in the input JSON, map it to the output. For a "button", this is a direct property ('"clickId": "someId"'). For most other clickable components (like "card", "box", "image", "text", "row", "column"), place it inside 'modifier.base' as '"clickId": "someId"'.
     *   **Transformations**: (Map if present in canvas properties and relevant to target spec)
         *   'alpha' -> 'alpha' in 'modifier.base'.
         *   'rotate' -> 'rotate' in 'modifier.base'.
@@ -186,7 +186,7 @@ Modifier and Property Mapping Rules (from input component properties to output "
         *   'textOverflow' (canvas) -> 'overflow' (output, e.g., "clip", "ellipsis").
     *   **Button**:
         *   'text' (canvas) -> 'content' (output, if button has no children in canvas).
-        *   'clickId' (canvas, if exists) -> 'clickId' (output).
+        *   'clickId' (canvas, if 'clickable: true' and 'clickId' is present) -> 'clickId' (output).
         *   'fontSize', 'fontWeight', 'fontColor' (canvas) -> map to direct properties.
         *   If canvas Button has 'children', then the output "button" should have a 'children' array and no 'content' property.
     *   **Spacer**:
@@ -203,7 +203,7 @@ Modifier and Property Mapping Rules (from input component properties to output "
     *   **Crucially, do NOT include any property (whether in 'modifier.base', component-specific modifiers, or direct properties) in the output JSON if its corresponding value from the input canvas JSON is 'null', 'undefined', or an empty string ('""').**
     *   Also, omit properties if their value would represent a default or implicit state in the target "Compose Remote Layout" (e.g., padding of 0, elevation of 0 for non-Card components, an empty 'children' array if the component has no children).
     *   Only include properties in the output if they have meaningful, non-default, non-empty values derived from the input that actively affect the visual representation or behavior according to the target "Compose Remote Layout" specification.
-    *   Omit canvas-specific properties like the original 'id', 'name', 'parentId' (from the canvas structure), 'x', and 'y' from the output JSON.
+    *   Omit canvas-specific properties like the original 'id', 'name', 'parentId' (from the canvas structure), 'x', 'y', and the 'clickable' boolean flag from the output JSON.
     *   **If the 'modifier.base' object is empty after applying all rules and omissions, then the '"base"' key itself (and its empty object value) MUST be omitted from the '"modifier"' object.**
     *   **If the entire '"modifier"' object (containing 'base' and/or component-specific modifiers) becomes empty as a result of these omissions, then the '"modifier"' key itself MUST be omitted from the component's JSON object.**
 

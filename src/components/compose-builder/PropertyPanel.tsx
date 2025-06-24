@@ -238,6 +238,10 @@ export function PropertyPanel() {
     }
 
     componentPropsDef.forEach((propDef) => {
+      if (propDef.name === 'clickId' && !selectedComponent.properties.clickable) {
+        return; // Don't render clickId if component is not clickable
+      }
+
       const group = propDef.group || 'General';
       if (!groupedProperties[group]) { groupedProperties[group] = []; if (!propertyGroups.includes(group)) { propertyGroups.push(group); } }
 
@@ -346,7 +350,7 @@ export function PropertyPanel() {
         ) : (
           <div className="flex-grow flex flex-col min-h-0">
             <Tabs defaultValue={propertyGroups[0]} className="flex flex-col flex-grow min-h-0">
-              <div className="w-full overflow-x-auto bg-muted/50 p-1 rounded-md shrink-0">
+              <div className="overflow-x-auto bg-muted/50 p-1 rounded-md shrink-0">
                 <TabsList className="inline-flex h-auto bg-transparent p-0">
                   {propertyGroups.map((group) => (
                     <TabsTrigger key={group} value={group} className="text-xs px-2 py-1.5 h-auto whitespace-nowrap">
@@ -360,7 +364,7 @@ export function PropertyPanel() {
                   {propertyGroups.map((group) => (
                     <TabsContent key={group} value={group} className="space-y-3 mt-0">
                       {groupedProperties[group]}
-                      {(selectedComponent.type === 'Image' || sourceComponentForCornerRadiusType === 'Image') && group === 'Content' && !groupedProperties[group].find(el => (el as React.ReactElement)?.key === 'src-buttons') && (
+                      {(selectedComponent.type === 'Image' || sourceComponentForCornerRadiusType === 'Image') && group === 'Content' && !groupedProperties[group].some(el => (el as React.ReactElement)?.key === 'src-buttons') && (
                         <div className="mt-3 pt-3 border-t border-sidebar-border">
                           <Button onClick={handleGenerateImage} disabled={isGeneratingImage || !selectedComponent.properties['data-ai-hint']} className="w-full" size="sm">
                             {isGeneratingImage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}

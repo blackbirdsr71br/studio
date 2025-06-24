@@ -90,6 +90,7 @@ export interface BaseComponentProps {
   lineHeight?: number;
   title?: string;
   selfAlign?: 'Inherit' | 'Start' | 'Center' | 'End';
+  clickable?: boolean;
   clickId?: string;
 
   // Properties for Scaffold structure, used by AI generation
@@ -168,6 +169,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         textDecoration: 'None',
         lineHeight: 1.4,
         selfAlign: 'Inherit',
+        clickable: false,
         clickId: '',
       };
     case 'Button':
@@ -181,7 +183,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         width: undefined,
         height: undefined,
         selfAlign: 'Inherit',
-        clickId: '',
+        clickable: true,
+        clickId: 'button_clicked',
       };
     case 'Image':
       return {
@@ -195,6 +198,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         cornerRadiusTopLeft: 0, cornerRadiusTopRight: 0, cornerRadiusBottomRight: 0, cornerRadiusBottomLeft: 0,
         padding: 0,
         selfAlign: 'Inherit',
+        clickable: false,
         clickId: '',
       };
     case 'Column':
@@ -206,6 +210,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         width: 200, height: 200, itemSpacing: 8,
         verticalArrangement: 'Top', horizontalAlignment: 'Start',
         selfAlign: 'Inherit',
+        clickable: false,
         clickId: '',
       };
     case 'Row':
@@ -217,6 +222,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         width: 200, height: 100, itemSpacing: 8,
         horizontalArrangement: 'Start', verticalAlignment: 'Top',
         selfAlign: 'Inherit',
+        clickable: false,
         clickId: '',
       };
     case 'Box':
@@ -228,6 +234,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         width: 100, height: 100,
         cornerRadiusTopLeft: 4, cornerRadiusTopRight: 4, cornerRadiusBottomRight: 4, cornerRadiusBottomLeft: 4,
         selfAlign: 'Inherit',
+        clickable: false,
         clickId: '',
       };
     case 'Card':
@@ -243,6 +250,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         cornerRadiusTopLeft: 8, cornerRadiusTopRight: 8, cornerRadiusBottomRight: 8, cornerRadiusBottomLeft: 8,
         borderWidth: 0, borderColor: '#000000',
         selfAlign: 'Inherit',
+        clickable: false,
         clickId: '',
       };
     case 'LazyColumn':
@@ -438,6 +446,9 @@ const columnSpecificLayoutProperties: (Omit<ComponentProperty, 'value'>)[] = [
   },
 ];
 
+const clickableProperty: Omit<ComponentProperty, 'value'> = { name: 'clickable', type: 'boolean', label: 'Is Clickable', group: 'Behavior' };
+const clickIdProperty: Omit<ComponentProperty, 'value'> = { name: 'clickId', type: 'string', label: 'Click ID', placeholder: 'e.g., action_name', group: 'Behavior' };
+
 
 export const propertyDefinitions: Record<ComponentType | string, (Omit<ComponentProperty, 'value'>)[]> = {
   Scaffold: [
@@ -510,7 +521,8 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
         { label: 'LineThrough', value: 'LineThrough' },
       ]
     },
-    { name: 'clickId', type: 'string', label: 'Click ID', placeholder: 'e.g., open_details', group: 'Behavior' },
+    clickableProperty,
+    clickIdProperty,
   ],
   Button: [
     ...commonLayoutProperties,
@@ -519,7 +531,8 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     { name: 'fontSize', type: 'number', label: 'Font Size (sp)', placeholder: '14', group: 'Appearance' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'textColor', type: 'color', label: 'Text Color', group: 'Appearance' },
-    { name: 'clickId', type: 'string', label: 'Click ID', placeholder: 'e.g., submit_form', group: 'Behavior' },
+    clickableProperty,
+    clickIdProperty,
   ],
   Image: [
     ...commonLayoutProperties,
@@ -546,21 +559,24 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
         { label: 'Fill Height', value: 'FillHeight' },
       ]
     },
-    { name: 'clickId', type: 'string', label: 'Click ID', placeholder: 'e.g., view_image', group: 'Behavior' },
+    clickableProperty,
+    clickIdProperty,
   ],
   Column: [
     ...commonLayoutProperties,
     ...columnSpecificLayoutProperties,
     selfAlignProperty,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    { name: 'clickId', type: 'string', label: 'Click ID', placeholder: 'e.g., container_click', group: 'Behavior' },
+    clickableProperty,
+    clickIdProperty,
   ],
   Row: [
     ...commonLayoutProperties,
     ...rowSpecificLayoutProperties,
     selfAlignProperty,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    { name: 'clickId', type: 'string', label: 'Click ID', placeholder: 'e.g., row_click', group: 'Behavior' },
+    clickableProperty,
+    clickIdProperty,
   ],
   Box: [
     ...commonLayoutProperties,
@@ -570,7 +586,8 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     { name: 'cornerRadiusTopRight', type: 'number', label: 'Corner Radius TR (dp)', placeholder: '0', group: 'Appearance' },
     { name: 'cornerRadiusBottomRight', type: 'number', label: 'Corner Radius BR (dp)', placeholder: '0', group: 'Appearance' },
     { name: 'cornerRadiusBottomLeft', type: 'number', label: 'Corner Radius BL (dp)', placeholder: '0', group: 'Appearance' },
-    { name: 'clickId', type: 'string', label: 'Click ID', placeholder: 'e.g., box_click', group: 'Behavior' },
+    clickableProperty,
+    clickIdProperty,
   ],
   Card: [
     ...commonLayoutProperties,
@@ -585,7 +602,8 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     { name: 'elevation', type: 'number', label: 'Elevation (dp)', placeholder: '2', group: 'Appearance' },
     { name: 'borderWidth', type: 'number', label: 'Border Width (dp)', placeholder: '0', group: 'Appearance' },
     { name: 'borderColor', type: 'color', label: 'Border Color', group: 'Appearance' },
-    { name: 'clickId', type: 'string', label: 'Click ID', placeholder: 'e.g., card_details', group: 'Behavior' },
+    clickableProperty,
+    clickIdProperty,
   ],
   LazyColumn: [ // Properties for the content area LazyColumn
     ...commonLayoutProperties.filter(p => !p.name.startsWith('selfAlign')), // selfAlign not relevant for root content
@@ -726,6 +744,7 @@ const BaseModalPropertiesSchema = z.object({
   lineHeight: z.number().min(0).optional(),
   title: z.string().optional(),
   selfAlign: z.enum(['Inherit', 'Start', 'Center', 'End']).optional(),
+  clickable: z.boolean().optional(),
   clickId: z.string().optional(),
   // children property is handled by the recursive schema definition below
 }).catchall(z.any()); // Allow other properties not explicitly defined, for flexibility
@@ -776,5 +795,4 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
 );
 
 // The schema for the entire JSON content of the "View JSON" modal (content area)
-// It's an array of root-level components within the content area.
 export const ModalJsonSchema = z.array(ModalComponentNodeSchema);

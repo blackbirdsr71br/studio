@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { DesignComponent, CustomComponentTemplate } from '@/types/compose-spec';
@@ -591,9 +592,10 @@ export function RenderedComponentWrapper({ component, zoomLevel }: RenderedCompo
   const canResizeVertically = isSelected && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxHeight;
   const canResize = canResizeHorizontally && canResizeVertically;
   
-
   const isReorderTarget = isOverCurrent && canDropCurrent && dropIndicator !== null;
 
+  const isDraggable = !isResizing && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && component.type !== 'Spacer';
+  const isClickable = !!component.properties.clickable && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id);
 
   return (
     <div
@@ -605,9 +607,10 @@ export function RenderedComponentWrapper({ component, zoomLevel }: RenderedCompo
           'ring-2 ring-primary/80 ring-offset-2 ring-offset-background shadow-lg': isSelected && ![ROOT_SCAFFOLD_ID, ...CORE_SCAFFOLD_ELEMENT_IDS].includes(component.id),
           'ring-2 ring-accent ring-offset-2 ring-offset-background': isSelected && CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && component.id !== ROOT_SCAFFOLD_ID,
           'opacity-50': isDragging,
-          'cursor-grab': !isResizing && ![ROOT_SCAFFOLD_ID, ...CORE_SCAFFOLD_ELEMENT_IDS, 'Spacer'].includes(component.id) && component.type !== 'Spacer',
-          'cursor-default': component.type === 'Spacer' || [ROOT_SCAFFOLD_ID, ...CORE_SCAFFOLD_ELEMENT_IDS].includes(component.id),
           'cursor-grabbing': isDragging,
+          'cursor-pointer': !isDragging && isClickable,
+          'cursor-grab': !isDragging && !isClickable && isDraggable,
+          'cursor-default': !isDraggable,
           'relative': isReorderTarget, 
         },
         containerDropTargetStyle,
