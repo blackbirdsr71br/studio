@@ -80,7 +80,8 @@ Output Requirements (Single Kotlin File):
 
 3.  **Domain Layer**:
     - **Models (e.g., in domain/models/UiComponent.kt)**:
-        - Create pure, immutable data classes for the UI model (\`UiComponent\`, \`Properties\`, and a \`ComponentType\` enum). These should NOT have \`@Serializable\` annotations. They represent the clean model used by the UI. The \`ComponentType\` enum must include all component types found in the input JSON, plus an UNKNOWN fallback.
+        - Create pure, immutable data classes for the UI model (\`UiComponent\`, \`Properties\`, and a \`ComponentType\` enum). These should NOT have \`@Serializable\` annotations. They represent the clean model used by the UI.
+        - The \`ComponentType\` enum must include an enum constant for **every unique "type" string** found in the input JSON (e.g., TEXT, BUTTON, COLUMN, ROW, IMAGE, BOX, CARD, SPACER, ANIMATED_CONTENT, LAZY_COLUMN, LAZY_ROW), plus an **UNKNOWN** fallback.
     - **Repository Contract (e.g., in domain/repository/UiComponentRepository.kt)**:
         - Define a \`UiComponentRepository\` interface. It must have a function \`getUiComponents(): Flow<List<UiComponent>>\`.
     - **Use Case (e.g., in domain/usecases/GetUiComponentsUseCase.kt)**:
@@ -103,8 +104,9 @@ Output Requirements (Single Kotlin File):
         - Create a \`MainViewModel\` that inherits from \`BaseViewModel\` and implements \`handleEvent\` to fetch data via the use case and update the state.
     - **UI / Composables**:
         - **MainScreen.kt**: The main screen that collects state from the ViewModel and handles effects. It should show a loading indicator, an error message, or call the renderer.
-        - **DynamicUiRenderer.kt**: A composable that takes \`List<UiComponent>\` and uses a \`LazyColumn\` to iterate and call \`RenderNode\` for each top-level component.
-        - **Component-specific Composables**: Create individual composables for each component type (e.g., \`TextComponent.kt\`, \`ImageComponent.kt\`, \`CardComponent.kt\`, \`ColumnComponent.kt\`, \`RowComponent.kt\`). These composables will be responsible for applying the modifiers and properties. The container composables (Card, Column, Row, etc.) must recursively call \`RenderNode\` for their children. Image loading MUST use Coil.
+        - **DynamicUiRenderer.kt**: A composable that takes \`List<UiComponent>\` and uses a \`LazyColumn\` to iterate. Inside the LazyColumn, it calls a master \`RenderNode\` composable for each top-level component.
+        - **RenderNode.kt (as a concept)**: A central composable, \`fun RenderNode(component: UiComponent)\`, which contains a \`when (component.type)\` statement. This statement **must handle every single ComponentType** from your generated enum.
+        - **Component-specific Composables**: For **each type** in your \`ComponentType\` enum (except UNKNOWN), create a corresponding Composable function (e.g., \`TextComponent\`, \`ImageComponent\`, \`CardComponent\`, \`ColumnComponent\`, \`RowComponent\`, etc.). These functions are called by \`RenderNode\`. Container composables (e.g., \`ColumnComponent\`, \`RowComponent\`, \`CardComponent\`) **must recursively call \`RenderNode\`** for their children to build the nested UI. Image loading MUST use the Coil library.
         - **ColorUtils.kt**: Include utility functions for parsing color strings.
 
 Final Output:
