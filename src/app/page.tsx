@@ -26,7 +26,7 @@ export default function ComposeBuilderPage() {
   const imageSourceModalRef = useRef<ImageSourceModalRef>(null);
   const publishConfigModalRef = useRef<PublishConfigModalRef>(null);
 
-  const [zoomLevel, setZoomLevel] = useState(1);
+  const [zoomLevel, setZoomLevel] = useState(0.65);
 
   useEffect(() => {
     const mainElement = document.querySelector('main');
