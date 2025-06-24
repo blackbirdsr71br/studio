@@ -4,6 +4,7 @@ import { generateComposeCode, type GenerateComposeCodeInput } from '@/ai/flows/g
 import { generateImageFromHint, type GenerateImageFromHintInput } from '@/ai/flows/generate-image-from-hint-flow';
 import { generateJsonFromComposeCommands, type GenerateJsonFromComposeCommandsInput } from '@/ai/flows/generate-json-from-compose-commands';
 import { convertCanvasToCustomJson, type ConvertCanvasToCustomJsonInput } from '@/ai/flows/convert-canvas-to-custom-json-flow';
+import { generateJsonParserCode, type GenerateJsonParserCodeInput } from '@/ai/flows/generate-json-parser-code';
 import type { DesignComponent, CustomComponentTemplate, BaseComponentProps } from '@/types/compose-spec';
 import { isContainerType, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID, CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
 import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
@@ -522,9 +523,25 @@ export async function updateGlobalStylesheetAction(
   }
 }
 
-
+export async function generateJsonParserCodeAction(
+  customJson: string
+): Promise<{ kotlinCode?: string; error?: string }> {
+  if (!customJson || customJson.trim() === "") {
+    return { error: "Custom JSON input cannot be empty." };
+  }
+  try {
+    const input: GenerateJsonParserCodeInput = { customJson };
+    const result = await generateJsonParserCode(input);
+    return { kotlinCode: result.kotlinCode };
+  } catch (error) {
+    console.error("Error in generateJsonParserCodeAction:", error);
+    const message = error instanceof Error ? error.message : "An unknown error occurred during Kotlin parser code generation.";
+    return { error: message };
+  }
+}
       
 
     
 
     
+
