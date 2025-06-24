@@ -85,14 +85,19 @@ Output Requirements (Single Kotlin File):
 
 5.  Presentation Layer (MVI):
     - MVI Contract (e.g., in presentation/feature/FeatureContract.kt):
+        - Define base interfaces: \`interface UiState\`, \`interface UiEvent\`, \`interface UiEffect\`.
         - Define a \`RemoteUiContract\` sealed interface containing:
-            - \`State(isLoading: Boolean, uiNode: UiNode?, error: String?)\`
-            - \`Event\` (e.g., \`OnFetchUiRequest\`, \`OnComponentClick(clickId: String)\`)
-            - \`Effect\` (e.g., \`ShowToast(message: String)\`)
+            - \`data class State(...) : UiState\`
+            - \`sealed interface Event : UiEvent { ... }\` (e.g., \`OnFetchUiRequest\`, \`OnComponentClick(clickId: String)\`)
+            - \`sealed interface Effect : UiEffect { ... }\` (e.g., \`ShowToast(message: String)\`)
+    - BaseViewModel (e.g., in presentation/base/BaseViewModel.kt):
+        - Create an abstract \`abstract class BaseViewModel<E : UiEvent, S : UiState, F : UiEffect> : ViewModel()\` that manages the MVI pattern.
+        - It should have \`_state\`, \`_effect\` flows and expose them.
+        - It must provide methods like \`setEvent(event: E)\`, \`setState(reducer: S.() -> S)\`, and \`setEffect(builder: () -> F)\`.
+        - It must have an abstract function \`handleEvent(event: E)\` that subclasses will implement.
     - ViewModel (e.g., in presentation/feature/FeatureViewModel.kt):
-        - Create a \`RemoteUiViewModel(uiRepository: UiRepository)\` that inherits from \`ViewModel\`.
-        - Use \`StateFlow\` for state management and \`SharedFlow\` for effects.
-        - Implement a function to handle events, fetch data from the repository, and update the state accordingly.
+        - Create a \`RemoteUiViewModel(uiRepository: UiRepository)\` that inherits from \`BaseViewModel<RemoteUiContract.Event, RemoteUiContract.State, RemoteUiContract.Effect>\`.
+        - Implement the \`handleEvent\` function to fetch data from the repository and update the state using \`setState\` and \`setEffect\`.
     - UI / Composables (e.g., in presentation/feature/FeatureScreen.kt):
         - \`@Composable fun RemoteUiScreen(viewModel: RemoteUiViewModel = koinViewModel())\`: The main screen that collects state from the ViewModel and handles effects. It should show a loading indicator, an error message, or call \`RenderNode\`.
         - \`@Composable fun RenderNode(node: UiNode, onEvent: (RemoteUiContract.Event) -> Unit)\`: The recursive composable that uses a \`when\` statement on \`node.type\` to render the specific component (\`TextNode\`, \`ColumnNode\`, etc.). It must pass down the \`onEvent\` callback.
