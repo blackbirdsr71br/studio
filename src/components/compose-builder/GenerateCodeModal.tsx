@@ -249,7 +249,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
           </TabsContent>
         </Tabs>
 
-        <DialogFooter className="sm:justify-between flex-wrap gap-2 pt-4 border-t">
+        <DialogFooter className="sm:justify-between flex-wrap gap-2 mt-auto pt-4 border-t">
            <Button variant="outline" onClick={activeTab === 'screenComposable' ? handleGenerateScreenCode : handleGenerateParserCode} disabled={isLoading}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
             Regenerate
