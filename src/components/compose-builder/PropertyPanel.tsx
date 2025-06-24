@@ -313,9 +313,6 @@ export function PropertyPanel() {
     }
     const isCoreScaffoldElement = CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponent.id) && !selectedComponent.templateIdRef;
     
-    const gridCols = propertyGroups.length > 3 ? 3 : propertyGroups.length > 0 ? propertyGroups.length : 1;
-    const gridColsClass = `grid-cols-${gridCols}`;
-
     return (
       <div className="h-full flex flex-col">
         <div className="flex items-center justify-between mb-1 shrink-0">
@@ -349,13 +346,15 @@ export function PropertyPanel() {
         ) : (
           <div className="flex-grow flex flex-col min-h-0">
             <Tabs defaultValue={propertyGroups[0]} className="flex flex-col flex-grow min-h-0">
-              <TabsList className={`grid w-full ${gridColsClass}`}>
-                {propertyGroups.map((group) => (
-                  <TabsTrigger key={group} value={group} className="text-xs px-1 py-1.5 h-auto">
-                    {group}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+              <div className="w-full overflow-x-auto scrollbar-hidden">
+                <TabsList className="inline-flex w-max">
+                  {propertyGroups.map((group) => (
+                    <TabsTrigger key={group} value={group} className="text-xs px-2 py-1.5 h-auto whitespace-nowrap">
+                      {group}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
               <ScrollArea className="flex-grow min-h-0 mt-3 -mx-4">
                 <div className="px-4">
                   {propertyGroups.map((group) => (
@@ -402,5 +401,7 @@ export function PropertyPanel() {
     </aside>
   );
 }
+
+    
 
     
