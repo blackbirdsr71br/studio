@@ -5,7 +5,7 @@ import React, { useState, useImperativeHandle, forwardRef, useCallback, useEffec
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useDesign } from '@/contexts/DesignContext';
-import { generateJetpackComposeCodeAction, convertCanvasToCustomJsonAction, generateJsonParserCodeAction } from '@/app/actions';
+import { generateJetpackComposeCodeAction, convertCanvasToCustomJsonAction, generateJsonParserCodeAction, getDesignComponentsAsJsonAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Copy, Download, Wand2, FileCode, AlertTriangle } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
@@ -76,14 +76,21 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
     setGeneratedParserCode("");
     
     try {
-      // Step 1: Generate the custom JSON from the canvas
-      const customJsonResult = await convertCanvasToCustomJsonAction(components, customComponentTemplates);
-      if (customJsonResult.error || !customJsonResult.customJsonString) {
-        throw new Error(customJsonResult.error || "Failed to generate underlying custom JSON from canvas.");
+      // Step 1: Generate the Canvas JSON from the canvas
+      const canvasJsonString = await getDesignComponentsAsJsonAction(components, customComponentTemplates);
+
+      if (canvasJsonString.startsWith("Error:")) {
+        throw new Error("Failed to generate underlying Canvas JSON: " + canvasJsonString);
       }
       
-      // Step 2: Generate the Kotlin parser code from the custom JSON
-      const parserCodeResult = await generateJsonParserCodeAction(customJsonResult.customJsonString);
+      const parsedCanvasJson = JSON.parse(canvasJsonString);
+      if (Array.isArray(parsedCanvasJson) && parsedCanvasJson.length === 0) {
+        throw new Error("No user components in the content area to generate a parser for.");
+      }
+      
+      // Step 2: Generate the Kotlin parser code from the Canvas JSON
+      const parserCodeResult = await generateJsonParserCodeAction(canvasJsonString);
+
       if (parserCodeResult.error || !parserCodeResult.kotlinCode) {
         throw new Error(parserCodeResult.error || "Failed to generate Kotlin parser code.");
       }
