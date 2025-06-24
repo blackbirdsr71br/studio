@@ -346,8 +346,8 @@ export function PropertyPanel() {
         ) : (
           <div className="flex-grow flex flex-col min-h-0">
             <Tabs defaultValue={propertyGroups[0]} className="flex flex-col flex-grow min-h-0">
-              <div className="w-full overflow-x-auto">
-                <TabsList className="inline-flex w-max">
+              <div className="w-full overflow-x-auto rounded-md bg-muted p-1 text-muted-foreground">
+                <TabsList className="inline-flex w-max bg-transparent p-0">
                   {propertyGroups.map((group) => (
                     <TabsTrigger key={group} value={group} className="text-xs px-2 py-1.5 h-auto whitespace-nowrap">
                       {group}
