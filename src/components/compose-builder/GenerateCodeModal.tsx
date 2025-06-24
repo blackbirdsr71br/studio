@@ -199,7 +199,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
           </TabsList>
 
           <TabsContent value="screenComposable" className="flex-grow flex flex-col min-h-0">
-            <div className="flex-grow my-2 rounded-md border bg-muted/30 overflow-y-auto min-h-[400px] relative">
+            <div className="flex-grow my-2 rounded-md border bg-muted/30 overflow-y-auto relative">
               {isScreenCodeLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -224,7 +224,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
           </TabsContent>
           
           <TabsContent value="jsonParser" className="flex-grow flex flex-col min-h-0">
-             <div className="flex-grow my-2 rounded-md border bg-muted/30 overflow-y-auto min-h-[400px] relative">
+             <div className="flex-grow my-2 rounded-md border bg-muted/30 overflow-y-auto relative">
               {isParserCodeLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
