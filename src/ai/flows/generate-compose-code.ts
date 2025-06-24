@@ -84,6 +84,7 @@ Modifier Rules:
 - Spacer: If 'layoutWeight' > 0, Spacer(Modifier.weight(Wf)). Otherwise, Spacer(Modifier.width(X.dp).height(Y.dp)) or just width/height if one is zero.
 - TopAppBar: Expect a 'title' string property. Render inside \`TopAppBar(...)\`. Its children (if any) are for actions or navigation icons.
 - BottomNavigationBar: Render inside \`BottomAppBar(...)\` or \`NavigationBar(...)\`. Its children are usually \`NavigationBarItem\`s. If children are generic (e.g. Column with Icon and Text), adapt.
+- Click Handling: If a component has a 'clickId' property with a non-empty string, add 'Modifier.clickable { /* TODO: Handle click for '{{{properties.clickId}}}' */ }' to its modifiers.
 
 Lazy List Handling (LazyColumn, LazyRow):
 - If a LazyColumn/LazyRow contains multiple (2+) structurally identical children, define a data class and an item Composable function.
@@ -107,7 +108,7 @@ Example of Expected JSON Structure ({{{designJson}}}):
     "properties": { "padding": 16, "itemSpacing": 8, "backgroundColor": "#EEEEEE", "fillMaxSize": true },
     "children": [
       { "type": "Text", "properties": { "text": "Hello" } },
-      { "type": "Button", "properties": { "text": "Click" } }
+      { "type": "Button", "properties": { "text": "Click", "clickId": "my_button" } }
     ]
   },
   "bottomBar": {

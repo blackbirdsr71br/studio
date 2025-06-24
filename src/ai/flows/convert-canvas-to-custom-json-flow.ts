@@ -153,8 +153,7 @@ Modifier and Property Mapping Rules (from input component properties to output "
         *   If card also has rounded corners (canvas 'cornerRadius... > 0'): add 'shape: { "type": "roundedcorner", "cornerRadius": C }' to 'modifier.base.shadow'.
     *   **Scrolling**:
         *   For "LazyColumn", "LazyRow", "LazyVerticalGrid", "LazyHorizontalGrid" (canvas type): add 'scrollable: true' to 'modifier.base'.
-    *   **Click Interaction**:
-        *   If 'clickId: "someId"' is relevant for a component in the target spec (e.g., Card, Box), map it to 'clickId: "someId"' in 'modifier.base'. (Button 'clickId' is a direct property, not modifier).
+    *   **Click Interaction**: If a component has a 'clickId' property with a non-empty string in the input JSON, map it to the output. For a "button", this is a direct property ('"clickId": "someId"'). For most other clickable components (like "card", "box", "image", "text", "row", "column"), place it inside 'modifier.base' as '"clickId": "someId"'.
     *   **Transformations**: (Map if present in canvas properties and relevant to target spec)
         *   'alpha' -> 'alpha' in 'modifier.base'.
         *   'rotate' -> 'rotate' in 'modifier.base'.
