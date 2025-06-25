@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, ChangeEvent } from 'react';
@@ -33,9 +32,13 @@ interface GroupedProperties {
   [groupName: string]: ReactNode[];
 }
 
+interface PropertyPanelProps {
+  imageSourceModalRef: React.RefObject<ImageSourceModalRef>;
+}
+
 const PREFERRED_GROUP_ORDER = ['Layout', 'Appearance', 'Content', 'Behavior'];
 
-export function PropertyPanel() {
+export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
   const { selectedComponentId, getComponentById, updateComponent, deleteComponent, saveSelectedAsCustomTemplate, customComponentTemplates, editingTemplateInfo, editingLayoutInfo } = useDesign();
   const selectedComponent = selectedComponentId ? getComponentById(selectedComponentId) : null;
   const { toast } = useToast();
@@ -43,7 +46,6 @@ export function PropertyPanel() {
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const imageSourceModalRef = useRef<ImageSourceModalRef>(null);
 
   const getDefaultPropertyValue = (propDef: Omit<ComponentProperty, 'value'>) => {
     if (!selectedComponent) return '';
@@ -228,7 +230,7 @@ export function PropertyPanel() {
         <React.Fragment key="cornerRadiusAllFragment">
           <div className="space-y-1.5">
               <Label htmlFor="prop-cornerRadiusAll" className="text-xs font-semibold">Corner Radius (All dp)</Label>
-              <Input id="prop-cornerRadiusAll" type="number" value={allCornersValue} onChange={handleAllCornersChange} placeholder={allCornersHaveValue && !allCornersAreEqual ? "Mixed" : "e.g., 8"} className="h-8 text-sm" />
+              <Input id="prop-cornerRadiusAll" type="number" min={0} value={allCornersValue} onChange={handleAllCornersChange} placeholder={allCornersHaveValue && !allCornersAreEqual ? "Mixed" : "e.g., 8"} className="h-8 text-sm" />
           </div>
           <Separator className="my-3 bg-sidebar-border/50" />
         </React.Fragment>

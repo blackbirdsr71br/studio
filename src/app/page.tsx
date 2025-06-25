@@ -75,7 +75,7 @@ export default function ComposeBuilderPage() {
               </div>
               <ZoomControls zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} />
             </main>
-            <PropertyPanel />
+            <PropertyPanel imageSourceModalRef={imageSourceModalRef} />
           </div>
         </div>
         <GenerateCodeModal ref={generateModalRef} />
