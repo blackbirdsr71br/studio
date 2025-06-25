@@ -182,8 +182,8 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     boxSizing: 'border-box',
     position: 'relative', 
     border: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || (effectiveType as string).startsWith('Lazy') || effectiveType === 'Card' || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar') ? 'none' : '1px dashed hsl(var(--border) / 0.3)',
-    minWidth: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || effectiveProperties.width === 'match_parent' || fillMaxWidth ) ? '100%' : (effectiveProperties.width === 'wrap_content' || !isNumericValue(effectiveProperties.width) ? 'auto' : '60px'),
-    minHeight: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || effectiveProperties.height === 'match_parent' || fillMaxHeight || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar') ? styleHeight : (effectiveProperties.height === 'wrap_content' || !isNumericValue(effectiveProperties.height) ? 'auto' : '60px'),
+    minWidth: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || effectiveProperties.width === 'match_parent' || fillMaxWidth ) ? '100%' : (effectiveProperties.width === 'wrap_content' || !isNumericValue(effectiveProperties.width) ? 'auto' : '20px'),
+    minHeight: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || effectiveProperties.height === 'match_parent' || fillMaxHeight || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar') ? styleHeight : (effectiveProperties.height === 'wrap_content' || !isNumericValue(effectiveProperties.height) ? 'auto' : '20px'),
   };
 
   if (component.id !== DEFAULT_CONTENT_LAZY_COLUMN_ID &&
