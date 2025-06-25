@@ -166,6 +166,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         text: 'Sample Text',
         fontSize: 16,
         textColor: undefined,
+        backgroundColor: undefined,
         padding: 0,
         width: undefined,
         height: undefined,
@@ -199,6 +200,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         ...commonLayout,
         src: 'https://placehold.co/300x200.png',
         contentDescription: 'Placeholder Image',
+        backgroundColor: undefined,
         width: 200,
         height: 100,
         "data-ai-hint": "abstract pattern",
@@ -497,6 +499,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     { name: 'text', type: 'string', label: 'Text Content', placeholder: 'Enter text', group: 'Content' },
     { name: 'fontSize', type: 'number', label: 'Font Size (sp)', placeholder: '16', group: 'Appearance' },
     { name: 'textColor', type: 'color', label: 'Text Color', group: 'Appearance' },
+    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'lineHeight', type: 'number', label: 'Line Height (multiplier)', placeholder: '1.4', group: 'Appearance' },
     { name: 'maxLines', type: 'number', label: 'Max Lines', placeholder: 'e.g., 2', group: 'Content' },
     {
@@ -588,6 +591,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
         { label: 'Fill Height', value: 'FillHeight' },
       ]
     },
+    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     ...clickableProperties,
   ],
   Column: [

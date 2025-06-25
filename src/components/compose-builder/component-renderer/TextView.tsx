@@ -21,6 +21,7 @@ export function TextView({ properties }: TextViewProps) {
     textAlign = 'Start',
     textDecoration = 'None',
     lineHeight = 1.4,
+    backgroundColor,
   } = properties;
 
   const style: React.CSSProperties = {
@@ -39,6 +40,10 @@ export function TextView({ properties }: TextViewProps) {
     // color is set below
     // width and display are set below
   };
+
+  if (backgroundColor) {
+    style.backgroundColor = backgroundColor;
+  }
 
   if (textColor !== undefined) {
     style.color = textColor;

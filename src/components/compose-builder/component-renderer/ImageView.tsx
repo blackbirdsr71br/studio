@@ -25,7 +25,8 @@ export function ImageView({ properties }: ImageViewProps) {
     cornerRadiusTopRight = 0,
     cornerRadiusBottomRight = 0,
     cornerRadiusBottomLeft = 0,
-    contentScale = "Crop"
+    contentScale = "Crop",
+    backgroundColor,
   } = properties;
 
   const effectivePaddingTop = paddingTop ?? padding ?? 0;
@@ -65,6 +66,7 @@ export function ImageView({ properties }: ImageViewProps) {
     borderTopRightRadius: `${cornerRadiusTopRight}px`,
     borderBottomRightRadius: `${cornerRadiusBottomRight}px`,
     borderBottomLeftRadius: `${cornerRadiusBottomLeft}px`,
+    backgroundColor: backgroundColor,
   };
 
   // Image dimensions should be 100% of the containerStyle's dimensions (which now consider padding)
