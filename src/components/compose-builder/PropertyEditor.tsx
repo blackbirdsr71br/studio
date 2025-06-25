@@ -73,6 +73,7 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
             onChange={handleInputChange}
             placeholder={property.placeholder}
             className="h-8 text-sm"
+            min={0}
           />
         </div>
       );
