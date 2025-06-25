@@ -30,6 +30,8 @@ interface DesignContextType extends DesignState {
   renameSavedLayout: (layoutId: string, newName: string, firestoreDocId?: string) => Promise<void>;
   loadTemplateForEditing: (templateId: string) => void;
   updateCustomTemplate: () => Promise<void>;
+  loadLayoutForEditing: (layoutId: string) => void;
+  updateSavedLayout: () => Promise<void>;
 }
 
 const DesignContext = createContext<DesignContextType | undefined>(undefined);
@@ -132,6 +134,7 @@ const initialDesignState: DesignState = {
   customComponentTemplates: [],
   savedLayouts: [],
   editingTemplateInfo: null,
+  editingLayoutInfo: null,
 };
 
 
@@ -709,6 +712,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         selectedComponentId: newSelectedId,
         nextId: newNextId, // Reset nextId as well
         editingTemplateInfo: null,
+        editingLayoutInfo: null,
     }));
   }, []);
 
@@ -1113,6 +1117,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID, // Default to content
         customComponentTemplates: designState.customComponentTemplates,
         savedLayouts: designState.savedLayouts,
+        editingLayoutInfo: null,
       });
       toast({ title: "Layout Loaded", description: `Layout "${layoutToLoad.name}" has been loaded onto the canvas.` });
     } else {
@@ -1228,10 +1233,34 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 templateId: template.templateId,
                 firestoreId: template.firestoreId,
                 name: template.name,
-            }
+            },
+            editingLayoutInfo: null,
         }));
     }
   }, [designState.customComponentTemplates, toast]);
+
+  const loadLayoutForEditing = useCallback((layoutId: string) => {
+    const layout = designState.savedLayouts.find(l => l.layoutId === layoutId);
+    if (!layout) {
+        toast({ title: "Error", description: "Could not find layout to edit.", variant: "destructive" });
+        return;
+    }
+    
+    const rootComponent = layout.components.find(c => c.parentId === null);
+
+    setDesignState(prev => ({
+        ...prev,
+        components: deepClone(layout.components),
+        nextId: layout.nextId,
+        selectedComponentId: rootComponent?.id || DEFAULT_CONTENT_LAZY_COLUMN_ID,
+        editingTemplateInfo: null,
+        editingLayoutInfo: {
+            layoutId: layout.layoutId,
+            firestoreId: layout.firestoreId,
+            name: layout.name,
+        }
+    }));
+  }, [designState.savedLayouts, toast]);
   
   const updateCustomTemplate = useCallback(async () => {
     if (!designState.editingTemplateInfo) return;
@@ -1292,6 +1321,62 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   }, [designState.editingTemplateInfo, designState.components, toast, clearDesign]);
 
+  const updateSavedLayout = useCallback(async () => {
+    if (!designState.editingLayoutInfo) return;
+    if (!db) {
+      toast({ title: "Update Failed", description: "Firestore not available. Cannot update layout.", variant: "destructive" });
+      return;
+    }
+
+    const { layoutId, firestoreId, name } = designState.editingLayoutInfo;
+    const currentComponents = deepClone(designState.components);
+    const currentNextId = designState.nextId;
+    const currentTimestamp = Date.now();
+
+    const updatedLayout: SavedLayout = {
+      layoutId,
+      firestoreId,
+      name,
+      components: currentComponents,
+      nextId: currentNextId,
+      timestamp: currentTimestamp
+    };
+
+    const sanitizedLayoutForFirestore = sanitizeForFirestore({
+      layoutId: updatedLayout.layoutId,
+      name: updatedLayout.name,
+      components: updatedLayout.components,
+      nextId: updatedLayout.nextId,
+      timestamp: updatedLayout.timestamp,
+    });
+
+    try {
+      if (firestoreId) {
+        console.log(`Attempting to update saved layout in Firestore with ID: ${firestoreId}`);
+        const layoutRef = doc(db, SAVED_LAYOUTS_COLLECTION, firestoreId);
+        await setDoc(layoutRef, sanitizedLayoutForFirestore, { merge: true });
+
+        setDesignState(prev => ({
+          ...prev,
+          savedLayouts: prev.savedLayouts.map(l => l.layoutId === layoutId ? updatedLayout : l).sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0))
+        }));
+
+        toast({ title: "Layout Updated", description: `Layout "${name}" has been updated successfully.` });
+        clearDesign(); // Exit editing mode
+      } else {
+        toast({ title: "Update Failed", description: "Firestore ID is missing for the layout.", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error("Firestore operation error (updateSavedLayout):", error);
+      let detail = "Could not update layout in Firestore.";
+      if (error instanceof Error) {
+        const firebaseError = error as any;
+        detail += ` (Error: ${firebaseError.code || 'UNKNOWN'} - ${firebaseError.message || 'No message'})`;
+      }
+      toast({ title: "Update Failed (Firestore Sync)", description: `${detail}.`, variant: "destructive" });
+    }
+  }, [designState.editingLayoutInfo, designState.components, designState.nextId, toast, clearDesign]);
+
 
   const contextValue: DesignContextType = {
     ...designState,
@@ -1314,6 +1399,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     renameSavedLayout,
     loadTemplateForEditing,
     updateCustomTemplate,
+    loadLayoutForEditing,
+    updateSavedLayout,
   };
 
   if (!isClient) {
@@ -1338,6 +1425,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       renameSavedLayout: async () => {},
       loadTemplateForEditing: () => {},
       updateCustomTemplate: async () => {},
+      loadLayoutForEditing: () => {},
+      updateSavedLayout: async () => {},
     };
     return (
       <DesignContext.Provider value={initialContextValueForSSR}>

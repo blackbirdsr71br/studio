@@ -66,7 +66,7 @@ const availableBaseComponents: { type: ComponentType; icon: React.ElementType; d
 export function ComponentLibraryPanel() {
   const {
     customComponentTemplates, deleteCustomComponentTemplate, renameCustomComponentTemplate, loadTemplateForEditing,
-    savedLayouts, loadLayoutToCanvas, deleteSavedLayout, renameSavedLayout
+    savedLayouts, loadLayoutToCanvas, deleteSavedLayout, renameSavedLayout, loadLayoutForEditing
   } = useDesign();
   const { toast } = useToast();
 
@@ -117,6 +117,12 @@ export function ComponentLibraryPanel() {
   const handleLoadLayout = (layoutId: string) => {
     if (window.confirm("Loading this layout will replace the current canvas. Are you sure?")) {
       loadLayoutToCanvas(layoutId);
+    }
+  };
+
+  const handleEditLayout = (layoutId: string) => {
+    if (window.confirm("This will replace the current canvas with the selected layout for editing. Are you sure?")) {
+      loadLayoutForEditing(layoutId);
     }
   };
 
@@ -221,6 +227,15 @@ export function ComponentLibraryPanel() {
                         </p>
                       )}
                       <div className="p-1 flex justify-end items-center space-x-1 border-t border-sidebar-border/50 bg-muted/30">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-sidebar-foreground hover:bg-sidebar-accent/20"
+                          onClick={() => handleEditLayout(layout.layoutId)}
+                          aria-label={`Edit layout ${layout.name}`}
+                        >
+                          <FilePenLine className="h-3.5 w-3.5" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"

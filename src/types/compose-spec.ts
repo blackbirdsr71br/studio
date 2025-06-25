@@ -139,6 +139,11 @@ export interface DesignState {
     firestoreId?: string;
     name: string;
   } | null;
+  editingLayoutInfo?: {
+    layoutId: string;
+    firestoreId?: string;
+    name: string;
+  } | null;
 }
 
 export const getDefaultProperties = (type: ComponentType | string, componentId?: string): BaseComponentProps => {

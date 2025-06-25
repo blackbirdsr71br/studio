@@ -36,7 +36,7 @@ interface GroupedProperties {
 const PREFERRED_GROUP_ORDER = ['Layout', 'Appearance', 'Content', 'Behavior'];
 
 export function PropertyPanel() {
-  const { selectedComponentId, getComponentById, updateComponent, deleteComponent, saveSelectedAsCustomTemplate, customComponentTemplates, editingTemplateInfo } = useDesign();
+  const { selectedComponentId, getComponentById, updateComponent, deleteComponent, saveSelectedAsCustomTemplate, customComponentTemplates, editingTemplateInfo, editingLayoutInfo } = useDesign();
   const selectedComponent = selectedComponentId ? getComponentById(selectedComponentId) : null;
   const { toast } = useToast();
 
@@ -316,6 +316,7 @@ export function PropertyPanel() {
       componentDisplayName = getComponentDisplayName(selectedComponent.type as ComponentType);
     }
     const isCoreScaffoldElement = CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponent.id) && !selectedComponent.templateIdRef;
+    const isEditingMode = !!editingTemplateInfo || !!editingLayoutInfo;
     
     return (
       <div className="h-full flex flex-col">
@@ -324,12 +325,12 @@ export function PropertyPanel() {
             {selectedComponent.name}
           </h2>
           <div className="flex items-center">
-            {!isCoreScaffoldElement && !selectedComponent.templateIdRef && !editingTemplateInfo && (
+            {!isCoreScaffoldElement && !selectedComponent.templateIdRef && !isEditingMode && (
               <Button variant="ghost" size="icon" onClick={handleSaveAsCustom} className="text-sidebar-primary hover:bg-primary/10 h-7 w-7" aria-label="Save as custom component">
                 <Save className="h-4 w-4" />
               </Button>
             )}
-            {!editingTemplateInfo && (
+            {!editingTemplateInfo && !editingLayoutInfo &&(
               <Button variant="ghost" size="icon" onClick={handleDelete} className="text-destructive hover:bg-destructive/10 h-7 w-7" aria-label="Delete component" disabled={isCoreScaffoldElement}>
                 <Trash2 className="h-4 w-4" />
               </Button>

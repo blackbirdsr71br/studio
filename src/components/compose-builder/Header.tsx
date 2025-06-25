@@ -34,7 +34,11 @@ export function Header({
   themeEditorModalRef,
   publishConfigModalRef,
 }: HeaderProps) {
-  const { clearDesign, components, saveCurrentCanvasAsLayout, editingTemplateInfo, updateCustomTemplate } = useDesign();
+  const { 
+    clearDesign, components, saveCurrentCanvasAsLayout, 
+    editingTemplateInfo, updateCustomTemplate,
+    editingLayoutInfo, updateSavedLayout
+  } = useDesign();
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -62,6 +66,8 @@ export function Header({
   const handleClearCanvas = () => {
     const message = editingTemplateInfo
       ? "Are you sure you want to discard changes and exit template editing?"
+      : editingLayoutInfo
+      ? "Are you sure you want to discard changes and exit layout editing?"
       : "Are you sure you want to clear the canvas? This action cannot be undone.";
     if (window.confirm(message)) {
       clearDesign();
@@ -117,9 +123,35 @@ export function Header({
       setIsSaving(false);
     }
   };
+  
+  const handleUpdateLayout = async () => {
+    setIsSaving(true);
+    try {
+      await updateSavedLayout();
+    } catch (error) {
+      toast({
+        title: "Update Failed",
+        description: error instanceof Error ? error.message : "An unexpected error occurred while updating layout.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveOrUpdate = () => {
+    if (isEditingTemplate) {
+      handleUpdateTemplate();
+    } else if (isEditingLayout) {
+      handleUpdateLayout();
+    } else {
+      handleSaveLayout();
+    }
+  };
 
   const hasUserComponents = components.some(c => !c.parentId); // Check for any root component
   const isEditingTemplate = !!editingTemplateInfo;
+  const isEditingLayout = !!editingLayoutInfo;
 
   return (
     <header className="h-16 border-b bg-sidebar flex items-center justify-between px-6 shrink-0">
@@ -132,15 +164,15 @@ export function Header({
                 size="icon"
                 variant="outline"
                 onClick={handleClearCanvas}
-                disabled={!hasUserComponents && !isEditingTemplate}
-                aria-label={isEditingTemplate ? "Discard Template Changes" : "Clear Canvas"}
+                disabled={!hasUserComponents && !isEditingTemplate && !isEditingLayout}
+                aria-label={isEditingTemplate ? "Discard Template Changes" : isEditingLayout ? "Discard Layout Changes" : "Clear Canvas"}
                 className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
               >
                 <Trash2 />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>{isEditingTemplate ? "Discard Template Changes" : "Clear Canvas"}</p>
+              <p>{isEditingTemplate ? "Discard Template Changes" : isEditingLayout ? "Discard Layout Changes" : "Clear Canvas"}</p>
             </TooltipContent>
           </Tooltip>
 
@@ -149,16 +181,16 @@ export function Header({
               <Button
                 size="icon"
                 variant="outline"
-                onClick={isEditingTemplate ? handleUpdateTemplate : handleSaveLayout}
-                disabled={(!hasUserComponents && !isEditingTemplate) || isSaving}
-                aria-label={isEditingTemplate ? "Update Custom Component" : "Save Current Layout"}
+                onClick={handleSaveOrUpdate}
+                disabled={(!hasUserComponents && !isEditingTemplate && !isEditingLayout) || isSaving}
+                aria-label={isEditingTemplate ? "Update Custom Component" : isEditingLayout ? "Update Layout" : "Save Current Layout"}
                 className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
               >
                 {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>{isEditingTemplate ? `Update "${editingTemplateInfo.name}"` : "Save Current Layout"}</p>
+              <p>{isEditingTemplate ? `Update "${editingTemplateInfo.name}"` : isEditingLayout ? `Update "${editingLayoutInfo.name}"` : "Save Current Layout"}</p>
             </TooltipContent>
           </Tooltip>
 
@@ -168,7 +200,7 @@ export function Header({
                 size="icon"
                 variant="outline"
                 onClick={handleOpenPublishConfigModal}
-                disabled={!hasUserComponents || isEditingTemplate}
+                disabled={!hasUserComponents || isEditingTemplate || isEditingLayout}
                 aria-label="Publish to Remote Config"
                 className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
               >
@@ -227,7 +259,7 @@ export function Header({
                 variant="outline"
                 onClick={handleViewJson}
                 aria-label="View/Edit Design JSON"
-                disabled={isEditingTemplate}
+                disabled={isEditingTemplate || isEditingLayout}
                 className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
               >
                 <FileJson />
