@@ -1457,7 +1457,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         // Reconstruct the components with new IDs and parent links
         prev.clipboard.forEach(clipboardComp => {
             const newComp = deepClone(clipboardComp);
-            newComp.id = idMap[clipboardComp.id];
+            newComp.id = idMap[newComp.id];
             
             if (newComp.parentId) {
                 newComp.parentId = idMap[newComp.parentId];
@@ -1489,19 +1489,23 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         }
         rootPastedComponent.parentId = finalParentId;
         
-        let finalComponents = [...prev.components, ...pastedComponents];
+        const rootPastedComponentId = rootPastedComponent.id;
 
-        // Add the new component to its parent's children list
-        const parentIndex = finalComponents.findIndex(c => c.id === finalParentId);
-        if (parentIndex !== -1) {
-            const parentComp = { ...finalComponents[parentIndex] };
-            parentComp.properties = { ...parentComp.properties };
-            if (!Array.isArray(parentComp.properties.children)) {
-                parentComp.properties.children = [];
+        const updatedOldComponents = prev.components.map(comp => {
+            if (comp.id === finalParentId) {
+                const newChildren = [...(comp.properties.children || []), rootPastedComponentId];
+                return {
+                    ...comp,
+                    properties: {
+                        ...comp.properties,
+                        children: newChildren,
+                    }
+                };
             }
-            parentComp.properties.children.push(rootPastedComponent.id);
-            finalComponents[parentIndex] = parentComp;
-        }
+            return comp;
+        });
+
+        const finalComponents = [...updatedOldComponents, ...pastedComponents];
 
         toast({ title: "Pasted", description: `Component "${rootPastedComponent.name}" pasted.`});
         return {
