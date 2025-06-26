@@ -39,7 +39,7 @@ export function ButtonView({ properties }: ButtonViewProps) {
     borderRadius: '4px',
     border: 'none',
     cursor: 'default',
-    display: 'flex', // Changed from 'inline-flex'
+    display: 'flex', // Default to flex, will be overridden for wrap_content
     alignItems: 'center',
     justifyContent: 'center',
     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
