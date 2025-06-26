@@ -54,10 +54,11 @@ export function ButtonView({ properties }: ButtonViewProps) {
   }
 
 
+  // Use a div instead of a disabled button to avoid blocking pointer events.
   return (
-    <button style={style} className="select-none" disabled>
+    <div style={style} className="select-none">
       {text}
-    </button>
+    </div>
   );
 }
 
