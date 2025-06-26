@@ -1441,83 +1441,84 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
 
   const pasteComponent = React.useCallback((targetParentId?: string | null) => {
-    updateStateWithHistory(prev => {
-        if (!prev.clipboard) {
-            toast({ title: "Paste Failed", description: "Clipboard is empty.", variant: "default" });
-            return {};
-        }
+    if (!designState.clipboard) {
+      toast({ title: "Paste Failed", description: "Clipboard is empty.", variant: "default" });
+      return;
+    }
 
-        let newNextId = prev.nextId;
-        const idMap: Record<string, string> = {};
-        const pastedComponents: DesignComponent[] = [];
+    // Prepare all data outside the state updater
+    let newNextId = designState.nextId;
+    const idMap: Record<string, string> = {};
+    const pastedComponents: DesignComponent[] = [];
 
-        // Generate new IDs for all components on the clipboard
-        prev.clipboard.forEach(clipboardComp => {
-            const newId = `comp-${newNextId++}`;
-            idMap[clipboardComp.id] = newId;
-        });
-
-        // Reconstruct the components with new IDs and parent links
-        prev.clipboard.forEach(clipboardComp => {
-            const newComp = deepClone(clipboardComp);
-            newComp.id = idMap[newComp.id];
-            
-            if (newComp.parentId) {
-                newComp.parentId = idMap[newComp.parentId];
-            }
-            if (newComp.properties.children && Array.isArray(newComp.properties.children)) {
-                newComp.properties.children = newComp.properties.children.map(childId => idMap[childId]);
-            }
-            pastedComponents.push(newComp);
-        });
-
-        let finalParentId = targetParentId;
-        if (finalParentId === undefined) { // If no target is specified, use selection
-            const selectedComp = prev.selectedComponentId ? prev.components.find(c => c.id === prev.selectedComponentId) : null;
-            if (selectedComp) {
-                finalParentId = isContainerType(selectedComp.type, prev.customComponentTemplates)
-                    ? selectedComp.id
-                    : selectedComp.parentId;
-            }
-        }
-        // Fallback to default content area if parent is invalid or null
-        if (!finalParentId || !prev.components.find(c => c.id === finalParentId)) {
-            finalParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
-        }
-
-        const rootPastedComponent = pastedComponents.find(c => c.parentId === null);
-        if (!rootPastedComponent) {
-             toast({ title: "Paste Error", description: "Could not identify root of pasted component.", variant: "destructive" });
-             return {};
-        }
-        rootPastedComponent.parentId = finalParentId;
-        
-        const rootPastedComponentId = rootPastedComponent.id;
-
-        const updatedOldComponents = [...prev.components].map(comp => {
-            if (comp.id === finalParentId) {
-                const newChildren = [...(comp.properties.children || []), rootPastedComponentId];
-                return {
-                    ...comp,
-                    properties: {
-                        ...comp.properties,
-                        children: newChildren,
-                    }
-                };
-            }
-            return comp;
-        });
-
-        const finalComponents = [...updatedOldComponents, ...pastedComponents];
-
-        toast({ title: "Pasted", description: `Component "${rootPastedComponent.name}" pasted.`});
-        return {
-            components: finalComponents,
-            nextId: newNextId,
-            selectedComponentId: rootPastedComponent.id,
-        };
+    designState.clipboard.forEach(clipboardComp => {
+      const newId = `comp-${newNextId++}`;
+      idMap[clipboardComp.id] = newId;
     });
-  }, [toast, updateStateWithHistory]);
+
+    designState.clipboard.forEach(clipboardComp => {
+      const newComp = deepClone(clipboardComp);
+      newComp.id = idMap[newComp.id];
+      if (newComp.parentId) {
+        newComp.parentId = idMap[newComp.parentId];
+      }
+      if (newComp.properties.children && Array.isArray(newComp.properties.children)) {
+        newComp.properties.children = newComp.properties.children.map(childId => idMap[childId]);
+      }
+      pastedComponents.push(newComp);
+    });
+
+    let finalParentId = targetParentId;
+    if (finalParentId === undefined) {
+      const selectedComp = designState.selectedComponentId ? designState.components.find(c => c.id === designState.selectedComponentId) : null;
+      if (selectedComp) {
+        finalParentId = isContainerType(selectedComp.type, designState.customComponentTemplates) ? selectedComp.id : selectedComp.parentId;
+      }
+    }
+    if (!finalParentId || !designState.components.find(c => c.id === finalParentId)) {
+      finalParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
+    }
+
+    const rootPastedComponent = pastedComponents.find(c => c.parentId === null);
+    if (!rootPastedComponent) {
+      toast({ title: "Paste Error", description: "Could not identify root of pasted component.", variant: "destructive" });
+      return;
+    }
+
+    // Pass the prepared data to the state updater
+    updateStateWithHistory(prev => {
+      // Use the pre-calculated parent ID and root component
+      const finalParentIdForUpdate = finalParentId!;
+      const rootPastedComponentForUpdate = { ...rootPastedComponent }; // create a fresh copy for this scope
+      rootPastedComponentForUpdate.parentId = finalParentIdForUpdate;
+      const rootPastedComponentId = rootPastedComponentForUpdate.id;
+
+      const updatedOldComponents = prev.components.map(comp => {
+        if (comp.id === finalParentIdForUpdate) {
+          const newChildren = [...(comp.properties.children || []), rootPastedComponentId];
+          return {
+            ...comp,
+            properties: {
+              ...comp.properties,
+              children: newChildren,
+            },
+          };
+        }
+        return comp;
+      });
+
+      const finalComponents = [...updatedOldComponents, ...pastedComponents];
+
+      return {
+        components: finalComponents,
+        nextId: newNextId,
+        selectedComponentId: rootPastedComponentId,
+      };
+    });
+
+    // Show toast *after* the state update is queued
+    toast({ title: "Pasted", description: `Component "${rootPastedComponent.name}" pasted.` });
+  }, [designState.clipboard, designState.nextId, designState.components, designState.customComponentTemplates, designState.selectedComponentId, toast, updateStateWithHistory]);
 
 
   const contextValue: DesignContextType = {
@@ -1599,4 +1600,3 @@ export const useDesign = (): DesignContextType => {
   }
   return context;
 };
-
