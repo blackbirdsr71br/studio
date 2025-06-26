@@ -17,8 +17,8 @@ const SPEAKER_BAR_HEIGHT = 24; // h-6
 const SPEAKER_BAR_MARGIN_BOTTOM = 4; // mb-1
 
 // Calculate total frame dimensions
-const FRAME_WIDTH = SCREEN_WIDTH_TARGET + (FRAME_BODY_PADDING * 2);
-const FRAME_HEIGHT = SCREEN_HEIGHT_TARGET + (FRAME_BODY_PADDING * 2) + SPEAKER_BAR_HEIGHT + SPEAKER_BAR_MARGIN_BOTTOM;
+export const FRAME_WIDTH = SCREEN_WIDTH_TARGET + (FRAME_BODY_PADDING * 2);
+export const FRAME_HEIGHT = SCREEN_HEIGHT_TARGET + (FRAME_BODY_PADDING * 2) + SPEAKER_BAR_HEIGHT + SPEAKER_BAR_MARGIN_BOTTOM;
 
 export function MobileFrame({ children, className }: MobileFrameProps) {
   const { resolvedTheme } = useTheme();

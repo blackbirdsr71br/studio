@@ -13,7 +13,7 @@ import { ViewJsonModal, type ViewJsonModalRef } from '@/components/compose-build
 import { ThemeEditorModal, type ThemeEditorModalRef } from '@/components/compose-builder/ThemeEditorModal';
 import { ImageSourceModal, type ImageSourceModalRef } from '@/components/compose-builder/ImageSourceModal';
 import { PublishConfigModal, type PublishConfigModalRef } from '@/components/compose-builder/PublishConfigModal';
-import { MobileFrame } from '@/components/compose-builder/MobileFrame';
+import { MobileFrame, FRAME_WIDTH, FRAME_HEIGHT } from '@/components/compose-builder/MobileFrame';
 import { ZoomControls } from '@/components/compose-builder/ZoomControls';
 
 const MIN_ZOOM = 0.25;
@@ -108,15 +108,22 @@ export default function ComposeBuilderPage() {
             <ComponentLibraryPanel />
             <main className="flex-grow relative flex items-center justify-center overflow-auto bg-muted/20 p-8">
               <div
-                className="transition-transform duration-150 ease-out"
                 style={{
-                  transform: `scale(${zoomLevel})`,
-                  transformOrigin: 'center',
+                  width: FRAME_WIDTH * zoomLevel,
+                  height: FRAME_HEIGHT * zoomLevel,
                 }}
               >
-                <MobileFrame>
-                  <DesignSurface zoomLevel={zoomLevel} />
-                </MobileFrame>
+                <div
+                  className="transition-transform duration-150 ease-out"
+                  style={{
+                    transform: `scale(${zoomLevel})`,
+                    transformOrigin: 'top left',
+                  }}
+                >
+                  <MobileFrame>
+                    <DesignSurface zoomLevel={zoomLevel} />
+                  </MobileFrame>
+                </div>
               </div>
               <ZoomControls zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} />
             </main>
