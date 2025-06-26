@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/icons/Logo";
-import { Code, Trash2, FileJson, UploadCloud, Loader2, Cog as SettingsIcon, Palette, Save } from "lucide-react"; // Added Save icon
+import { Code, Trash2, FileJson, UploadCloud, Loader2, Cog as SettingsIcon, Palette, Save, Undo, Redo, Copy, ClipboardPaste } from "lucide-react";
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
 import type { ViewJsonModalRef } from "./ViewJsonModal";
 import type { ThemeEditorModalRef } from "./ThemeEditorModal";
@@ -20,6 +20,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SettingsPanelContent } from "./SettingsPanelContent";
 import { useToast } from '@/hooks/use-toast';
+import { Separator } from '../ui/separator';
+import { CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
 
 interface HeaderProps {
   generateModalRef: RefObject<GenerateCodeModalRef>;
@@ -37,7 +39,9 @@ export function Header({
   const { 
     clearDesign, components, saveCurrentCanvasAsLayout, 
     editingTemplateInfo, updateCustomTemplate,
-    editingLayoutInfo, updateSavedLayout
+    editingLayoutInfo, updateSavedLayout,
+    undo, redo, copyComponent, pasteComponent,
+    history, future, selectedComponentId, clipboard
   } = useDesign();
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
@@ -148,16 +152,98 @@ export function Header({
       handleSaveLayout();
     }
   };
+  
+  const handleCopy = () => {
+    if (selectedComponentId) {
+      copyComponent(selectedComponentId);
+    }
+  };
 
-  const hasUserComponents = components.some(c => !c.parentId); // Check for any root component
+  const handlePaste = () => {
+    pasteComponent();
+  };
+
+  const hasUserComponents = components.length > 4; // Check for any component beyond the initial 4 scaffold parts
   const isEditingTemplate = !!editingTemplateInfo;
   const isEditingLayout = !!editingLayoutInfo;
+  const canCopy = !!selectedComponentId && !CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponentId);
+  const canPaste = !!clipboard;
+  const canUndo = history.length > 0;
+  const canRedo = future.length > 0;
 
   return (
     <header className="h-16 border-b bg-sidebar flex items-center justify-between px-6 shrink-0">
       <Logo />
       <TooltipProvider delayDuration={200}>
         <div className="flex items-center gap-2">
+           <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={undo}
+                disabled={!canUndo}
+                aria-label="Undo"
+                className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+              >
+                <Undo />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent><p>Undo (Ctrl+Z)</p></TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={redo}
+                disabled={!canRedo}
+                aria-label="Redo"
+                className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+              >
+                <Redo />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent><p>Redo (Ctrl+Y)</p></TooltipContent>
+          </Tooltip>
+
+          <Separator orientation="vertical" className="h-6 mx-1" />
+
+           <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={handleCopy}
+                disabled={!canCopy}
+                aria-label="Copy Component"
+                className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+              >
+                <Copy />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent><p>Copy (Ctrl+C)</p></TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={handlePaste}
+                disabled={!canPaste}
+                aria-label="Paste Component"
+                className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+              >
+                <ClipboardPaste />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent><p>Paste (Ctrl+V)</p></TooltipContent>
+          </Tooltip>
+
+          <Separator orientation="vertical" className="h-6 mx-1" />
+
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

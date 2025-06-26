@@ -144,6 +144,9 @@ export interface DesignState {
     firestoreId?: string;
     name: string;
   } | null;
+  history: DesignComponent[][];
+  future: DesignComponent[][];
+  clipboard: DesignComponent[] | null;
 }
 
 export const getDefaultProperties = (type: ComponentType | string, componentId?: string): BaseComponentProps => {
@@ -743,8 +746,8 @@ export function isContainerType(type: ComponentType | string, customTemplates?: 
 // This JSON represents the *content area* of the scaffold (children of DEFAULT_CONTENT_LAZY_COLUMN_ID)
 const BaseModalPropertiesSchema = z.object({
   text: z.string().optional(),
-  fontSize: z.number().min(1, "Font size must be positive").optional(),
-  titleFontSize: z.number().min(1, "Font size must be positive").optional(),
+  fontSize: z.number().min(0, "Font size must be non-negative").optional(),
+  titleFontSize: z.number().min(0, "Font size must be non-negative").optional(),
   textColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional().or(z.literal(undefined)),
   backgroundColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional(),
   contentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional().or(z.literal(undefined)),

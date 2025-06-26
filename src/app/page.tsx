@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { DesignProvider } from '@/contexts/DesignContext';
+import { DesignProvider, useDesign } from '@/contexts/DesignContext';
 import { Header } from '@/components/compose-builder/Header';
 import { ComponentLibraryPanel } from '@/components/compose-builder/ComponentLibraryPanel';
 import { DesignSurface } from '@/components/compose-builder/DesignSurface';
@@ -18,6 +18,50 @@ import { ZoomControls } from '@/components/compose-builder/ZoomControls';
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 2.0;
+
+function KeyboardShortcuts() {
+  const { undo, redo, copyComponent, pasteComponent, selectedComponentId } = useDesign();
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const ctrlKey = isMac ? event.metaKey : event.ctrlKey;
+      const targetElement = event.target as HTMLElement;
+
+      // Prevent shortcuts when user is typing in an input field
+      const isTyping = ['INPUT', 'TEXTAREA'].includes(targetElement.tagName) || targetElement.isContentEditable;
+      if (isTyping) return;
+
+      if (ctrlKey && event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        if (event.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+      } else if (ctrlKey && event.key.toLowerCase() === 'y') {
+        event.preventDefault();
+        redo();
+      } else if (ctrlKey && event.key.toLowerCase() === 'c') {
+        event.preventDefault();
+        if (selectedComponentId) {
+          copyComponent(selectedComponentId);
+        }
+      } else if (ctrlKey && event.key.toLowerCase() === 'v') {
+        event.preventDefault();
+        pasteComponent();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [undo, redo, copyComponent, pasteComponent, selectedComponentId]);
+
+  return null; // This component does not render anything
+}
+
 
 export default function ComposeBuilderPage() {
   const generateModalRef = useRef<GenerateCodeModalRef>(null);
@@ -52,6 +96,7 @@ export default function ComposeBuilderPage() {
   return (
     <DndProvider backend={HTML5Backend}>
       <DesignProvider>
+        <KeyboardShortcuts />
         <div className="flex flex-col h-screen overflow-hidden bg-background">
           <Header
             generateModalRef={generateModalRef}
