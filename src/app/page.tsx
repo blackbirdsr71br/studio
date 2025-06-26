@@ -106,7 +106,7 @@ export default function ComposeBuilderPage() {
           />
           <div className="flex flex-row flex-grow overflow-hidden">
             <ComponentLibraryPanel />
-            <main className="flex-grow relative flex items-center justify-center overflow-auto bg-muted/20 p-8">
+            <main className="flex-grow relative grid place-items-center overflow-auto bg-muted/20 p-8">
               <div
                 style={{
                   width: FRAME_WIDTH * zoomLevel,
