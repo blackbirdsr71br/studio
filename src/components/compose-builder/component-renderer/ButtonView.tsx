@@ -38,7 +38,6 @@ export function ButtonView({ properties }: ButtonViewProps) {
     paddingRight: `${paddingEnd ?? padding ?? 12}px`,
     borderRadius: '4px',
     border: 'none',
-    cursor: 'default',
     display: 'flex', // Default to flex, will be overridden for wrap_content
     alignItems: 'center',
     justifyContent: 'center',
