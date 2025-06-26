@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 
 
 interface DesignContextType extends DesignState {
-  addComponent: (typeOrTemplateId: ComponentType | string, parentId?: string | null, dropPosition?: { x: number; y: number }) => void;
+  addComponent: (typeOrTemplateId: ComponentType | string, parentId?: string | null, dropPosition?: { x: number; y: number }, index?: number) => void;
   deleteComponent: (id: string) => void;
   selectComponent: (id: string | null) => void;
   updateComponent: (id: string, updates: { name?: string; properties?: Partial<BaseComponentProps>; templateIdRef?: string }) => void;
@@ -320,9 +320,10 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   );
 
   const addComponent = React.useCallback((
-    typeOrTemplateId: ComponentType | string, // Can be base type like 'Text' or a templateId like 'custom/my-template'
+    typeOrTemplateId: ComponentType | string,
     parentIdOrNull: string | null = DEFAULT_CONTENT_LAZY_COLUMN_ID,
-    _dropPosition?: { x: number; y: number }
+    _dropPosition?: { x: number; y: number },
+    index?: number
   ) => {
     updateStateWithHistory(prev => {
       let currentNextId = prev.nextId;
@@ -337,7 +338,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         return {};
       }
       
-      // Determine the correct parent based on typeOrTemplateId and target
       if (typeOrTemplateId === 'TopAppBar') {
         effectiveParentId = ROOT_SCAFFOLD_ID;
         const existingTopAppBar = updatedComponentsList.find(c => c.parentId === ROOT_SCAFFOLD_ID && c.type === 'TopAppBar');
@@ -390,26 +390,24 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   
         template.componentTree.forEach(templateComp => {
           const newInstanceCompId = finalIdMap[templateComp.id];
-          const clonedTemplateComp = deepClone(templateComp); // Clone to avoid modifying template
+          const clonedTemplateComp = deepClone(templateComp);
           
           const newInstanceComp: DesignComponent = {
             id: newInstanceCompId,
-            type: clonedTemplateComp.type, // Use original type from template
-            name: clonedTemplateComp.name, // Use original name from template
-            properties: { // Layer properties: default for type -> template's properties
+            type: clonedTemplateComp.type,
+            name: clonedTemplateComp.name,
+            properties: {
               ...getDefaultProperties(clonedTemplateComp.type as ComponentType, newInstanceCompId),
               ...clonedTemplateComp.properties,
             },
             parentId: templateComp.parentId ? finalIdMap[templateComp.parentId] : null,
-            // templateIdRef will be set only for the root instance of the custom component
           };
   
           if (templateComp.id === template.rootComponentId) {
-            newInstanceComp.name = template.name; // Set name to template name, not "Instance"
+            newInstanceComp.name = template.name;
             instantiatedTemplateRootId = newInstanceCompId;
             newInstanceComp.parentId = effectiveParentId;
-            newInstanceComp.templateIdRef = appTemplateId; // Store the reference to the custom template ID
-            // The type is already set to original type from template
+            newInstanceComp.templateIdRef = appTemplateId;
           }
   
           if (newInstanceComp.properties.children && Array.isArray(newInstanceComp.properties.children)) {
@@ -417,7 +415,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
               .map(childIdFromTemplate => finalIdMap[childIdFromTemplate])
               .filter(childId => !!childId);
           }
-          // Remove templateIdRef if it was on non-root parts of a saved template (should not happen)
           if (templateComp.id !== template.rootComponentId) {
             delete newInstanceComp.templateIdRef;
           }
@@ -428,7 +425,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         componentsToAdd.push(...finalNewComponentsBatch);
         updatedComponentsList.push(...componentsToAdd);
   
-      } else { // Adding a base component
+      } else {
         const newId = `comp-${currentNextId++}`;
         finalSelectedComponentId = newId;
         const defaultProps = getDefaultProperties(typeOrTemplateId as ComponentType, newId);
@@ -449,17 +446,23 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const parentCompIndex = updatedComponentsList.findIndex(c => c.id === effectiveParentId);
         if (parentCompIndex !== -1) {
             const currentParent = updatedComponentsList[parentCompIndex];
-            if (isContainerType(currentParent.type, prev.customComponentTemplates) || currentParent.templateIdRef) { // Also check if parent is an instance of a custom container
+            if (isContainerType(currentParent.type, prev.customComponentTemplates) || currentParent.templateIdRef) {
                 const childrenIdsToAdd = componentsToAdd
                     .filter(c => c.parentId === effectiveParentId)
                     .map(c => c.id);
-                const existingChildren = Array.isArray(currentParent.properties.children) ? currentParent.properties.children : [];
-                const newChildrenSet = new Set([...existingChildren, ...childrenIdsToAdd]);
+                let existingChildren = Array.isArray(currentParent.properties.children) ? [...currentParent.properties.children] : [];
+                
+                if (index !== undefined && index >= 0 && index <= existingChildren.length) {
+                    existingChildren.splice(index, 0, ...childrenIdsToAdd);
+                } else {
+                    existingChildren.push(...childrenIdsToAdd);
+                }
+
                 updatedComponentsList[parentCompIndex] = {
                     ...currentParent,
                     properties: {
                         ...currentParent.properties,
-                        children: Array.from(newChildrenSet)
+                        children: existingChildren
                     }
                 };
             }
@@ -1491,7 +1494,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         
         const rootPastedComponentId = rootPastedComponent.id;
 
-        const updatedOldComponents = prev.components.map(comp => {
+        const updatedOldComponents = [...prev.components].map(comp => {
             if (comp.id === finalParentId) {
                 const newChildren = [...(comp.properties.children || []), rootPastedComponentId];
                 return {
@@ -1596,3 +1599,4 @@ export const useDesign = (): DesignContextType => {
   }
   return context;
 };
+
