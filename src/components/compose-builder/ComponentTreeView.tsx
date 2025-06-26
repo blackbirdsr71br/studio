@@ -1,14 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { useDrag, useDrop } from 'react-dnd';
 import { useDesign } from '@/contexts/DesignContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import type { DesignComponent } from '@/types/compose-spec';
 import { getComponentIcon } from './ComponentIconMap';
-import { ROOT_SCAFFOLD_ID, getComponentDisplayName, isContainerType } from '@/types/compose-spec';
+import { ROOT_SCAFFOLD_ID, getComponentDisplayName, isContainerType, CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
 import { ChevronRight } from 'lucide-react';
+import { ItemTypes } from '@/lib/dnd-types';
 
+
+interface DraggedItem {
+  id: string;
+  type: typeof ItemTypes.CANVAS_COMPONENT_ITEM;
+}
 
 interface TreeItemProps {
   componentId: string;
@@ -18,8 +25,115 @@ interface TreeItemProps {
 }
 
 const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: TreeItemProps) => {
-  const { getComponentById, selectComponent, selectedComponentId, customComponentTemplates } = useDesign();
+  const { getComponentById, selectComponent, selectedComponentId, customComponentTemplates, moveComponent } = useDesign();
   const component = getComponentById(componentId);
+  const ref = useRef<HTMLDivElement>(null);
+  const dropIndicatorRef = useRef<'top' | 'bottom' | 'inside' | null>(null);
+
+  // This state is just to trigger re-renders for visual feedback
+  const [visualDropIndicator, setVisualDropIndicator] = useState<'top' | 'bottom' | 'inside' | null>(null);
+
+  const [{ isDragging }, drag] = useDrag({
+    type: ItemTypes.CANVAS_COMPONENT_ITEM,
+    item: () => ({ id: componentId, type: ItemTypes.CANVAS_COMPONENT_ITEM }),
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+    canDrag: !CORE_SCAFFOLD_ELEMENT_IDS.includes(componentId)
+  });
+
+  const [{ isOver, canDrop }, drop] = useDrop<DraggedItem, void, { isOver: boolean; canDrop: boolean; }>({
+    accept: ItemTypes.CANVAS_COMPONENT_ITEM,
+    hover: (item, monitor) => {
+      if (!ref.current || !monitor.isOver({ shallow: true })) {
+        if (visualDropIndicator !== null) {
+            setVisualDropIndicator(null);
+            dropIndicatorRef.current = null;
+        }
+        return;
+      }
+
+      const draggedId = item.id;
+      const targetId = componentId;
+
+      if (draggedId === targetId) {
+          dropIndicatorRef.current = null;
+          setVisualDropIndicator(null);
+          return;
+      }
+      
+      const clientOffset = monitor.getClientOffset();
+      if (!clientOffset) return;
+
+      const hoverBoundingRect = ref.current.getBoundingClientRect();
+      const hoverClientY = clientOffset.y - hoverBoundingRect.top;
+      
+      let indicator: 'top' | 'bottom' | 'inside' | null = null;
+      
+      if (isContainerType(component.type, customComponentTemplates)) {
+          const topThird = hoverBoundingRect.height / 3;
+          const bottomThird = hoverBoundingRect.height * (2/3);
+
+          if (hoverClientY < topThird) indicator = 'top';
+          else if (hoverClientY > bottomThird) indicator = 'bottom';
+          else indicator = 'inside';
+      } else {
+          const hoverMiddleY = hoverBoundingRect.height / 2;
+          if (hoverClientY < hoverMiddleY) indicator = 'top';
+          else indicator = 'bottom';
+      }
+      
+      if (indicator !== visualDropIndicator) {
+        dropIndicatorRef.current = indicator;
+        setVisualDropIndicator(indicator);
+      }
+    },
+    canDrop: (item) => {
+      if (item.id === componentId) return false;
+      
+      let p = component.parentId;
+      while(p) {
+        if (p === item.id) return false;
+        const parentComp = getComponentById(p);
+        p = parentComp ? parentComp.parentId : null;
+      }
+
+      return true;
+    },
+    drop: (item) => {
+      const draggedId = item.id;
+      const targetId = componentId;
+      const dropAction = dropIndicatorRef.current;
+      const targetComponent = getComponentById(targetId);
+
+      if (!targetComponent || !dropAction) return;
+
+      if (dropAction === 'inside' && isContainerType(targetComponent.type, customComponentTemplates)) {
+          moveComponent(draggedId, targetId);
+      } else if (dropAction === 'top' || dropAction === 'bottom') {
+          const targetParentId = targetComponent.parentId;
+          if (!targetParentId) return;
+
+          const parentComponent = getComponentById(targetParentId);
+          if (!parentComponent?.properties.children) return;
+          
+          let targetIndex = parentComponent.properties.children.indexOf(targetId);
+          if (targetIndex === -1) return;
+
+          const finalIndex = dropAction === 'bottom' ? targetIndex + 1 : targetIndex;
+          moveComponent(draggedId, targetParentId, finalIndex);
+      }
+
+      dropIndicatorRef.current = null;
+      setVisualDropIndicator(null);
+    },
+    collect: (monitor) => ({
+        isOver: monitor.isOver({ shallow: true }),
+        canDrop: monitor.canDrop(),
+    }),
+  });
+
+  drop(drag(ref));
 
   if (!component) return null;
 
@@ -28,6 +142,11 @@ const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: T
   const hasChildren = component.properties.children && component.properties.children.length > 0;
   const isCollapsible = isEffectivelyContainer && hasChildren;
   const isCollapsed = collapsedNodes.has(component.id);
+
+  const showDropInside = isOver && canDrop && visualDropIndicator === 'inside';
+  const showDropTop = isOver && canDrop && visualDropIndicator === 'top';
+  const showDropBottom = isOver && canDrop && visualDropIndicator === 'bottom';
+  
 
   let componentTypeForIcon = component.type;
   let componentNameForDisplay = component.name;
@@ -56,12 +175,16 @@ const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: T
   };
 
   return (
-    <>
+    <div ref={ref} className="relative">
+      {showDropTop && <div className="absolute top-0 left-2 right-2 h-[2px] bg-primary z-10 pointer-events-none" />}
       <div
         onClick={handleSelect}
         className={cn(
-          'flex items-center gap-1.5 p-1.5 rounded-md cursor-pointer text-sidebar-foreground hover:bg-accent/10',
-          isSelected && 'bg-accent text-accent-foreground hover:bg-accent'
+          'flex items-center gap-1.5 p-1.5 rounded-md cursor-pointer text-sidebar-foreground',
+          isSelected && 'bg-accent text-accent-foreground',
+          isDragging && 'opacity-40',
+          !isSelected && !showDropInside && 'hover:bg-accent/10',
+          showDropInside && 'bg-primary/20 ring-1 ring-primary'
         )}
         style={{ paddingLeft: `${level * 1.0 + 0.375}rem` }}
         title={`${component.name} (${getComponentDisplayName(component.type)})`}
@@ -81,14 +204,15 @@ const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: T
         <Icon className={cn("h-4 w-4 shrink-0", isSelected ? 'text-accent-foreground' : 'text-primary')} />
         <span className="text-sm truncate">{componentNameForDisplay}</span>
       </div>
+      {showDropBottom && <div className="absolute bottom-0 left-2 right-2 h-[2px] bg-primary z-10 pointer-events-none" />}
       {!isCollapsed && hasChildren && (
-        <div className="relative">
+        <div className="relative pl-4">
            {component.properties.children.map(childId => (
              <RecursiveTreeItem key={childId} componentId={childId} level={level + 1} collapsedNodes={collapsedNodes} toggleNode={toggleNode}/>
            ))}
         </div>
       )}
-    </>
+    </div>
   );
 };
 
