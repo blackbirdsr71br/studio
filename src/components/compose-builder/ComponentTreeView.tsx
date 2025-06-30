@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef } from 'react';
@@ -8,7 +9,7 @@ import { cn } from '@/lib/utils';
 import type { DesignComponent } from '@/types/compose-spec';
 import { getComponentIcon } from './ComponentIconMap';
 import { ROOT_SCAFFOLD_ID, getComponentDisplayName, isContainerType, CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Trash2 } from 'lucide-react';
 import { ItemTypes } from '@/lib/dnd-types';
 
 
@@ -25,7 +26,7 @@ interface TreeItemProps {
 }
 
 const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: TreeItemProps) => {
-  const { getComponentById, selectComponent, selectedComponentId, customComponentTemplates, moveComponent } = useDesign();
+  const { getComponentById, selectComponent, selectedComponentId, customComponentTemplates, moveComponent, deleteComponent } = useDesign();
   const component = getComponentById(componentId);
   const ref = useRef<HTMLDivElement>(null);
   const dropIndicatorRef = useRef<'top' | 'bottom' | 'inside' | null>(null);
@@ -174,8 +175,17 @@ const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: T
     }
   };
 
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm(`Are you sure you want to delete "${component.name}" and all its children?`)) {
+        deleteComponent(component.id);
+    }
+  };
+  
+  const isDeletable = !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id);
+
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative group/tree-item">
       {showDropTop && <div className="absolute top-0 left-2 right-2 h-[2px] bg-primary z-10 pointer-events-none" />}
       <div
         onClick={handleSelect}
@@ -202,7 +212,17 @@ const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: T
         </button>
 
         <Icon className={cn("h-4 w-4 shrink-0", isSelected ? 'text-accent-foreground' : 'text-primary')} />
-        <span className="text-sm truncate">{componentNameForDisplay}</span>
+        <span className="text-sm truncate flex-grow">{componentNameForDisplay}</span>
+        
+        {isDeletable && (
+            <button
+                onClick={handleDelete}
+                className="ml-auto p-0.5 rounded-sm text-destructive opacity-0 group-hover/tree-item:opacity-100 hover:bg-destructive/10 focus:opacity-100"
+                aria-label={`Delete ${componentNameForDisplay}`}
+            >
+                <Trash2 className="h-3.5 w-3.5" />
+            </button>
+        )}
       </div>
       {showDropBottom && <div className="absolute bottom-0 left-2 right-2 h-[2px] bg-primary z-10 pointer-events-none" />}
       {!isCollapsed && hasChildren && (
