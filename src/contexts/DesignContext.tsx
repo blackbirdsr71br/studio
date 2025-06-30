@@ -620,73 +620,56 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const deleteComponent = React.useCallback((id: string) => {
     if (CORE_SCAFFOLD_ELEMENT_IDS.includes(id)) {
-      toast({ title: "Action Prevented", description: "Cannot delete core scaffold structure elements.", variant: "destructive" });
-      return;
+        toast({ title: "Action Prevented", description: "Cannot delete core scaffold structure elements.", variant: "destructive" });
+        return;
     }
 
     updateStateWithHistory(prev => {
-      const componentToDelete = prev.components.find(c => c.id === id);
-      if (!componentToDelete) return {};
+        const componentToDelete = prev.components.find(c => c.id === id);
+        if (!componentToDelete) return {};
 
-      const idsToDeleteRecursively = new Set<string>();
-      const queue = [id];
-      while (queue.length > 0) {
-        const currentId = queue.shift()!;
-        if (idsToDeleteRecursively.has(currentId)) continue;
-        idsToDeleteRecursively.add(currentId);
+        // 1. Collect all IDs to delete (the component and all its descendants)
+        const idsToDelete = new Set<string>();
+        const queue: string[] = [id];
+        while (queue.length > 0) {
+            const currentId = queue.shift()!;
+            if (idsToDelete.has(currentId)) continue;
+            idsToDelete.add(currentId);
 
-        const currentComp = prev.components.find(c => c.id === currentId);
-        if (currentComp?.properties.children && Array.isArray(currentComp.properties.children)) {
-          currentComp.properties.children.forEach(childId => {
-            if (!idsToDeleteRecursively.has(childId)) {
-              queue.push(childId);
+            const currentComp = prev.components.find(c => c.id === currentId);
+            if (currentComp?.properties.children && Array.isArray(currentComp.properties.children)) {
+                queue.push(...currentComp.properties.children);
             }
-          });
         }
-      }
-      const deletedIdsArray = Array.from(idsToDeleteRecursively);
+        
+        // 2. Create new component list, filtering out deleted ones and updating the parent
+        const parentId = componentToDelete.parentId;
+        const newComponents = prev.components
+            .filter(c => !idsToDelete.has(c.id))
+            .map(c => {
+                // If this component is the parent of the initially deleted node, update its children
+                if (c.id === parentId) {
+                    const newChildren = (c.properties.children || []).filter(childId => childId !== id);
+                    return {
+                        ...c,
+                        properties: {
+                            ...c.properties,
+                            children: newChildren
+                        }
+                    };
+                }
+                return c;
+            });
 
-      let remainingComponents = prev.components.filter(comp => !deletedIdsArray.includes(comp.id));
+        // 3. Determine new selection
+        const newSelectedComponentId = idsToDelete.has(prev.selectedComponentId || "")
+            ? (parentId || DEFAULT_CONTENT_LAZY_COLUMN_ID)
+            : prev.selectedComponentId;
 
-      remainingComponents = remainingComponents.map(parentCandidate => {
-        if (parentCandidate.properties.children && Array.isArray(parentCandidate.properties.children)) {
-          const updatedChildren = parentCandidate.properties.children.filter(
-            childId => !deletedIdsArray.includes(childId)
-          );
-          // If a core slot component was targeted for deletion (which is prevented),
-          // ensure its placeholder ID is reinstated if necessary.
-          let finalChildren = updatedChildren;
-          if (parentCandidate.id === ROOT_SCAFFOLD_ID) {
-              if (!updatedChildren.includes(DEFAULT_TOP_APP_BAR_ID) && prev.components.find(c=>c.id === DEFAULT_TOP_APP_BAR_ID && !deletedIdsArray.includes(DEFAULT_TOP_APP_BAR_ID) )) finalChildren.unshift(DEFAULT_TOP_APP_BAR_ID);
-              if (!updatedChildren.includes(DEFAULT_CONTENT_LAZY_COLUMN_ID) && prev.components.find(c=>c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID && !deletedIdsArray.includes(DEFAULT_CONTENT_LAZY_COLUMN_ID) )) {
-                 const topBarExists = finalChildren.includes(DEFAULT_TOP_APP_BAR_ID);
-                 finalChildren.splice(topBarExists ? 1:0, 0, DEFAULT_CONTENT_LAZY_COLUMN_ID);
-              }
-              if (!updatedChildren.includes(DEFAULT_BOTTOM_NAV_BAR_ID) && prev.components.find(c=>c.id === DEFAULT_BOTTOM_NAV_BAR_ID && !deletedIdsArray.includes(DEFAULT_BOTTOM_NAV_BAR_ID) )) finalChildren.push(DEFAULT_BOTTOM_NAV_BAR_ID);
-          }
-
-
-          if (updatedChildren.length !== parentCandidate.properties.children.length) {
-            return {
-              ...parentCandidate,
-              properties: {
-                ...parentCandidate.properties,
-                children: finalChildren,
-              },
-            };
-          }
-        }
-        return parentCandidate;
-      });
-
-      const newSelectedComponentId = deletedIdsArray.includes(prev.selectedComponentId || "")
-        ? (componentToDelete.parentId || DEFAULT_CONTENT_LAZY_COLUMN_ID)
-        : prev.selectedComponentId;
-
-      return {
-        components: remainingComponents,
-        selectedComponentId: newSelectedComponentId,
-      };
+        return {
+            components: newComponents,
+            selectedComponentId: newSelectedComponentId,
+        };
     });
   }, [toast, updateStateWithHistory]);
 
@@ -1445,17 +1428,17 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       toast({ title: "Paste Failed", description: "Clipboard is empty.", variant: "default" });
       return;
     }
-
+  
     // Prepare all data outside the state updater
-    let newNextId = designState.nextId;
+    let nextIdCounter = designState.nextId;
     const idMap: Record<string, string> = {};
     const pastedComponents: DesignComponent[] = [];
-
+  
     designState.clipboard.forEach(clipboardComp => {
-      const newId = `comp-${newNextId++}`;
+      const newId = `comp-${nextIdCounter++}`;
       idMap[clipboardComp.id] = newId;
     });
-
+  
     designState.clipboard.forEach(clipboardComp => {
       const newComp = deepClone(clipboardComp);
       newComp.id = idMap[newComp.id];
@@ -1467,7 +1450,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       }
       pastedComponents.push(newComp);
     });
-
+  
     let finalParentId = targetParentId;
     if (finalParentId === undefined) {
       const selectedComp = designState.selectedComponentId ? designState.components.find(c => c.id === designState.selectedComponentId) : null;
@@ -1478,44 +1461,34 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     if (!finalParentId || !designState.components.find(c => c.id === finalParentId)) {
       finalParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
     }
-
+  
     const rootPastedComponent = pastedComponents.find(c => c.parentId === null);
     if (!rootPastedComponent) {
       toast({ title: "Paste Error", description: "Could not identify root of pasted component.", variant: "destructive" });
       return;
     }
-
-    // Pass the prepared data to the state updater
+    rootPastedComponent.parentId = finalParentId;
+    const rootPastedComponentId = rootPastedComponent.id;
+  
+    // Perform the state update
     updateStateWithHistory(prev => {
-      // Use the pre-calculated parent ID and root component
-      const finalParentIdForUpdate = finalParentId!;
-      const rootPastedComponentForUpdate = { ...rootPastedComponent }; // create a fresh copy for this scope
-      rootPastedComponentForUpdate.parentId = finalParentIdForUpdate;
-      const rootPastedComponentId = rootPastedComponentForUpdate.id;
-
-      const updatedOldComponents = prev.components.map(comp => {
-        if (comp.id === finalParentIdForUpdate) {
-          const newChildren = [...(comp.properties.children || []), rootPastedComponentId];
-          return {
-            ...comp,
-            properties: {
-              ...comp.properties,
-              children: newChildren,
-            },
-          };
-        }
-        return comp;
-      });
-
-      const finalComponents = [...updatedOldComponents, ...pastedComponents];
-
+      const newComponents = [...prev.components];
+      const parentIndex = newComponents.findIndex(c => c.id === finalParentId);
+  
+      if (parentIndex !== -1) {
+        const parentComp = { ...newComponents[parentIndex] };
+        const newChildren = [...(parentComp.properties.children || []), rootPastedComponentId];
+        parentComp.properties = { ...parentComp.properties, children: newChildren };
+        newComponents[parentIndex] = parentComp;
+      }
+  
       return {
-        components: finalComponents,
-        nextId: newNextId,
+        components: [...newComponents, ...pastedComponents],
+        nextId: nextIdCounter,
         selectedComponentId: rootPastedComponentId,
       };
     });
-
+  
     // Show toast *after* the state update is queued
     toast({ title: "Pasted", description: `Component "${rootPastedComponent.name}" pasted.` });
   }, [designState.clipboard, designState.nextId, designState.components, designState.customComponentTemplates, designState.selectedComponentId, toast, updateStateWithHistory]);

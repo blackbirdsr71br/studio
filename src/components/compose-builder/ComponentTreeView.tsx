@@ -219,7 +219,7 @@ const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: T
         {isDeletable && (
             <button
                 onClick={handleDelete}
-                className="ml-auto p-0.5 rounded-sm text-destructive hover:text-destructive-foreground hover:bg-destructive focus:opacity-100"
+                className="ml-auto p-0.5 rounded-sm bg-destructive/10 text-destructive/80 hover:bg-destructive hover:text-destructive-foreground focus:opacity-100"
                 aria-label={`Delete ${componentNameForDisplay}`}
             >
                 <Trash2 className="h-3.5 w-3.5" />
