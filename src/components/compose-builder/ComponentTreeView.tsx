@@ -26,7 +26,7 @@ interface TreeItemProps {
 }
 
 const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: TreeItemProps) => {
-  const { getComponentById, selectComponent, selectedComponentId, customComponentTemplates, moveComponent, deleteComponent } = useDesign();
+  const { components, getComponentById, selectComponent, selectedComponentId, customComponentTemplates, moveComponent, deleteComponent } = useDesign();
   const component = getComponentById(componentId);
   const ref = useRef<HTMLDivElement>(null);
   const dropIndicatorRef = useRef<'top' | 'bottom' | 'inside' | null>(null);
@@ -182,7 +182,9 @@ const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: T
     }
   };
   
-  const isDeletable = !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id);
+  const rootComponentOnCanvas = components.find(c => c.parentId === null);
+  const isRootOfCanvas = component.id === rootComponentOnCanvas?.id;
+  const isDeletable = !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !isRootOfCanvas;
 
   return (
     <div ref={ref} className="relative group/tree-item">

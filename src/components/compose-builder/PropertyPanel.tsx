@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, ChangeEvent } from 'react';
@@ -332,11 +333,9 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
                 <Save className="h-4 w-4" />
               </Button>
             )}
-            {!editingTemplateInfo && !editingLayoutInfo &&(
-              <Button variant="ghost" size="icon" onClick={handleDelete} className="text-destructive hover:bg-destructive/10 h-7 w-7" aria-label="Delete component" disabled={isCoreScaffoldElement}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
+            <Button variant="ghost" size="icon" onClick={handleDelete} className="text-destructive hover:bg-destructive/10 h-7 w-7" aria-label="Delete component" disabled={isCoreScaffoldElement}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
         </div>
         <p className="text-xs text-muted-foreground mb-3 -mt-1 shrink-0">{componentDisplayName}</p>
