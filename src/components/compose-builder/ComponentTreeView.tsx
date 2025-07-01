@@ -257,7 +257,7 @@ export const ComponentTreeView = () => {
 
   return (
     <ScrollArea className="h-full -mx-4">
-      <div className="p-2 space-y-0.5">
+      <div className="p-2 space-y-0.5 min-w-max">
         {rootComponent ? (
           <RecursiveTreeItem 
             componentId={rootComponent.id} 
