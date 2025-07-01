@@ -187,7 +187,7 @@ const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: T
   const isDeletable = !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !isRootOfCanvas;
 
   return (
-    <div ref={ref} className="relative group/tree-item">
+    <div ref={ref} className="relative">
       {showDropTop && <div className="absolute top-0 left-2 right-2 h-[2px] bg-primary z-10 pointer-events-none" />}
       <div
         onClick={handleSelect}
@@ -213,18 +213,18 @@ const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: T
           <ChevronRight className={cn("h-4 w-4 shrink-0 transition-transform duration-200", !isCollapsed && "rotate-90")} />
         </button>
 
-        <Icon className={cn("h-4 w-4 shrink-0", isSelected ? 'text-accent-foreground' : 'text-primary')} />
-        <span className="text-sm truncate flex-grow">{componentNameForDisplay}</span>
-        
         {isDeletable && (
             <button
                 onClick={handleDelete}
-                className="ml-auto p-0.5 rounded-sm bg-destructive/10 text-destructive/80 hover:bg-destructive hover:text-destructive-foreground focus:opacity-100"
+                className="p-0.5 rounded-sm text-destructive/70 hover:text-destructive hover:bg-destructive/10"
                 aria-label={`Delete ${componentNameForDisplay}`}
             >
                 <Trash2 className="h-3.5 w-3.5" />
             </button>
         )}
+
+        <Icon className={cn("h-4 w-4 shrink-0", isSelected ? 'text-accent-foreground' : 'text-primary')} />
+        <span className="text-sm flex-grow min-w-0 whitespace-nowrap">{componentNameForDisplay}</span>
       </div>
       {showDropBottom && <div className="absolute bottom-0 left-2 right-2 h-[2px] bg-primary z-10 pointer-events-none" />}
       {!isCollapsed && hasChildren && (
