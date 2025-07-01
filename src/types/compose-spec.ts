@@ -181,8 +181,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         textDecoration: 'None',
         lineHeight: 1.4,
         selfAlign: 'Inherit',
-        clickable: false,
-        clickId: '',
+        clickable: true,
+        clickId: 'text_clicked',
       };
     case 'Button':
       return {
@@ -211,8 +211,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         cornerRadiusTopLeft: 0, cornerRadiusTopRight: 0, cornerRadiusBottomRight: 0, cornerRadiusBottomLeft: 0,
         padding: 0,
         selfAlign: 'Inherit',
-        clickable: false,
-        clickId: '',
+        clickable: true,
+        clickId: 'image_clicked',
       };
     case 'Column':
       return {
@@ -223,8 +223,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         width: 200, height: 200, itemSpacing: 8,
         verticalArrangement: 'Top', horizontalAlignment: 'Start',
         selfAlign: 'Inherit',
-        clickable: false,
-        clickId: '',
+        clickable: true,
+        clickId: 'column_clicked',
       };
     case 'Row':
       return {
@@ -235,8 +235,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         width: 200, height: 100, itemSpacing: 8,
         horizontalArrangement: 'Start', verticalAlignment: 'Top',
         selfAlign: 'Inherit',
-        clickable: false,
-        clickId: '',
+        clickable: true,
+        clickId: 'row_clicked',
       };
     case 'Box':
       return {
@@ -247,8 +247,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         width: 100, height: 100,
         cornerRadiusTopLeft: 4, cornerRadiusTopRight: 4, cornerRadiusBottomRight: 4, cornerRadiusBottomLeft: 4,
         selfAlign: 'Inherit',
-        clickable: false,
-        clickId: '',
+        clickable: true,
+        clickId: 'box_clicked',
       };
     case 'Card':
       return {
@@ -263,8 +263,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         cornerRadiusTopLeft: 8, cornerRadiusTopRight: 8, cornerRadiusBottomRight: 8, cornerRadiusBottomLeft: 8,
         borderWidth: 0, borderColor: '#000000',
         selfAlign: 'Inherit',
-        clickable: false,
-        clickId: '',
+        clickable: true,
+        clickId: 'card_clicked',
       };
     case 'LazyColumn':
       const isContentArea = componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID;
@@ -282,6 +282,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         verticalArrangement: 'Top', horizontalAlignment: 'Start',
         paddingBottom: isContentArea ? (8) : 8, // Add some bottom padding for scroll room
         selfAlign: 'Inherit',
+        clickable: true,
+        clickId: 'lazy_column_clicked',
       };
     case 'LazyRow':
       return {
@@ -294,6 +296,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         userScrollEnabled: true, reverseLayout: false,
         horizontalArrangement: 'Start', verticalAlignment: 'Top',
         selfAlign: 'Inherit',
+        clickable: true,
+        clickId: 'lazy_row_clicked',
       };
     case 'LazyVerticalGrid':
       return {
@@ -305,6 +309,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         width: undefined, height: 300, columns: 2, itemSpacing: 8,
         verticalArrangement: 'Top', horizontalAlignment: 'Start',
         selfAlign: 'Inherit',
+        clickable: true,
+        clickId: 'lazy_vertical_grid_clicked',
       };
     case 'LazyHorizontalGrid':
       return {
@@ -316,6 +322,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         width: undefined, height: 200, rows: 2, itemSpacing: 8,
         horizontalArrangement: 'Start', verticalAlignment: 'Top',
         selfAlign: 'Inherit',
+        clickable: true,
+        clickId: 'lazy_horizontal_grid_clicked',
       };
     case 'Spacer':
       return {
@@ -324,7 +332,9 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         fillMaxWidth: false, fillMaxHeight: false,
         width: 8,
         height: 8,
-        selfAlign: undefined, 
+        selfAlign: undefined,
+        clickable: true,
+        clickId: 'spacer_clicked',
       };
     case 'TopAppBar': // New default for TopAppBar
       return {
@@ -341,7 +351,9 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         contentColor: '#FFFFFF', // Example contrasting color for title/icons
         itemSpacing: 8,
         horizontalArrangement: 'Start', // For title and actions
-        verticalAlignment: 'CenterVertically'
+        verticalAlignment: 'CenterVertically',
+        clickable: true,
+        clickId: 'top_app_bar_clicked',
       };
     case 'BottomNavigationBar': // New default for BottomNavigationBar
       return {
@@ -356,7 +368,9 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         contentColor: '#000000', // Example contrasting color
         itemSpacing: 0, // Items usually have their own padding
         horizontalArrangement: 'SpaceAround', // Common for nav items
-        verticalAlignment: 'CenterVertically'
+        verticalAlignment: 'CenterVertically',
+        clickable: true,
+        clickId: 'bottom_nav_bar_clicked',
       };
     case 'AnimatedContent':
       return {
@@ -369,8 +383,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         animationType: 'Fade',
         animationDuration: 300,
         selfAlign: 'Inherit',
-        clickable: false,
-        clickId: '',
+        clickable: true,
+        clickId: 'animated_content_clicked',
       };
     default:
       // For unknown types (which shouldn't happen for base types, but could be a template ID passed inadvertently)
@@ -635,6 +649,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'userScrollEnabled', type: 'boolean', label: 'Enable Scrolling', group: 'Behavior' },
     { name: 'reverseLayout', type: 'boolean', label: 'Reverse Layout', group: 'Behavior' },
+    ...clickableProperties,
   ],
   LazyRow: [
     ...commonLayoutProperties,
@@ -643,6 +658,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'userScrollEnabled', type: 'boolean', label: 'Enable Scrolling', group: 'Behavior' },
     { name: 'reverseLayout', type: 'boolean', label: 'Reverse Layout', group: 'Behavior' },
+    ...clickableProperties,
   ],
   LazyVerticalGrid: [
     ...commonLayoutProperties,
@@ -650,6 +666,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     selfAlignProperty,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'columns', type: 'number', label: 'Number of Columns', placeholder: '2', group: 'Layout' },
+    ...clickableProperties,
   ],
   LazyHorizontalGrid: [
     ...commonLayoutProperties,
@@ -657,11 +674,13 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     selfAlignProperty,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'rows', type: 'number', label: 'Number of Rows', placeholder: '2', group: 'Layout' },
+    ...clickableProperties,
   ],
   Spacer: [
     { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '8', group: 'Layout' },
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '8', group: 'Layout' },
     { name: 'layoutWeight', type: 'number', label: 'Layout Weight', placeholder: '0 (no weight)', group: 'Layout' },
+    ...clickableProperties,
   ],
   TopAppBar: [ // Properties specific to TopAppBar slot component
     ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd', 'layoutWeight', 'fillMaxHeight', 'height'].includes(p.name) ), // Basic layout, but height is fixed/managed
@@ -673,6 +692,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     // TopAppBar behaves like a Row for its children (title, actions)
     ...rowSpecificLayoutProperties.filter(p => p.name !== 'itemSpacing'), // Use its own itemSpacing definition
     { name: 'itemSpacing', type: 'number', label: 'Action Item Spacing (dp)', placeholder: '8', group: 'Layout' },
+    ...clickableProperties,
   ],
   BottomNavigationBar: [ // Properties specific to BottomNavigationBar slot component
      ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd', 'layoutWeight', 'fillMaxHeight', 'height'].includes(p.name) ),
@@ -681,6 +701,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     { name: 'contentColor', type: 'color', label: 'Content Color (Icons, Labels)', group: 'Appearance' },
     // BottomNavigationBar behaves like a Row for its children (nav items)
     ...rowSpecificLayoutProperties,
+    ...clickableProperties,
   ],
   AnimatedContent: [
     ...commonLayoutProperties,
