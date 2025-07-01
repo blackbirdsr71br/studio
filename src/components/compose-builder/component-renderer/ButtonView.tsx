@@ -44,6 +44,7 @@ export function ButtonView({ properties }: ButtonViewProps) {
     paddingStart,
     paddingEnd,
     fillMaxWidth,
+    shape = 'RoundedCorner',
     cornerRadius = 4,
     iconName,
     iconPosition = 'Start',
@@ -66,7 +67,6 @@ export function ButtonView({ properties }: ButtonViewProps) {
     paddingBottom: `${paddingBottom ?? padding ?? 8}px`,
     paddingLeft: `${paddingStart ?? padding ?? 12}px`,
     paddingRight: `${paddingEnd ?? padding ?? 12}px`,
-    borderRadius: `${cornerRadius}px`,
     border: 'none',
     display: 'flex', 
     alignItems: 'center',
@@ -77,6 +77,26 @@ export function ButtonView({ properties }: ButtonViewProps) {
     boxSizing: 'border-box',
     gap: `${iconName && text ? iconSpacing : 0}px`
   };
+
+  switch (shape) {
+    case 'Rectangle':
+      style.borderRadius = '0px';
+      break;
+    case 'Circle':
+      style.borderRadius = '50%';
+      style.aspectRatio = '1 / 1';
+      // For circle, we might want to ensure width and height are equal if not set to fill
+      if (properties.width && !properties.height) {
+        style.height = style.width;
+      } else if (properties.height && !properties.width) {
+        style.width = style.height;
+      }
+      break;
+    case 'RoundedCorner':
+    default:
+      style.borderRadius = `${cornerRadius}px`;
+      break;
+  }
 
   // If not fillMaxWidth and width is wrap_content (default or explicit), adjust width
   if (!fillMaxWidth && (properties.width === 'wrap_content' || properties.width === undefined)) {

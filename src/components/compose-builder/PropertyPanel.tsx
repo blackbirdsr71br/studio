@@ -244,6 +244,10 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
       if (propDef.name === 'clickId' && !selectedComponent.properties.clickable) {
         return; // Don't render clickId if component is not clickable
       }
+      
+      if (propDef.name === 'cornerRadius' && selectedComponent.properties.shape !== 'RoundedCorner') {
+        return; // Don't render cornerRadius if shape is not RoundedCorner
+      }
 
       const group = propDef.group || 'General';
       if (!groupedProperties[group]) { groupedProperties[group] = []; if (!propertyGroups.includes(group)) { propertyGroups.push(group); } }

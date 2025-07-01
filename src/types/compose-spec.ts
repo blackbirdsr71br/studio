@@ -100,6 +100,7 @@ export interface BaseComponentProps {
   iconSpacing?: number;
   animationType?: 'Fade' | 'Scale' | 'SlideFromTop' | 'SlideFromBottom' | 'SlideFromStart' | 'SlideFromEnd';
   animationDuration?: number;
+  shape?: 'Rectangle' | 'RoundedCorner' | 'Circle';
 
   // Properties for Scaffold structure, used by AI generation
   topBarId?: string; // ID of the TopAppBar component
@@ -202,6 +203,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         selfAlign: 'Inherit',
         clickable: false,
         clickId: 'button_clicked',
+        shape: 'RoundedCorner',
         cornerRadius: 4,
         iconName: '',
         iconPosition: 'Start',
@@ -607,6 +609,17 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     { name: 'fontSize', type: 'number', label: 'Font Size (sp)', placeholder: '14', group: 'Appearance' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'textColor', type: 'color', label: 'Text/Icon Color', group: 'Appearance' },
+    {
+      name: 'shape',
+      type: 'enum',
+      label: 'Shape',
+      group: 'Appearance',
+      options: [
+        { label: 'Rounded Corner', value: 'RoundedCorner' },
+        { label: 'Rectangle', value: 'Rectangle' },
+        { label: 'Circle', value: 'Circle' },
+      ]
+    },
     { name: 'cornerRadius', type: 'number', label: 'Corner Radius (px)', placeholder: '4', group: 'Appearance' },
     ...clickableProperties,
   ],
