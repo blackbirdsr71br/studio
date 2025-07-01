@@ -84,17 +84,25 @@ const replaceTemplateInstance = (
   newTemplate: CustomComponentTemplate,
   nextIdCounter: number
 ): { updatedComponents: DesignComponent[]; newNextId: number } => {
-  
   const oldInstance = layoutComponents.find(c => c.id === instanceId);
   if (!oldInstance) {
     return { updatedComponents: layoutComponents, newNextId: nextIdCounter };
   }
 
-  // 1. Preserve critical info and properties from the old instance.
+  // 1. Preserve critical info and selective properties from the old instance.
   const { parentId, name } = oldInstance;
-  const preservedProperties = { ...oldInstance.properties };
-  // Children will be replaced, so remove the old list of child IDs.
-  delete preservedProperties.children;
+  const preservedProperties: Partial<BaseComponentProps> = {};
+  const keysToPreserve: (keyof BaseComponentProps)[] = [
+    'width', 'height', 'fillMaxSize', 'fillMaxWidth', 'fillMaxHeight', 'layoutWeight', 'selfAlign',
+    'padding', 'paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd',
+    'text', 'src', 'contentDescription', 'clickable', 'clickId'
+  ];
+  keysToPreserve.forEach(key => {
+    if (oldInstance.properties[key] !== undefined) {
+      preservedProperties[key] = oldInstance.properties[key];
+    }
+  });
+
 
   // 2. Remove the old instance and all its descendants from the layout.
   const descendantIds = new Set<string>();
@@ -128,19 +136,17 @@ const replaceTemplateInstance = (
       id: newId,
       parentId: newParentIdInTemplate,
     };
-    
-    // Re-map children IDs
+
     if (newComp.properties.children) {
       newComp.properties.children = newComp.properties.children.map(childId => idMap[childId]);
     }
     
-    // If this is the root component of the instance...
     if (templateComp.id === newTemplate.rootComponentId) {
-      newComp.parentId = parentId; // Set its parent to the old instance's parent
-      newComp.name = name; // Preserve the instance name
-      newComp.templateIdRef = newTemplate.templateId; // Reference the new template
+      newComp.parentId = parentId;
+      newComp.name = name;
+      newComp.templateIdRef = newTemplate.templateId;
       
-      // Apply preserved properties. Instance properties override new template defaults.
+      // Apply preserved properties over the new template's defaults.
       newComp.properties = { ...newComp.properties, ...preservedProperties };
     }
     
@@ -154,9 +160,7 @@ const replaceTemplateInstance = (
     const parentIndex = componentsAfterDeletion.findIndex(c => c.id === parentId);
     if (parentIndex !== -1) {
       const parent = { ...componentsAfterDeletion[parentIndex] };
-      // Make sure we have a fresh copy of properties
       parent.properties = { ...parent.properties };
-      // Replace the old ID with the new one in the children array
       parent.properties.children = (parent.properties.children || []).map(childId =>
         childId === instanceId ? newInstanceRootId : childId
       );
@@ -721,40 +725,33 @@ export const DesignProvider: FC<{ children: ReactNode }> = ({ children }) => {
       const componentToDelete = prev.components.find(c => c.id === id);
       if (!componentToDelete) return {};
 
-      // 1. Collect all IDs to delete (the component and all its descendants)
       const idsToDelete = new Set<string>();
       const queue: string[] = [id];
       while (queue.length > 0) {
         const currentId = queue.shift()!;
         if (idsToDelete.has(currentId)) continue;
         idsToDelete.add(currentId);
-
         const currentComp = prev.components.find(c => c.id === currentId);
-        if (currentComp?.properties.children && Array.isArray(currentComp.properties.children)) {
+        if (currentComp?.properties.children) {
           queue.push(...currentComp.properties.children);
         }
       }
 
-      // 2. Filter out the deleted components
       let newComponents = prev.components.filter(c => !idsToDelete.has(c.id));
-
-      // 3. Update the parent of the deleted component
       const parentId = componentToDelete.parentId;
+
       if (parentId) {
         const parentIndex = newComponents.findIndex(c => c.id === parentId);
-        if (parentIndex !== -1) {
-          const newParent = {
-            ...newComponents[parentIndex],
-            properties: {
-              ...newComponents[parentIndex].properties,
-              children: (newComponents[parentIndex].properties.children || []).filter(childId => childId !== id),
-            },
+        if (parentIndex > -1) {
+          const parent = newComponents[parentIndex];
+          const newChildren = (parent.properties.children || []).filter(childId => childId !== id);
+          newComponents[parentIndex] = {
+            ...parent,
+            properties: { ...parent.properties, children: newChildren },
           };
-          newComponents[parentIndex] = newParent;
         }
       }
 
-      // 4. Determine new selection
       const newSelectedComponentId = idsToDelete.has(prev.selectedComponentId || "")
         ? (parentId || DEFAULT_CONTENT_LAZY_COLUMN_ID)
         : prev.selectedComponentId;
