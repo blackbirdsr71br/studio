@@ -1,4 +1,3 @@
-
 'use client';
 import type { DesignComponent, ComponentType as OriginalComponentType } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from '../RenderedComponentWrapper';
@@ -318,12 +317,13 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   }
   
   if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
-    baseStyle.backgroundColor = containerBackgroundColor || 'transparent'; 
-    baseStyle.width = '100%'; 
-    baseStyle.height = '100%'; 
-    delete baseStyle.overflow; 
-    delete baseStyle.overflowY; 
-    baseStyle.alignItems = effectiveProperties.horizontalAlignment === 'Start' ? 'flex-start' : effectiveProperties.horizontalAlignment === 'CenterHorizontally' ? 'center' : effectiveProperties.horizontalAlignment === 'End' ? 'flex-end' : 'stretch'; 
+    baseStyle.backgroundColor = containerBackgroundColor || 'transparent';
+    baseStyle.width = '100%';
+    baseStyle.height = 'auto';
+    baseStyle.minHeight = '100%';
+    delete baseStyle.overflow;
+    delete baseStyle.overflowY;
+    baseStyle.alignItems = effectiveProperties.horizontalAlignment === 'Start' ? 'flex-start' : effectiveProperties.horizontalAlignment === 'CenterHorizontally' ? 'center' : effectiveProperties.horizontalAlignment === 'End' ? 'flex-end' : 'stretch';
   }
 
   const showPlaceholder = (component.id === DEFAULT_TOP_APP_BAR_ID && !title && childrenComponents.length === 0) ||
