@@ -149,66 +149,55 @@ interface ModalJsonNode {
 const buildContentComponentTreeForModalJson = (
   allComponents: DesignComponent[],
   customComponentTemplates: CustomComponentTemplate[],
-  currentParentIdForContext: string // This will be DEFAULT_CONTENT_LAZY_COLUMN_ID
+  currentParentIdForContext: string
 ): ModalJsonNode[] => {
-  return allComponents
-    .filter(component => component.parentId === currentParentIdForContext)
-    .map(component => {
-      const componentBaseProperties = { ...component.properties };
-      // Remove the 'children' array of IDs, as we are nesting full objects for the modal
-      const { children: _childIdArrayFromProps, ...otherProperties } = componentBaseProperties;
-      const cleanedOtherProperties = cleanEmptyOrNullProperties(otherProperties);
+  const parentComponent = allComponents.find(c => c.id === currentParentIdForContext);
 
-      // Deconstruct to isolate the properties we need to order
-      const {
-        width,
-        height,
-        fillMaxSize,
-        fillMaxWidth,
-        fillMaxHeight,
-        ...restOfProperties
-      } = cleanedOtherProperties;
+  if (!parentComponent || !Array.isArray(parentComponent.properties.children)) {
+    return [];
+  }
 
-      const orderedProperties: Record<string, any> = {};
-      
-      // Fixed order for size properties
-      if (width !== undefined) {
-        orderedProperties.width = typeof width === 'number' ? String(width) : width;
-      }
-      if (height !== undefined) {
-        orderedProperties.height = typeof height === 'number' ? String(height) : height;
-      }
-      if (fillMaxSize !== undefined) {
-        orderedProperties.fillMaxSize = fillMaxSize;
-      }
-      if (fillMaxWidth !== undefined) {
-        orderedProperties.fillMaxWidth = fillMaxWidth;
-      }
-      if (fillMaxHeight !== undefined) {
-        orderedProperties.fillMaxHeight = fillMaxHeight;
-      }
-      
-      // Add the rest of the properties
-      Object.assign(orderedProperties, restOfProperties);
+  const orderedChildIds = parentComponent.properties.children;
 
-      const node: ModalJsonNode = {
-        id: component.id,
-        type: component.type,
-        name: component.name,
-        parentId: component.parentId, // This parentId is correct for components *within* the content area
-        properties: orderedProperties,
-        ...(component.templateIdRef && { templateIdRef: component.templateIdRef }), // Include templateIdRef if present
-      };
+  return orderedChildIds.map(childId => {
+    const component = allComponents.find(c => c.id === childId);
+    if (!component) {
+      return null;
+    }
 
-      // Recursively build for children if this component is a container
-      if (isContainerType(component.type, customComponentTemplates)) {
-        const childrenObjectNodes = buildContentComponentTreeForModalJson(allComponents, customComponentTemplates, component.id);
-        if (childrenObjectNodes.length > 0) {
-          node.properties.children = childrenObjectNodes as any; // Nest full child objects
-        }
+    const componentBaseProperties = { ...component.properties };
+    const { children: _childIdArrayFromProps, ...otherProperties } = componentBaseProperties;
+    const cleanedOtherProperties = cleanEmptyOrNullProperties(otherProperties);
+
+    const {
+      width, height, fillMaxSize, fillMaxWidth, fillMaxHeight, ...restOfProperties
+    } = cleanedOtherProperties;
+
+    const orderedProperties: Record<string, any> = {};
+    if (width !== undefined) orderedProperties.width = typeof width === 'number' ? String(width) : width;
+    if (height !== undefined) orderedProperties.height = typeof height === 'number' ? String(height) : height;
+    if (fillMaxSize !== undefined) orderedProperties.fillMaxSize = fillMaxSize;
+    if (fillMaxWidth !== undefined) orderedProperties.fillMaxWidth = fillMaxWidth;
+    if (fillMaxHeight !== undefined) orderedProperties.fillMaxHeight = fillMaxHeight;
+    Object.assign(orderedProperties, restOfProperties);
+
+    const node: ModalJsonNode = {
+      id: component.id,
+      type: component.type,
+      name: component.name,
+      parentId: component.parentId,
+      properties: orderedProperties,
+      ...(component.templateIdRef && { templateIdRef: component.templateIdRef }),
+    };
+
+    if (isContainerType(component.type, customComponentTemplates)) {
+      const childrenObjectNodes = buildContentComponentTreeForModalJson(allComponents, customComponentTemplates, component.id);
+      if (childrenObjectNodes.length > 0) {
+        node.properties.children = childrenObjectNodes as any;
       }
-      return node;
-    });
+    }
+    return node;
+  }).filter((node): node is ModalJsonNode => node !== null);
 };
 
 export async function getDesignComponentsAsJsonAction(
@@ -544,4 +533,3 @@ export async function generateJsonParserCodeAction(
     
 
     
-
