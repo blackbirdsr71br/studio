@@ -240,7 +240,8 @@ const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: T
 
 export const ComponentTreeView = () => {
   const { components } = useDesign();
-  const rootComponent = components.find(c => c.id === ROOT_SCAFFOLD_ID);
+  // Find the root component by looking for the one with no parent. This works for both the main canvas and template editing.
+  const rootComponent = components.find(c => c.parentId === null);
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set());
 
   const toggleNode = (nodeId: string) => {
