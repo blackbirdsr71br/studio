@@ -181,7 +181,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         textDecoration: 'None',
         lineHeight: 1.4,
         selfAlign: 'Inherit',
-        clickable: true,
+        clickable: false,
         clickId: 'text_clicked',
       };
     case 'Button':
@@ -195,7 +195,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         width: undefined,
         height: undefined,
         selfAlign: 'Inherit',
-        clickable: true,
+        clickable: false,
         clickId: 'button_clicked',
       };
     case 'Image':
@@ -211,7 +211,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         cornerRadiusTopLeft: 0, cornerRadiusTopRight: 0, cornerRadiusBottomRight: 0, cornerRadiusBottomLeft: 0,
         padding: 0,
         selfAlign: 'Inherit',
-        clickable: true,
+        clickable: false,
         clickId: 'image_clicked',
       };
     case 'Column':
@@ -223,7 +223,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         width: 200, height: 200, itemSpacing: 8,
         verticalArrangement: 'Top', horizontalAlignment: 'Start',
         selfAlign: 'Inherit',
-        clickable: true,
+        clickable: false,
         clickId: 'column_clicked',
       };
     case 'Row':
@@ -235,7 +235,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         width: 200, height: 100, itemSpacing: 8,
         horizontalArrangement: 'Start', verticalAlignment: 'Top',
         selfAlign: 'Inherit',
-        clickable: true,
+        clickable: false,
         clickId: 'row_clicked',
       };
     case 'Box':
@@ -247,7 +247,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         width: 100, height: 100,
         cornerRadiusTopLeft: 4, cornerRadiusTopRight: 4, cornerRadiusBottomRight: 4, cornerRadiusBottomLeft: 4,
         selfAlign: 'Inherit',
-        clickable: true,
+        clickable: false,
         clickId: 'box_clicked',
       };
     case 'Card':
@@ -263,7 +263,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         cornerRadiusTopLeft: 8, cornerRadiusTopRight: 8, cornerRadiusBottomRight: 8, cornerRadiusBottomLeft: 8,
         borderWidth: 0, borderColor: '#000000',
         selfAlign: 'Inherit',
-        clickable: true,
+        clickable: false,
         clickId: 'card_clicked',
       };
     case 'LazyColumn':
@@ -282,7 +282,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         verticalArrangement: 'Top', horizontalAlignment: 'Start',
         paddingBottom: isContentArea ? (8) : 8, // Add some bottom padding for scroll room
         selfAlign: 'Inherit',
-        clickable: true,
+        clickable: false,
         clickId: 'lazy_column_clicked',
       };
     case 'LazyRow':
@@ -296,7 +296,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         userScrollEnabled: true, reverseLayout: false,
         horizontalArrangement: 'Start', verticalAlignment: 'Top',
         selfAlign: 'Inherit',
-        clickable: true,
+        clickable: false,
         clickId: 'lazy_row_clicked',
       };
     case 'LazyVerticalGrid':
@@ -309,7 +309,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         width: undefined, height: 300, columns: 2, itemSpacing: 8,
         verticalArrangement: 'Top', horizontalAlignment: 'Start',
         selfAlign: 'Inherit',
-        clickable: true,
+        clickable: false,
         clickId: 'lazy_vertical_grid_clicked',
       };
     case 'LazyHorizontalGrid':
@@ -322,7 +322,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         width: undefined, height: 200, rows: 2, itemSpacing: 8,
         horizontalArrangement: 'Start', verticalAlignment: 'Top',
         selfAlign: 'Inherit',
-        clickable: true,
+        clickable: false,
         clickId: 'lazy_horizontal_grid_clicked',
       };
     case 'Spacer':
@@ -333,7 +333,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         width: 8,
         height: 8,
         selfAlign: undefined,
-        clickable: true,
+        clickable: false,
         clickId: 'spacer_clicked',
       };
     case 'TopAppBar': // New default for TopAppBar
@@ -352,7 +352,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         itemSpacing: 8,
         horizontalArrangement: 'Start', // For title and actions
         verticalAlignment: 'CenterVertically',
-        clickable: true,
+        clickable: false,
         clickId: 'top_app_bar_clicked',
       };
     case 'BottomNavigationBar': // New default for BottomNavigationBar
@@ -369,7 +369,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         itemSpacing: 0, // Items usually have their own padding
         horizontalArrangement: 'SpaceAround', // Common for nav items
         verticalAlignment: 'CenterVertically',
-        clickable: true,
+        clickable: false,
         clickId: 'bottom_nav_bar_clicked',
       };
     case 'AnimatedContent':
@@ -383,7 +383,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         animationType: 'Fade',
         animationDuration: 300,
         selfAlign: 'Inherit',
-        clickable: true,
+        clickable: false,
         clickId: 'animated_content_clicked',
       };
     default:
