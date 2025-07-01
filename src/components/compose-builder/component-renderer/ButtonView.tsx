@@ -2,10 +2,35 @@
 'use client';
 import type { BaseComponentProps } from '@/types/compose-spec';
 import { getContrastingTextColor } from '@/lib/utils';
+import * as icons from 'lucide-react';
 
 interface ButtonViewProps {
   properties: BaseComponentProps;
 }
+
+// Helper to convert strings to PascalCase for icon names
+// e.g., "arrow-right" -> "ArrowRight", "check" -> "Check"
+const toPascalCase = (str: string) => {
+    if (!str) return '';
+    return str
+        .replace(/[-_]/g, ' ')
+        .replace(/\b\w/g, char => char.toUpperCase())
+        .replace(/\s/g, '');
+};
+
+
+const DynamicLucideIcon = ({ name, ...props }: { name: string } & icons.LucideProps) => {
+    const iconNameInPascalCase = toPascalCase(name);
+    const LucideIcon = (icons as any)[iconNameInPascalCase];
+
+    if (!LucideIcon) {
+        // Fallback for invalid icon names, provides visual feedback
+        return <icons.HelpCircle {...props} title={`Invalid icon name: ${name}`} />;
+    }
+
+    return <LucideIcon {...props} />;
+};
+
 
 export function ButtonView({ properties }: ButtonViewProps) {
   const {
@@ -18,7 +43,12 @@ export function ButtonView({ properties }: ButtonViewProps) {
     paddingBottom,
     paddingStart,
     paddingEnd,
-    fillMaxWidth, // Added to consume for styling
+    fillMaxWidth,
+    cornerRadius = 4,
+    iconName,
+    iconPosition = 'Start',
+    iconSize = 16,
+    iconSpacing = 8,
   } = properties;
 
   let effectiveTextColor;
@@ -36,15 +66,16 @@ export function ButtonView({ properties }: ButtonViewProps) {
     paddingBottom: `${paddingBottom ?? padding ?? 8}px`,
     paddingLeft: `${paddingStart ?? padding ?? 12}px`,
     paddingRight: `${paddingEnd ?? padding ?? 12}px`,
-    borderRadius: '4px',
+    borderRadius: `${cornerRadius}px`,
     border: 'none',
-    display: 'flex', // Default to flex, will be overridden for wrap_content
+    display: 'flex', 
     alignItems: 'center',
     justifyContent: 'center',
     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
     width: '100%', 
     height: '100%', 
-    boxSizing: 'border-box', 
+    boxSizing: 'border-box',
+    gap: `${iconName && text ? iconSpacing : 0}px`
   };
 
   // If not fillMaxWidth and width is wrap_content (default or explicit), adjust width
@@ -52,14 +83,16 @@ export function ButtonView({ properties }: ButtonViewProps) {
     style.width = 'auto'; // Let the button size to its content + padding
     style.display = 'inline-flex'; // Behave more like an inline element if not filling width
   }
+  
+  const iconElement = iconName ? (
+    <DynamicLucideIcon name={iconName} size={iconSize} color={effectiveTextColor} />
+  ) : null;
 
-
-  // Use a div instead of a disabled button to avoid blocking pointer events.
   return (
     <div style={style} className="select-none">
-      {text}
+      {iconPosition === 'Start' && iconElement}
+      {text && <span>{text}</span>}
+      {iconPosition === 'End' && iconElement}
     </div>
   );
 }
-
-    

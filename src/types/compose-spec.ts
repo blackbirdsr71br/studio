@@ -66,6 +66,7 @@ export interface BaseComponentProps {
   src?: string;
   "data-ai-hint"?: string;
   elevation?: number;
+  cornerRadius?: number;
   cornerRadiusTopLeft?: number;
   cornerRadiusTopRight?: number;
   cornerRadiusBottomRight?: number;
@@ -93,6 +94,10 @@ export interface BaseComponentProps {
   selfAlign?: 'Inherit' | 'Start' | 'Center' | 'End';
   clickable?: boolean;
   clickId?: string;
+  iconName?: string;
+  iconPosition?: 'Start' | 'End';
+  iconSize?: number;
+  iconSpacing?: number;
   animationType?: 'Fade' | 'Scale' | 'SlideFromTop' | 'SlideFromBottom' | 'SlideFromStart' | 'SlideFromEnd';
   animationDuration?: number;
 
@@ -197,6 +202,11 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         selfAlign: 'Inherit',
         clickable: false,
         clickId: 'button_clicked',
+        cornerRadius: 4,
+        iconName: '',
+        iconPosition: 'Start',
+        iconSize: 16,
+        iconSpacing: 8,
       };
     case 'Image':
       return {
@@ -581,9 +591,23 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     ...commonLayoutProperties,
     selfAlignProperty,
     { name: 'text', type: 'string', label: 'Button Text', placeholder: 'Button', group: 'Content' },
+    { name: 'iconName', type: 'string', label: 'Icon Name (Lucide)', placeholder: 'e.g., Check, arrow-right', group: 'Content' },
+    {
+      name: 'iconPosition',
+      type: 'enum',
+      label: 'Icon Position',
+      group: 'Content',
+      options: [
+        { label: 'Start', value: 'Start' },
+        { label: 'End', value: 'End' },
+      ]
+    },
+    { name: 'iconSize', type: 'number', label: 'Icon Size (px)', placeholder: '16', group: 'Appearance' },
+    { name: 'iconSpacing', type: 'number', label: 'Icon Spacing (px)', placeholder: '8', group: 'Appearance' },
     { name: 'fontSize', type: 'number', label: 'Font Size (sp)', placeholder: '14', group: 'Appearance' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    { name: 'textColor', type: 'color', label: 'Text Color', group: 'Appearance' },
+    { name: 'textColor', type: 'color', label: 'Text/Icon Color', group: 'Appearance' },
+    { name: 'cornerRadius', type: 'number', label: 'Corner Radius (px)', placeholder: '4', group: 'Appearance' },
     ...clickableProperties,
   ],
   Image: [
@@ -787,6 +811,7 @@ const BaseModalPropertiesSchema = z.object({
   src: z.string().url("Must be a valid URL for Image src").or(z.string().startsWith("data:image/")).optional(),
   "data-ai-hint": z.string().optional(),
   elevation: z.number().min(0).optional(),
+  cornerRadius: z.number().min(0).optional(),
   cornerRadiusTopLeft: z.number().min(0).optional(),
   cornerRadiusTopRight: z.number().min(0).optional(),
   cornerRadiusBottomRight: z.number().min(0).optional(),
@@ -814,6 +839,10 @@ const BaseModalPropertiesSchema = z.object({
   selfAlign: z.enum(['Inherit', 'Start', 'Center', 'End']).optional(),
   clickable: z.boolean().optional(),
   clickId: z.string().optional(),
+  iconName: z.string().optional(),
+  iconPosition: z.enum(['Start', 'End']).optional(),
+  iconSize: z.number().min(0).optional(),
+  iconSpacing: z.number().min(0).optional(),
   animationType: z.enum(['Fade', 'Scale', 'SlideFromTop', 'SlideFromBottom', 'SlideFromStart', 'SlideFromEnd']).optional(),
   animationDuration: z.number().int().min(0).optional(),
   // children property is handled by the recursive schema definition below
