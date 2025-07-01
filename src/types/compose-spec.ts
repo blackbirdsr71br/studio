@@ -85,7 +85,7 @@ export interface BaseComponentProps {
   horizontalAlignment?: 'Start' | 'CenterHorizontally' | 'End';
   horizontalArrangement?: 'Start' | 'End' | 'Center' | 'SpaceAround' | 'SpaceBetween' | 'SpaceEvenly';
   verticalAlignment?: 'Top' | 'CenterVertically' | 'Bottom';
-  fontWeight?: 'Normal' | 'Bold';
+  fontWeight?: 'Normal' | 'Semibold' | 'Bold';
   fontStyle?: 'Normal' | 'Italic';
   textAlign?: 'Left' | 'Center' | 'Right' | 'Justify' | 'Start' | 'End';
   textDecoration?: 'None' | 'Underline' | 'LineThrough';
@@ -549,6 +549,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
       group: 'Appearance',
       options: [
         { label: 'Normal', value: 'Normal' },
+        { label: 'Semibold', value: 'Semibold' },
         { label: 'Bold', value: 'Bold' },
       ]
     },
@@ -843,7 +844,7 @@ const BaseModalPropertiesSchema = z.object({
   horizontalAlignment: z.enum(['Start', 'CenterHorizontally', 'End']).optional(),
   horizontalArrangement: z.enum(['Start', 'End', 'Center', 'SpaceAround', 'SpaceBetween', 'SpaceEvenly']).optional(),
   verticalAlignment: z.enum(['Top', 'CenterVertically', 'Bottom']).optional(),
-  fontWeight: z.enum(['Normal', 'Bold']).optional(),
+  fontWeight: z.enum(['Normal', 'Semibold', 'Bold']).optional(),
   fontStyle: z.enum(['Normal', 'Italic']).optional(),
   textAlign: z.enum(['Left', 'Center', 'Right', 'Justify', 'Start', 'End']).optional(),
   textDecoration: z.enum(['None', 'Underline', 'LineThrough']).optional(),

@@ -24,6 +24,18 @@ export function TextView({ properties }: TextViewProps) {
     backgroundColor,
   } = properties;
 
+  const getFontWeightValue = (weight: 'Normal' | 'Semibold' | 'Bold'): 'normal' | 'bold' | number => {
+    switch (weight) {
+      case 'Bold':
+        return 'bold';
+      case 'Semibold':
+        return 600;
+      case 'Normal':
+      default:
+        return 'normal';
+    }
+  };
+
   const style: React.CSSProperties = {
     fontSize: `${fontSize}px`,
     paddingTop: `${paddingTop ?? padding ?? 0}px`,
@@ -33,7 +45,7 @@ export function TextView({ properties }: TextViewProps) {
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
     lineHeight: lineHeight,
-    fontWeight: fontWeight.toLowerCase() as 'normal' | 'bold',
+    fontWeight: getFontWeightValue(fontWeight),
     fontStyle: fontStyle.toLowerCase() as 'normal' | 'italic',
     textAlign: textAlign.toLowerCase() as 'left' | 'center' | 'right' | 'justify' | 'start' | 'end',
     textDecorationLine: textDecoration === 'LineThrough' ? 'line-through' : textDecoration.toLowerCase(),
@@ -83,5 +95,3 @@ export function TextView({ properties }: TextViewProps) {
     </div>
   );
 }
-
-    
