@@ -36,19 +36,16 @@ const ConvertCanvasToCustomJsonOutputSchema = z.object({
   customJsonString: z
     .string()
     .describe(
-      'A JSON string representing the UI in the "Compose Remote Layout" custom command format. The root key should be the lowercase name of the main component (e.g., "card", "column", "spacer"). This JSON string should be pretty-printed (indented with 2 spaces).'
+      'A JSON string representing the UI in the "Compose Remote Layout" custom command format. The root key should be the lowercase name of the main component (e.g., "card", "column", "spacer"). This must be a compact, single-line JSON string.'
     )
     .refine(
       (data) => {
         try {
-          // Check if it's parsable JSON
-          const parsed = JSON.parse(data);
-          // Check if it's "pretty-printed" by seeing if it contains newlines and multiple spaces for indentation
-          // This is a heuristic, but good enough for ensuring basic formatting.
-          const isPretty = data.includes('\n') && data.includes('  ');
-          if (!isPretty && Object.keys(parsed).length > 0) { // only be strict if it's not an empty object
-             // console.warn("AI returned custom JSON that was not pretty-printed. Attempting to format.");
-          }
+          // Check if it's parsable JSON.
+          // An empty string is not valid JSON, but the AI might return it for an empty canvas.
+          // We'll allow an empty string or a string representing an empty object '{}'.
+          if (data.trim() === '' || data.trim() === '{}') return true;
+          JSON.parse(data);
           return true; 
         } catch (e) {
           return false;
@@ -73,7 +70,7 @@ const prompt = ai.definePrompt({
   input: {schema: ConvertCanvasToCustomJsonInputSchema},
   output: {schema: ConvertCanvasToCustomJsonOutputSchema},
   prompt: `You are an expert UI converter. Your task is to transform an input JSON (representing a canvas design's content area) into a specific target "Compose Remote Layout" JSON format.
-The output JSON MUST be "pretty-printed" (formatted with newlines and indentation of 2 spaces).
+The value for 'customJsonString' in your output MUST be a compact, single-line JSON string without any newlines or formatting. It must be a raw string representation of the JSON object.
 
 Input Canvas Design JSON ('{{{designJson}}}'):
 The input is a JSON string representing an array of component objects. These are the components intended for the main content area of an application.
@@ -224,62 +221,13 @@ Input Canvas Design JSON (Content Area):
 {{{designJson}}}
 \`\`\`
 
-Ensure the output is a single JSON object adhering to the "Compose Remote Layout" structure and is "pretty-printed" with an indent of 2 spaces.
+Ensure the output 'customJsonString' is a single, compact JSON string. Do not pretty-print it. The final formatting will be handled separately.
 Focus on accurate mapping and adherence to the specified JSON structure and the OMISSION rules.
 If a canvas property does not have a clear direct mapping to the target spec, omit it unless its intent can be clearly translated to an equivalent modifier or property.
-Example: A card with 'fillMaxWidth: true' and padding '16' from canvas:
-\`\`\`json
-{
-  "card": {
-    "modifier": {
-      "base": {
-        "fillMaxWidth": true,
-        "padding": { "all": 16 }
-      }
-    },
-    "children": [ /* ... */ ]
-  }
-}
-\`\`\`
-Example: A Text component with no meaningful modifiers:
-Canvas: '{ "type": "Text", "properties": { "text": "Hello" } }'
-Output:
-\`\`\`json
-{
-  "text": {
-    "content": "Hello"
-    /* "modifier" key is OMITTED because it would be empty */
-  }
-}
-\`\`\`
-Example: A Box component with only padding (no other base or specific modifiers):
-Canvas: '{ "type": "Box", "properties": { "padding": 8 } }'
-Output:
-\`\`\`json
-{
-  "box": {
-    "modifier": {
-      "base": {
-        "padding": { "all": 8 }
-      }
-      /* No Box-specific modifiers like contentAlignment were present or non-default */
-    }
-  }
-}
-\`\`\`
-If canvas text was empty, and paddingTop was 8:
-\`\`\`json
-{
-  "text": {
-    "modifier": {
-      "base": {
-        "padding": { "top": 8 }
-      }
-    }
-    /* "content" property is OMITTED because the original text was empty */
-  }
-}
-\`\`\`
+Example: A card with 'fillMaxWidth: true' and padding '16' from canvas. The value of 'customJsonString' should be: '{"card":{"modifier":{"base":{"fillMaxWidth":true,"padding":{"all":16}}},"children":[]}}'
+Example: A Text component with no meaningful modifiers. Canvas: '{ "type": "Text", "properties": { "text": "Hello" } }'. Output 'customJsonString' value: '{"text":{"content":"Hello"}}'
+Example: A Box component with only padding. Canvas: '{ "type": "Box", "properties": { "padding": 8 } }'. Output 'customJsonString' value: '{"box":{"modifier":{"base":{"padding":{"all":8}}}}}'
+Example: A Text with empty canvas text and paddingTop of 8. Output 'customJsonString' value: '{"text":{"modifier":{"base":{"padding":{"top":8}}}}}'
 `,
 });
 
@@ -294,21 +242,24 @@ const convertCanvasToCustomJsonFlow = ai.defineFlow(
     if (!output) {
       throw new Error('AI did not return a response or the response was empty.');
     }
+    
+    // Allow an empty string or empty object '{}' as valid for an empty canvas
+    const trimmedOutput = output.customJsonString.trim();
+    if (trimmedOutput === '' || trimmedOutput === '{}') {
+        return { customJsonString: '{}' }; 
+    }
 
     let jsonToFormat: any;
 
-    if (typeof output.customJsonString === 'object') {
-        jsonToFormat = output.customJsonString;
-    } else {
-        try {
-            jsonToFormat = JSON.parse(output.customJsonString);
-        } catch (e) {
-            console.error("Error parsing customJsonString from AI output despite Zod refine: ", e);
-            throw new Error("AI returned an invalid JSON string for customJsonString that could not be formatted.");
-        }
+    try {
+        jsonToFormat = JSON.parse(output.customJsonString);
+    } catch (e) {
+        console.error("Error parsing customJsonString from AI output despite Zod refine: ", e);
+        console.error("Invalid string was: ", output.customJsonString); // Log the bad string
+        throw new Error("AI returned an invalid JSON string for customJsonString that could not be formatted.");
     }
     
-    // Ensure the JSON is "pretty-printed" with an indent of 2 spaces.
+    // Ensure the JSON is "pretty-printed" with an indent of 2 spaces for display.
     const formattedJsonString = JSON.stringify(jsonToFormat, null, 2);
     
     return { customJsonString: formattedJsonString };
