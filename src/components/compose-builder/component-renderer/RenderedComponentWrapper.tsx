@@ -15,6 +15,7 @@ import { isContainerType, isCustomComponentType, ROOT_SCAFFOLD_ID, DEFAULT_CONTE
 
 interface RenderedComponentWrapperProps {
   component: DesignComponent;
+  zoomLevel?: number;
 }
 
 interface DraggedCanvasItem {
@@ -98,7 +99,7 @@ const getDimensionValue = (
   };
   
 
-export function RenderedComponentWrapper({ component }: RenderedComponentWrapperProps) {
+export function RenderedComponentWrapper({ component, zoomLevel = 1 }: RenderedComponentWrapperProps) {
   const { selectedComponentId, selectComponent, getComponentById, addComponent, moveComponent, updateComponent, customComponentTemplates } = useDesign();
   const ref = useRef<HTMLDivElement>(null);
   const [dropIndicator, setDropIndicator] = useState<DropIndicatorPosition>(null);
@@ -126,185 +127,98 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     accept: [ItemTypes.COMPONENT_LIBRARY_ITEM, ItemTypes.CANVAS_COMPONENT_ITEM],
     hover(item: DraggedCanvasItem | DraggedLibraryItem, monitor) {
       if (!ref.current || !monitor.isOver({ shallow: true })) {
-        setDropIndicator(null);
+        if (dropIndicator !== null) setDropIndicator(null);
         return;
       }
       
-      const clientOffset = monitor.getClientOffset();
-      if (!clientOffset) {
-        setDropIndicator(null);
+      const draggedId = (item as any).id || (item as any).type;
+      const targetId = component.id;
+      if (draggedId === targetId || CORE_SCAFFOLD_ELEMENT_IDS.includes(targetId)) {
+        if (dropIndicator !== null) setDropIndicator(null);
         return;
       }
 
-      if (monitor.getItemType() === ItemTypes.CANVAS_COMPONENT_ITEM) {
-        const draggedInternalItem = item as DraggedCanvasItem;
-        const draggedId = draggedInternalItem.id;
+      const clientOffset = monitor.getClientOffset();
+      if (!clientOffset) return;
+
+      const hoverBoundingRect = ref.current.getBoundingClientRect();
+      const hoverClientY = clientOffset.y - hoverBoundingRect.top;
+      
+      let newIndicator: DropIndicatorPosition = null;
+
+      if (isContainerType(component.type, customComponentTemplates)) {
+        const topThird = hoverBoundingRect.height / 3;
+        const bottomThird = hoverBoundingRect.height * (2 / 3);
+        if (hoverClientY < topThird) newIndicator = 'top';
+        else if (hoverClientY > bottomThird) newIndicator = 'bottom';
+        else newIndicator = null;
+      } else {
+        const hoverMiddleY = hoverBoundingRect.height / 2;
+        if (hoverClientY < hoverMiddleY) newIndicator = 'top';
+        else newIndicator = 'bottom';
+      }
+
+      if (newIndicator !== dropIndicator) {
+        setDropIndicator(newIndicator);
+      }
+    },
+    canDrop(item: DraggedCanvasItem | DraggedLibraryItem, monitor) {
+       if (!monitor.isOver({ shallow: true })) return false;
+
+       const targetId = component.id;
+       if (targetId === ROOT_SCAFFOLD_ID) return false;
+
+       if (monitor.getItemType() === ItemTypes.CANVAS_COMPONENT_ITEM) {
+           const draggedId = (item as DraggedCanvasItem).id;
+           if (draggedId === targetId) return false;
+
+           let p = component.parentId;
+           while(p) {
+               if (p === draggedId) return false;
+               const parentComp = getComponentById(p);
+               p = parentComp ? parentComp.parentId : null;
+           }
+       }
+       return true;
+    },
+    drop(item, monitor) {
+        if (monitor.didDrop() || !monitor.isOver({ shallow: true })) {
+            setDropIndicator(null);
+            return;
+        }
+        
+        const itemType = monitor.getItemType();
         const targetId = component.id;
 
-        if (draggedId === targetId) {
-            setDropIndicator(null);
-            return;
-        }
-
-        const draggedComponent = getComponentById(draggedId);
-        if (draggedComponent &&
-            draggedComponent.parentId === component.parentId &&
-            component.parentId &&
-            component.parentId !== ROOT_SCAFFOLD_ID) { 
-            
-            const hoverBoundingRect = ref.current.getBoundingClientRect();
-            const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
-            const hoverClientY = clientOffset.y - hoverBoundingRect.top;
-
-            if (hoverClientY < hoverMiddleY) {
-                setDropIndicator('top');
+        // Case 1: Drop INTO a container (no re-order indicator)
+        if (dropIndicator === null && isContainerType(component.type, customComponentTemplates)) {
+            if (itemType === ItemTypes.CANVAS_COMPONENT_ITEM) {
+                moveComponent((item as DraggedCanvasItem).id, targetId);
             } else {
-                setDropIndicator('bottom');
+                addComponent((item as DraggedLibraryItem).type, targetId);
             }
-        } else {
-            setDropIndicator(null);
         }
-      } else {
-        setDropIndicator(null);
-      }
-    },
-    canDrop: (item: DraggedCanvasItem | DraggedLibraryItem, monitor) => {
-      if (!monitor.isOver({ shallow: true })) return false;
+        // Case 2: Drop BESIDE another component (re-order or re-parent)
+        else if (component.parentId) {
+            const parentComp = getComponentById(component.parentId);
+            if (parentComp?.properties.children) {
+                let targetIndex = parentComp.properties.children.indexOf(targetId);
+                if (targetIndex === -1) { setDropIndicator(null); return; }
 
-      const itemTypeFromMonitor = monitor.getItemType();
-      const targetId = component.id; 
-
-      if (targetId === DEFAULT_TOP_APP_BAR_ID) {
-        return (item as DraggedLibraryItem).type === 'TopAppBar' || (item as DraggedLibraryItem).type === 'Text' || (item as DraggedLibraryItem).type === 'Image' || (item as DraggedLibraryItem).type === 'Button';
-      }
-      if (targetId === DEFAULT_BOTTOM_NAV_BAR_ID) {
-        return (item as DraggedLibraryItem).type === 'BottomNavigationBar' || (item as DraggedLibraryItem).type === 'Text' || (item as DraggedLibraryItem).type === 'Image' || (item as DraggedLibraryItem).type === 'Button';
-      }
-      if (targetId === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
-        const libItemType = (item as DraggedLibraryItem).type;
-        return libItemType !== 'Scaffold' && libItemType !== 'TopAppBar' && libItemType !== 'BottomNavigationBar';
-      }
-      
-      if (itemTypeFromMonitor === ItemTypes.COMPONENT_LIBRARY_ITEM) {
-        const libItemType = (item as DraggedLibraryItem).type;
-        if (libItemType === 'Scaffold' ||
-            (targetId !== DEFAULT_TOP_APP_BAR_ID && libItemType === 'TopAppBar') ||
-            (targetId !== DEFAULT_BOTTOM_NAV_BAR_ID && libItemType === 'BottomNavigationBar')) {
-          return false;
-        }
-      }
-
-
-      if (itemTypeFromMonitor === ItemTypes.CANVAS_COMPONENT_ITEM) {
-        const draggedId = (item as DraggedCanvasItem).id;
-        if (draggedId === targetId) return false; 
-
-        const draggedComponent = getComponentById(draggedId);
-        const targetComponent = component;
-
-        let currentParentIdToCheck = targetComponent.parentId;
-        while (currentParentIdToCheck) {
-          if (currentParentIdToCheck === draggedId) return false;
-          const parentComp = getComponentById(currentParentIdToCheck);
-          currentParentIdToCheck = parentComp ? parentComp.parentId : null;
-        }
-        
-        if (draggedComponent &&
-            draggedComponent.parentId === targetComponent.parentId &&
-            targetComponent.parentId &&
-            targetComponent.parentId !== ROOT_SCAFFOLD_ID) { 
-          return true;
-        }
-      }
-      
-      if (isContainerType(component.type, customComponentTemplates)) return true;
-
-      let parent = component.parentId ? getComponentById(component.parentId) : null;
-      if (parent && isContainerType(parent.type, customComponentTemplates)) {
-        return true;
-      }
-      
-      return false;
-    },
-    drop: (item: DraggedCanvasItem | DraggedLibraryItem, monitor) => {
-      if (monitor.didDrop() || !monitor.isOver({ shallow: true })) {
-        setDropIndicator(null);
-        return;
-      }
-      
-      const itemTypeFromMonitor = monitor.getItemType();
-      const targetComponentInstance = component; 
-
-      if (itemTypeFromMonitor === ItemTypes.COMPONENT_LIBRARY_ITEM) {
-        const libraryItem = item as DraggedLibraryItem;
-        let targetParentIdForNewComponent = targetComponentInstance.id;
-
-        if (targetComponentInstance.id === DEFAULT_TOP_APP_BAR_ID || targetComponentInstance.id === DEFAULT_BOTTOM_NAV_BAR_ID || targetComponentInstance.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
-            targetParentIdForNewComponent = targetComponentInstance.id;
-        } else if (isContainerType(targetComponentInstance.type, customComponentTemplates)) {
-            targetParentIdForNewComponent = targetComponentInstance.id;
-        } else {
-            targetParentIdForNewComponent = targetComponentInstance.parentId || DEFAULT_CONTENT_LAZY_COLUMN_ID;
-        }
-        addComponent(libraryItem.type, targetParentIdForNewComponent);
-
-      } else if (itemTypeFromMonitor === ItemTypes.CANVAS_COMPONENT_ITEM) {
-        const draggedCanvasItem = item as DraggedCanvasItem;
-        const draggedId = draggedCanvasItem.id;
-        
-        const draggedComponent = getComponentById(draggedId);
-        if (!draggedComponent) {
-            setDropIndicator(null);
-            return;
-        }
-
-        if (draggedComponent.parentId === targetComponentInstance.parentId &&
-            targetComponentInstance.parentId &&
-            targetComponentInstance.parentId !== ROOT_SCAFFOLD_ID &&
-            dropIndicator) {
-            
-            const parentComp = getComponentById(targetComponentInstance.parentId);
-            if (parentComp && parentComp.properties.children) {
-                const childrenOfParent = parentComp.properties.children;
-                let targetIndex = childrenOfParent.indexOf(targetComponentInstance.id);
-
-                if (targetIndex === -1) {
-                    setDropIndicator(null);
-                    return;
-                }
                 if (dropIndicator === 'bottom') {
-                    targetIndex += 1;
+                    targetIndex++;
                 }
-                moveComponent(draggedId, targetComponentInstance.parentId, targetIndex);
-            }
-        }
-        else if (isContainerType(targetComponentInstance.type, customComponentTemplates)) {
-            moveComponent(draggedId, targetComponentInstance.id); 
-        }
-        else if (targetComponentInstance.parentId && targetComponentInstance.parentId !== draggedId) {
-            const parentOfTarget = getComponentById(targetComponentInstance.parentId);
-            if (parentOfTarget && isContainerType(parentOfTarget.type, customComponentTemplates)) {
-                const childrenOfParent = parentOfTarget.properties.children || [];
-                let targetIndex = childrenOfParent.indexOf(targetComponentInstance.id);
-                if (targetIndex === -1) {
-                     moveComponent(draggedId, targetComponentInstance.parentId);
+
+                if (itemType === ItemTypes.CANVAS_COMPONENT_ITEM) {
+                    moveComponent((item as DraggedCanvasItem).id, component.parentId, targetIndex);
                 } else {
-                    if (dropIndicator === 'bottom' || dropIndicator === null) {
-                        targetIndex += 1;
-                    }
-                    moveComponent(draggedId, targetComponentInstance.parentId, targetIndex);
+                    addComponent((item as DraggedLibraryItem).type, component.parentId, undefined, targetIndex);
                 }
-            } else {
-                 moveComponent(draggedId, DEFAULT_CONTENT_LAZY_COLUMN_ID);
             }
         }
-      }
-      setDropIndicator(null);
-    },
-    collect: (monitor) => ({
-      isOverCurrent: monitor.isOver({ shallow: true }),
-      canDropCurrent: monitor.canDrop(),
-    }),
+        
+        setDropIndicator(null);
+    }
   }), [component.id, component.type, component.parentId, addComponent, moveComponent, getComponentById, customComponentTemplates, dropIndicator]);
 
   drag(drop(ref));
@@ -340,37 +254,38 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     const handleMouseMove = (event: MouseEvent) => {
       if (!isResizing || !resizeDetails || !ref.current) return;
 
-      const dx = event.clientX - resizeDetails.startX;
-      const dy = event.clientY - resizeDetails.startY;
+      const dx = (event.clientX - resizeDetails.startX) / zoomLevel;
+      const dy = (event.clientY - resizeDetails.startY) / zoomLevel;
       
       const updatedProps: Record<string, any> = {};
+
+      const initialUnscaledWidth = resizeDetails.initialWidth / zoomLevel;
+      const initialUnscaledHeight = resizeDetails.initialHeight / zoomLevel;
 
       const isHorizontalResize = resizeDetails.handle.includes('e') || resizeDetails.handle.includes('w');
       const isVerticalResize = resizeDetails.handle.includes('n') || resizeDetails.handle.includes('s');
 
       if (isHorizontalResize) {
-        let newWidth = resizeDetails.initialWidth;
-        if (resizeDetails.handle.includes('e')) newWidth = resizeDetails.initialWidth + dx;
-        if (resizeDetails.handle.includes('w')) newWidth = resizeDetails.initialWidth - dx;
+        let newWidth = initialUnscaledWidth;
+        if (resizeDetails.handle.includes('e')) newWidth += dx;
+        if (resizeDetails.handle.includes('w')) newWidth -= dx;
         
         updatedProps.width = Math.round(Math.max(newWidth, MIN_DIMENSION));
         updatedProps.fillMaxWidth = false; 
+        updatedProps.fillMaxSize = false;
       }
 
       if (isVerticalResize) {
-        let newHeight = resizeDetails.initialHeight;
-        if (resizeDetails.handle.includes('s')) newHeight = resizeDetails.initialHeight + dy;
-        if (resizeDetails.handle.includes('n')) newHeight = resizeDetails.initialHeight - dy;
+        let newHeight = initialUnscaledHeight;
+        if (resizeDetails.handle.includes('s')) newHeight += dy;
+        if (resizeDetails.handle.includes('n')) newHeight -= dy;
 
         updatedProps.height = Math.round(Math.max(newHeight, MIN_DIMENSION));
         updatedProps.fillMaxHeight = false; 
+        updatedProps.fillMaxSize = false;
       }
 
       if (Object.keys(updatedProps).length > 0) {
-        // If we are resizing anything, we are no longer filling max size.
-        if (updatedProps.width || updatedProps.height) {
-          updatedProps.fillMaxSize = false;
-        }
         updateComponent(component.id, { properties: updatedProps });
       }
     };
@@ -391,7 +306,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, resizeDetails, component.id, updateComponent]);
+  }, [isResizing, resizeDetails, component.id, updateComponent, zoomLevel]);
 
 
   const renderSpecificComponent = () => {
@@ -409,7 +324,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
           <div className="flex flex-col w-full h-full bg-[var(--scaffold-bg-color)]" style={{'--scaffold-bg-color': component.properties.backgroundColor || 'transparent'} as React.CSSProperties}>
             {topBarChild && (
               <div style={{ flexShrink: 0, width: '100%', height: `${topBarChild.properties.height || 56}px` }} className="flex w-full">
-                <RenderedComponentWrapper component={topBarChild} />
+                <RenderedComponentWrapper component={topBarChild} zoomLevel={zoomLevel} />
               </div>
             )}
             {contentChild && (
@@ -417,12 +332,12 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
                 style={{ flexGrow: 1, minHeight: 0, width: '100%' }}
                 className={cn("flex w-full", "overflow-y-auto overflow-x-hidden")}
               >
-                <RenderedComponentWrapper component={contentChild} />
+                <RenderedComponentWrapper component={contentChild} zoomLevel={zoomLevel} />
               </div>
             )}
             {bottomBarChild && (
               <div style={{ flexShrink: 0, width: '100%', height: `${bottomBarChild.properties.height || 56}px` }} className="flex w-full">
-                 <RenderedComponentWrapper component={bottomBarChild} />
+                 <RenderedComponentWrapper component={bottomBarChild} zoomLevel={zoomLevel} />
               </div>
             )}
           </div>
@@ -438,7 +353,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       case 'Box':
       case 'Card':
       case 'LazyColumn': 
-        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={false} />;
+        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={false} zoomLevel={zoomLevel} />;
 
       case 'Row':
       case 'LazyRow':
@@ -446,7 +361,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
       case 'LazyHorizontalGrid':
       case 'TopAppBar': 
       case 'BottomNavigationBar': 
-        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={true} />;
+        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={true} zoomLevel={zoomLevel} />;
       
       case 'Spacer':
         return (
@@ -469,7 +384,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
              if (rootTemplateComponent) {
                 // Here, we trust ContainerView to determine the flex direction based on the root's original type
                 const isTemplateRootRowLike = ['Row', 'LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar'].includes(rootTemplateComponent.type);
-                return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isTemplateRootRowLike} />;
+                return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isTemplateRootRowLike} zoomLevel={zoomLevel} />;
              }
            }
         }
@@ -581,18 +496,19 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
     }
   }
 
-  const containerDropTargetStyle = (isContainerType(component.type, customComponentTemplates) || CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id)) && isOverCurrent && canDropCurrent
+  const containerDropTargetStyle = (isContainerType(component.type, customComponentTemplates) || CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id)) && isOverCurrent && canDropCurrent && dropIndicator === null
     ? 'drag-over-container'
     : '';
 
   
   const canResizeHorizontally = isSelected && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxWidth;
   const canResizeVertically = isSelected && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxHeight;
-  const canResize = canResizeHorizontally && canResizeVertically;
+  const canResize = canResizeHorizontally || canResizeVertically;
   
-
   const isReorderTarget = isOverCurrent && canDropCurrent && dropIndicator !== null;
 
+  const isDraggable = !isResizing && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && component.type !== 'Spacer';
+  const isClickable = !!component.properties.clickable && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id);
 
   return (
     <div
@@ -604,10 +520,11 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
           'ring-2 ring-primary/80 ring-offset-2 ring-offset-background shadow-lg': isSelected && ![ROOT_SCAFFOLD_ID, ...CORE_SCAFFOLD_ELEMENT_IDS].includes(component.id),
           'ring-2 ring-accent ring-offset-2 ring-offset-background': isSelected && CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && component.id !== ROOT_SCAFFOLD_ID,
           'opacity-50': isDragging,
-          'cursor-grab': !isResizing && ![ROOT_SCAFFOLD_ID, ...CORE_SCAFFOLD_ELEMENT_IDS, 'Spacer'].includes(component.id) && component.type !== 'Spacer',
-          'cursor-default': component.type === 'Spacer' || [ROOT_SCAFFOLD_ID, ...CORE_SCAFFOLD_ELEMENT_IDS].includes(component.id),
           'cursor-grabbing': isDragging,
-          'relative': isReorderTarget, 
+          'cursor-pointer': !isDragging && isClickable,
+          'cursor-grab': !isDragging && !isClickable && isDraggable,
+          'cursor-default': !isDraggable,
+          'relative': true, // Always relative for indicators
         },
         containerDropTargetStyle,
       )}
@@ -627,10 +544,10 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
           {canResize && (['nw', 'ne', 'sw', 'se'] as HandleType[]).map(handle => (
             <div key={handle} className={`resize-handle ${handle}`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle)} />
           ))}
-          {canResizeVertically && (['n', 's'] as HandleType[]).map(handle => (
+          {canResizeVertically && !canResize && (['n', 's'] as HandleType[]).map(handle => (
             <div key={handle} className={`resize-handle ${handle}`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle)} />
           ))}
-          {canResizeHorizontally && (['e', 'w'] as HandleType[]).map(handle => (
+          {canResizeHorizontally && !canResize && (['e', 'w'] as HandleType[]).map(handle => (
             <div key={handle} className={`resize-handle ${handle}`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle)} />
           ))}
         </>

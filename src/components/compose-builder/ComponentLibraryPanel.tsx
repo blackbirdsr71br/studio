@@ -2,10 +2,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { DraggableComponentItem } from "./DraggableComponentItem";
+import { DraggableComponentItem, SavedLayoutPreview } from "./DraggableComponentItem";
 import type { ComponentType, CustomComponentTemplate, SavedLayout } from "@/types/compose-spec";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useDesign } from '@/contexts/DesignContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
@@ -202,59 +202,74 @@ export function ComponentLibraryPanel() {
             )}
           </TabsContent>
           <TabsContent value="layouts" className="flex-grow overflow-hidden">
-            {savedLayouts.length > 0 ? (
+             {savedLayouts.length > 0 ? (
               <ScrollArea className="h-full pr-3">
                 <div className="grid grid-cols-1 gap-2">
                   {savedLayouts.map((layout) => (
-                    <div key={layout.layoutId} className="bg-card border border-sidebar-border rounded-md shadow-sm overflow-hidden">
-                      <div className="flex items-center p-2">
-                        <LayoutDashboard className="h-6 w-6 text-sidebar-primary mr-2 shrink-0" />
-                        <p className="text-sm text-sidebar-foreground truncate flex-grow" title={layout.name}>
+                    <div key={layout.layoutId} className="bg-card border border-sidebar-border rounded-md shadow-sm overflow-hidden flex flex-col">
+                      <SavedLayoutPreview layout={layout} />
+                      <div className="p-2 text-center">
+                        <p className="text-sm font-medium text-sidebar-foreground truncate" title={layout.name}>
                           {layout.name}
                         </p>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 px-2 py-1 text-xs ml-2 text-sidebar-foreground hover:bg-sidebar-accent/20"
-                            onClick={() => handleLoadLayout(layout.layoutId)}
-                            aria-label={`Load layout ${layout.name}`}
-                        >
-                            <Download className="h-3 w-3 mr-1" /> Load
-                        </Button>
+                        {layout.timestamp && (
+                          <p className="text-xxs text-muted-foreground">
+                            {new Date(layout.timestamp).toLocaleDateString()}
+                          </p>
+                        )}
                       </div>
-                       {layout.timestamp && (
-                        <p className="text-xxs text-muted-foreground px-2 pb-1 pt-0 text-right">
-                          Saved: {new Date(layout.timestamp).toLocaleDateString()}
-                        </p>
-                      )}
-                      <div className="p-1 flex justify-end items-center space-x-1 border-t border-sidebar-border/50 bg-muted/30">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-sidebar-foreground hover:bg-sidebar-accent/20"
-                          onClick={() => handleEditLayout(layout.layoutId)}
-                          aria-label={`Edit layout ${layout.name}`}
-                        >
-                          <FilePenLine className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-sidebar-foreground hover:bg-sidebar-accent/20"
-                          onClick={() => handleRenameClick(layout, 'layout')}
-                          aria-label={`Rename layout ${layout.name}`}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-destructive hover:bg-destructive/20"
-                          onClick={() => handleDeleteClick(layout, 'layout')}
-                          aria-label={`Delete layout ${layout.name}`}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                      <div className="p-2 mt-auto border-t border-sidebar-border/50 bg-muted/30 flex items-center gap-1">
+                          <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 py-1 text-xs flex-grow"
+                              onClick={() => handleLoadLayout(layout.layoutId)}
+                              aria-label={`Load layout ${layout.name}`}
+                          >
+                              <Download className="h-3 w-3 mr-1" /> Load
+                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => handleEditLayout(layout.layoutId)}
+                                aria-label={`Edit layout ${layout.name}`}
+                              >
+                                <FilePenLine className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top"><p>Edit</p></TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => handleRenameClick(layout, 'layout')}
+                                aria-label={`Rename layout ${layout.name}`}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top"><p>Rename</p></TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() => handleDeleteClick(layout, 'layout')}
+                                aria-label={`Delete layout ${layout.name}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top"><p>Delete</p></TooltipContent>
+                          </Tooltip>
                       </div>
                     </div>
                   ))}

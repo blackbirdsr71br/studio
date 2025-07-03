@@ -1,9 +1,9 @@
 
 'use client';
 
-import type { ComponentType, CustomComponentTemplate, DesignComponent } from "@/types/compose-spec";
+import type { ComponentType, CustomComponentTemplate, DesignComponent, SavedLayout } from "@/types/compose-spec";
 import type { DesignContextType } from "@/contexts/DesignContext";
-import { getComponentDisplayName } from "@/types/compose-spec";
+import { getComponentDisplayName, ROOT_SCAFFOLD_ID } from "@/types/compose-spec";
 import type { Icon as LucideIcon } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useDrag } from 'react-dnd';
@@ -14,12 +14,12 @@ import { useMemo, FC, ReactNode } from "react";
 import { RenderedComponentWrapper } from './component-renderer/RenderedComponentWrapper';
 
 // A read-only, self-contained provider for rendering previews.
-const PreviewDesignProvider: FC<{ template: CustomComponentTemplate, children: ReactNode }> = ({ template, children }) => {
+const PreviewDesignProvider: FC<{ components: DesignComponent[], children: ReactNode }> = ({ components, children }) => {
   const { customComponentTemplates: allTemplates } = useDesign(); // Get all templates from the main context
   
   const previewComponents = useMemo(() => {
     // Deep clone to avoid mutating the original template data from the main context
-    const clonedTree: DesignComponent[] = JSON.parse(JSON.stringify(template.componentTree));
+    const clonedTree: DesignComponent[] = JSON.parse(JSON.stringify(components));
     
     // Modify the cloned tree to ensure images are fully visible
     return clonedTree.map((component) => {
@@ -29,14 +29,14 @@ const PreviewDesignProvider: FC<{ template: CustomComponentTemplate, children: R
       }
       return component;
     });
-  }, [template]);
+  }, [components]);
 
   const dummyContextValue = useMemo(() => {
-    const components = previewComponents; // Use the modified tree for the preview
-    const getComponentById = (id: string) => components.find(c => c.id === id);
+    const contextComponents = previewComponents; // Use the modified tree for the preview
+    const getComponentById = (id: string) => contextComponents.find(c => c.id === id);
 
     const value: DesignContextType = {
-        components,
+        components: contextComponents,
         getComponentById,
         customComponentTemplates: allTemplates,
         selectedComponentId: null,
@@ -128,7 +128,48 @@ const CustomComponentPreview = ({ template }: { template: CustomComponentTemplat
               alignItems: 'center',
               justifyContent: 'center',
             }}>
-           <PreviewDesignProvider template={template}>
+           <PreviewDesignProvider components={template.componentTree}>
+              <RenderedComponentWrapper component={rootComponent} />
+           </PreviewDesignProvider>
+         </div>
+      </div>
+    </div>
+  );
+};
+
+export const SavedLayoutPreview = ({ layout }: { layout: SavedLayout }) => {
+  const rootComponent = layout.components.find(c => c.id === ROOT_SCAFFOLD_ID && c.parentId === null);
+
+  if (!rootComponent) {
+    return <div className="text-xs text-destructive flex items-center justify-center h-full">Preview Error: No Scaffold</div>;
+  }
+  
+  // The dimensions of the viewport for the preview.
+  const PREVIEW_VIEWPORT_WIDTH = 210;
+  const PREVIEW_VIEWPORT_HEIGHT = 120;
+
+  // The dimensions of the original design surface
+  const LAYOUT_WIDTH = 432;
+  const LAYOUT_HEIGHT = 896;
+  
+  // Calculate the scale to fit the layout inside the viewport
+  const scaleX = PREVIEW_VIEWPORT_WIDTH / LAYOUT_WIDTH;
+  const scaleY = PREVIEW_VIEWPORT_HEIGHT / LAYOUT_HEIGHT;
+  
+  // Use the smaller scale factor to ensure the layout is fully visible ("contain" behavior)
+  const scale = Math.min(scaleX, scaleY);
+  
+  return (
+    <div className="w-full h-32 bg-muted/20 rounded-sm overflow-hidden border border-sidebar-border/50 mb-1 pointer-events-none flex items-center justify-center">
+      <div style={{ transform: `scale(${scale})`, transformOrigin: 'center' }}>
+         <div style={{ 
+              width: `${LAYOUT_WIDTH}px`,
+              height: `${LAYOUT_HEIGHT}px`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+           <PreviewDesignProvider components={layout.components}>
               <RenderedComponentWrapper component={rootComponent} />
            </PreviewDesignProvider>
          </div>
