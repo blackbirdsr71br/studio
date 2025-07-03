@@ -85,47 +85,37 @@ const CustomComponentPreview = ({ template }: { template: CustomComponentTemplat
     return <div className="text-xs text-destructive">Preview Error</div>;
   }
   
-  // The dimensions of the viewport for the preview.
-  const PREVIEW_VIEWPORT_WIDTH = 210; // w-full in p-4 of w-64 sidebar, minus some padding
-  const PREVIEW_VIEWPORT_HEIGHT = 120; // h-32 minus some padding
+  const PREVIEW_VIEWPORT_WIDTH = 210;
+  const PREVIEW_VIEWPORT_HEIGHT = 120;
 
-  // --- Determine the component's unscaled "natural" size for calculation ---
   let unscaledWidth: number;
   if (typeof rootComponent.properties.width === 'number') {
     unscaledWidth = rootComponent.properties.width;
   } else if (rootComponent.properties.fillMaxWidth || rootComponent.properties.fillMaxSize) {
-    unscaledWidth = 432; // If it fills, assume it fills a phone screen
+    unscaledWidth = 432;
   } else {
-    unscaledWidth = 150; // Best guess for "wrap_content" width
+    unscaledWidth = 150;
   }
 
   let unscaledHeight: number;
   if (typeof rootComponent.properties.height === 'number') {
     unscaledHeight = rootComponent.properties.height;
   } else if (rootComponent.properties.fillMaxHeight || rootComponent.properties.fillMaxSize) {
-    unscaledHeight = 400; // Guess for fill height, less than full phone to fit better
+    unscaledHeight = 400;
   } else {
-    // If height is wrap_content, we don't know the real height.
-    // Give it a large container to render in, so it doesn't get cropped.
-    // The scaling logic will shrink it down to fit the viewport.
-    unscaledHeight = 896; // Same as a full phone screen height.
+    unscaledHeight = unscaledWidth * (3 / 4);
   }
   
-  // --- Calculate the scale to fit the component inside the viewport ---
-  const scaleX = PREVIEW_VIEWPORT_WIDTH / unscaledWidth;
-  const scaleY = PREVIEW_VIEWPORT_HEIGHT / unscaledHeight;
+  const scaleX = unscaledWidth > 0 ? PREVIEW_VIEWPORT_WIDTH / unscaledWidth : 1;
+  const scaleY = unscaledHeight > 0 ? PREVIEW_VIEWPORT_HEIGHT / unscaledHeight : 1;
   
-  // Use the smaller scale factor to ensure the component is fully visible ("contain" behavior)
   const scale = Math.min(scaleX, scaleY);
   
   return (
     <div className="w-full h-32 bg-background rounded-sm overflow-hidden border border-sidebar-border/50 mb-1 pointer-events-none flex items-center justify-center">
       <div style={{ transform: `scale(${scale})`, transformOrigin: 'center' }}>
-         {/* This inner div provides the layout context for the component before it's scaled. */}
          <div style={{ 
               width: `${unscaledWidth}px`,
-              // The component itself will be constrained by its own height property or wrap its content.
-              // We give the container a height to ensure components with 'fillMaxHeight' work.
               height: `${unscaledHeight}px`,
               display: 'flex',
               alignItems: 'center',
@@ -147,19 +137,15 @@ export const SavedLayoutPreview = ({ layout }: { layout: SavedLayout }) => {
     return <div className="text-xs text-destructive flex items-center justify-center h-full">Preview Error: No Scaffold</div>;
   }
   
-  // The dimensions of the viewport for the preview.
   const PREVIEW_VIEWPORT_WIDTH = 210;
   const PREVIEW_VIEWPORT_HEIGHT = 120;
 
-  // The dimensions of the original design surface
   const LAYOUT_WIDTH = 432;
   const LAYOUT_HEIGHT = 896;
   
-  // Calculate the scale to fit the layout inside the viewport
   const scaleX = PREVIEW_VIEWPORT_WIDTH / LAYOUT_WIDTH;
   const scaleY = PREVIEW_VIEWPORT_HEIGHT / LAYOUT_HEIGHT;
   
-  // Use the smaller scale factor to ensure the layout is fully visible ("contain" behavior)
   const scale = Math.min(scaleX, scaleY);
   
   return (
@@ -183,9 +169,9 @@ export const SavedLayoutPreview = ({ layout }: { layout: SavedLayout }) => {
 
 
 interface DraggableComponentItemProps {
-  type: ComponentType | string; // Can be base type or custom templateId
+  type: ComponentType | string;
   Icon: LucideIcon;
-  displayName?: string; // Explicit display name for custom components
+  displayName?: string;
   template?: CustomComponentTemplate;
 }
 
