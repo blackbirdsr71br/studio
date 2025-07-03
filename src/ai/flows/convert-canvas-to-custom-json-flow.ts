@@ -181,7 +181,7 @@ Modifier and Property Mapping Rules (from input component properties to output "
 4.  **Component-Specific Properties (direct children of component type object, e.g., '"text": { "content": ... }'):**
     *   **Text**:
         *   'text' (canvas) -> 'content' (output).
-        *   'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing', 'lineHeight', 'maxLines', 'minLines', 'textDecoration' (canvas) -> map to respective direct properties in "text" object.
+        *   'fontSize', 'fontWeight' (valid values: "Normal", "Semibold", "Bold"), 'fontStyle', 'letterSpacing', 'lineHeight', 'maxLines', 'minLines', 'textDecoration' (canvas) -> map to respective direct properties in "text" object.
         *   'textColor' (canvas) -> 'color' (output, hex string).
         *   'textAlign' (canvas) -> 'textAlign' (output, e.g., "start", "center").
         *   'textOverflow' (canvas) -> 'overflow' (output, e.g., "clip", "ellipsis").
@@ -190,12 +190,20 @@ Modifier and Property Mapping Rules (from input component properties to output "
         *   'clickId' (canvas, if 'clickable: true' and 'clickId' is present) -> 'clickId' (output).
         *   'fontSize', 'fontWeight', 'fontColor' (canvas) -> map to direct properties.
         *   If canvas Button has 'children', then the output "button" should have a 'children' array and no 'content' property.
+        *   **Shape & Icon**:
+            *   'shape' (canvas 'shape' property) -> 'shape' (output property, e.g., "roundedcorner", "rectangle", "circle").
+            *   'cornerRadius' (canvas 'cornerRadius' property, if shape is 'RoundedCorner') -> 'cornerRadius' (output property).
+            *   If 'iconName' exists in canvas properties, create an 'icon' object in the output "button":
+                *   'iconName' -> 'icon.name'
+                *   'iconPosition' (map "Start" to "start", "End" to "end") -> 'icon.position'
+                *   'iconSize' -> 'icon.size'
+                *   'iconSpacing' -> 'icon.spacing'
     *   **Spacer**:
         *   'width' (canvas) -> 'width' (direct property in "spacer").
         *   'height' (canvas) -> 'height' (direct property in "spacer").
     *   **Image**:
         *   'src' (canvas) -> 'src' (output property for "image", as per your guide).
-        *   'contentDescription' (canvas) -> 'alt' or 'contentDescription' (output property for "image", let's use 'alt' if target spec is like HTML img, or 'contentDescription' if closer to Compose). Assume 'contentDescription' for now.
+        *   'contentDescription' (canvas) -> 'alt' or 'contentDescription' (output property for "image", let's use 'contentDescription' for now).
     *   **AnimatedContent**:
         *   'animationType' (canvas) -> 'animationType' (output).
         *   'animationDuration' (canvas) -> 'animationDuration' (output).
