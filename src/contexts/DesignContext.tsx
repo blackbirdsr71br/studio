@@ -1729,3 +1729,6 @@ export const useDesign = (): DesignContextType => {
   }
   return context;
 };
+
+// We need to export the context itself for the preview provider.
+export { DesignContext };

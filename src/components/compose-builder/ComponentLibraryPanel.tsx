@@ -160,6 +160,7 @@ export function ComponentLibraryPanel() {
                         type={template.templateId}
                         displayName={template.name}
                         Icon={BoxSelect}
+                        template={template}
                       />
                       <div className="p-1 flex justify-end items-center space-x-1 border-t border-sidebar-border/50 bg-muted/30">
                         <Button
