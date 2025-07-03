@@ -105,7 +105,10 @@ const CustomComponentPreview = ({ template }: { template: CustomComponentTemplat
   } else if (rootComponent.properties.fillMaxHeight || rootComponent.properties.fillMaxSize) {
     unscaledHeight = 400; // Guess for fill height, less than full phone to fit better
   } else {
-    unscaledHeight = 150; // Best guess for "wrap_content" height
+    // If height is wrap_content, we don't know the real height.
+    // Give it a large container to render in, so it doesn't get cropped.
+    // The scaling logic will shrink it down to fit the viewport.
+    unscaledHeight = 896; // Same as a full phone screen height.
   }
   
   // --- Calculate the scale to fit the component inside the viewport ---
