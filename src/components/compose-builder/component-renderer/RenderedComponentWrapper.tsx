@@ -124,7 +124,7 @@ export function RenderedComponentWrapper({ component }: RenderedComponentWrapper
 
   const [{ isOverCurrent, canDropCurrent }, drop] = useDrop(() => ({
     accept: [ItemTypes.COMPONENT_LIBRARY_ITEM, ItemTypes.CANVAS_COMPONENT_ITEM],
-    hover: (item: DraggedCanvasItem | DraggedLibraryItem, monitor) => {
+    hover(item: DraggedCanvasItem | DraggedLibraryItem, monitor) {
       if (!ref.current || !monitor.isOver({ shallow: true })) {
         setDropIndicator(null);
         return;

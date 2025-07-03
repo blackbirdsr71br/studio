@@ -11,7 +11,7 @@ import { ItemTypes } from '@/lib/dnd-types';
 import { cn } from "@/lib/utils";
 import { DesignContext, useDesign } from '@/contexts/DesignContext';
 import { useMemo, FC, ReactNode } from "react";
-import { RenderedComponentWrapper } from './RenderedComponentWrapper';
+import { RenderedComponentWrapper } from './component-renderer/RenderedComponentWrapper';
 
 // A read-only, self-contained provider for rendering previews.
 const PreviewDesignProvider: FC<{ template: CustomComponentTemplate, children: ReactNode }> = ({ template, children }) => {
@@ -71,12 +71,51 @@ const CustomComponentPreview = ({ template }: { template: CustomComponentTemplat
     return <div className="text-xs text-destructive">Preview Error</div>;
   }
   
+  // The dimensions of the viewport for the preview.
+  const PREVIEW_VIEWPORT_WIDTH = 210; // w-full in p-4 of w-64 sidebar, minus some padding
+  const PREVIEW_VIEWPORT_HEIGHT = 120; // h-32 minus some padding
+
+  // --- Determine the component's unscaled "natural" size for calculation ---
+  let unscaledWidth: number;
+  if (typeof rootComponent.properties.width === 'number') {
+    unscaledWidth = rootComponent.properties.width;
+  } else if (rootComponent.properties.fillMaxWidth || rootComponent.properties.fillMaxSize) {
+    unscaledWidth = 432; // If it fills, assume it fills a phone screen
+  } else {
+    unscaledWidth = 150; // Best guess for "wrap_content" width
+  }
+
+  let unscaledHeight: number;
+  if (typeof rootComponent.properties.height === 'number') {
+    unscaledHeight = rootComponent.properties.height;
+  } else if (rootComponent.properties.fillMaxHeight || rootComponent.properties.fillMaxSize) {
+    unscaledHeight = 400; // Guess for fill height, less than full phone to fit better
+  } else {
+    unscaledHeight = 150; // Best guess for "wrap_content" height
+  }
+  
+  // --- Calculate the scale to fit the component inside the viewport ---
+  const scaleX = PREVIEW_VIEWPORT_WIDTH / unscaledWidth;
+  const scaleY = PREVIEW_VIEWPORT_HEIGHT / unscaledHeight;
+  
+  // Use the smaller scale factor to ensure the component is fully visible ("contain" behavior)
+  const scale = Math.min(scaleX, scaleY);
+  
   return (
     <div className="w-full h-32 bg-background rounded-sm overflow-hidden border border-sidebar-border/50 mb-1 pointer-events-none flex items-center justify-center">
-      <div style={{ transform: 'scale(0.35)', transformOrigin: 'center' }}>
-         <div style={{ width: '432px' }}>
+      <div style={{ transform: `scale(${scale})`, transformOrigin: 'center' }}>
+         {/* This inner div provides the layout context for the component before it's scaled. */}
+         <div style={{ 
+              width: `${unscaledWidth}px`,
+              // The component itself will be constrained by its own height property or wrap its content.
+              // We give the container a height to ensure components with 'fillMaxHeight' work.
+              height: `${unscaledHeight}px`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
            <PreviewDesignProvider template={template}>
-              <RenderedComponentWrapper component={rootComponent} zoomLevel={1} />
+              <RenderedComponentWrapper component={rootComponent} />
            </PreviewDesignProvider>
          </div>
       </div>

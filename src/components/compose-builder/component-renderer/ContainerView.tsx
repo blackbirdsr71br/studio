@@ -1,6 +1,7 @@
+
 'use client';
 import type { DesignComponent, ComponentType as OriginalComponentType } from '@/types/compose-spec';
-import { RenderedComponentWrapper } from '../RenderedComponentWrapper';
+import { RenderedComponentWrapper } from './RenderedComponentWrapper';
 import { getComponentDisplayName, DEFAULT_CONTENT_LAZY_COLUMN_ID, isCustomComponentType, ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID } from '@/types/compose-spec';
 import { useDesign } from '@/contexts/DesignContext';
 import { getContrastingTextColor, cn } from '@/lib/utils';
@@ -10,7 +11,6 @@ interface ContainerViewProps {
   component: DesignComponent;
   childrenComponents: DesignComponent[];
   isRow: boolean;
-  zoomLevel: number;
 }
 
 const isNumericValue = (value: any): boolean => {
@@ -27,7 +27,7 @@ const isNumericValue = (value: any): boolean => {
 };
 
 
-export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, zoomLevel }: ContainerViewProps) {
+export function ContainerView({ component, childrenComponents, isRow: isRowPropHint }: ContainerViewProps) {
   const { customComponentTemplates } = useDesign();
 
   let effectiveType: OriginalComponentType | string = component.type;
@@ -358,7 +358,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       )}
       {topAppBarTitleElement}
       {childrenComponents.map(child => (
-        <RenderedComponentWrapper key={child.id} component={child} zoomLevel={zoomLevel} />
+        <RenderedComponentWrapper key={child.id} component={child} />
       ))}
     </div>
   );

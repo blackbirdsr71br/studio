@@ -1,9 +1,10 @@
+
 'use client';
 
 import React, { useRef } from 'react';
 import { useDesign } from '@/contexts/DesignContext';
 import type { DesignComponent } from '@/types/compose-spec';
-import { RenderedComponentWrapper } from './RenderedComponentWrapper';
+import { RenderedComponentWrapper } from './component-renderer/RenderedComponentWrapper';
 import { cn } from '@/lib/utils';
 // useDrop, XYCoord, ItemTypes are not directly used by DesignSurface anymore for root drops
 import { ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID } from '@/types/compose-spec';
@@ -61,7 +62,7 @@ export function DesignSurface({ zoomLevel }: { zoomLevel: number }) {
       `}</style>
       
       {rootComponent ? (
-        <RenderedComponentWrapper component={rootComponent} zoomLevel={zoomLevel} />
+        <RenderedComponentWrapper component={rootComponent} />
       ) : (
          <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground pointer-events-none p-4 text-center">
             <p className="text-lg">{editingTemplateInfo ? `Loading template "${editingTemplateInfo.name}"...` : 'Scaffold not found. Initializing...'}</p>
