@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { ComponentType, CustomComponentTemplate } from "@/types/compose-spec";
+import type { ComponentType, CustomComponentTemplate, DesignComponent } from "@/types/compose-spec";
 import type { DesignContextType } from "@/contexts/DesignContext";
 import { getComponentDisplayName } from "@/types/compose-spec";
 import type { Icon as LucideIcon } from "lucide-react";
@@ -17,8 +17,22 @@ import { RenderedComponentWrapper } from './component-renderer/RenderedComponent
 const PreviewDesignProvider: FC<{ template: CustomComponentTemplate, children: ReactNode }> = ({ template, children }) => {
   const { customComponentTemplates: allTemplates } = useDesign(); // Get all templates from the main context
   
+  const previewComponents = useMemo(() => {
+    // Deep clone to avoid mutating the original template data from the main context
+    const clonedTree: DesignComponent[] = JSON.parse(JSON.stringify(template.componentTree));
+    
+    // Modify the cloned tree to ensure images are fully visible
+    return clonedTree.map((component) => {
+      if (component.type === 'Image') {
+        // Force 'Fit' scaling for all images within the preview to prevent cropping
+        component.properties.contentScale = 'Fit';
+      }
+      return component;
+    });
+  }, [template]);
+
   const dummyContextValue = useMemo(() => {
-    const components = template.componentTree;
+    const components = previewComponents; // Use the modified tree for the preview
     const getComponentById = (id: string) => components.find(c => c.id === id);
 
     const value: DesignContextType = {
@@ -59,7 +73,7 @@ const PreviewDesignProvider: FC<{ template: CustomComponentTemplate, children: R
         pasteComponent: () => {},
     };
     return value;
-  }, [template, allTemplates]);
+  }, [previewComponents, allTemplates]);
 
   return <DesignContext.Provider value={dummyContextValue}>{children}</DesignContext.Provider>
 };
