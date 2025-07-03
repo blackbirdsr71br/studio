@@ -73,8 +73,8 @@ const CustomComponentPreview = ({ template }: { template: CustomComponentTemplat
   
   return (
     <div className="w-full h-32 bg-background rounded-sm overflow-hidden border border-sidebar-border/50 mb-1 pointer-events-none flex items-center justify-center">
-      <div style={{ transform: 'scale(0.18)', transformOrigin: 'center' }}>
-         <div style={{ width: '432px', height: '896px' }}>
+      <div style={{ transform: 'scale(0.35)', transformOrigin: 'center' }}>
+         <div style={{ width: '432px' }}>
            <PreviewDesignProvider template={template}>
               <RenderedComponentWrapper component={rootComponent} zoomLevel={1} />
            </PreviewDesignProvider>
