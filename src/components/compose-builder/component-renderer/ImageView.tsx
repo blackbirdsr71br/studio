@@ -5,9 +5,10 @@ import Image from 'next/image';
 
 interface ImageViewProps {
   properties: BaseComponentProps;
+  isPreview?: boolean;
 }
 
-export function ImageView({ properties }: ImageViewProps) {
+export function ImageView({ properties, isPreview = false }: ImageViewProps) {
   const {
     src = 'https://placehold.co/100x100.png',
     contentDescription = 'Image',
@@ -75,18 +76,24 @@ export function ImageView({ properties }: ImageViewProps) {
   const imageHeightForNextImage = typeof properties.height === 'number' ? Math.max(1, properties.height - (effectivePaddingTop + effectivePaddingBottom)) : 100; // Fallback for layout calculation
 
 
-  let objectFitClass = 'object-cover'; // Default for 'Crop'
-  switch(contentScale) {
-    case 'Fit': objectFitClass = 'object-contain'; break;
-    case 'FillBounds': objectFitClass = 'object-fill'; break;
-    case 'Inside': objectFitClass = 'object-scale-down'; break;
-    case 'None': objectFitClass = 'object-none'; break;
-    // FillWidth and FillHeight might need specific aspect ratio considerations if we want them to behave differently from object-cover
-    // For now, object-cover is a reasonable default for them if the image fills its bounds.
-    case 'FillWidth': objectFitClass = 'object-cover'; break; 
-    case 'FillHeight': objectFitClass = 'object-cover'; break;
-    default: objectFitClass = 'object-cover';
+  let objectFitClass: string;
+
+  if (isPreview) {
+    objectFitClass = 'object-contain'; // Force 'Fit' scale for all previews
+  } else {
+    switch(contentScale) {
+      case 'Fit': objectFitClass = 'object-contain'; break;
+      case 'FillBounds': objectFitClass = 'object-fill'; break;
+      case 'Inside': objectFitClass = 'object-scale-down'; break;
+      case 'None': objectFitClass = 'object-none'; break;
+      case 'FillWidth': objectFitClass = 'object-cover'; break; 
+      case 'FillHeight': objectFitClass = 'object-cover'; break;
+      case 'Crop':
+      default: 
+        objectFitClass = 'object-cover';
+    }
   }
+
 
   return (
     <div style={containerStyle} className="select-none">

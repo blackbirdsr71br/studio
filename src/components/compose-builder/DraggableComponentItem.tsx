@@ -14,25 +14,12 @@ import { useMemo, FC, ReactNode } from "react";
 import { RenderedComponentWrapper } from './component-renderer/RenderedComponentWrapper';
 
 // A read-only, self-contained provider for rendering previews.
+// This sandboxes the rendering so it doesn't interfere with the main canvas.
 const PreviewDesignProvider: FC<{ components: DesignComponent[], children: ReactNode }> = ({ components, children }) => {
   const { customComponentTemplates: allTemplates } = useDesign(); // Get all templates from the main context
   
-  const previewComponents = useMemo(() => {
-    // Deep clone to avoid mutating the original template data from the main context
-    const clonedTree: DesignComponent[] = JSON.parse(JSON.stringify(components));
-    
-    // Modify the cloned tree to ensure images are fully visible
-    return clonedTree.map((component) => {
-      if (component.type === 'Image') {
-        // Force 'Fit' scaling for all images within the preview to prevent cropping
-        component.properties.contentScale = 'Fit';
-      }
-      return component;
-    });
-  }, [components]);
-
   const dummyContextValue = useMemo(() => {
-    const contextComponents = previewComponents; // Use the modified tree for the preview
+    const contextComponents = components; // No data modification needed here anymore
     const getComponentById = (id: string) => contextComponents.find(c => c.id === id);
 
     const value: DesignContextType = {
@@ -73,7 +60,7 @@ const PreviewDesignProvider: FC<{ components: DesignComponent[], children: React
         pasteComponent: () => {},
     };
     return value;
-  }, [previewComponents, allTemplates]);
+  }, [components, allTemplates]);
 
   return <DesignContext.Provider value={dummyContextValue}>{children}</DesignContext.Provider>
 };
@@ -104,8 +91,7 @@ const CustomComponentPreview = ({ template }: { template: CustomComponentTemplat
     unscaledHeight = 400;
   } else {
     // A better heuristic for wrap_content height, assuming a standard aspect ratio if not defined
-    // This prevents components from becoming excessively tall and thus being scaled down too much.
-    unscaledHeight = isContainerType(rootComponent.type, []) ? unscaledWidth * (3/4) : 100;
+    unscaledHeight = isContainerType(rootComponent.type, []) ? unscaledWidth * (4/3) : 100;
   }
   
   const scaleX = unscaledWidth > 0 ? PREVIEW_VIEWPORT_WIDTH / unscaledWidth : 1;
@@ -124,7 +110,7 @@ const CustomComponentPreview = ({ template }: { template: CustomComponentTemplat
               justifyContent: 'center',
             }}>
            <PreviewDesignProvider components={template.componentTree}>
-              <RenderedComponentWrapper component={rootComponent} />
+              <RenderedComponentWrapper component={rootComponent} isPreview={true} />
            </PreviewDesignProvider>
          </div>
       </div>
@@ -161,7 +147,7 @@ export const SavedLayoutPreview = ({ layout }: { layout: SavedLayout }) => {
               justifyContent: 'center',
             }}>
            <PreviewDesignProvider components={layout.components}>
-              <RenderedComponentWrapper component={rootComponent} />
+              <RenderedComponentWrapper component={rootComponent} isPreview={true} />
            </PreviewDesignProvider>
          </div>
       </div>

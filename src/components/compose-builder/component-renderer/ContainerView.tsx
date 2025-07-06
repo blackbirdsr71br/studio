@@ -12,6 +12,7 @@ interface ContainerViewProps {
   childrenComponents: DesignComponent[];
   isRow: boolean;
   zoomLevel?: number;
+  isPreview?: boolean;
 }
 
 const isNumericValue = (value: any): boolean => {
@@ -28,7 +29,7 @@ const isNumericValue = (value: any): boolean => {
 };
 
 
-export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, zoomLevel = 1 }: ContainerViewProps) {
+export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, zoomLevel = 1, isPreview = false }: ContainerViewProps) {
   const { customComponentTemplates } = useDesign();
 
   let effectiveType: OriginalComponentType | string = component.type;
@@ -359,7 +360,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       )}
       {topAppBarTitleElement}
       {childrenComponents.map(child => (
-        <RenderedComponentWrapper key={child.id} component={child} zoomLevel={zoomLevel} />
+        <RenderedComponentWrapper key={child.id} component={child} zoomLevel={zoomLevel} isPreview={isPreview} />
       ))}
     </div>
   );
