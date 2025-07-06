@@ -149,7 +149,8 @@ interface ModalJsonNode {
 const buildContentComponentTreeForModalJson = (
   allComponents: DesignComponent[],
   customComponentTemplates: CustomComponentTemplate[],
-  currentParentIdForContext: string
+  currentParentIdForContext: string,
+  includeDefaultValues: boolean
 ): ModalJsonNode[] => {
   const parentComponent = allComponents.find(c => c.id === currentParentIdForContext);
 
@@ -167,11 +168,13 @@ const buildContentComponentTreeForModalJson = (
 
     const componentBaseProperties = { ...component.properties };
     const { children: _childIdArrayFromProps, ...otherProperties } = componentBaseProperties;
-    const cleanedOtherProperties = cleanEmptyOrNullProperties(otherProperties);
+    
+    // Conditionally clean properties based on the includeDefaultValues flag
+    const propertiesToUse = includeDefaultValues ? otherProperties : cleanEmptyOrNullProperties(otherProperties);
 
     const {
       width, height, fillMaxSize, fillMaxWidth, fillMaxHeight, ...restOfProperties
-    } = cleanedOtherProperties;
+    } = propertiesToUse;
 
     const orderedProperties: Record<string, any> = {};
     if (width !== undefined) orderedProperties.width = typeof width === 'number' ? String(width) : width;
@@ -191,7 +194,7 @@ const buildContentComponentTreeForModalJson = (
     };
 
     if (isContainerType(component.type, customComponentTemplates)) {
-      const childrenObjectNodes = buildContentComponentTreeForModalJson(allComponents, customComponentTemplates, component.id);
+      const childrenObjectNodes = buildContentComponentTreeForModalJson(allComponents, customComponentTemplates, component.id, includeDefaultValues);
       if (childrenObjectNodes.length > 0) {
         node.properties.children = childrenObjectNodes as any;
       }
@@ -202,14 +205,16 @@ const buildContentComponentTreeForModalJson = (
 
 export async function getDesignComponentsAsJsonAction(
   allComponents: DesignComponent[],
-  customComponentTemplates: CustomComponentTemplate[]
+  customComponentTemplates: CustomComponentTemplate[],
+  includeDefaultValues: boolean = false
 ): Promise<string> {
   try {
     // Build the hierarchical tree for children of the default content LazyColumn for the modal
     const modalJsonTree = buildContentComponentTreeForModalJson(
         allComponents,
         customComponentTemplates,
-        DEFAULT_CONTENT_LAZY_COLUMN_ID // Get children of the content LazyColumn
+        DEFAULT_CONTENT_LAZY_COLUMN_ID, // Get children of the content LazyColumn
+        includeDefaultValues
     );
     return JSON.stringify(modalJsonTree, null, 2);
   } catch (error) {
@@ -250,8 +255,8 @@ export async function publishToRemoteConfigAction(
   try {
     console.log("publishToRemoteConfigAction: Building hierarchical content JSON for Remote Config...");
     
-    // Generate the hierarchical JSON, same as the one for the "View JSON" modal
-    const designJsonString = await getDesignComponentsAsJsonAction(components, customComponentTemplates);
+    // Generate the hierarchical JSON, always using the concise version (includeDefaultValues = false)
+    const designJsonString = await getDesignComponentsAsJsonAction(components, customComponentTemplates, false);
     
     if (designJsonString.startsWith("Error:")) {
       return { success: false, message: `Failed to generate JSON for publishing: ${designJsonString}` };
@@ -417,8 +422,8 @@ export async function convertCanvasToCustomJsonAction(
   customComponentTemplates: CustomComponentTemplate[]
 ): Promise<{ customJsonString?: string; error?: string }> {
   try {
-    // Get JSON for the content area only
-    const canvasContentJsonString = await getDesignComponentsAsJsonAction(allComponents, customComponentTemplates);
+    // Get JSON for the content area only, always using the concise version (includeDefaultValues = false)
+    const canvasContentJsonString = await getDesignComponentsAsJsonAction(allComponents, customComponentTemplates, false);
 
     // Validate if the content area JSON is meaningful before sending to AI
     if (canvasContentJsonString.startsWith("Error:")) {

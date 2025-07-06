@@ -32,6 +32,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ModalJsonSchema, DEFAULT_CONTENT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Switch } from "@/components/ui/switch";
 
 export interface ViewJsonModalRef {
   openModal: () => void;
@@ -53,6 +54,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
   const [showPublishCanvasJsonDialog, setShowPublishCanvasJsonDialog] = useState(false);
   const [publishCanvasJsonParameterKey, setPublishCanvasJsonParameterKey] = useState<string>("COMPOSE_DESIGN_JSON_V2");
   const [isPublishingCanvasJson, setIsPublishingCanvasJson] = useState(false);
+  const [includeDefaultValues, setIncludeDefaultValues] = useState(false);
 
 
   // State for "Generate Custom JSON from Canvas" tab
@@ -95,7 +97,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     setSyntaxError(null);
     setValidationErrors([]);
     try {
-      const jsonStr = await getDesignComponentsAsJsonAction(components, customComponentTemplates);
+      const jsonStr = await getDesignComponentsAsJsonAction(components, customComponentTemplates, includeDefaultValues);
       if (jsonStr.startsWith("Error:")) {
         setCanvasJsonError(jsonStr);
         setCanvasJsonString("");
@@ -109,7 +111,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     } finally {
       setIsCanvasJsonLoading(false);
     }
-  }, [activeTab, components, customComponentTemplates]);
+  }, [activeTab, components, customComponentTemplates, includeDefaultValues]);
 
   const handleGenerateCustomJsonFromCanvas = useCallback(async () => {
     setIsCustomJsonFromCanvasLoading(true);
@@ -147,6 +149,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     openModal: () => {
       setIsOpen(true);
       // Reset all states when modal opens to ensure fresh data on tab switch or reopen
+      setIncludeDefaultValues(false);
       setCanvasJsonString("");
       setCanvasJsonError(null);
       setSyntaxError(null);
@@ -479,7 +482,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
 
         <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2 mt-4 pt-4 border-t">
           {/* Left side: Tab-specific primary actions */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-start gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-start gap-2 flex-wrap">
             {activeTab === 'canvasJson' && (
               <>
                 <Button onClick={handleSaveChangesToCanvas} disabled={!canSaveChangesValue} className="w-full sm:w-auto">
@@ -487,8 +490,19 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
                 </Button>
                 <Button onClick={handleOpenPublishCanvasJsonDialog} disabled={!canPublishCanvasJsonValue} className="w-full sm:w-auto">
                   {isPublishingCanvasJson ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
-                  Publish Canvas JSON
+                  Publish
                 </Button>
+                <div className="flex items-center space-x-2 pl-2">
+                  <Switch
+                    id="include-defaults-switch"
+                    checked={includeDefaultValues}
+                    onCheckedChange={setIncludeDefaultValues}
+                    disabled={isCanvasJsonLoading}
+                  />
+                  <Label htmlFor="include-defaults-switch" className="text-xs text-muted-foreground whitespace-nowrap">
+                    Include default values
+                  </Label>
+                </div>
               </>
             )}
             {activeTab === 'generateCustomJsonFromCanvas' && (
@@ -507,10 +521,10 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
           {/* Right side: Common secondary actions */}
           <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
             <Button onClick={handleCopyToClipboard} variant="outline" disabled={!canPerformCopyDownloadActionsValue} className="w-full sm:w-auto">
-              <Copy className="mr-2 h-4 w-4" /> Copy JSON
+              <Copy className="mr-2 h-4 w-4" /> Copy
             </Button>
             <Button onClick={handleDownloadJson} variant="outline" disabled={!canPerformCopyDownloadActionsValue} className="w-full sm:w-auto">
-              <Download className="mr-2 h-4 w-4" /> Download .json
+              <Download className="mr-2 h-4 w-4" /> Download
             </Button>
           </div>
         </DialogFooter>
@@ -580,4 +594,3 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
 });
 
 ViewJsonModal.displayName = 'ViewJsonModal';
-

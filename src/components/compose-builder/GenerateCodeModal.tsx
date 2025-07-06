@@ -76,8 +76,8 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
     setGeneratedParserCode("");
     
     try {
-      // Step 1: Generate the Canvas JSON from the canvas
-      const canvasJsonString = await getDesignComponentsAsJsonAction(components, customComponentTemplates);
+      // Step 1: Generate the Canvas JSON from the canvas, always concise for AI
+      const canvasJsonString = await getDesignComponentsAsJsonAction(components, customComponentTemplates, false);
 
       if (canvasJsonString.startsWith("Error:")) {
         throw new Error("Failed to generate underlying Canvas JSON: " + canvasJsonString);
