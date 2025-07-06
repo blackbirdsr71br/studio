@@ -3,7 +3,7 @@
 
 import type { ComponentType, CustomComponentTemplate, DesignComponent, SavedLayout } from "@/types/compose-spec";
 import type { DesignContextType } from "@/contexts/DesignContext";
-import { getComponentDisplayName, ROOT_SCAFFOLD_ID } from "@/types/compose-spec";
+import { getComponentDisplayName, ROOT_SCAFFOLD_ID, isContainerType } from "@/types/compose-spec";
 import type { Icon as LucideIcon } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useDrag } from 'react-dnd';
@@ -103,7 +103,9 @@ const CustomComponentPreview = ({ template }: { template: CustomComponentTemplat
   } else if (rootComponent.properties.fillMaxHeight || rootComponent.properties.fillMaxSize) {
     unscaledHeight = 400;
   } else {
-    unscaledHeight = unscaledWidth * (3 / 4);
+    // A better heuristic for wrap_content height, assuming a standard aspect ratio if not defined
+    // This prevents components from becoming excessively tall and thus being scaled down too much.
+    unscaledHeight = isContainerType(rootComponent.type, []) ? unscaledWidth * (3/4) : 100;
   }
   
   const scaleX = unscaledWidth > 0 ? PREVIEW_VIEWPORT_WIDTH / unscaledWidth : 1;
