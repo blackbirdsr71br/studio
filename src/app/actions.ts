@@ -144,6 +144,32 @@ interface ModalJsonNode {
   templateIdRef?: string; // Added to ModalJsonNode
 }
 
+const PREFERRED_PROPERTY_ORDER = [
+  // Core Content
+  'text', 'title', 'src', 'contentDescription', 'data-ai-hint',
+  // Sizing & Layout
+  'width', 'height', 'fillMaxSize', 'fillMaxWidth', 'fillMaxHeight', 'layoutWeight', 'selfAlign',
+  // Container Alignment & Arrangement
+  'verticalArrangement', 'horizontalAlignment', 'horizontalArrangement', 'verticalAlignment', 'contentAlignment',
+  // Spacing
+  'padding', 'paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd', 'itemSpacing',
+  // Typography
+  'fontSize', 'titleFontSize', 'fontWeight', 'fontStyle', 'textColor', 'contentColor', 'textAlign', 'textDecoration', 'lineHeight', 'maxLines', 'textOverflow',
+  // Appearance
+  'backgroundColor', 'elevation', 'contentScale',
+  // Shape & Border
+  'shape', 'cornerRadius', 'cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft', 'borderWidth', 'borderColor',
+  // Icons (for Button)
+  'iconName', 'iconPosition', 'iconSize', 'iconSpacing',
+  // Animation
+  'animationType', 'animationDuration',
+  // Behavior
+  'clickable', 'clickId', 'userScrollEnabled', 'reverseLayout',
+  // Grid Specific
+  'columns', 'rows',
+];
+
+
 // Helper for "View JSON" modal (hierarchical, children in properties.children)
 const buildContentComponentTreeForModalJson = (
   allComponents: DesignComponent[],
@@ -170,10 +196,8 @@ const buildContentComponentTreeForModalJson = (
     if (includeDefaultValues) {
       propertiesToUse = originalProperties;
     } else {
-      // Clean mode logic starts here.
       const cleaned: Record<string, any> = {};
 
-      // 1. First pass: copy non-empty/non-null values
       for (const key in originalProperties) {
         const value = originalProperties[key];
         if (value !== null && value !== undefined && value !== '') {
@@ -181,7 +205,6 @@ const buildContentComponentTreeForModalJson = (
         }
       }
 
-      // 2. Second pass: remove numeric properties that are 0
       const defaultNumericPropsToOmitIfZero = [
         'padding', 'paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd',
         'elevation', 'borderWidth', 'itemSpacing', 'layoutWeight',
@@ -194,7 +217,6 @@ const buildContentComponentTreeForModalJson = (
         }
       }
 
-      // 3. Conditional logic for size based on fill properties
       if (cleaned.fillMaxSize === true) {
           delete cleaned.width;
           delete cleaned.height;
@@ -205,7 +227,6 @@ const buildContentComponentTreeForModalJson = (
           if (cleaned.fillMaxHeight === true) delete cleaned.height;
       }
       
-      // Also, remove boolean `false` values as they are the default
       if (cleaned.fillMaxSize === false) delete cleaned.fillMaxSize;
       if (cleaned.fillMaxWidth === false) delete cleaned.fillMaxWidth;
       if (cleaned.fillMaxHeight === false) delete cleaned.fillMaxHeight;
@@ -213,7 +234,6 @@ const buildContentComponentTreeForModalJson = (
       if (cleaned.reverseLayout === false) delete cleaned.reverseLayout;
       if (cleaned.userScrollEnabled === false) delete cleaned.userScrollEnabled;
 
-      // 4. Consolidate Padding
       if (typeof cleaned.padding === 'number' && cleaned.padding > 0) {
           delete cleaned.paddingTop;
           delete cleaned.paddingBottom;
@@ -221,7 +241,6 @@ const buildContentComponentTreeForModalJson = (
           delete cleaned.paddingEnd;
       }
       
-      // 5. Consolidate Corner Radius
       const { cornerRadiusTopLeft, cornerRadiusTopRight, cornerRadiusBottomRight, cornerRadiusBottomLeft } = cleaned;
       if (
         typeof cornerRadiusTopLeft === 'number' &&
@@ -239,7 +258,22 @@ const buildContentComponentTreeForModalJson = (
         delete cleaned.cornerRadiusBottomLeft;
       }
       
-      propertiesToUse = cleaned;
+      const orderedProperties: Record<string, any> = {};
+      const cleanedKeys = Object.keys(cleaned);
+
+      for (const key of PREFERRED_PROPERTY_ORDER) {
+        if (cleaned.hasOwnProperty(key)) {
+          orderedProperties[key] = cleaned[key];
+        }
+      }
+
+      for (const key of cleanedKeys) {
+        if (!orderedProperties.hasOwnProperty(key)) {
+          orderedProperties[key] = cleaned[key];
+        }
+      }
+      
+      propertiesToUse = orderedProperties;
     }
 
     const node: ModalJsonNode = {
