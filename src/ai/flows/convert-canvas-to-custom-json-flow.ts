@@ -185,7 +185,7 @@ Modifier and Property Mapping Rules (from input component properties to output "
 4.  **Component-Specific Properties (direct children of component type object, e.g., '"text": { "content": ... }'):**
     *   **Text**:
         *   'text' (canvas) -> 'content' (output).
-        *   'fontSize', 'fontWeight' (valid values: "Normal", "Semibold", "Bold"), 'fontStyle', 'letterSpacing', 'lineHeight', 'maxLines', 'minLines', 'textDecoration' (canvas) -> map to respective direct properties in "text" object.
+        *   'fontSize', 'fontWeight' (valid values: "Normal", "Semibold", "Bold"), 'fontStyle', 'letterSpacing', 'lineHeight' (this value MUST be an integer), 'maxLines', 'minLines', 'textDecoration' (canvas) -> map to respective direct properties in "text" object.
         *   'textColor' (canvas) -> 'color' (output, hex string).
         *   'textAlign' (canvas) -> 'textAlign' (output, e.g., "start", "center").
         *   'textOverflow' (canvas) -> 'overflow' (output, e.g., "clip", "ellipsis").
@@ -274,3 +274,5 @@ const convertCanvasToCustomJsonFlow = ai.defineFlow(
     return { customJsonString: formattedJsonString };
   }
 );
+
+    
