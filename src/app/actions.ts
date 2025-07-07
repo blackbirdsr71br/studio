@@ -145,12 +145,11 @@ interface ModalJsonNode {
 }
 
 // Helper for "View JSON" modal (hierarchical, children in properties.children)
-// This function should now always be called with DEFAULT_CONTENT_LAZY_COLUMN_ID as its starting point
 const buildContentComponentTreeForModalJson = (
   allComponents: DesignComponent[],
   customComponentTemplates: CustomComponentTemplate[],
   currentParentIdForContext: string,
-  includeDefaultValues: boolean // This flag comes from the switch
+  includeDefaultValues: boolean
 ): ModalJsonNode[] => {
   const parentComponent = allComponents.find(c => c.id === currentParentIdForContext);
 
@@ -162,75 +161,99 @@ const buildContentComponentTreeForModalJson = (
 
   return orderedChildIds.map(childId => {
     const component = allComponents.find(c => c.id === childId);
-    if (!component) {
-      return null;
-    }
+    if (!component) return null;
 
-    // Start with all properties except the children ID array
     const { children: _childIdArrayFromProps, ...originalProperties } = { ...component.properties };
     
     let propertiesToUse: Record<string, any>;
 
     if (includeDefaultValues) {
-      // Raw mode: include everything from the original properties
       propertiesToUse = originalProperties;
     } else {
-      // Clean mode: filter out defaults, nulls, empty strings, and handle conditional properties
+      // Clean mode logic starts here.
       const cleaned: Record<string, any> = {};
+
+      // 1. First pass: copy non-empty/non-null values
       for (const key in originalProperties) {
         const value = originalProperties[key];
-        
-        // Skip null, undefined, and empty strings
-        if (value === null || value === undefined || value === '') {
-          continue;
+        if (value !== null && value !== undefined && value !== '') {
+          cleaned[key] = value;
         }
-
-        // Skip numeric defaults like padding: 0
-        if (typeof value === 'number' && value === 0) {
-            const defaultNumericPropsToOmit = [
-              'padding', 'elevation', 'borderWidth', 'itemSpacing', 'layoutWeight',
-              'cornerRadius', 'cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft'
-            ];
-            if (defaultNumericPropsToOmit.includes(key)) {
-                continue;
-            }
-        }
-        
-        cleaned[key] = value;
       }
-      
-      // Conditional logic for width/height based on fill* properties
+
+      // 2. Second pass: remove numeric properties that are 0
+      const defaultNumericPropsToOmitIfZero = [
+        'padding', 'paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd',
+        'elevation', 'borderWidth', 'itemSpacing', 'layoutWeight',
+        'cornerRadius', 'cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft',
+        'fontSize', 'iconSize', 'iconSpacing', 'animationDuration', 'maxLines', 'lineHeight'
+      ];
+      for (const key of defaultNumericPropsToOmitIfZero) {
+        if (cleaned[key] === 0) {
+          delete cleaned[key];
+        }
+      }
+
+      // 3. Conditional logic for size based on fill properties
       if (cleaned.fillMaxSize === true) {
           delete cleaned.width;
           delete cleaned.height;
-          // Also remove the redundant fillMaxWidth/Height as fillMaxSize implies them
           delete cleaned.fillMaxWidth;
           delete cleaned.fillMaxHeight;
       } else {
-          if (cleaned.fillMaxWidth === true) {
-              delete cleaned.width;
-          }
-          if (cleaned.fillMaxHeight === true) {
-              delete cleaned.height;
-          }
+          if (cleaned.fillMaxWidth === true) delete cleaned.width;
+          if (cleaned.fillMaxHeight === true) delete cleaned.height;
       }
+      
+      // Also, remove boolean `false` values as they are the default
+      if (cleaned.fillMaxSize === false) delete cleaned.fillMaxSize;
+      if (cleaned.fillMaxWidth === false) delete cleaned.fillMaxWidth;
+      if (cleaned.fillMaxHeight === false) delete cleaned.fillMaxHeight;
+      if (cleaned.clickable === false) delete cleaned.clickable;
+      if (cleaned.reverseLayout === false) delete cleaned.reverseLayout;
+      if (cleaned.userScrollEnabled === false) delete cleaned.userScrollEnabled;
+
+      // 4. Consolidate Padding
+      if (typeof cleaned.padding === 'number' && cleaned.padding > 0) {
+          delete cleaned.paddingTop;
+          delete cleaned.paddingBottom;
+          delete cleaned.paddingStart;
+          delete cleaned.paddingEnd;
+      }
+      
+      // 5. Consolidate Corner Radius
+      const { cornerRadiusTopLeft, cornerRadiusTopRight, cornerRadiusBottomRight, cornerRadiusBottomLeft } = cleaned;
+      if (
+        typeof cornerRadiusTopLeft === 'number' &&
+        cornerRadiusTopLeft === cornerRadiusTopRight &&
+        cornerRadiusTopLeft === cornerRadiusBottomRight &&
+        cornerRadiusTopLeft === cornerRadiusBottomLeft
+      ) {
+        const allCornersValue = cornerRadiusTopLeft;
+        if (allCornersValue > 0) {
+          cleaned.cornerRadius = allCornersValue;
+        }
+        delete cleaned.cornerRadiusTopLeft;
+        delete cleaned.cornerRadiusTopRight;
+        delete cleaned.cornerRadiusBottomRight;
+        delete cleaned.cornerRadiusBottomLeft;
+      }
+      
       propertiesToUse = cleaned;
     }
-
 
     const node: ModalJsonNode = {
       id: component.id,
       type: component.type,
       name: component.name,
       parentId: component.parentId,
-      properties: propertiesToUse, // Use the processed properties
+      properties: propertiesToUse,
       ...(component.templateIdRef && { templateIdRef: component.templateIdRef }),
     };
 
     if (isContainerType(component.type, customComponentTemplates)) {
       const childrenObjectNodes = buildContentComponentTreeForModalJson(allComponents, customComponentTemplates, component.id, includeDefaultValues);
       if (childrenObjectNodes.length > 0) {
-        // Since we already filtered _childIdArrayFromProps out, we add the processed children back
         node.properties.children = childrenObjectNodes as any;
       }
     }
@@ -238,18 +261,16 @@ const buildContentComponentTreeForModalJson = (
   }).filter((node): node is ModalJsonNode => node !== null);
 };
 
-
 export async function getDesignComponentsAsJsonAction(
   allComponents: DesignComponent[],
   customComponentTemplates: CustomComponentTemplate[],
   includeDefaultValues: boolean = false
 ): Promise<string> {
   try {
-    // Build the hierarchical tree for children of the default content LazyColumn for the modal
     const modalJsonTree = buildContentComponentTreeForModalJson(
         allComponents,
         customComponentTemplates,
-        DEFAULT_CONTENT_LAZY_COLUMN_ID, // Get children of the content LazyColumn
+        DEFAULT_CONTENT_LAZY_COLUMN_ID,
         includeDefaultValues
     );
     return JSON.stringify(modalJsonTree, null, 2);
@@ -575,3 +596,4 @@ export async function generateJsonParserCodeAction(
 
     
 
+    
