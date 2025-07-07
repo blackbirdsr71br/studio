@@ -251,6 +251,8 @@ const buildContentComponentTreeForModalJson = (
         const allCornersValue = cornerRadiusTopLeft;
         if (allCornersValue > 0) {
           cleaned.cornerRadius = allCornersValue;
+        } else {
+          delete cleaned.cornerRadius; // Ensure it's not present if 0
         }
         delete cleaned.cornerRadiusTopLeft;
         delete cleaned.cornerRadiusTopRight;
@@ -258,19 +260,30 @@ const buildContentComponentTreeForModalJson = (
         delete cleaned.cornerRadiusBottomLeft;
       }
       
-      const orderedProperties: Record<string, any> = {};
       const cleanedKeys = Object.keys(cleaned);
 
-      for (const key of PREFERRED_PROPERTY_ORDER) {
-        if (cleaned.hasOwnProperty(key)) {
-          orderedProperties[key] = cleaned[key];
-        }
-      }
+      // Custom sort function based on PREFERRED_PROPERTY_ORDER
+      const customSort = (a: string, b: string) => {
+        const indexA = PREFERRED_PROPERTY_ORDER.indexOf(a);
+        const indexB = PREFERRED_PROPERTY_ORDER.indexOf(b);
 
-      for (const key of cleanedKeys) {
-        if (!orderedProperties.hasOwnProperty(key)) {
-          orderedProperties[key] = cleaned[key];
+        if (indexA !== -1 && indexB !== -1) {
+          return indexA - indexB; // Both keys are in the preferred order list
         }
+        if (indexA !== -1) {
+          return -1; // Only A is in the list, so A comes first
+        }
+        if (indexB !== -1) {
+          return 1; // Only B is in the list, so B comes first
+        }
+        return a.localeCompare(b); // Neither is in the list, sort alphabetically
+      };
+      
+      cleanedKeys.sort(customSort);
+
+      const orderedProperties: Record<string, any> = {};
+      for (const key of cleanedKeys) {
+        orderedProperties[key] = cleaned[key];
       }
       
       propertiesToUse = orderedProperties;
@@ -625,6 +638,8 @@ export async function generateJsonParserCodeAction(
   }
 }
       
+
+    
 
     
 
