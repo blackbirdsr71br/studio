@@ -61,6 +61,8 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
   const [customJsonFromCanvasString, setCustomJsonFromCanvasString] = useState<string>("");
   const [isCustomJsonFromCanvasLoading, setIsCustomJsonFromCanvasLoading] = useState(false);
   const [customJsonFromCanvasError, setCustomJsonFromCanvasError] = useState<string | null>(null);
+  const [includeCustomJsonDefaults, setIncludeCustomJsonDefaults] = useState(false);
+
 
   // State for publishing custom JSON
   const [showPublishCustomJsonDialog, setShowPublishCustomJsonDialog] = useState(false);
@@ -118,7 +120,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     setCustomJsonFromCanvasError(null);
     setCustomJsonFromCanvasString("");
     try {
-      const result = await convertCanvasToCustomJsonAction(components, customComponentTemplates);
+      const result = await convertCanvasToCustomJsonAction(components, customComponentTemplates, includeCustomJsonDefaults);
       if (result.customJsonString) {
         setCustomJsonFromCanvasString(result.customJsonString);
       } else {
@@ -130,26 +132,25 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     } finally {
       setIsCustomJsonFromCanvasLoading(false);
     }
-  }, [components, customComponentTemplates]);
-
+  }, [components, customComponentTemplates, includeCustomJsonDefaults]);
 
   useEffect(() => {
-    if (isOpen) {
-      if (activeTab === "canvasJson") {
-         handleFetchDesignJson();
-      } else if (activeTab === "generateCustomJsonFromCanvas") {
-        if (!customJsonFromCanvasString && !customJsonFromCanvasError) {
-           handleGenerateCustomJsonFromCanvas();
-        }
-      }
+    if (!isOpen) return;
+
+    if (activeTab === 'canvasJson') {
+      handleFetchDesignJson();
+    } else if (activeTab === 'generateCustomJsonFromCanvas') {
+      handleGenerateCustomJsonFromCanvas();
     }
-  }, [isOpen, activeTab, handleFetchDesignJson, handleGenerateCustomJsonFromCanvas, customJsonFromCanvasString, customJsonFromCanvasError]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, activeTab, includeDefaultValues, includeCustomJsonDefaults]);
 
   useImperativeHandle(ref, () => ({
     openModal: () => {
       setIsOpen(true);
       // Reset all states when modal opens to ensure fresh data on tab switch or reopen
       setIncludeDefaultValues(false);
+      setIncludeCustomJsonDefaults(false);
       setCanvasJsonString("");
       setCanvasJsonError(null);
       setSyntaxError(null);
@@ -163,10 +164,6 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
       setIsCustomJsonFromCanvasLoading(false);
       setIsPublishingCustomJson(false);
       setShowPublishCustomJsonDialog(false);
-      
-      // setActiveTab("canvasJson"); // Optionally reset to the first tab
-      // If not resetting activeTab, ensure the effect for the current activeTab runs
-      // This is handled by the useEffect dependency on isOpen and activeTab already.
     }
   }));
 
@@ -514,6 +511,17 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
                   {isPublishingCustomJson ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
                   Publish Custom JSON
                 </Button>
+                 <div className="flex items-center space-x-2 pl-2">
+                    <Switch
+                        id="include-custom-json-defaults-switch"
+                        checked={includeCustomJsonDefaults}
+                        onCheckedChange={setIncludeCustomJsonDefaults}
+                        disabled={isCustomJsonFromCanvasLoading}
+                    />
+                    <Label htmlFor="include-custom-json-defaults-switch" className="text-xs text-muted-foreground whitespace-nowrap">
+                        Include default values
+                    </Label>
+                 </div>
               </div>
             )}
           </div>

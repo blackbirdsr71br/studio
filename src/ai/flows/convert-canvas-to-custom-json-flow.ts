@@ -29,6 +29,12 @@ const ConvertCanvasToCustomJsonInputSchema = z.object({
       },
       { message: 'The input design data is not in a valid JSON format.' }
     ),
+  includeDefaultValues: z
+    .boolean()
+    .optional()
+    .describe(
+      'If true, include properties with default, empty, or zero values. If false or omitted, omit them for a cleaner JSON.'
+    ),
 });
 export type ConvertCanvasToCustomJsonInput = z.infer<typeof ConvertCanvasToCustomJsonInputSchema>;
 
@@ -71,6 +77,7 @@ const prompt = ai.definePrompt({
   output: {schema: ConvertCanvasToCustomJsonOutputSchema},
   prompt: `You are an expert UI converter. Your task is to transform an input JSON (representing a canvas design's content area) into a specific target "Compose Remote Layout" JSON format.
 The value for 'customJsonString' in your output MUST be a compact, single-line JSON string without any newlines or formatting. It must be a raw string representation of the JSON object.
+All numeric property values in the output JSON MUST be integers. Round any decimal values to the nearest whole number. The only exceptions are properties that are explicitly for floating point numbers, such as 'layoutWeight' or 'aspectRatio'.
 
 Input Canvas Design JSON ('{{{designJson}}}'):
 The input is a JSON string representing an array of component objects. These are the components intended for the main content area of an application.
@@ -208,6 +215,7 @@ Modifier and Property Mapping Rules (from input component properties to output "
 5.  **Children**:
     *   For container components (Column, Row, Box, Card, Grid from LazyGrids, AnimatedContent), recursively transform their children from the canvas 'properties.children' array and place them into the output component's 'children' array.
 
+{{#unless includeDefaultValues}}
 6.  **Omissions (VERY IMPORTANT)**:
     *   **Crucially, do NOT include any property (whether in 'modifier.base', component-specific modifiers, or direct properties) in the output JSON if its corresponding value from the input canvas JSON is 'null', 'undefined', or an empty string ('""').**
     *   Also, omit properties if their value would represent a default or implicit state in the target "Compose Remote Layout" (e.g., padding of 0, elevation of 0 for non-Card components, an empty 'children' array if the component has no children).
@@ -215,6 +223,7 @@ Modifier and Property Mapping Rules (from input component properties to output "
     *   Omit canvas-specific properties like the original 'id', 'name', 'parentId' (from the canvas structure), 'x', 'y', and the 'clickable' boolean flag from the output JSON.
     *   **If the 'modifier.base' object is empty after applying all rules and omissions, then the '"base"' key itself (and its empty object value) MUST be omitted from the '"modifier"' object.**
     *   **If the entire '"modifier"' object (containing 'base' and/or component-specific modifiers) becomes empty as a result of these omissions, then the '"modifier"' key itself MUST be omitted from the component's JSON object.**
+{{/unless}}
 
 Input Canvas Design JSON (Content Area):
 \`\`\`json

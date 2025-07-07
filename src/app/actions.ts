@@ -523,7 +523,8 @@ export async function generateJsonFromTextAction(
 
 export async function convertCanvasToCustomJsonAction(
   allComponents: DesignComponent[],
-  customComponentTemplates: CustomComponentTemplate[]
+  customComponentTemplates: CustomComponentTemplate[],
+  includeDefaultValues: boolean
 ): Promise<{ customJsonString?: string; error?: string }> {
   try {
     // Get JSON for the content area only, always using the concise version (includeDefaultValues = false)
@@ -548,7 +549,10 @@ export async function convertCanvasToCustomJsonAction(
         return { error: "Canvas content JSON is invalid and could not be parsed." };
     }
     
-    const input: ConvertCanvasToCustomJsonInput = { designJson: canvasContentJsonString };
+    const input: ConvertCanvasToCustomJsonInput = { 
+        designJson: canvasContentJsonString,
+        includeDefaultValues: includeDefaultValues,
+    };
     const result = await convertCanvasToCustomJson(input);
     return { customJsonString: result.customJsonString };
   } catch (error)
