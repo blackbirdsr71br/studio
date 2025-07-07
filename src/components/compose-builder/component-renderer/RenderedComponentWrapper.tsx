@@ -255,13 +255,13 @@ export function RenderedComponentWrapper({ component, zoomLevel = 1, isPreview =
     const handleMouseMove = (event: MouseEvent) => {
       if (!isResizing || !resizeDetails || !ref.current) return;
 
-      const dx = (event.clientX - resizeDetails.startX) / zoomLevel;
-      const dy = (event.clientY - resizeDetails.startY) / zoomLevel;
+      const dx = (event.clientX - resizeDetails.startX) / (zoomLevel || 1);
+      const dy = (event.clientY - resizeDetails.startY) / (zoomLevel || 1);
       
       const updatedProps: Record<string, any> = {};
 
-      const initialUnscaledWidth = resizeDetails.initialWidth / zoomLevel;
-      const initialUnscaledHeight = resizeDetails.initialHeight / zoomLevel;
+      const initialUnscaledWidth = resizeDetails.initialWidth / (zoomLevel || 1);
+      const initialUnscaledHeight = resizeDetails.initialHeight / (zoomLevel || 1);
 
       const isHorizontalResize = resizeDetails.handle.includes('e') || resizeDetails.handle.includes('w');
       const isVerticalResize = resizeDetails.handle.includes('n') || resizeDetails.handle.includes('s');
@@ -416,7 +416,7 @@ export function RenderedComponentWrapper({ component, zoomLevel = 1, isPreview =
     width: getDimensionValue('width', component.properties.width, component.properties.fillMaxWidth, component.type, component.id, component.parentId, getComponentById, customComponentTemplates),
     height: getDimensionValue('height', component.properties.height, component.properties.fillMaxHeight, component.type, component.id, component.parentId, getComponentById, customComponentTemplates),
     position: 'relative', 
-    display: 'block', 
+    display: 'flex', 
   };
   
   let effectiveLayoutWeight = component.properties.layoutWeight || 0;
@@ -556,4 +556,3 @@ export function RenderedComponentWrapper({ component, zoomLevel = 1, isPreview =
     </div>
   );
 }
-
