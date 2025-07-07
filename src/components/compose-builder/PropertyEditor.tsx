@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { ChangeEvent } from 'react';
@@ -27,10 +26,14 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
       } else {
         const numValue = parseFloat(strValue);
         if (!isNaN(numValue)) {
-          onChange(numValue);
+          // Allow floats only for specific properties like layoutWeight.
+          // Round all other numeric inputs to the nearest integer as requested.
+          if (property.name === 'layoutWeight') {
+            onChange(numValue);
+          } else {
+            onChange(Math.round(numValue));
+          }
         }
-        // If still NaN (e.g., "abc"), do nothing or retain previous value.
-        // The input type="number" should prevent most non-numeric direct typing.
       }
     } else {
       onChange(e.target.value);
@@ -74,6 +77,7 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
             placeholder={property.placeholder}
             className="h-8 text-sm"
             min={0}
+            step={property.name === 'layoutWeight' ? '0.1' : '1'}
           />
         </div>
       );
