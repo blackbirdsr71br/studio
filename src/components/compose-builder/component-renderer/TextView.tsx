@@ -20,7 +20,7 @@ export function TextView({ properties }: TextViewProps) {
     fontStyle = 'Normal',
     textAlign = 'Start',
     textDecoration = 'None',
-    lineHeight = 1.4,
+    lineHeight = 1,
     backgroundColor,
   } = properties;
 
