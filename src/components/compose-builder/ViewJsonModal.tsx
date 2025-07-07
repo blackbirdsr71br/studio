@@ -482,6 +482,10 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-start gap-2 flex-wrap">
             {activeTab === 'canvasJson' && (
               <>
+                <Button onClick={handleFetchDesignJson} variant="outline" disabled={isCanvasJsonLoading} className="w-full sm:w-auto">
+                  {isCanvasJsonLoading ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Wand2 className="mr-1.5 h-4 w-4" />}
+                  Regenerate
+                </Button>
                 <Button onClick={handleSaveChangesToCanvas} disabled={!canSaveChangesValue} className="w-full sm:w-auto">
                   <Save className="mr-2 h-4 w-4" /> Save to Canvas
                 </Button>
