@@ -20,7 +20,7 @@ const GenerateImageFromHintInputSchema = z.object({
 export type GenerateImageFromHintInput = z.infer<typeof GenerateImageFromHintInputSchema>;
 
 const GenerateImageFromHintOutputSchema = z.object({
-  imageUrl: z.string().describe('The data URI of the generated image, typically in PNG format.'),
+  imageUrls: z.array(z.string()).describe('An array of data URIs of the generated images, typically in PNG format.'),
 });
 export type GenerateImageFromHintOutput = z.infer<typeof GenerateImageFromHintOutputSchema>;
 
@@ -36,26 +36,38 @@ const generateImageFromHintFlow = ai.defineFlow(
   },
   async (input) => {
     try {
-      const {media} = await ai.generate({
-        model: 'googleai/gemini-2.0-flash-exp', // As per image generation instructions
-        prompt: `Generate a high-quality, visually appealing image suitable for an application UI, based on the following hint: "${input.hint}". Avoid text in the image unless explicitly requested. Focus on clear subjects and good composition.`,
-        config: {
-          responseModalities: ['TEXT', 'IMAGE'], // Must provide both
-        },
-        // Optional: Add safety settings if needed
-        // config: {
-        //   safetySettings: [
-        //     { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-        //     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-        //   ]
-        // }
-      });
+      const NUM_IMAGES_TO_GENERATE = 4;
+      const imageGenerationPromises = [];
 
-      if (!media || !media.url) {
-        console.error('Image generation returned no media or URL for hint:', input.hint, 'Full response:', media);
-        throw new Error('Image generation failed to return a valid image URL. The model might not have produced an image for this hint.');
+      for (let i = 0; i < NUM_IMAGES_TO_GENERATE; i++) {
+        imageGenerationPromises.push(
+            ai.generate({
+            // IMPORTANT: Use the specified model for image generation
+            model: 'googleai/gemini-2.0-flash-preview-image-generation', 
+            prompt: `Generate a high-quality, visually appealing image suitable for an application UI, based on the following hint: "${input.hint}". Avoid text in the image unless explicitly requested. Focus on clear subjects and good composition. Style variation ${i + 1}.`,
+            config: {
+              responseModalities: ['TEXT', 'IMAGE'], // Must provide both
+            },
+          })
+        );
       }
-      return { imageUrl: media.url };
+      
+      const results = await Promise.all(imageGenerationPromises);
+
+      const imageUrls = results.map(result => {
+        if (!result.media || !result.media.url) {
+          console.error('Image generation returned no media or URL for hint:', input.hint, 'Full response:', result.media);
+          return null;
+        }
+        return result.media.url;
+      }).filter((url): url is string => url !== null);
+
+
+      if (imageUrls.length === 0) {
+        throw new Error('Image generation failed to return any valid image URLs. The model might not have produced an image for this hint.');
+      }
+      
+      return { imageUrls };
 
     } catch (error) {
       console.error('Error in generateImageFromHintFlow for hint "'+input.hint+'":', error);

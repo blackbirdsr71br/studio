@@ -489,18 +489,18 @@ export async function publishCustomJsonToRemoteConfigAction(
 }
 
 
-export async function generateImageFromHintAction(hint: string): Promise<{ imageUrl: string | null; error?: string }> {
+export async function generateImageFromHintAction(hint: string): Promise<{ imageUrls: string[] | null; error?: string }> {
   if (!hint || hint.trim() === "") {
-    return { imageUrl: null, error: "Hint cannot be empty." };
+    return { imageUrls: null, error: "Hint cannot be empty." };
   }
   try {
     const input: GenerateImageFromHintInput = { hint };
     const result = await generateImageFromHint(input);
-    return { imageUrl: result.imageUrl };
+    return { imageUrls: result.imageUrls };
   } catch (error) {
     console.error("Error in generateImageFromHintAction:", error);
     const message = error instanceof Error ? error.message : "An unknown error occurred during image generation.";
-    return { imageUrl: null, error: message };
+    return { imageUrls: null, error: message };
   }
 }
 

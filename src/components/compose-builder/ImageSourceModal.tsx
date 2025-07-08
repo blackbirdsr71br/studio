@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Globe, Link as LinkIcon, Image as ImageIcon, Search } from 'lucide-react';
+import { Globe, Link as LinkIcon, Image as ImageIcon, Search, Loader2 } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import Image from 'next/image'; // For displaying example images
 import { useToast } from '@/hooks/use-toast';
+import { generateImageFromHintAction } from '@/app/actions';
 
 export interface ImageSourceModalRef {
   openModal: (callback: (imageUrl: string) => void, currentSrc?: string) => void;
@@ -34,11 +35,17 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
   const [onSelectCallback, setOnSelectCallback] = useState<(url: string) => void>(() => () => {});
   const { toast } = useToast();
 
+  const [searchResults, setSearchResults] = useState<string[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+
   useImperativeHandle(ref, () => ({
     openModal: (callback, currentSrc) => {
       setOnSelectCallback(() => callback); // Store the callback
       setImageUrl(currentSrc || '');
       setSearchQuery(''); // Reset search query
+      setSearchResults([]); // Reset search results
+      setIsSearching(false);
       setIsOpen(true);
     }
   }));
@@ -69,20 +76,31 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
   };
   
   const handleOnlineSearch = async () => {
-    // Placeholder for actual online search functionality
-    // For now, it could filter examplePlaceholders or show a message
     if (!searchQuery.trim()) {
-        toast({title: "Search Hint", description: "Enter a term to search (feature coming soon).", variant: "default"});
+        toast({title: "Search Hint", description: "Please enter a search term.", variant: "default"});
         return;
     }
-    toast({title: "Search", description: `Simulating search for: "${searchQuery}" (Full search coming soon).`, variant: "default"});
-    // Example: filter placeholders
-    const filtered = examplePlaceholders.filter(img => 
-        img.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        img.hint.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    if (filtered.length > 0) {
-        // Maybe show these filtered results in the UI
+    setIsSearching(true);
+    setSearchResults([]);
+    try {
+        const result = await generateImageFromHintAction(searchQuery);
+        if (result.imageUrls && result.imageUrls.length > 0) {
+            setSearchResults(result.imageUrls);
+        } else {
+            toast({
+                title: "Search Failed",
+                description: result.error || "Could not generate images. Try a different search term.",
+                variant: "destructive",
+            });
+        }
+    } catch (error) {
+         toast({
+            title: "Search Error",
+            description: error instanceof Error ? error.message : "An unexpected error occurred.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsSearching(false);
     }
   };
 
@@ -94,14 +112,14 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
             <ImageIcon className="w-5 h-5 text-primary" /> Set Image Source
           </DialogTitle>
           <DialogDescription>
-            Enter an image URL, search online (coming soon), or choose a placeholder.
+            Enter a URL, generate images with AI, or choose a placeholder.
           </DialogDescription>
         </DialogHeader>
         
         <Tabs defaultValue="url" className="flex-grow flex flex-col min-h-0">
           <TabsList className="grid w-full grid-cols-2 mb-3">
             <TabsTrigger value="url"><LinkIcon className="mr-1.5 h-4 w-4" />From URL</TabsTrigger>
-            <TabsTrigger value="search"><Globe className="mr-1.5 h-4 w-4" />Placeholders / Search</TabsTrigger>
+            <TabsTrigger value="search"><Globe className="mr-1.5 h-4 w-4" />Generate / Placeholders</TabsTrigger>
           </TabsList>
 
           <TabsContent value="url" className="flex-grow flex flex-col space-y-3 min-h-0">
@@ -137,33 +155,62 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
             <div className="flex gap-2">
                 <Input 
                     type="text" 
-                    placeholder="Search images (e.g., 'abstract mountains')..." 
+                    placeholder="Generate images from a description..." 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { handleOnlineSearch(); e.preventDefault(); } }}
                     className="h-9"
+                    disabled={isSearching}
                 />
-                <Button onClick={handleOnlineSearch} variant="outline" size="sm" className="h-9 px-3">
-                    <Search className="mr-1.5 h-4 w-4"/> Search
+                <Button onClick={handleOnlineSearch} variant="outline" size="sm" className="h-9 px-3" disabled={isSearching || !searchQuery.trim()}>
+                    {isSearching ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin"/> : <Search className="mr-1.5 h-4 w-4"/>}
+                    Generate
                 </Button>
             </div>
-             <p className="text-xs text-muted-foreground text-center py-1">Full online search coming soon! Select from placeholders below:</p>
             <ScrollArea className="flex-grow border rounded-md p-2 bg-muted/20">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {examplePlaceholders.map((img) => (
-                  <button
-                    key={img.url}
-                    onClick={() => handleExampleSelect(img.url)}
-                    className={`relative aspect-video rounded-md overflow-hidden border-2 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1
-                                ${imageUrl === img.url ? 'border-primary ring-2 ring-primary ring-offset-1' : 'border-transparent'}`}
-                    aria-label={`Select ${img.name}`}
-                  >
-                    <Image src={img.url} alt={img.name} layout="fill" objectFit="cover" unoptimized />
-                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 text-center truncate">
-                        {img.name}
+              {isSearching ? (
+                  <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground gap-2">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p>Generating images based on your search...</p>
+                    <p className="text-xs">(This may take a moment)</p>
+                  </div>
+              ) : searchResults.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {searchResults.map((url, index) => (
+                      <button
+                        key={`search-result-${index}`}
+                        onClick={() => handleExampleSelect(url)}
+                        className={`relative aspect-video rounded-md overflow-hidden border-2 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1
+                                    ${imageUrl === url ? 'border-primary ring-2 ring-primary ring-offset-1' : 'border-transparent'}`}
+                        aria-label={`Select generated image ${index + 1}`}
+                      >
+                        <Image src={url} alt={`Generated image for "${searchQuery}"`} layout="fill" objectFit="cover" unoptimized />
+                      </button>
+                    ))}
+                  </div>
+              ) : (
+                <>
+                    <p className="text-xs text-muted-foreground text-center mb-2">
+                        Enter a description to generate images, or select a placeholder below.
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {examplePlaceholders.map((img) => (
+                          <button
+                            key={img.url}
+                            onClick={() => handleExampleSelect(img.url)}
+                            className={`relative aspect-video rounded-md overflow-hidden border-2 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1
+                                        ${imageUrl === img.url ? 'border-primary ring-2 ring-primary ring-offset-1' : 'border-transparent'}`}
+                            aria-label={`Select ${img.name}`}
+                          >
+                            <Image src={img.url} alt={img.name} layout="fill" objectFit="cover" unoptimized />
+                            <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 text-center truncate">
+                                {img.name}
+                            </div>
+                          </button>
+                        ))}
                     </div>
-                  </button>
-                ))}
-              </div>
+                </>
+              )}
             </ScrollArea>
           </TabsContent>
         </Tabs>
@@ -179,4 +226,3 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
 });
 
 ImageSourceModal.displayName = 'ImageSourceModal';
-
