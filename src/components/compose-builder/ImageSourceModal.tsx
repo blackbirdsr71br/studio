@@ -140,7 +140,7 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
                       ${imageUrl === url ? 'border-primary ring-2 ring-primary ring-offset-1' : 'border-transparent'}`}
           aria-label={`Select image ${index + 1}`}
         >
-          <Image src={url} alt={`Image result ${index + 1}`} fill style={{ objectFit: 'cover' }} unoptimized />
+          <img src={url} alt={`Image result ${index + 1}`} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
         </button>
       ))}
     </div>
