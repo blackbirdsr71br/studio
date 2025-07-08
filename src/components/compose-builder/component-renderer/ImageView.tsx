@@ -1,4 +1,3 @@
-
 'use client';
 import type { BaseComponentProps } from '@/types/compose-spec';
 
@@ -17,10 +16,6 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
     paddingStart,
     paddingEnd,
     "data-ai-hint": aiHint = "abstract pattern",
-    cornerRadiusTopLeft = 0,
-    cornerRadiusTopRight = 0,
-    cornerRadiusBottomRight = 0,
-    cornerRadiusBottomLeft = 0,
     contentScale = "Crop",
     backgroundColor,
   } = properties;
@@ -32,21 +27,17 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
   const effectivePaddingStart = paddingStart ?? padding ?? 0;
   const effectivePaddingEnd = paddingEnd ?? 0;
 
-  // The container will fill its parent (RenderedComponentWrapper)
   const containerStyle: React.CSSProperties = {
-    flex: 1, // Grow to fill the flex parent (RenderedComponentWrapper)
-    display: 'block', // Behave as a block for internal layout
+    // This div now sits inside a 'display: block' wrapper.
+    // It needs to fill the wrapper's height to be visible.
+    height: '100%',
+    display: 'block',
     boxSizing: 'border-box',
-    borderTopLeftRadius: `${cornerRadiusTopLeft}px`,
-    borderTopRightRadius: `${cornerRadiusTopRight}px`,
-    borderBottomRightRadius: `${cornerRadiusBottomRight}px`,
-    borderBottomLeftRadius: `${cornerRadiusBottomLeft}px`,
     backgroundColor: backgroundColor || 'hsl(var(--muted))',
     paddingTop: `${effectivePaddingTop}px`,
     paddingBottom: `${effectivePaddingBottom}px`,
     paddingLeft: `${effectivePaddingStart}px`,
     paddingRight: `${effectivePaddingEnd}px`,
-    overflow: 'hidden', // Clip the inner image to the border radius
   };
   
   const imageStyle: React.CSSProperties = {
