@@ -11,7 +11,7 @@ import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { hexToHslCssString } from '@/lib/utils';
-import { createClient } from 'pexels';
+
 
 // Helper function to remove properties with empty string or null values
 const cleanEmptyOrNullProperties = (properties: Record<string, any>): Record<string, any> => {
@@ -649,21 +649,33 @@ export async function searchWebForImagesAction(query: string): Promise<{ imageUr
     return { imageUrls: null, error: "Pexels API key is not configured on the server. Please set PEXELS_API_KEY in your .env file." };
   }
 
+  const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=15`;
+
   try {
-    const client = createClient(apiKey);
-    const response = await client.photos.search({ query, per_page: 15 });
-    
-    if ('photos' in response) {
-        const imageUrls = response.photos.map(photo => photo.src.large);
+    const response = await fetch(url, {
+      headers: {
+        Authorization: apiKey,
+      },
+    });
+
+    if (!response.ok) {
+      // Pexels API returns error details in the body
+      const errorData = await response.json().catch(() => ({ error: "Unknown error response from Pexels." }));
+      console.error("Pexels API Error:", errorData);
+      return { imageUrls: null, error: `Failed to search on Pexels: ${errorData.error || response.statusText}` };
+    }
+
+    const data = await response.json();
+
+    if (data && Array.isArray(data.photos)) {
+        const imageUrls = data.photos.map((photo: any) => photo.src.large);
         return { imageUrls };
     } else {
-        // This 'else' block handles the Pexels 'ErrorResponse' type
-        const pexelsError = response as any;
-        return { imageUrls: null, error: `Failed to search on Pexels: ${pexelsError.code || 'Unknown error'}` };
+        return { imageUrls: null, error: "Unexpected response format from Pexels." };
     }
     
   } catch (error) {
-    console.error("Error searching Pexels:", error);
+    console.error("Error fetching from Pexels API:", error);
     const message = error instanceof Error ? error.message : "An unknown error occurred during web image search.";
     return { imageUrls: null, error: message };
   }
@@ -677,4 +689,5 @@ export async function searchWebForImagesAction(query: string): Promise<{ imageUr
     
 
     
+
 
