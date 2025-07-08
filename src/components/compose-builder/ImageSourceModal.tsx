@@ -7,45 +7,44 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Globe, Link as LinkIcon, Image as ImageIcon, Search, Loader2 } from 'lucide-react';
+import { Globe, Link as LinkIcon, Image as ImageIcon, Search, Loader2, Sparkles } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
-import Image from 'next/image'; // For displaying example images
+import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
-import { generateImageFromHintAction } from '@/app/actions';
+import { generateImageFromHintAction, searchWebForImagesAction } from '@/app/actions';
 
 export interface ImageSourceModalRef {
   openModal: (callback: (imageUrl: string) => void, currentSrc?: string) => void;
 }
 
-// Example images (can be expanded or made dynamic later)
-const examplePlaceholders = [
-  { name: "Tech Abstract", url: "https://placehold.co/600x400/007bff/ffffff.png?text=Tech" , hint: "tech abstract" },
-  { name: "Nature Scene", url: "https://placehold.co/600x400/28a745/ffffff.png?text=Nature", hint: "nature scene" },
-  { name: "Modern Building", url: "https://placehold.co/600x400/ffc107/343a40.png?text=Architecture", hint: "modern building" },
-  { name: "Food Plate", url: "https://placehold.co/600x400/dc3545/ffffff.png?text=Food", hint: "food plate" },
-  { name: "People Working", url: "https://placehold.co/600x400/17a2b8/ffffff.png?text=Team", hint: "people working" },
-  { name: "Abstract Art", url: "https://placehold.co/600x400/6f42c1/ffffff.png?text=Abstract", hint: "abstract art" },
-];
-
-
 export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('url');
   const [imageUrl, setImageUrl] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
   const [onSelectCallback, setOnSelectCallback] = useState<(url: string) => void>(() => () => {});
   const { toast } = useToast();
 
-  const [searchResults, setSearchResults] = useState<string[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-
+  // State for AI Generation
+  const [aiSearchQuery, setAiSearchQuery] = useState('');
+  const [aiSearchResults, setAiSearchResults] = useState<string[]>([]);
+  const [isAiSearching, setIsAiSearching] = useState(false);
+  
+  // State for Web Search
+  const [webSearchQuery, setWebSearchQuery] = useState('');
+  const [webSearchResults, setWebSearchResults] = useState<string[]>([]);
+  const [isWebSearching, setIsWebSearching] = useState(false);
 
   useImperativeHandle(ref, () => ({
     openModal: (callback, currentSrc) => {
-      setOnSelectCallback(() => callback); // Store the callback
+      setOnSelectCallback(() => callback);
       setImageUrl(currentSrc || '');
-      setSearchQuery(''); // Reset search query
-      setSearchResults([]); // Reset search results
-      setIsSearching(false);
+      setAiSearchQuery('');
+      setAiSearchResults([]);
+      setIsAiSearching(false);
+      setWebSearchQuery('');
+      setWebSearchResults([]);
+      setIsWebSearching(false);
+      setActiveTab(currentSrc?.startsWith('http') || !currentSrc ? 'url' : 'generate');
       setIsOpen(true);
     }
   }));
@@ -68,58 +67,102 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
     setIsOpen(false);
   };
 
-  const handleExampleSelect = (url: string) => {
+  const handleImageClick = (url: string) => {
     setImageUrl(url);
-    // Optionally, directly apply if desired, or wait for "Use this Image"
-    // onSelectCallback(url);
-    // setIsOpen(false);
   };
   
-  const handleOnlineSearch = async () => {
-    if (!searchQuery.trim()) {
-        toast({title: "Search Hint", description: "Please enter a search term.", variant: "default"});
+  const handleAiSearch = async () => {
+    if (!aiSearchQuery.trim()) {
+        toast({title: "Search Hint", description: "Please enter a description to generate an image.", variant: "default"});
         return;
     }
-    setIsSearching(true);
-    setSearchResults([]);
+    setIsAiSearching(true);
+    setAiSearchResults([]);
     try {
-        const result = await generateImageFromHintAction(searchQuery);
+        const result = await generateImageFromHintAction(aiSearchQuery);
         if (result.imageUrls && result.imageUrls.length > 0) {
-            setSearchResults(result.imageUrls);
+            setAiSearchResults(result.imageUrls);
         } else {
             toast({
-                title: "Search Failed",
+                title: "Generation Failed",
                 description: result.error || "Could not generate images. Try a different search term.",
                 variant: "destructive",
             });
         }
     } catch (error) {
          toast({
-            title: "Search Error",
+            title: "Generation Error",
             description: error instanceof Error ? error.message : "An unexpected error occurred.",
             variant: "destructive",
         });
     } finally {
-        setIsSearching(false);
+        setIsAiSearching(false);
+    }
+  };
+  
+  const handleWebSearch = async () => {
+    if (!webSearchQuery.trim()) {
+        toast({title: "Search Term", description: "Please enter a term to search.", variant: "default"});
+        return;
+    }
+    setIsWebSearching(true);
+    setWebSearchResults([]);
+    try {
+        const result = await searchWebForImagesAction(webSearchQuery);
+        if (result.imageUrls && result.imageUrls.length > 0) {
+            setWebSearchResults(result.imageUrls);
+        } else {
+            toast({
+                title: "Web Search Failed",
+                description: result.error || "Could not find images for this search term.",
+                variant: "destructive",
+            });
+        }
+    } catch (error) {
+         toast({
+            title: "Web Search Error",
+            description: error instanceof Error ? error.message : "An unexpected error occurred.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsWebSearching(false);
     }
   };
 
+
+  const renderResultsGrid = (results: string[], type: 'ai' | 'web') => (
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+      {results.map((url, index) => (
+        <button
+          key={`${type}-result-${index}`}
+          onClick={() => handleImageClick(url)}
+          className={`relative aspect-video rounded-md overflow-hidden border-2 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1
+                      ${imageUrl === url ? 'border-primary ring-2 ring-primary ring-offset-1' : 'border-transparent'}`}
+          aria-label={`Select image ${index + 1}`}
+        >
+          <Image src={url} alt={`Image result ${index + 1}`} layout="fill" objectFit="cover" unoptimized />
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col">
+      <DialogContent className="sm:max-w-3xl max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="font-headline flex items-center gap-2">
             <ImageIcon className="w-5 h-5 text-primary" /> Set Image Source
           </DialogTitle>
           <DialogDescription>
-            Enter a URL, generate images with AI, or choose a placeholder.
+            Enter a URL, generate images with AI, or search the web for photos.
           </DialogDescription>
         </DialogHeader>
         
-        <Tabs defaultValue="url" className="flex-grow flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-2 mb-3">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
+          <TabsList className="grid w-full grid-cols-3 mb-3">
             <TabsTrigger value="url"><LinkIcon className="mr-1.5 h-4 w-4" />From URL</TabsTrigger>
-            <TabsTrigger value="search"><Globe className="mr-1.5 h-4 w-4" />Generate / Placeholders</TabsTrigger>
+            <TabsTrigger value="generate"><Sparkles className="mr-1.5 h-4 w-4" />Generate AI</TabsTrigger>
+            <TabsTrigger value="search"><Globe className="mr-1.5 h-4 w-4" />Search Web</TabsTrigger>
           </TabsList>
 
           <TabsContent value="url" className="flex-grow flex flex-col space-y-3 min-h-0">
@@ -151,65 +194,68 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
             )}
           </TabsContent>
 
-          <TabsContent value="search" className="flex-grow flex flex-col space-y-3 min-h-0">
+          <TabsContent value="generate" className="flex-grow flex flex-col space-y-3 min-h-0">
             <div className="flex gap-2">
                 <Input 
                     type="text" 
-                    placeholder="Generate images from a description..." 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { handleOnlineSearch(); e.preventDefault(); } }}
+                    placeholder="e.g., a cat wearing a red hat" 
+                    value={aiSearchQuery}
+                    onChange={(e) => setAiSearchQuery(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { handleAiSearch(); e.preventDefault(); } }}
                     className="h-9"
-                    disabled={isSearching}
+                    disabled={isAiSearching}
                 />
-                <Button onClick={handleOnlineSearch} variant="outline" size="sm" className="h-9 px-3" disabled={isSearching || !searchQuery.trim()}>
-                    {isSearching ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin"/> : <Search className="mr-1.5 h-4 w-4"/>}
+                <Button onClick={handleAiSearch} variant="outline" size="sm" className="h-9 px-3" disabled={isAiSearching || !aiSearchQuery.trim()}>
+                    {isAiSearching ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin"/> : <Sparkles className="mr-1.5 h-4 w-4"/>}
                     Generate
                 </Button>
             </div>
             <ScrollArea className="flex-grow border rounded-md p-2 bg-muted/20">
-              {isSearching ? (
+              {isAiSearching ? (
                   <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground gap-2">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <p>Generating images based on your search...</p>
+                    <p>Generating images based on your description...</p>
                     <p className="text-xs">(This may take a moment)</p>
                   </div>
-              ) : searchResults.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {searchResults.map((url, index) => (
-                      <button
-                        key={`search-result-${index}`}
-                        onClick={() => handleExampleSelect(url)}
-                        className={`relative aspect-video rounded-md overflow-hidden border-2 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1
-                                    ${imageUrl === url ? 'border-primary ring-2 ring-primary ring-offset-1' : 'border-transparent'}`}
-                        aria-label={`Select generated image ${index + 1}`}
-                      >
-                        <Image src={url} alt={`Generated image for "${searchQuery}"`} layout="fill" objectFit="cover" unoptimized />
-                      </button>
-                    ))}
-                  </div>
+              ) : aiSearchResults.length > 0 ? (
+                  renderResultsGrid(aiSearchResults, 'ai')
               ) : (
-                <>
-                    <p className="text-xs text-muted-foreground text-center mb-2">
-                        Enter a description to generate images, or select a placeholder below.
-                    </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {examplePlaceholders.map((img) => (
-                          <button
-                            key={img.url}
-                            onClick={() => handleExampleSelect(img.url)}
-                            className={`relative aspect-video rounded-md overflow-hidden border-2 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1
-                                        ${imageUrl === img.url ? 'border-primary ring-2 ring-primary ring-offset-1' : 'border-transparent'}`}
-                            aria-label={`Select ${img.name}`}
-                          >
-                            <Image src={img.url} alt={img.name} layout="fill" objectFit="cover" unoptimized />
-                            <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 text-center truncate">
-                                {img.name}
-                            </div>
-                          </button>
-                        ))}
-                    </div>
-                </>
+                  <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground gap-2">
+                    <p>Enter a description to generate unique images with AI.</p>
+                  </div>
+              )}
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="search" className="flex-grow flex flex-col space-y-3 min-h-0">
+            <div className="flex gap-2">
+                <Input 
+                    type="text" 
+                    placeholder="e.g., city skyline, abstract background" 
+                    value={webSearchQuery}
+                    onChange={(e) => setWebSearchQuery(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { handleWebSearch(); e.preventDefault(); } }}
+                    className="h-9"
+                    disabled={isWebSearching}
+                />
+                <Button onClick={handleWebSearch} variant="outline" size="sm" className="h-9 px-3" disabled={isWebSearching || !webSearchQuery.trim()}>
+                    {isWebSearching ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin"/> : <Search className="mr-1.5 h-4 w-4"/>}
+                    Search
+                </Button>
+            </div>
+            <ScrollArea className="flex-grow border rounded-md p-2 bg-muted/20">
+              {isWebSearching ? (
+                  <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground gap-2">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p>Searching the web for images...</p>
+                  </div>
+              ) : webSearchResults.length > 0 ? (
+                  renderResultsGrid(webSearchResults, 'web')
+              ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground gap-2">
+                    <p>Enter a term to search for high-quality photos.</p>
+                    <p className="text-xs">(Powered by Pexels)</p>
+                  </div>
               )}
             </ScrollArea>
           </TabsContent>

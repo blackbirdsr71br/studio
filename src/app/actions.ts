@@ -11,6 +11,7 @@ import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { hexToHslCssString } from '@/lib/utils';
+import { createClient } from 'pexels';
 
 // Helper function to remove properties with empty string or null values
 const cleanEmptyOrNullProperties = (properties: Record<string, any>): Record<string, any> => {
@@ -641,6 +642,32 @@ export async function generateJsonParserCodeAction(
     return { error: message };
   }
 }
+
+export async function searchWebForImagesAction(query: string): Promise<{ imageUrls: string[] | null; error?: string }> {
+  const apiKey = process.env.PEXELS_API_KEY;
+  if (!apiKey || apiKey.trim() === "") {
+    return { imageUrls: null, error: "Pexels API key is not configured on the server. Please set PEXELS_API_KEY in your .env file." };
+  }
+
+  try {
+    const client = createClient(apiKey);
+    const response = await client.photos.search({ query, per_page: 15 });
+    
+    if ('photos' in response) {
+        const imageUrls = response.photos.map(photo => photo.src.large);
+        return { imageUrls };
+    } else {
+        // This 'else' block handles the Pexels 'ErrorResponse' type
+        const pexelsError = response as any;
+        return { imageUrls: null, error: `Failed to search on Pexels: ${pexelsError.code || 'Unknown error'}` };
+    }
+    
+  } catch (error) {
+    console.error("Error searching Pexels:", error);
+    const message = error instanceof Error ? error.message : "An unknown error occurred during web image search.";
+    return { imageUrls: null, error: message };
+  }
+}
       
 
     
@@ -650,3 +677,4 @@ export async function generateJsonParserCodeAction(
     
 
     
+
