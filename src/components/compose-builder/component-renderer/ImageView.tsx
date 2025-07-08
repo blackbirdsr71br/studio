@@ -10,7 +10,7 @@ interface ImageViewProps {
 
 export function ImageView({ properties, isPreview = false }: ImageViewProps) {
   const {
-    src: rawSrc = 'https://placehold.co/100x100.png',
+    src: rawSrc,
     contentDescription = 'Image',
     // width and height from props are now used by RenderedComponentWrapper, not directly here for sizing
     padding, // All sides padding
@@ -27,7 +27,7 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
     backgroundColor,
   } = properties;
 
-  const src = rawSrc || 'https://placehold.co/100x100.png';
+  const src = rawSrc || 'https://placehold.co/300x200.png';
 
   const effectivePaddingTop = paddingTop ?? padding ?? 0;
   const effectivePaddingBottom = paddingBottom ?? padding ?? 0;
@@ -50,7 +50,6 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
     borderBottomLeftRadius: `${cornerRadiusBottomLeft}px`,
     backgroundColor: backgroundColor,
     position: 'relative', // Required for next/image with fill
-    flex: '1 1 0%', // Explicitly tell the component to grow within its flex container (RenderedComponentWrapper)
   };
 
   let objectFit: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down' = 'cover';
