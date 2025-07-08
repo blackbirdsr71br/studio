@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Globe, Link as LinkIcon, Image as ImageIcon, Search, Loader2, Sparkles, LayoutGrid } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
-import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { generateImageFromHintAction, searchWebForImagesAction } from '@/app/actions';
 
@@ -296,14 +295,11 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
             />
             {imageUrl && !imageUrl.startsWith('data:image/') && (
                 <div className="mt-2 p-2 border rounded-md bg-muted/30 flex justify-center items-center h-40 overflow-hidden">
-                    <Image 
+                    <img 
                         src={imageUrl} 
                         alt="Preview" 
-                        width={150} 
-                        height={150} 
                         className="object-contain max-h-full max-w-full"
                         onError={() => console.warn("Failed to load image preview from URL")}
-                        unoptimized
                     />
                 </div>
             )}
@@ -314,7 +310,7 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
             )}
           </TabsContent>
 
-          <TabsContent value="gallery" className="flex-grow flex flex-col space-y-3 min-h-0">
+          <TabsContent value="gallery" className="flex-grow flex flex-col min-h-0">
             <ScrollArea className="flex-grow border rounded-md p-2 bg-muted/20">
               {uniqueGalleryUrls.length > 0 ? (
                   renderResultsGrid(uniqueGalleryUrls, 'gallery')
