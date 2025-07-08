@@ -1,3 +1,4 @@
+
 'use client';
 import type { BaseComponentProps } from '@/types/compose-spec';
 import Image from 'next/image';
@@ -9,7 +10,7 @@ interface ImageViewProps {
 
 export function ImageView({ properties, isPreview = false }: ImageViewProps) {
   const {
-    src = 'https://placehold.co/100x100.png',
+    src: rawSrc = 'https://placehold.co/100x100.png',
     contentDescription = 'Image',
     // width and height from props are now used by RenderedComponentWrapper, not directly here for sizing
     padding, // All sides padding
@@ -25,6 +26,8 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
     contentScale = "Crop",
     backgroundColor,
   } = properties;
+
+  const src = rawSrc || 'https://placehold.co/100x100.png';
 
   const effectivePaddingTop = paddingTop ?? padding ?? 0;
   const effectivePaddingBottom = paddingBottom ?? padding ?? 0;
