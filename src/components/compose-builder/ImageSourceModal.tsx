@@ -321,7 +321,7 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
           </TabsContent>
 
           <TabsContent value="gallery" className="flex-grow flex flex-col min-h-0">
-            <ScrollArea className="flex-grow border rounded-md p-2 bg-muted/20">
+            <ScrollArea className="h-full border rounded-md p-2 bg-muted/20">
               {uniqueGalleryUrls.length > 0 ? (
                   renderResultsGrid(uniqueGalleryUrls, 'gallery')
               ) : (
