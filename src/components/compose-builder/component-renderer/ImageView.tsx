@@ -49,7 +49,8 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
     borderBottomRightRadius: `${cornerRadiusBottomRight}px`,
     borderBottomLeftRadius: `${cornerRadiusBottomLeft}px`,
     backgroundColor: backgroundColor,
-    position: 'relative' // Required for next/image with fill
+    position: 'relative', // Required for next/image with fill
+    flex: '1 1 0%', // Explicitly tell the component to grow within its flex container (RenderedComponentWrapper)
   };
 
   let objectFit: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down' = 'cover';
