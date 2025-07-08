@@ -258,13 +258,13 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
 
 
   const renderResultsGrid = (results: string[], type: 'ai' | 'web' | 'gallery') => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
       {results.map((url, index) => (
         <button
           key={`${type}-result-${index}`}
           onClick={() => handleImageClick(url)}
           onDoubleClick={() => handleImageDoubleClick(url)}
-          className={`relative aspect-video rounded-md overflow-hidden border-2 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1
+          className={`relative aspect-square rounded-md overflow-hidden border-2 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1
                       ${imageUrl === url ? 'border-primary ring-2 ring-primary ring-offset-1' : 'border-transparent'}`}
           aria-label={`Select image ${index + 1}`}
         >
@@ -323,7 +323,7 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
           <TabsContent value="gallery" className="flex-grow flex flex-col min-h-0">
             {/* The relative/absolute pattern ensures the ScrollArea has a defined container to fill */}
             <div className="relative flex-1">
-              <ScrollArea className="absolute inset-0 w-full border rounded-md p-2 bg-muted/20">
+              <ScrollArea className="absolute inset-0 w-full h-full border rounded-md p-2 bg-muted/20">
                 {uniqueGalleryUrls.length > 0 ? (
                     renderResultsGrid(uniqueGalleryUrls, 'gallery')
                 ) : (
@@ -413,5 +413,3 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
 });
 
 ImageSourceModal.displayName = 'ImageSourceModal';
-
-    
