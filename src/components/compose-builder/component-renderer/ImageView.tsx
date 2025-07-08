@@ -1,4 +1,3 @@
-
 'use client';
 import type { BaseComponentProps } from '@/types/compose-spec';
 import Image from 'next/image';
@@ -12,10 +11,7 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
   const {
     src = 'https://placehold.co/100x100.png',
     contentDescription = 'Image',
-    width = 100, // Default if properties.width is undefined
-    height = 100, // Default if properties.height is undefined
-    fillMaxWidth,
-    fillMaxHeight,
+    // width and height from props are now used by RenderedComponentWrapper, not directly here for sizing
     padding, // All sides padding
     paddingTop,
     paddingBottom,
@@ -35,33 +31,15 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
   const effectivePaddingStart = paddingStart ?? padding ?? 0;
   const effectivePaddingEnd = paddingEnd ?? padding ?? 0;
 
-  let styleWidth: string;
-  if (fillMaxWidth) {
-    styleWidth = '100%';
-  } else if (typeof width === 'number') {
-    styleWidth = `${width}px`;
-  } else {
-    styleWidth = width || '100px'; // Fallback if width is a string like 'wrap_content' (though less typical for image)
-  }
-
-  let styleHeight: string;
-  if (fillMaxHeight) {
-    styleHeight = '100%';
-  } else if (typeof height === 'number') {
-    styleHeight = `${height}px`;
-  } else {
-    styleHeight = height || '100px'; // Fallback
-  }
-
   const containerStyle: React.CSSProperties = {
     paddingTop: `${effectivePaddingTop}px`,
     paddingBottom: `${effectivePaddingBottom}px`,
     paddingLeft: `${effectivePaddingStart}px`,
     paddingRight: `${effectivePaddingEnd}px`,
-    width: styleWidth,
-    height: styleHeight,
+    width: '100%',
+    height: '100%',
     overflow: 'hidden',
-    display: 'block', // Changed from inline-block
+    display: 'block',
     boxSizing: 'border-box',
     borderTopLeftRadius: `${cornerRadiusTopLeft}px`,
     borderTopRightRadius: `${cornerRadiusTopRight}px`,
