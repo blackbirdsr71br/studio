@@ -321,15 +321,18 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
           </TabsContent>
 
           <TabsContent value="gallery" className="flex-grow flex flex-col min-h-0">
-            <ScrollArea className="flex-grow w-full border rounded-md p-2 bg-muted/20">
-              {uniqueGalleryUrls.length > 0 ? (
-                  renderResultsGrid(uniqueGalleryUrls, 'gallery')
-              ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground gap-2">
-                    <p>No predefined images available.</p>
-                  </div>
-              )}
-            </ScrollArea>
+            {/* The relative/absolute pattern ensures the ScrollArea has a defined container to fill */}
+            <div className="relative flex-1">
+              <ScrollArea className="absolute inset-0 w-full border rounded-md p-2 bg-muted/20">
+                {uniqueGalleryUrls.length > 0 ? (
+                    renderResultsGrid(uniqueGalleryUrls, 'gallery')
+                ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground gap-2">
+                      <p>No predefined images available.</p>
+                    </div>
+                )}
+              </ScrollArea>
+            </div>
           </TabsContent>
 
           <TabsContent value="generate" className="flex-grow flex flex-col space-y-3 min-h-0">
