@@ -17,10 +17,13 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
     paddingEnd,
     "data-ai-hint": aiHint = "abstract pattern",
     contentScale = "Crop",
-    backgroundColor,
+    backgroundColor, // This is the user-defined background color from props
   } = properties;
 
   const src = (rawSrc && rawSrc.trim() !== '') ? rawSrc : 'https://placehold.co/300x200.png';
+  
+  // Determine if a "real" image has been provided by the user, excluding placeholders.
+  const hasRealImage = rawSrc && rawSrc.trim() !== '' && !rawSrc.startsWith('https://placehold.co');
 
   const effectivePaddingTop = paddingTop ?? padding ?? 0;
   const effectivePaddingBottom = paddingBottom ?? padding ?? 0;
@@ -33,7 +36,11 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
     height: '100%',
     display: 'block',
     boxSizing: 'border-box',
-    backgroundColor: backgroundColor || 'hsl(var(--muted))',
+    // NEW LOGIC:
+    // 1. If user provides a specific background color, use it.
+    // 2. If a real image is present, the background should be transparent.
+    // 3. Otherwise (it's a placeholder), use a muted color to ensure visibility.
+    backgroundColor: backgroundColor ? backgroundColor : (hasRealImage ? 'transparent' : 'hsl(var(--muted))'),
     paddingTop: `${effectivePaddingTop}px`,
     paddingBottom: `${effectivePaddingBottom}px`,
     paddingLeft: `${effectivePaddingStart}px`,
