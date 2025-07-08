@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useImperativeHandle, forwardRef, useCallback, useEffect } from 'react';
@@ -363,8 +362,8 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
 
     setIsPublishingCanvasJson(true);
     try {
-      // publishToRemoteConfigAction internally handles filtering for content area components
-      const result = await publishToRemoteConfigAction(components, customComponentTemplates, publishCanvasJsonParameterKey.trim());
+      // Pass the switch state to the action
+      const result = await publishToRemoteConfigAction(components, customComponentTemplates, publishCanvasJsonParameterKey.trim(), includeDefaultValues);
       if (result.success) {
         toast({
           title: "Publish Successful",

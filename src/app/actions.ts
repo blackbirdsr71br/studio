@@ -1,4 +1,3 @@
-
 'use server';
 import { generateComposeCode, type GenerateComposeCodeInput } from '@/ai/flows/generate-compose-code';
 import { generateImageFromHint, type GenerateImageFromHintInput } from '@/ai/flows/generate-image-from-hint-flow';
@@ -334,7 +333,8 @@ export async function getDesignComponentsAsJsonAction(
 export async function publishToRemoteConfigAction(
   components: DesignComponent[],
   customComponentTemplates: CustomComponentTemplate[], 
-  parameterKey: string
+  parameterKey: string,
+  includeDefaultValues: boolean // Added parameter
 ): Promise<{ success: boolean; message: string; version?: string }> {
   console.log("publishToRemoteConfigAction: Initiating publish...");
   const adminSdkInitialized = isAdminInitialized();
@@ -360,8 +360,8 @@ export async function publishToRemoteConfigAction(
   try {
     console.log("publishToRemoteConfigAction: Building hierarchical content JSON for Remote Config...");
     
-    // Generate the hierarchical JSON, always using the concise version (includeDefaultValues = false)
-    const designJsonString = await getDesignComponentsAsJsonAction(components, customComponentTemplates, false);
+    // Generate the hierarchical JSON, now respecting the flag
+    const designJsonString = await getDesignComponentsAsJsonAction(components, customComponentTemplates, includeDefaultValues);
     
     if (designJsonString.startsWith("Error:")) {
       return { success: false, message: `Failed to generate JSON for publishing: ${designJsonString}` };
@@ -689,6 +689,3 @@ export async function searchWebForImagesAction(query: string): Promise<{ imageUr
     
 
     
-
-
-

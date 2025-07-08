@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useImperativeHandle, forwardRef, useCallback } from 'react';
@@ -18,6 +17,8 @@ import { Loader2, UploadCloud } from 'lucide-react';
 import { useDesign } from '@/contexts/DesignContext';
 import { publishToRemoteConfigAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
+import { Switch } from "@/components/ui/switch";
+
 
 export interface PublishConfigModalRef {
   openModal: () => void;
@@ -30,6 +31,7 @@ interface PublishConfigModalProps {
 export const PublishConfigModal = forwardRef<PublishConfigModalRef, PublishConfigModalProps>((props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [parameterKey, setParameterKey] = useState<string>("COMPOSE_DESIGN_JSON_V2");
+  const [includeDefaultValues, setIncludeDefaultValues] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const { components, customComponentTemplates } = useDesign();
   const { toast } = useToast();
@@ -39,6 +41,7 @@ export const PublishConfigModal = forwardRef<PublishConfigModalRef, PublishConfi
       // Reset to default or last used key when opening, if desired
       // setParameterKey("COMPOSE_DESIGN_JSON_V2");
       setIsPublishing(false);
+      setIncludeDefaultValues(false); // Reset switch on open
       setIsOpen(true);
     }
   }));
@@ -65,7 +68,7 @@ export const PublishConfigModal = forwardRef<PublishConfigModalRef, PublishConfi
 
     setIsPublishing(true);
     try {
-      const result = await publishToRemoteConfigAction(components, customComponentTemplates, parameterKey.trim());
+      const result = await publishToRemoteConfigAction(components, customComponentTemplates, parameterKey.trim(), includeDefaultValues);
       if (result.success) {
         toast({
           title: "Publish Successful",
@@ -103,7 +106,7 @@ export const PublishConfigModal = forwardRef<PublishConfigModalRef, PublishConfi
           </DialogDescription>
         </DialogHeader>
         
-        <div className="py-4 space-y-3">
+        <div className="py-4 space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="parameterKeyInput">Parameter Key</Label>
             <Input
@@ -117,7 +120,22 @@ export const PublishConfigModal = forwardRef<PublishConfigModalRef, PublishConfi
               This key will be used to store your design in Firebase Remote Config.
             </p>
           </div>
-          {/* Future: Add fields for description, etc. */}
+          
+          <div className="flex items-center justify-between pt-2">
+            <Label htmlFor="publish-include-defaults" className="text-sm">
+              Include Default Values
+            </Label>
+            <Switch
+              id="publish-include-defaults"
+              checked={includeDefaultValues}
+              onCheckedChange={setIncludeDefaultValues}
+              disabled={isPublishing}
+              aria-label="Include default values in published JSON"
+            />
+          </div>
+           <p className="text-xs text-muted-foreground -mt-3">
+              Include properties with empty or default values in the published JSON.
+            </p>
         </div>
         
         <DialogFooter className="gap-2 sm:gap-0">
