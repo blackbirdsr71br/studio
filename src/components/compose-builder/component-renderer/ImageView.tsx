@@ -68,29 +68,23 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
     borderBottomRightRadius: `${cornerRadiusBottomRight}px`,
     borderBottomLeftRadius: `${cornerRadiusBottomLeft}px`,
     backgroundColor: backgroundColor,
+    position: 'relative' // Required for next/image with fill
   };
 
-  // Image dimensions should be 100% of the containerStyle's dimensions (which now consider padding)
-  // The 'next/image' component with w-full h-full classes will fill this styled div.
-  const imageWidthForNextImage = typeof properties.width === 'number' ? Math.max(1, properties.width - (effectivePaddingStart + effectivePaddingEnd)) : 100; // Fallback for layout calculation
-  const imageHeightForNextImage = typeof properties.height === 'number' ? Math.max(1, properties.height - (effectivePaddingTop + effectivePaddingBottom)) : 100; // Fallback for layout calculation
-
-
-  let objectFitClass: string;
-
+  let objectFit: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down' = 'cover';
   if (isPreview) {
-    objectFitClass = 'object-contain'; // Force 'Fit' scale for all previews
+    objectFit = 'contain'; // Force 'Fit' scale for all previews
   } else {
     switch(contentScale) {
-      case 'Fit': objectFitClass = 'object-contain'; break;
-      case 'FillBounds': objectFitClass = 'object-fill'; break;
-      case 'Inside': objectFitClass = 'object-scale-down'; break;
-      case 'None': objectFitClass = 'object-none'; break;
-      case 'FillWidth': objectFitClass = 'object-cover'; break; 
-      case 'FillHeight': objectFitClass = 'object-cover'; break;
+      case 'Fit': objectFit = 'contain'; break;
+      case 'FillBounds': objectFit = 'fill'; break;
+      case 'Inside': objectFit = 'scale-down'; break;
+      case 'None': objectFit = 'none'; break;
       case 'Crop':
+      case 'FillWidth': 
+      case 'FillHeight':
       default: 
-        objectFitClass = 'object-cover';
+        objectFit = 'cover';
     }
   }
 
@@ -100,10 +94,8 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
       <Image
         src={src as string}
         alt={contentDescription as string}
-        width={imageWidthForNextImage}  // These are more like aspect ratio hints if layout='responsive' or classes define size
-        height={imageHeightForNextImage} // For layout='intrinsic' or 'fixed' they are actual dimensions.
-                                     // Given our classes, these are less critical but good to have.
-        className={`${objectFitClass} w-full h-full`} // These classes are key for filling the div
+        fill
+        style={{ objectFit }}
         data-ai-hint={aiHint as string}
         unoptimized // for placehold.co and other external non-optimized images, including data URIs
       />
