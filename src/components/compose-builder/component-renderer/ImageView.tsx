@@ -27,12 +27,14 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
     backgroundColor,
   } = properties;
 
-  const src = rawSrc || 'https://placehold.co/300x200.png';
+  // This is a critical fix. An empty string "" for src is an error in Next.js.
+  // This ensures we always have a valid placeholder if the src is missing or empty.
+  const src = (rawSrc && rawSrc.trim() !== '') ? rawSrc : 'https://placehold.co/300x200.png';
 
   const effectivePaddingTop = paddingTop ?? padding ?? 0;
   const effectivePaddingBottom = paddingBottom ?? padding ?? 0;
   const effectivePaddingStart = paddingStart ?? padding ?? 0;
-  const effectivePaddingEnd = paddingEnd ?? padding ?? 0;
+  const effectivePaddingEnd = paddingEnd ?? 0;
 
   const containerStyle: React.CSSProperties = {
     paddingTop: `${effectivePaddingTop}px`,
@@ -48,7 +50,8 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
     borderTopRightRadius: `${cornerRadiusTopRight}px`,
     borderBottomRightRadius: `${cornerRadiusBottomRight}px`,
     borderBottomLeftRadius: `${cornerRadiusBottomLeft}px`,
-    backgroundColor: backgroundColor,
+    // Add a default background color to ensure visibility even if the image fails to load
+    backgroundColor: backgroundColor || 'hsl(var(--muted))',
     position: 'relative', // Required for next/image with fill
   };
 
