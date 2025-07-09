@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useImperativeHandle, forwardRef, useCallback } from 'react';
+import React, { useState, useImperativeHandle, forwardRef, useCallback, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,10 +10,14 @@ import { Globe, Link as LinkIcon, Image as ImageIcon, Search, Loader2, Sparkles,
 import { ScrollArea } from '../ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { generateImageFromHintAction, searchWebForImagesAction } from '@/app/actions';
+import { cn } from '@/lib/utils';
 
 export interface ImageSourceModalRef {
   openModal: (callback: (imageUrl: string) => void, currentSrc?: string) => void;
 }
+
+const MIN_WIDTH = 640;
+const MIN_HEIGHT = 480;
 
 const predefinedImageUrls = [
   "https://gestor-contenido.baz.app/Centro-omercial/logos-Tiendas/directorio/lista/elektra.png",
@@ -141,6 +145,8 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
   const [onSelectCallback, setOnSelectCallback] = useState<(url: string) => void>(() => () => {});
   const { toast } = useToast();
 
+  const [dimensions, setDimensions] = useState({ width: 896, height: 600 });
+
   // State for AI Generation
   const [aiSearchQuery, setAiSearchQuery] = useState('');
   const [aiSearchResults, setAiSearchResults] = useState<string[]>([]);
@@ -150,6 +156,32 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
   const [webSearchQuery, setWebSearchQuery] = useState('');
   const [webSearchResults, setWebSearchResults] = useState<string[]>([]);
   const [isWebSearching, setIsWebSearching] = useState(false);
+
+  const handleResizeMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startWidth = dimensions.width;
+    const startHeight = dimensions.height;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+        const newWidth = startWidth + (moveEvent.clientX - startX);
+        const newHeight = startHeight + (moveEvent.clientY - startY);
+        setDimensions({
+            width: Math.max(MIN_WIDTH, newWidth),
+            height: Math.max(MIN_HEIGHT, newHeight),
+        });
+    };
+
+    const handleMouseUp = () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
+
 
   useImperativeHandle(ref, () => ({
     openModal: (callback, currentSrc) => {
@@ -162,6 +194,7 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
       setWebSearchResults([]);
       setIsWebSearching(false);
       setActiveTab(currentSrc?.startsWith('http') || !currentSrc ? 'url' : 'generate');
+      setDimensions({ width: 896, height: 600 }); // Reset to default size on open
       setIsOpen(true);
     }
   }));
@@ -257,7 +290,7 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
 
 
   const renderResultsGrid = (results: string[], type: 'ai' | 'web' | 'gallery') => (
-    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+    <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
       {results.map((url, index) => (
         <button
           key={`${type}-result-${index}`}
@@ -275,13 +308,19 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-3xl max-h-[80vh] flex flex-col">
+      <DialogContent
+        className="sm:max-w-none max-h-none flex flex-col"
+        style={{
+          width: `${dimensions.width}px`,
+          height: `${dimensions.height}px`,
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="font-headline flex items-center gap-2">
             <ImageIcon className="w-5 h-5 text-primary" /> Set Image Source
           </DialogTitle>
           <DialogDescription>
-            Enter a URL, generate images with AI, search the web, or select from the gallery.
+            Enter a URL, generate images with AI, search the web, or select from the gallery. Drag the bottom-right corner to resize.
           </DialogDescription>
         </DialogHeader>
         
@@ -403,6 +442,16 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
             <ImageIcon className="mr-2 h-4 w-4" /> Use this Image Source
           </Button>
         </DialogFooter>
+
+        <div
+          onMouseDown={handleResizeMouseDown}
+          className="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize z-10"
+          aria-label="Resize dialog"
+        >
+          <svg width="100%" height="100%" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-muted-foreground/50">
+            <path d="M12 0V12H0" stroke="currentColor" strokeWidth="2"/>
+          </svg>
+        </div>
       </DialogContent>
     </Dialog>
   );
