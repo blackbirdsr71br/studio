@@ -332,6 +332,20 @@ export const DesignProvider: FC<{ children: ReactNode }> = ({ children }) => {
   useEffect(() => {
     setIsClient(true);
     const loadInitialData = async () => {
+      // Load gallery images from local storage first
+      try {
+        const savedImagesJson = localStorage.getItem(GALLERY_IMAGES_COLLECTION);
+        if (savedImagesJson) {
+          const savedImages = JSON.parse(savedImagesJson);
+          if (Array.isArray(savedImages)) {
+            setDesignState(prev => ({ ...prev, galleryImages: savedImages.sort((a,b) => b.timestamp - a.timestamp) }));
+          }
+        }
+      } catch (error) {
+        console.error("Error loading gallery images from localStorage:", error);
+      }
+
+
       if (!db) {
         console.warn("Firestore instance (db) is not available. Skipping loading custom templates and layouts.");
         setIsLoadingTemplates(false);
@@ -413,28 +427,6 @@ export const DesignProvider: FC<{ children: ReactNode }> = ({ children }) => {
       } finally {
         setIsLoadingLayouts(false);
       }
-
-      // Load Gallery Images
-      try {
-        const galleryQuery = query(collection(db, GALLERY_IMAGES_COLLECTION), orderBy("timestamp", "desc"));
-        const gallerySnapshot = await getDocs(galleryQuery);
-        const images: GalleryImage[] = [];
-        gallerySnapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          if (data.url && data.timestamp) {
-            images.push({
-              id: docSnap.id,
-              url: data.url as string,
-              timestamp: data.timestamp as number,
-            });
-          }
-        });
-        setDesignState(prev => ({ ...prev, galleryImages: images }));
-      } catch (error) {
-         console.error("Error loading gallery images from Firestore:", error);
-         toast({ title: "Gallery Load Failed", description: "Could not load gallery images.", variant: "destructive" });
-      }
-
     };
     loadInitialData();
   }, [toast]); 
@@ -1679,10 +1671,6 @@ export const DesignProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
 
   const addImageToGallery = useCallback(async (url: string) => {
-    if (!db) {
-      toast({ title: "Save Failed", description: "Firestore not available.", variant: "destructive" });
-      return;
-    }
     try {
       new URL(url);
     } catch (_) {
@@ -1690,53 +1678,45 @@ export const DesignProvider: FC<{ children: ReactNode }> = ({ children }) => {
       return;
     }
 
-    const docId = `image-${Date.now()}`;
     const newImage: GalleryImage = {
-      id: docId,
+      id: `gallery-image-${Date.now()}`,
       url: url,
       timestamp: Date.now(),
     };
     
-    setDesignState(prev => ({
-        ...prev,
-        galleryImages: [newImage, ...prev.galleryImages].sort((a,b) => b.timestamp - a.timestamp)
-    }));
-
-    try {
-        await setDoc(doc(db, GALLERY_IMAGES_COLLECTION, docId), { url: newImage.url, timestamp: newImage.timestamp });
+    setDesignState(prev => {
+        const newGallery = [newImage, ...prev.galleryImages].sort((a,b) => b.timestamp - a.timestamp);
+        try {
+            localStorage.setItem(GALLERY_IMAGES_COLLECTION, JSON.stringify(newGallery));
+        } catch (error) {
+            console.error("Error saving gallery to localStorage:", error);
+            toast({ title: "Save Error", description: "Could not save image to local gallery.", variant: "destructive" });
+            // Revert state if save fails
+            return prev;
+        }
         toast({ title: "Image Added", description: "New image URL saved to gallery." });
-    } catch (error) {
-        console.error("Error saving image to gallery:", error);
-        toast({ title: "Sync Error", description: "Could not save image to cloud gallery.", variant: "destructive" });
-        // Optional: rollback local change
-        setDesignState(prev => ({ ...prev, galleryImages: prev.galleryImages.filter(img => img.id !== docId)}));
-    }
+        return { ...prev, galleryImages: newGallery };
+    });
   }, [toast]);
 
   const removeImageFromGallery = useCallback(async (id: string) => {
-    if (!db) {
-      toast({ title: "Delete Failed", description: "Firestore not available.", variant: "destructive" });
-      return;
-    }
-    
-    const imageToRemove = designState.galleryImages.find(img => img.id === id);
-    if (!imageToRemove) return;
+    setDesignState(prev => {
+        const imageToRemove = prev.galleryImages.find(img => img.id === id);
+        if (!imageToRemove) return prev;
 
-    setDesignState(prev => ({
-        ...prev,
-        galleryImages: prev.galleryImages.filter(img => img.id !== id)
-    }));
+        const newGallery = prev.galleryImages.filter(img => img.id !== id);
+        try {
+            localStorage.setItem(GALLERY_IMAGES_COLLECTION, JSON.stringify(newGallery));
+        } catch (error) {
+            console.error("Error removing image from localStorage:", error);
+            toast({ title: "Delete Error", description: "Could not remove image from local gallery.", variant: "destructive" });
+            return prev;
+        }
 
-    try {
-        await deleteDoc(doc(db, GALLERY_IMAGES_COLLECTION, id));
         toast({ title: "Image Removed", description: "Image URL removed from gallery." });
-    } catch (error) {
-        console.error("Error removing image from gallery:", error);
-        toast({ title: "Sync Error", description: "Could not remove image from cloud gallery.", variant: "destructive" });
-        // Optional: rollback local change
-        setDesignState(prev => ({ ...prev, galleryImages: [...prev.galleryImages, imageToRemove].sort((a,b) => b.timestamp - a.timestamp) }));
-    }
-  }, [designState.galleryImages, toast]);
+        return { ...prev, galleryImages: newGallery };
+    });
+  }, [toast]);
 
   const contextValue: DesignContextType = {
     ...designState,

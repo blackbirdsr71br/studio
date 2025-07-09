@@ -135,7 +135,7 @@ export interface SavedLayout {
 }
 
 export interface GalleryImage {
-  id: string; // Firestore document ID
+  id: string; // Unique identifier for the image (e.g., timestamp-based)
   url: string;
   timestamp: number;
 }
