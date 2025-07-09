@@ -134,12 +134,19 @@ export interface SavedLayout {
   timestamp?: number; // For sorting and display
 }
 
+export interface GalleryImage {
+  id: string; // Firestore document ID
+  url: string;
+  timestamp: number;
+}
+
 export interface DesignState {
   components: DesignComponent[];
   selectedComponentId: string | null;
   nextId: number;
   customComponentTemplates: CustomComponentTemplate[];
   savedLayouts: SavedLayout[];
+  galleryImages: GalleryImage[];
   editingTemplateInfo?: {
     templateId: string;
     firestoreId?: string;

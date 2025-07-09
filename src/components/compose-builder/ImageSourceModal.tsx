@@ -1,16 +1,17 @@
+
 'use client';
 
-import React, { useState, useImperativeHandle, forwardRef, useCallback, useRef } from 'react';
+import React, { useState, useImperativeHandle, forwardRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Globe, Link as LinkIcon, Image as ImageIcon, Search, Loader2, Sparkles, LayoutGrid } from 'lucide-react';
+import { Globe, Link as LinkIcon, Image as ImageIcon, Search, Loader2, Sparkles, LayoutGrid, Trash2, Pencil, Check } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { generateImageFromHintAction, searchWebForImagesAction } from '@/app/actions';
-import { cn } from '@/lib/utils';
+import { useDesign } from '@/contexts/DesignContext';
 
 export interface ImageSourceModalRef {
   openModal: (callback: (imageUrl: string) => void, currentSrc?: string) => void;
@@ -19,133 +20,20 @@ export interface ImageSourceModalRef {
 const MIN_WIDTH = 640;
 const MIN_HEIGHT = 480;
 
-const predefinedImageUrls = [
-  "https://gestor-contenido.baz.app/Centro-omercial/logos-Tiendas/directorio/lista/elektra.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/PruebaColorContorno.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/bancoazteca.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/tvazteca.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/segurosazteca.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/comprainternacional.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/elektramotos.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/benelli.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/bfgoodrich.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/firestone.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/hero.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/italika.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/lth.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/michelin.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/uniroyal.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/dbebe.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/evenflo.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/joykoo.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/juguetibici.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/lego.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/conair.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/dermaline.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/divya.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/gamaprofessional.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/letmex.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/perfumesarabes.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/perfumegallery.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/fragance.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/america.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/dormimundo.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/luuna.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/restonic.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/sognare.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/springair.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/benotto.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/teton.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/veloci.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/clevercel.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/edifier.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/hp.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/jvc.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/klipsch.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/macstore.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/motorola.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/nintendo.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/oppo.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/playstation.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/selectsound.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/sony.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/steren.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/stf.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/vak.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/farmaenvios.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/dewalt.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/gutstark.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/jardimex.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/makita.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/truper.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/gandhi.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/thesaifhouse.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/blackanddecker.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/brother.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/hisense.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/lg.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/mabe.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/ninja.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/tcl.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/tfal.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/teka.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/tramontina.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/vasconia.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/kessamuebles.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/mele.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/mundoin.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/cvdirecto.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/hkpro.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/honor.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/lenovo.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/princo.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/redlemon.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/roomi.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/carnival.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/coach.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/dcshoes.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/flexi.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/furor.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/joyeriasbizzarro.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/invicta.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/jansport.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/kswiss.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/lee.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/lens.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/lotto.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/marcjacobs.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/michaelkors.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/nike.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/oggi.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/pirma.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/playtex.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/puma.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/reebok.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/roxy.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/salvajetentacion.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/stylo.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/swissbrand.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/quiksilver.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/bet365.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/cvdirecto.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/hkpro.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/honor.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/lenovo.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/princo.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/redlemon.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/roomi.png",
-  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/bet365.png",
-];
-const uniqueGalleryUrls = [...new Set(predefinedImageUrls)];
-
 export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('url');
   const [imageUrl, setImageUrl] = useState('');
   const [onSelectCallback, setOnSelectCallback] = useState<(url: string) => void>(() => () => {});
   const { toast } = useToast();
+  const { galleryImages, addImageToGallery, removeImageFromGallery } = useDesign();
 
+  // State for modal resizing
   const [dimensions, setDimensions] = useState({ width: 896, height: 600 });
+  
+  // State for editing gallery
+  const [isEditingGallery, setIsEditingGallery] = useState(false);
+  const [newImageUrl, setNewImageUrl] = useState('');
 
   // State for AI Generation
   const [aiSearchQuery, setAiSearchQuery] = useState('');
@@ -187,12 +75,15 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
     openModal: (callback, currentSrc) => {
       setOnSelectCallback(() => callback);
       setImageUrl(currentSrc || '');
+      // Reset all other states
       setAiSearchQuery('');
       setAiSearchResults([]);
       setIsAiSearching(false);
       setWebSearchQuery('');
       setWebSearchResults([]);
       setIsWebSearching(false);
+      setIsEditingGallery(false);
+      setNewImageUrl('');
       setActiveTab(currentSrc?.startsWith('http') || !currentSrc ? 'url' : 'generate');
       setDimensions({ width: 896, height: 600 }); // Reset to default size on open
       setIsOpen(true);
@@ -205,10 +96,9 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
         return;
     }
     try {
-        // Basic URL validation
         new URL(imageUrl);
     } catch (_) {
-        if (!imageUrl.startsWith('data:image/')) { // Allow data URIs
+        if (!imageUrl.startsWith('data:image/')) {
             toast({ title: "Invalid URL", description: "Please enter a valid image URL.", variant: "destructive" });
             return;
         }
@@ -218,16 +108,33 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
   };
 
   const handleImageClick = (url: string) => {
-    setImageUrl(url);
+    if (!isEditingGallery) {
+      setImageUrl(url);
+    }
   };
 
   const handleImageDoubleClick = (url: string) => {
-    if (!url.trim()) {
-      toast({ title: "Error", description: "Image URL is empty.", variant: "destructive" });
+    if (!isEditingGallery) {
+      if (!url.trim()) {
+        toast({ title: "Error", description: "Image URL is empty.", variant: "destructive" });
+        return;
+      }
+      onSelectCallback(url);
+      setIsOpen(false);
+    }
+  };
+
+  const handleAddImageUrlToGallery = async () => {
+    if (!newImageUrl.trim()) {
+      toast({ title: "URL Required", description: "Please enter a URL to add.", variant: "default" });
       return;
     }
-    onSelectCallback(url);
-    setIsOpen(false);
+    await addImageToGallery(newImageUrl);
+    setNewImageUrl(''); // Clear input after adding
+  };
+
+  const handleRemoveImageFromGallery = async (id: string) => {
+    await removeImageFromGallery(id);
   };
   
   const handleAiSearch = async () => {
@@ -289,20 +196,38 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
   };
 
 
-  const renderResultsGrid = (results: string[], type: 'ai' | 'web' | 'gallery') => (
+  const renderResultsGrid = (
+    results: (string | { id: string; url: string })[],
+    type: 'ai' | 'web' | 'gallery'
+  ) => (
     <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-      {results.map((url, index) => (
-        <button
-          key={`${type}-result-${index}`}
-          onClick={() => handleImageClick(url)}
-          onDoubleClick={() => handleImageDoubleClick(url)}
-          className={`relative aspect-square rounded-md overflow-hidden border-2 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1
-                      ${imageUrl === url ? 'border-primary ring-2 ring-primary ring-offset-1' : 'border-transparent'}`}
-          aria-label={`Select image ${index + 1}`}
-        >
-          <img src={url} alt={`Image result ${index + 1}`} className="absolute inset-0 h-full w-full object-contain p-1" loading="lazy" />
-        </button>
-      ))}
+      {results.map((item, index) => {
+        const url = typeof item === 'string' ? item : item.url;
+        const id = typeof item === 'string' ? `item-${index}` : item.id;
+        return (
+          <div key={id} className="relative group">
+            <button
+              onClick={() => handleImageClick(url)}
+              onDoubleClick={() => handleImageDoubleClick(url)}
+              className={`relative aspect-square w-full rounded-md overflow-hidden border-2 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1
+                          ${imageUrl === url && !isEditingGallery ? 'border-primary ring-2 ring-primary ring-offset-1' : 'border-transparent'}`}
+              aria-label={`Select image ${index + 1}`}
+            >
+              <img src={url} alt={`Image result ${index + 1}`} className="absolute inset-0 h-full w-full object-contain p-1" loading="lazy" />
+            </button>
+            {isEditingGallery && type === 'gallery' && (
+              <Button
+                variant="destructive"
+                size="icon"
+                className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => { e.stopPropagation(); handleRemoveImageFromGallery(id); }}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 
@@ -358,16 +283,36 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
             )}
           </TabsContent>
 
-          <TabsContent value="gallery" className="flex-grow flex flex-col min-h-0">
-            <ScrollArea className="flex-grow border rounded-md p-2 bg-muted/20">
-              {uniqueGalleryUrls.length > 0 ? (
-                  renderResultsGrid(uniqueGalleryUrls, 'gallery')
-              ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground gap-2">
-                    <p>No predefined images available.</p>
-                  </div>
-              )}
-            </ScrollArea>
+          <TabsContent value="gallery" className="flex-grow flex flex-col min-h-0 space-y-2">
+            <div className="flex justify-end items-center shrink-0">
+                <Button variant="outline" size="sm" onClick={() => setIsEditingGallery(!isEditingGallery)} className="h-8 px-3">
+                    {isEditingGallery ? <Check className="mr-1.5 h-4 w-4"/> : <Pencil className="mr-1.5 h-4 w-4"/>}
+                    {isEditingGallery ? 'Done' : 'Edit Gallery'}
+                </Button>
+            </div>
+            {isEditingGallery && (
+              <div className="flex gap-2 p-2 border rounded-md bg-muted/30 shrink-0">
+                <Input
+                  placeholder="https://.../image.png"
+                  value={newImageUrl}
+                  onChange={(e) => setNewImageUrl(e.target.value)}
+                  onKeyDown={(e) => { if(e.key === 'Enter') handleAddImageUrlToGallery(); }}
+                />
+                <Button onClick={handleAddImageUrlToGallery} size="sm" className="px-3">Add URL</Button>
+              </div>
+            )}
+            <div className="flex-grow min-h-0">
+                 <ScrollArea className="h-full border rounded-md p-2 bg-muted/20">
+                    {galleryImages.length > 0 ? (
+                        renderResultsGrid(galleryImages, 'gallery')
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground gap-2">
+                            <p>Your gallery is empty.</p>
+                            <p className="text-xs">Click "Edit Gallery" to add image URLs.</p>
+                        </div>
+                    )}
+                 </ScrollArea>
+            </div>
           </TabsContent>
 
           <TabsContent value="generate" className="flex-grow flex flex-col space-y-3 min-h-0">
@@ -386,21 +331,23 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
                     Generate
                 </Button>
             </div>
-            <ScrollArea className="flex-grow border rounded-md p-2 bg-muted/20">
-              {isAiSearching ? (
-                  <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground gap-2">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <p>Generating images based on your description...</p>
-                    <p className="text-xs">(This may take a moment)</p>
-                  </div>
-              ) : aiSearchResults.length > 0 ? (
-                  renderResultsGrid(aiSearchResults, 'ai')
-              ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground gap-2">
-                    <p>Enter a description to generate unique images with AI.</p>
-                  </div>
-              )}
-            </ScrollArea>
+            <div className="flex-grow min-h-0">
+                <ScrollArea className="h-full border rounded-md p-2 bg-muted/20">
+                  {isAiSearching ? (
+                      <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground gap-2">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <p>Generating images based on your description...</p>
+                        <p className="text-xs">(This may take a moment)</p>
+                      </div>
+                  ) : aiSearchResults.length > 0 ? (
+                      renderResultsGrid(aiSearchResults, 'ai')
+                  ) : (
+                      <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground gap-2">
+                        <p>Enter a description to generate unique images with AI.</p>
+                      </div>
+                  )}
+                </ScrollArea>
+            </div>
           </TabsContent>
 
           <TabsContent value="search" className="flex-grow flex flex-col space-y-3 min-h-0">
@@ -419,21 +366,23 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
                     Search
                 </Button>
             </div>
-            <ScrollArea className="flex-grow border rounded-md p-2 bg-muted/20">
-              {isWebSearching ? (
-                  <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground gap-2">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <p>Searching the web for images...</p>
-                  </div>
-              ) : webSearchResults.length > 0 ? (
-                  renderResultsGrid(webSearchResults, 'web')
-              ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground gap-2">
-                    <p>Enter a term to search for high-quality photos.</p>
-                    <p className="text-xs">(Powered by Pexels)</p>
-                  </div>
-              )}
-            </ScrollArea>
+            <div className="flex-grow min-h-0">
+                <ScrollArea className="h-full border rounded-md p-2 bg-muted/20">
+                  {isWebSearching ? (
+                      <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground gap-2">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <p>Searching the web for images...</p>
+                      </div>
+                  ) : webSearchResults.length > 0 ? (
+                      renderResultsGrid(webSearchResults, 'web')
+                  ) : (
+                      <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground gap-2">
+                        <p>Enter a term to search for high-quality photos.</p>
+                        <p className="text-xs">(Powered by Pexels)</p>
+                      </div>
+                  )}
+                </ScrollArea>
+            </div>
           </TabsContent>
         </Tabs>
         

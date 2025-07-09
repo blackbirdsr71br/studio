@@ -3,7 +3,7 @@
 
 import type { ReactNode} from 'react';
 import React, { createContext, useState, useCallback, useEffect, FC, useContext } from 'react';
-import type { DesignComponent, DesignState, ComponentType, BaseComponentProps, CustomComponentTemplate, SavedLayout } from '@/types/compose-spec';
+import type { DesignComponent, DesignState, ComponentType, BaseComponentProps, CustomComponentTemplate, SavedLayout, GalleryImage } from '@/types/compose-spec';
 import { getDefaultProperties, CUSTOM_COMPONENT_TYPE_PREFIX, isCustomComponentType, isContainerType, getComponentDisplayName, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID, CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
 import { db } from '@/lib/firebase';
 import { collection, doc, setDoc, getDocs, deleteDoc, updateDoc, query, orderBy } from "firebase/firestore";
@@ -36,12 +36,15 @@ interface DesignContextType extends DesignState {
   redo: () => void;
   copyComponent: (id: string) => void;
   pasteComponent: (targetParentId?: string | null) => void;
+  addImageToGallery: (url: string) => Promise<void>;
+  removeImageFromGallery: (id: string) => Promise<void>;
 }
 
 const DesignContext = createContext<DesignContextType | undefined>(undefined);
 
 const CUSTOM_TEMPLATES_COLLECTION = 'customComponentTemplates';
 const SAVED_LAYOUTS_COLLECTION = 'savedLayouts';
+const GALLERY_IMAGES_COLLECTION = 'galleryImages';
 
 
 const deepClone = <T>(obj: T): T => {
@@ -234,6 +237,7 @@ const initialDesignState: DesignState = {
   nextId: initialNextId,
   customComponentTemplates: [],
   savedLayouts: [],
+  galleryImages: [],
   editingTemplateInfo: null,
   editingLayoutInfo: null,
   history: [],
@@ -335,6 +339,7 @@ export const DesignProvider: FC<{ children: ReactNode }> = ({ children }) => {
         toast({ title: "Offline Mode", description: "Cannot connect to database. Changes will be local.", variant: "default" });
         return;
       }
+      // Load Custom Templates
       try {
         setIsLoadingTemplates(true);
         const templatesQuery = query(collection(db, CUSTOM_TEMPLATES_COLLECTION));
@@ -371,6 +376,7 @@ export const DesignProvider: FC<{ children: ReactNode }> = ({ children }) => {
         setIsLoadingTemplates(false);
       }
 
+      // Load Saved Layouts
       try {
         setIsLoadingLayouts(true);
         const layoutsQuery = query(collection(db, SAVED_LAYOUTS_COLLECTION), orderBy("timestamp", "desc"));
@@ -407,6 +413,28 @@ export const DesignProvider: FC<{ children: ReactNode }> = ({ children }) => {
       } finally {
         setIsLoadingLayouts(false);
       }
+
+      // Load Gallery Images
+      try {
+        const galleryQuery = query(collection(db, GALLERY_IMAGES_COLLECTION), orderBy("timestamp", "desc"));
+        const gallerySnapshot = await getDocs(galleryQuery);
+        const images: GalleryImage[] = [];
+        gallerySnapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (data.url && data.timestamp) {
+            images.push({
+              id: docSnap.id,
+              url: data.url as string,
+              timestamp: data.timestamp as number,
+            });
+          }
+        });
+        setDesignState(prev => ({ ...prev, galleryImages: images }));
+      } catch (error) {
+         console.error("Error loading gallery images from Firestore:", error);
+         toast({ title: "Gallery Load Failed", description: "Could not load gallery images.", variant: "destructive" });
+      }
+
     };
     loadInitialData();
   }, [toast]); 
@@ -1650,6 +1678,66 @@ export const DesignProvider: FC<{ children: ReactNode }> = ({ children }) => {
   }, [designState.clipboard, designState.nextId, designState.components, designState.customComponentTemplates, designState.selectedComponentId, toast, updateStateWithHistory]);
 
 
+  const addImageToGallery = useCallback(async (url: string) => {
+    if (!db) {
+      toast({ title: "Save Failed", description: "Firestore not available.", variant: "destructive" });
+      return;
+    }
+    try {
+      new URL(url);
+    } catch (_) {
+      toast({ title: "Invalid URL", description: "Please enter a valid image URL.", variant: "destructive" });
+      return;
+    }
+
+    const docId = `image-${Date.now()}`;
+    const newImage: GalleryImage = {
+      id: docId,
+      url: url,
+      timestamp: Date.now(),
+    };
+    
+    setDesignState(prev => ({
+        ...prev,
+        galleryImages: [newImage, ...prev.galleryImages].sort((a,b) => b.timestamp - a.timestamp)
+    }));
+
+    try {
+        await setDoc(doc(db, GALLERY_IMAGES_COLLECTION, docId), { url: newImage.url, timestamp: newImage.timestamp });
+        toast({ title: "Image Added", description: "New image URL saved to gallery." });
+    } catch (error) {
+        console.error("Error saving image to gallery:", error);
+        toast({ title: "Sync Error", description: "Could not save image to cloud gallery.", variant: "destructive" });
+        // Optional: rollback local change
+        setDesignState(prev => ({ ...prev, galleryImages: prev.galleryImages.filter(img => img.id !== docId)}));
+    }
+  }, [toast]);
+
+  const removeImageFromGallery = useCallback(async (id: string) => {
+    if (!db) {
+      toast({ title: "Delete Failed", description: "Firestore not available.", variant: "destructive" });
+      return;
+    }
+    
+    const imageToRemove = designState.galleryImages.find(img => img.id === id);
+    if (!imageToRemove) return;
+
+    setDesignState(prev => ({
+        ...prev,
+        galleryImages: prev.galleryImages.filter(img => img.id !== id)
+    }));
+
+    try {
+        await deleteDoc(doc(db, GALLERY_IMAGES_COLLECTION, id));
+        toast({ title: "Image Removed", description: "Image URL removed from gallery." });
+    } catch (error) {
+        console.error("Error removing image from gallery:", error);
+        toast({ title: "Sync Error", description: "Could not remove image from cloud gallery.", variant: "destructive" });
+        // Optional: rollback local change
+        setDesignState(prev => ({ ...prev, galleryImages: [...prev.galleryImages, imageToRemove].sort((a,b) => b.timestamp - a.timestamp) }));
+    }
+  }, [designState.galleryImages, toast]);
+
   const contextValue: DesignContextType = {
     ...designState,
     addComponent,
@@ -1677,6 +1765,8 @@ export const DesignProvider: FC<{ children: ReactNode }> = ({ children }) => {
     redo,
     copyComponent,
     pasteComponent,
+    addImageToGallery,
+    removeImageFromGallery,
   };
 
   if (!isClient) {
@@ -1707,6 +1797,8 @@ export const DesignProvider: FC<{ children: ReactNode }> = ({ children }) => {
       redo: () => {},
       copyComponent: () => {},
       pasteComponent: () => {},
+      addImageToGallery: async () => {},
+      removeImageFromGallery: async () => {},
     };
     return (
       <DesignContext.Provider value={initialContextValueForSSR}>
