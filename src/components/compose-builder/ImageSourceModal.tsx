@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useImperativeHandle, forwardRef } from 'react';
@@ -22,7 +21,7 @@ const MIN_HEIGHT = 480;
 
 export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('url');
+  const [activeTab, setActiveTab] = useState('gallery');
   const [imageUrl, setImageUrl] = useState('');
   const [onSelectCallback, setOnSelectCallback] = useState<(url: string) => void>(() => () => {});
   const { toast } = useToast();
@@ -84,7 +83,7 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
       setIsWebSearching(false);
       setIsEditingGallery(false);
       setNewImageUrl('');
-      setActiveTab(currentSrc?.startsWith('http') || !currentSrc ? 'url' : 'generate');
+      setActiveTab('gallery');
       setDimensions({ width: 896, height: 600 }); // Reset to default size on open
       setIsOpen(true);
     }
@@ -124,12 +123,12 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
     }
   };
 
-  const handleAddImageUrlToGallery = async () => {
+  const handleAddImageUrlToGallery = () => {
     if (!newImageUrl.trim()) {
       toast({ title: "URL Required", description: "Please enter a URL to add.", variant: "default" });
       return;
     }
-    await addImageToGallery(newImageUrl);
+    addImageToGallery(newImageUrl);
     setNewImageUrl(''); // Clear input after adding
   };
 
@@ -200,7 +199,7 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
     results: (string | { id: string; url: string })[],
     type: 'ai' | 'web' | 'gallery'
   ) => (
-    <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+    <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-2">
       {results.map((item, index) => {
         const url = typeof item === 'string' ? item : item.url;
         const id = typeof item === 'string' ? `item-${index}` : item.id;
