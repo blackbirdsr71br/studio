@@ -403,6 +403,14 @@ const defaultGalleryUrls = [
   "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/swissbrand.png",
   "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/quiksilver.png",
   "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/bet365.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/cvdirecto.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/hkpro.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/honor.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/lenovo.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/princo.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/redlemon.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/roomi.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/bet365.png",
 ];
 
 const uniqueDefaultUrls = [...new Set(defaultGalleryUrls)];
@@ -1815,40 +1823,34 @@ export const DesignProvider: FC<{ children: ReactNode }> = ({ children }) => {
       url: url,
       timestamp: Date.now(),
     };
-    
-    setDesignState(prev => {
-        const newGallery = [newImage, ...prev.galleryImages].sort((a,b) => b.timestamp - a.timestamp);
-        try {
-            localStorage.setItem(GALLERY_IMAGES_COLLECTION, JSON.stringify(newGallery));
-        } catch (error) {
-            console.error("Error saving gallery to localStorage:", error);
-            toast({ title: "Save Error", description: "Could not save image to local gallery.", variant: "destructive" });
-            // Revert state if save fails
-            return prev;
-        }
-        toast({ title: "Image Added", description: "New image URL saved to gallery." });
-        return { ...prev, galleryImages: newGallery };
-    });
-  }, [toast]);
+
+    const newGallery = [newImage, ...designState.galleryImages].sort((a,b) => b.timestamp - a.timestamp);
+
+    try {
+      localStorage.setItem(GALLERY_IMAGES_COLLECTION, JSON.stringify(newGallery));
+      setDesignState(prev => ({ ...prev, galleryImages: newGallery }));
+      toast({ title: "Image Added", description: "New image URL saved to gallery." });
+    } catch (error) {
+      console.error("Error saving gallery to localStorage:", error);
+      toast({ title: "Save Error", description: "Could not save image to local gallery.", variant: "destructive" });
+    }
+  }, [toast, designState.galleryImages]);
 
   const removeImageFromGallery = useCallback(async (id: string) => {
-    setDesignState(prev => {
-        const imageToRemove = prev.galleryImages.find(img => img.id === id);
-        if (!imageToRemove) return prev;
+    const imageToRemove = designState.galleryImages.find(img => img.id === id);
+    if (!imageToRemove) return;
 
-        const newGallery = prev.galleryImages.filter(img => img.id !== id);
-        try {
-            localStorage.setItem(GALLERY_IMAGES_COLLECTION, JSON.stringify(newGallery));
-        } catch (error) {
-            console.error("Error removing image from localStorage:", error);
-            toast({ title: "Delete Error", description: "Could not remove image from local gallery.", variant: "destructive" });
-            return prev;
-        }
+    const newGallery = designState.galleryImages.filter(img => img.id !== id);
 
+    try {
+        localStorage.setItem(GALLERY_IMAGES_COLLECTION, JSON.stringify(newGallery));
+        setDesignState(prev => ({ ...prev, galleryImages: newGallery }));
         toast({ title: "Image Removed", description: "Image URL removed from gallery." });
-        return { ...prev, galleryImages: newGallery };
-    });
-  }, [toast]);
+    } catch (error) {
+        console.error("Error removing image from localStorage:", error);
+        toast({ title: "Delete Error", description: "Could not remove image from local gallery.", variant: "destructive" });
+    }
+  }, [toast, designState.galleryImages]);
 
   const contextValue: DesignContextType = {
     ...designState,
