@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from '@/contexts/ThemeContext';
 
 export const metadata: Metadata = {
-  title: 'Compose Builder',
+  title: 'UI Compose Architect',
   description: 'Design Jetpack Compose UIs with ease.',
 };
 
