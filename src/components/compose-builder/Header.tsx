@@ -2,8 +2,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image'; // Import Image component
 import { Button } from "@/components/ui/button";
-import { Logo } from "@/components/icons/Logo";
 import { Code, Trash2, FileJson, UploadCloud, Loader2, Cog as SettingsIcon, Palette, Save, Undo, Redo, Copy, ClipboardPaste } from "lucide-react";
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
 import type { ViewJsonModalRef } from "./ViewJsonModal";
@@ -173,7 +173,18 @@ export function Header({
 
   return (
     <header className="h-16 border-b bg-sidebar flex items-center justify-between px-6 shrink-0">
-      <Logo />
+      <div className="flex items-center gap-3">
+        <Image
+          src="/logo.png"
+          alt="UI Compose Architect Logo"
+          width={32}
+          height={32}
+          className="rounded-sm"
+        />
+        <span className="text-xl font-semibold text-foreground font-headline hidden md:inline">
+          UI Compose Architect
+        </span>
+      </div>
       <TooltipProvider delayDuration={200}>
         <div className="flex items-center gap-2">
            <Tooltip>
