@@ -1,11 +1,12 @@
+
 'use server';
 import { generateComposeCode, type GenerateComposeCodeInput } from '@/ai/flows/generate-compose-code';
 import { generateImageFromHint, type GenerateImageFromHintInput } from '@/ai/flows/generate-image-from-hint-flow';
 import { generateJsonFromComposeCommands, type GenerateJsonFromComposeCommandsInput } from '@/ai/flows/generate-json-from-compose-commands';
 import { convertCanvasToCustomJson, type ConvertCanvasToCustomJsonInput } from '@/ai/flows/convert-canvas-to-custom-json-flow';
 import { generateJsonParserCode, type GenerateJsonParserCodeInput } from '@/ai/flows/generate-json-parser-code';
-import type { DesignComponent, CustomComponentTemplate, BaseComponentProps } from '@/types/compose-spec';
-import { isContainerType, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID, CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
+import type { DesignComponent, CustomComponentTemplate, BaseComponentProps, ComponentType } from '@/types/compose-spec';
+import { isContainerType, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID, CORE_SCAFFOLD_ELEMENT_IDS, propertyDefinitions, getDefaultProperties } from '@/types/compose-spec';
 import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -151,14 +152,18 @@ const PREFERRED_PROPERTY_ORDER = [
   'width', 'height', 'fillMaxSize', 'fillMaxWidth', 'fillMaxHeight', 'layoutWeight', 'selfAlign',
   // Container Alignment & Arrangement
   'verticalArrangement', 'horizontalAlignment', 'horizontalArrangement', 'verticalAlignment', 'contentAlignment',
-  // Spacing
-  'padding', 'paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd', 'itemSpacing',
+  // Individual Spacing
+  'paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd',
+  // General Spacing
+  'padding', 'itemSpacing',
   // Typography
   'fontSize', 'titleFontSize', 'fontWeight', 'fontStyle', 'textColor', 'contentColor', 'textAlign', 'textDecoration', 'lineHeight', 'maxLines', 'textOverflow',
   // Appearance
   'backgroundColor', 'elevation', 'contentScale',
-  // Shape & Border
-  'shape', 'cornerRadius', 'cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft', 'borderWidth', 'borderColor',
+  // Individual Shape & Border
+  'cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft', 'borderWidth', 'borderColor',
+  // General Shape & Border
+  'shape', 'cornerRadius',
   // Icons (for Button)
   'iconName', 'iconPosition', 'iconSize', 'iconSpacing',
   // Animation
@@ -194,7 +199,29 @@ const buildContentComponentTreeForModalJson = (
     let objectToSort: Record<string, any>;
 
     if (includeDefaultValues) {
-      objectToSort = originalProperties;
+      // Start with the component's current properties.
+      const fullProps: Record<string, any> = { ...originalProperties };
+      // Get the full list of property definitions for this component type.
+      const propDefs = propertyDefinitions[component.type as ComponentType] || [];
+      // Get the default values for this component type.
+      const defaultProps = getDefaultProperties(component.type as ComponentType);
+
+      // Ensure every defined property exists in the final object.
+      propDefs.forEach(def => {
+          if (!(def.name in fullProps)) {
+              fullProps[def.name] = defaultProps[def.name];
+          }
+      });
+      // Ensure cornerRadius and padding are present if their individuals are
+      if (propDefs.some(d => d.name === 'cornerRadiusTopLeft') && !('cornerRadius' in fullProps)) {
+          fullProps['cornerRadius'] = defaultProps['cornerRadius'];
+      }
+       if (propDefs.some(d => d.name === 'paddingTop') && !('padding' in fullProps)) {
+          fullProps['padding'] = defaultProps['padding'];
+      }
+      
+      objectToSort = fullProps;
+
     } else {
       const cleaned: Record<string, any> = {};
 
