@@ -215,7 +215,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     case 'AnimatedContent':
       baseStyle.boxShadow = `0 ${elevation}px ${elevation * 1.5}px rgba(0,0,0,0.1), 0 ${elevation/2}px ${elevation/2}px rgba(0,0,0,0.06)`;
       if (typeof borderWidth === 'number' && borderWidth > 0 && borderColor) {
-        baseStyle.border = `${borderWidth}px solid ${borderColor}`;
+        baseStyle.border = `${borderWidth}px solid ${borderColor === 'transparent' ? 'transparent' : borderColor}`;
       } else if (!baseStyle.border || baseStyle.border === 'none') { 
          baseStyle.border = '1px solid hsl(var(--border) / 0.5)';
       }
@@ -355,7 +355,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
         <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground/70 text-xs pointer-events-none p-2 text-center leading-tight">
           {placeholderText}
           {(effectiveType === 'LazyVerticalGrid' && effectiveProperties.columns) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.columns} columns)</span>}
-          {(effectiveType === 'LazyHorizontalGrid' && effectiveProperties.rows) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.rows} rows)</span>}
+          {(effectiveType === 'LazyHorizontalGrid' && effectiveProperties.rows) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.rows})</span>}
         </div>
       )}
       {topAppBarTitleElement}

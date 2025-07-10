@@ -135,7 +135,7 @@ export interface SavedLayout {
 }
 
 export interface GalleryImage {
-  id: string; // Unique identifier for the image (e.g., timestamp-based)
+  id: string; // Unique identifier for the image (e.g., timestamp-based, can be local)
   url: string;
   timestamp: number;
 }
@@ -808,15 +808,17 @@ export function isContainerType(type: ComponentType | string, customTemplates?: 
 }
 
 
+const ColorStringSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").or(z.literal('transparent'));
+
 // Schema for validating JSON that is pasted into the "View JSON" modal
 // This JSON represents the *content area* of the scaffold (children of DEFAULT_CONTENT_LAZY_COLUMN_ID)
 const BaseModalPropertiesSchema = z.object({
   text: z.string().optional(),
   fontSize: z.number().min(0, "Font size must be non-negative").optional(),
   titleFontSize: z.number().min(0, "Font size must be non-negative").optional(),
-  textColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional().or(z.literal(undefined)),
-  backgroundColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional(),
-  contentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional().or(z.literal(undefined)),
+  textColor: ColorStringSchema.optional().or(z.literal(undefined)),
+  backgroundColor: ColorStringSchema.optional(),
+  contentColor: ColorStringSchema.optional().or(z.literal(undefined)),
   width: z.union([z.number().min(0), z.string()]).optional(),
   height: z.union([z.number().min(0), z.string()]).optional(),
   fillMaxSize: z.boolean().optional(),
@@ -838,7 +840,7 @@ const BaseModalPropertiesSchema = z.object({
   cornerRadiusBottomRight: z.number().min(0).optional(),
   cornerRadiusBottomLeft: z.number().min(0).optional(),
   borderWidth: z.number().min(0).optional(),
-  borderColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional(),
+  borderColor: ColorStringSchema.optional(),
   columns: z.number().int().min(1).optional(),
   rows: z.number().int().min(1).optional(),
   maxLines: z.number().int().min(1).optional(),

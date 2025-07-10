@@ -145,13 +145,15 @@ Modifier and Property Mapping Rules (from input component properties to output "
         *   Else, map 'paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd' (canvas) to 'padding: { "top": Y, "start": X, ... }' in 'modifier.base'. Omit sides with zero or undefined padding. If the resulting padding object is empty, omit it.
     *   **Margin**: If canvas properties like 'marginStart', 'marginTop' exist map similarly to 'margin: { ... }' in 'modifier.base'. Omit if empty.
     *   **Background**:
-        *   'backgroundColor: "#RRGGBB"' (canvas) -> 'background: { "color": "#RRGGBB", "shape": "rectangle" }' in 'modifier.base'.
+        *   If 'backgroundColor' (canvas) is 'transparent', use 'background: { "color": "transparent", "shape": "rectangle" }'.
+        *   Else if 'backgroundColor: "#RRGGBB"' (canvas), use 'background: { "color": "#RRGGBB", "shape": "rectangle" }' in 'modifier.base'.
         *   If 'cornerRadiusTopLeft' (etc.) > 0 (canvas):
             *   Set 'modifier.base.background.shape' to '"roundedcorner"'.
             *   If all canvas 'cornerRadius...' properties are equal to C: use 'modifier.base.background.radius: C'.
             *   If corners differ, use a default radius like 8 if any corner is rounded and a specific radius is not obvious from a single value.
     *   **Border**:
-        *   If 'borderWidth: W > 0' and 'borderColor: "#HEX"' (canvas) -> 'border: { "width": W, "color": "#HEX" }' in 'modifier.base'.
+        *   If 'borderWidth: W > 0' and 'borderColor' (canvas) is 'transparent', use 'border: { "width": W, "color": "transparent" }' in 'modifier.base'.
+        *   Else if 'borderWidth: W > 0' and 'borderColor: "#HEX"' (canvas), use 'border: { "width": W, "color": "#HEX" }' in 'modifier.base'.
         *   If border exists and 'cornerRadiusTopLeft' (etc.) > 0 (canvas): add 'shape: { "type": "roundedcorner", "cornerRadius": C }' to 'modifier.base.border'. If all corners are equal to C, use that for 'cornerRadius'. Otherwise, pick a representative value like 8.
     *   **Shadow (Mainly for Card)**:
         *   If 'type: "Card"' and 'elevation: E > 0' (canvas) -> 'shadow: { "elevation": E }' in 'modifier.base'.
@@ -186,13 +188,14 @@ Modifier and Property Mapping Rules (from input component properties to output "
     *   **Text**:
         *   'text' (canvas) -> 'content' (output).
         *   'fontSize', 'fontWeight' (valid values: "Normal", "Semibold", "Bold"), 'fontStyle', 'letterSpacing', 'lineHeight' (this value MUST be an integer), 'maxLines', 'minLines', 'textDecoration' (canvas) -> map to respective direct properties in "text" object.
-        *   'textColor' (canvas) -> 'color' (output, hex string).
+        *   If 'textColor' (canvas) is 'transparent', use 'color: "transparent"'. Else, 'textColor' (canvas hex) -> 'color' (output, hex string).
         *   'textAlign' (canvas) -> 'textAlign' (output, e.g., "start", "center").
         *   'textOverflow' (canvas) -> 'overflow' (output, e.g., "clip", "ellipsis").
     *   **Button**:
         *   'text' (canvas) -> 'content' (output, if button has no children in canvas).
         *   'clickId' (canvas, if 'clickable: true' and 'clickId' is present) -> 'clickId' (output).
-        *   'fontSize', 'fontWeight', 'fontColor' (canvas) -> map to direct properties.
+        *   'fontSize', 'fontWeight' (canvas) -> map to direct properties.
+        *   If 'fontColor' (canvas) is 'transparent', use 'fontColor: "transparent"'. Else, 'fontColor' (canvas hex) -> map to 'fontColor'.
         *   If canvas Button has 'children', then the output "button" should have a 'children' array and no 'content' property.
         *   **Shape & Icon**:
             *   'shape' (canvas 'shape' property) -> 'shape' (output property, e.g., "roundedcorner", "rectangle", "circle").
@@ -274,5 +277,3 @@ const convertCanvasToCustomJsonFlow = ai.defineFlow(
     return { customJsonString: formattedJsonString };
   }
 );
-
-    

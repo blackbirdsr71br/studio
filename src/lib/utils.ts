@@ -7,7 +7,10 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function getContrastingTextColor(hexColor: string | undefined): string {
-  if (!hexColor || !hexColor.startsWith('#') || (hexColor.length !== 4 && hexColor.length !== 7)) {
+  if (!hexColor || hexColor === 'transparent') {
+    return '#000000'; // Default to black for transparent or undefined backgrounds
+  }
+  if (!hexColor.startsWith('#') || (hexColor.length !== 4 && hexColor.length !== 7)) {
     return '#000000';
   }
 
@@ -79,6 +82,7 @@ export function hexToHsl(hex: string): { h: number, s: number, l: number } | nul
 }
 
 export function hexToHslCssString(hex: string): string | null {
+    if (hex.toLowerCase() === 'transparent') return null; // Or handle as needed
     const hsl = hexToHsl(hex);
     if (!hsl) return null;
     return `${hsl.h} ${hsl.s}% ${hsl.l}%`;

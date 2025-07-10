@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ChangeEvent } from 'react';
@@ -6,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ComponentProperty, ComponentPropertyOption } from '@/types/compose-spec';
+import { Button } from '../ui/button';
+import { Droplet } from 'lucide-react';
 
 interface PropertyEditorProps {
   property: Omit<ComponentProperty, 'value'>; // Definition of the property
@@ -47,8 +50,13 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
   const handleSelectChange = (value: string) => {
     onChange(value);
   };
+
+  const handleTransparentClick = () => {
+    onChange('transparent');
+  }
   
   const id = `prop-${property.name}`;
+  const isTransparent = currentValue === 'transparent';
 
   switch (property.type) {
     case 'string':
@@ -89,18 +97,29 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
             <Input
               id={id}
               type="color"
-              value={currentValue as string || '#000000'}
+              value={isTransparent ? '#000000' : (currentValue as string || '#000000')}
               onChange={handleInputChange}
               className="h-8 w-10 p-1"
+              disabled={isTransparent}
             />
             <Input
               type="text"
               value={currentValue as string || '#000000'}
               onChange={handleInputChange}
-              placeholder="#RRGGBB"
+              placeholder="#RRGGBB or transparent"
               className="h-8 text-sm flex-grow"
               aria-label={`${property.label} hex value`}
             />
+            <Button
+              size="sm"
+              variant={isTransparent ? "default" : "outline"}
+              onClick={handleTransparentClick}
+              className="h-8 text-xs px-2"
+              title="Set to transparent"
+            >
+              <Droplet className="w-3 h-3 mr-1" />
+              Transparent
+            </Button>
           </div>
         </div>
       );
