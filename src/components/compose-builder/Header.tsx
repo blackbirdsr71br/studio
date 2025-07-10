@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Code, Trash2, FileJson, UploadCloud, Loader2, Cog as SettingsIcon, Palette, Save, Undo, Redo, Copy, ClipboardPaste } from "lucide-react";
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
@@ -43,7 +43,7 @@ export function Header({
     history, future, selectedComponentId, clipboard
   } = useDesign();
   const { toast } = useToast();
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSaving, setIsSaving] = React.useState(false);
 
   const handleGenerateCode = () => {
     if (generateModalRef.current) {
@@ -176,11 +176,8 @@ export function Header({
         <img
           src="/logo.png"
           alt="UI Compose Architect Logo"
-          className="w-8 h-8 rounded-sm"
+          className="w-32 h-auto"
         />
-        <span className="text-xl font-semibold text-foreground font-headline hidden md:inline">
-          UI Compose Architect
-        </span>
       </div>
       <TooltipProvider delayDuration={200}>
         <div className="flex items-center gap-2">
@@ -340,7 +337,7 @@ export function Header({
               <TooltipContent side="bottom">
                 <p>Interface Theme Settings</p>
               </TooltipContent>
-            </Tooltip>
+            </Popover>
             <PopoverContent className="w-auto p-0 mr-2" align="end">
               <SettingsPanelContent />
             </PopoverContent>
