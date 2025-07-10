@@ -6,6 +6,7 @@ import { getComponentDisplayName, DEFAULT_CONTENT_LAZY_COLUMN_ID, isCustomCompon
 import { useDesign } from '@/contexts/DesignContext';
 import { getContrastingTextColor, cn } from '@/lib/utils';
 import { TextView } from './TextView'; 
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface ContainerViewProps {
   component: DesignComponent;
@@ -31,6 +32,7 @@ const isNumericValue = (value: any): boolean => {
 
 export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, zoomLevel = 1, isPreview = false }: ContainerViewProps) {
   const { customComponentTemplates } = useDesign();
+  const { resolvedTheme } = useTheme();
 
   let effectiveType: OriginalComponentType | string = component.type;
   let basePropertiesFromTemplateRoot: DesignComponent['properties'] = {};
@@ -191,12 +193,22 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       (cornerRadiusTopLeft > 0 || cornerRadiusTopRight > 0 || cornerRadiusBottomLeft > 0 || cornerRadiusBottomRight > 0)) {
     baseStyle.overflow = 'hidden'; 
   }
+  
+  if (containerBackgroundColor) {
+    baseStyle.backgroundColor = containerBackgroundColor;
+  } else if (['Column', 'Row', 'Box', 'Card', 'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid', 'AnimatedContent'].includes(effectiveType as string)) {
+    // If no background color is set, apply theme-dependent default
+    baseStyle.backgroundColor = resolvedTheme === 'dark' ? '#FFFFFF' : '#F0F0F0';
+  } else {
+    baseStyle.backgroundColor = 'transparent';
+  }
+
 
   if (explicitContentColor && typeof explicitContentColor === 'string' && explicitContentColor.trim() !== '') {
     (baseStyle as any)['--effective-foreground-color'] = explicitContentColor;
      baseStyle.color = explicitContentColor; 
-  } else if (containerBackgroundColor && typeof containerBackgroundColor === 'string' && containerBackgroundColor !== 'transparent') {
-    const contrastingColor = getContrastingTextColor(containerBackgroundColor);
+  } else if (baseStyle.backgroundColor && typeof baseStyle.backgroundColor === 'string' && baseStyle.backgroundColor !== 'transparent') {
+    const contrastingColor = getContrastingTextColor(baseStyle.backgroundColor);
     (baseStyle as any)['--effective-foreground-color'] = contrastingColor;
     baseStyle.color = contrastingColor;
   } else {
@@ -205,7 +217,6 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       baseStyle.color = 'hsl(var(--foreground))';
     }
   }
-  baseStyle.backgroundColor = containerBackgroundColor || 'transparent';
 
   const isLazyRowType = effectiveType === 'LazyRow' || effectiveType === 'LazyHorizontalGrid';
   const isLazyColumnType = effectiveType === 'LazyColumn' || effectiveType === 'LazyVerticalGrid';
