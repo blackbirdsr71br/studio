@@ -149,7 +149,7 @@ const PREFERRED_PROPERTY_ORDER = [
   // Core Content
   'text', 'title', 'src', 'contentDescription', 'data-ai-hint',
   // Sizing & Layout
-  'width', 'height', 'fillMaxSize', 'fillMaxWidth', 'fillMaxHeight', 'layoutWeight', 'selfAlign',
+  'fillMaxSize', 'fillMaxWidth', 'fillMaxHeight', 'width', 'height', 'layoutWeight', 'selfAlign',
   // Container Alignment & Arrangement
   'verticalArrangement', 'horizontalAlignment', 'horizontalArrangement', 'verticalAlignment', 'contentAlignment',
   // Individual Spacing
@@ -161,9 +161,9 @@ const PREFERRED_PROPERTY_ORDER = [
   // Appearance
   'backgroundColor', 'elevation', 'contentScale',
   // Individual Shape & Border
-  'cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft', 'borderWidth', 'borderColor',
+  'cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft',
   // General Shape & Border
-  'shape', 'cornerRadius',
+  'shape', 'cornerRadius', 'borderWidth', 'borderColor',
   // Icons (for Button)
   'iconName', 'iconPosition', 'iconSize', 'iconSpacing',
   // Animation
@@ -209,15 +209,17 @@ const buildContentComponentTreeForModalJson = (
       // Ensure every defined property exists in the final object.
       propDefs.forEach(def => {
           if (!(def.name in fullProps)) {
-              fullProps[def.name] = defaultProps[def.name];
+              // Set the default value, but handle undefined by setting null for JSON stringification
+              const defaultValue = defaultProps[def.name];
+              fullProps[def.name] = defaultValue === undefined ? null : defaultValue;
           }
       });
-      // Ensure cornerRadius and padding are present if their individuals are
+      // Special handling to ensure general props are also present if individuals are
       if (propDefs.some(d => d.name === 'cornerRadiusTopLeft') && !('cornerRadius' in fullProps)) {
-          fullProps['cornerRadius'] = defaultProps['cornerRadius'];
+          fullProps['cornerRadius'] = defaultProps['cornerRadius'] === undefined ? null : defaultProps['cornerRadius'];
       }
        if (propDefs.some(d => d.name === 'paddingTop') && !('padding' in fullProps)) {
-          fullProps['padding'] = defaultProps['padding'];
+          fullProps['padding'] = defaultProps['padding'] === undefined ? null : defaultProps['padding'];
       }
       
       objectToSort = fullProps;
@@ -708,6 +710,8 @@ export async function searchWebForImagesAction(query: string): Promise<{ imageUr
   }
 }
       
+
+    
 
     
 
