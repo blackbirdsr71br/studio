@@ -89,7 +89,7 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
           updates.fillMaxHeight = isChecked;
       } else if (propName === 'fillMaxWidth' || propName === 'fillMaxHeight') {
           const isChecked = actualValue as boolean;
-          const otherPropName = propName === 'fillMaxWidth' ? 'fillMaxHeight' : 'fillMaxWidth';
+          const otherPropName = propName === 'fillMaxWidth' ? 'fillMaxHeight' : 'fillMaxHeight';
           const otherPropValue = selectedComponent.properties[otherPropName] ?? false;
           updates.fillMaxSize = isChecked && otherPropValue;
       }
@@ -198,33 +198,42 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     const groupedProperties: GroupedProperties = {};
     const propertyGroups: string[] = [];
 
-    let sourceComponentForCornerRadiusType = selectedComponent.type;
+    let sourceComponentForShapeType = selectedComponent.type;
      if (selectedComponent.templateIdRef) {
       const template = customComponentTemplates.find(t => t.templateId === selectedComponent.templateIdRef);
       if (template) {
         const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
         if (rootTemplateComponent) {
-          sourceComponentForCornerRadiusType = rootTemplateComponent.type; 
+          sourceComponentForShapeType = rootTemplateComponent.type; 
         }
       }
     }
+    
+    const shouldShowCornerRadiusGroup = ['Image', 'Box', 'Card'].includes(sourceComponentForShapeType) || (sourceComponentForShapeType === 'Button' && selectedComponent.properties.shape === 'RoundedCorner');
 
-    if (['Image', 'Box', 'Card'].includes(sourceComponentForCornerRadiusType)) {
-      const { cornerRadiusTopLeft, cornerRadiusTopRight, cornerRadiusBottomRight, cornerRadiusBottomLeft } = selectedComponent.properties;
+    if (shouldShowCornerRadiusGroup) {
+      const { cornerRadius, cornerRadiusTopLeft, cornerRadiusTopRight, cornerRadiusBottomRight, cornerRadiusBottomLeft } = selectedComponent.properties;
       const allCornersHaveValue = typeof cornerRadiusTopLeft === 'number' && typeof cornerRadiusTopRight === 'number' && typeof cornerRadiusBottomRight === 'number' && typeof cornerRadiusBottomLeft === 'number';
       const allCornersAreEqual = allCornersHaveValue && cornerRadiusTopLeft === cornerRadiusTopRight && cornerRadiusTopLeft === cornerRadiusBottomRight && cornerRadiusTopLeft === cornerRadiusBottomLeft;
       const allCornersValue = allCornersAreEqual ? (cornerRadiusTopLeft ?? '') : '';
 
       const handleAllCornersChange = (event: React.ChangeEvent<HTMLInputElement>) => {
           const strValue = event.target.value;
+          const updates: Partial<BaseComponentProps> = { cornerRadiusTopLeft: undefined, cornerRadiusTopRight: undefined, cornerRadiusBottomRight: undefined, cornerRadiusBottomLeft: undefined, cornerRadius: undefined };
+
           if (strValue === '') {
-               updateComponent(selectedComponent.id, { properties: { cornerRadiusTopLeft: undefined, cornerRadiusTopRight: undefined, cornerRadiusBottomRight: undefined, cornerRadiusBottomLeft: undefined } });
+               // Let's clear all corner properties
           } else {
               const numValue = parseFloat(strValue);
               if (!isNaN(numValue) && numValue >= 0) {
-                  updateComponent(selectedComponent.id, { properties: { cornerRadiusTopLeft: numValue, cornerRadiusTopRight: numValue, cornerRadiusBottomRight: numValue, cornerRadiusBottomLeft: numValue } });
+                  updates.cornerRadius = numValue;
+                  updates.cornerRadiusTopLeft = numValue;
+                  updates.cornerRadiusTopRight = numValue;
+                  updates.cornerRadiusBottomRight = numValue;
+                  updates.cornerRadiusBottomLeft = numValue;
               }
           }
+          updateComponent(selectedComponent.id, { properties: updates });
       };
 
       const allCornersEditor = (
@@ -246,11 +255,12 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
       }
       
       const isButtonShape = selectedComponent.type === 'Button' && selectedComponent.properties.shape === 'RoundedCorner';
-      if (propDef.name === 'cornerRadius' && (!isButtonShape || componentPropsDef.some(p => p.name === 'cornerRadiusTopLeft'))) {
-        return; // Don't render cornerRadius if shape is not RoundedCorner for Button, or if individual corners exist
+      if (propDef.name === 'cornerRadius') {
+        // Hide the general cornerRadius if individual controls are present (for non-buttons) or if it's a button and shape isn't rounded.
+        if (!isButtonShape || shouldShowCornerRadiusGroup) return; 
       }
-      if (['cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft'].includes(propDef.name) && !isButtonShape) {
-          return; // Don't render individual corner radii if button shape is not RoundedCorner
+      if (['cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft'].includes(propDef.name)) {
+        if (sourceComponentForShapeType === 'Button' && !isButtonShape) return;
       }
 
 
@@ -294,7 +304,7 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
          groupedProperties[group].push(editorElement);
       }
 
-      if (propDef.name === 'src' && (selectedComponent.type === 'Image' || (sourceComponentForCornerRadiusType === 'Image'))) {
+      if (propDef.name === 'src' && (selectedComponent.type === 'Image' || (sourceComponentForShapeType === 'Image'))) {
         const imageButtons = (
           <div key="src-buttons" className="mt-1.5 space-y-1.5">
              <div className="flex gap-1.5">
@@ -375,7 +385,7 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
                   {propertyGroups.map((group) => (
                     <TabsContent key={group} value={group} className="space-y-3 mt-0">
                       {groupedProperties[group]}
-                      {(selectedComponent.type === 'Image' || sourceComponentForCornerRadiusType === 'Image') && group === 'Content' && !groupedProperties[group].some(el => (el as React.ReactElement)?.key === 'src-buttons') && (
+                      {(selectedComponent.type === 'Image' || sourceComponentForShapeType === 'Image') && group === 'Content' && !groupedProperties[group].some(el => (el as React.ReactElement)?.key === 'src-buttons') && (
                         <div className="mt-3 pt-3 border-t border-sidebar-border">
                           <Button onClick={handleGenerateImage} disabled={isGeneratingImage || !selectedComponent.properties['data-ai-hint']} className="w-full" size="sm">
                             {isGeneratingImage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
