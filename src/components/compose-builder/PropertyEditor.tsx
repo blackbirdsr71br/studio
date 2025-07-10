@@ -55,7 +55,7 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
     // If it's already transparent, toggle back to a default color.
     // Otherwise, set it to transparent.
     if (currentValue === 'transparent') {
-      onChange('#000000');
+      onChange('#FFFFFF');
     } else {
       onChange('transparent');
     }
@@ -103,14 +103,14 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
             <Input
               id={id}
               type="color"
-              value={isTransparent ? '#000000' : (currentValue as string || '#000000')}
+              value={isTransparent ? '#FFFFFF' : (currentValue as string || '#FFFFFF')}
               onChange={handleInputChange}
               className="h-8 w-10 p-1"
               disabled={isTransparent}
             />
             <Input
               type="text"
-              value={currentValue as string || '#000000'}
+              value={currentValue as string || '#FFFFFF'}
               onChange={handleInputChange}
               placeholder="#RRGGBB or transparent"
               className="h-8 text-sm flex-grow"
