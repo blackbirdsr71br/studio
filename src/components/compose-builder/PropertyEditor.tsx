@@ -52,7 +52,13 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
   };
 
   const handleTransparentClick = () => {
-    onChange('transparent');
+    // If it's already transparent, toggle back to a default color.
+    // Otherwise, set it to transparent.
+    if (currentValue === 'transparent') {
+      onChange('#000000');
+    } else {
+      onChange('transparent');
+    }
   }
   
   const id = `prop-${property.name}`;
@@ -109,6 +115,7 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
               placeholder="#RRGGBB or transparent"
               className="h-8 text-sm flex-grow"
               aria-label={`${property.label} hex value`}
+              disabled={isTransparent}
             />
             <Button
               size="sm"
