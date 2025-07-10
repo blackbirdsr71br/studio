@@ -2,7 +2,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import Image from 'next/image'; // Import Image component
 import { Button } from "@/components/ui/button";
 import { Code, Trash2, FileJson, UploadCloud, Loader2, Cog as SettingsIcon, Palette, Save, Undo, Redo, Copy, ClipboardPaste } from "lucide-react";
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
@@ -174,12 +173,10 @@ export function Header({
   return (
     <header className="h-16 border-b bg-sidebar flex items-center justify-between px-6 shrink-0">
       <div className="flex items-center gap-3">
-        <Image
+        <img
           src="/logo.png"
           alt="UI Compose Architect Logo"
-          width={32}
-          height={32}
-          className="rounded-sm"
+          className="w-8 h-8 rounded-sm"
         />
         <span className="text-xl font-semibold text-foreground font-headline hidden md:inline">
           UI Compose Architect
