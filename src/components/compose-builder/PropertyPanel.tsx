@@ -150,8 +150,8 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
       try {
         const hint = selectedComponent.properties['data-ai-hint'] as string;
         const result = await generateImageFromHintAction(hint);
-        if (result.imageUrl) {
-          updateComponent(selectedComponent.id, { properties: { src: result.imageUrl } });
+        if (result.imageUrls && result.imageUrls.length > 0) {
+          updateComponent(selectedComponent.id, { properties: { src: result.imageUrls[0] } });
           toast({ title: "Image Generated", description: "Image source has been updated successfully." });
         } else {
           setGenerationError(result.error || "An unknown error occurred while generating the image.");
@@ -245,9 +245,14 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
         return; // Don't render clickId if component is not clickable
       }
       
-      if (propDef.name === 'cornerRadius' && selectedComponent.properties.shape !== 'RoundedCorner') {
-        return; // Don't render cornerRadius if shape is not RoundedCorner
+      const isButtonShape = selectedComponent.type === 'Button' && selectedComponent.properties.shape === 'RoundedCorner';
+      if (propDef.name === 'cornerRadius' && (!isButtonShape || componentPropsDef.some(p => p.name === 'cornerRadiusTopLeft'))) {
+        return; // Don't render cornerRadius if shape is not RoundedCorner for Button, or if individual corners exist
       }
+      if (['cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft'].includes(propDef.name) && !isButtonShape) {
+          return; // Don't render individual corner radii if button shape is not RoundedCorner
+      }
+
 
       const group = propDef.group || 'General';
       if (!groupedProperties[group]) { groupedProperties[group] = []; if (!propertyGroups.includes(group)) { propertyGroups.push(group); } }

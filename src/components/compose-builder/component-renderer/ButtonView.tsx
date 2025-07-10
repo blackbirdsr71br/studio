@@ -46,6 +46,10 @@ export function ButtonView({ properties }: ButtonViewProps) {
     fillMaxWidth,
     shape = 'RoundedCorner',
     cornerRadius = 4,
+    cornerRadiusTopLeft,
+    cornerRadiusTopRight,
+    cornerRadiusBottomRight,
+    cornerRadiusBottomLeft,
     iconName,
     iconPosition = 'Start',
     iconSize = 16,
@@ -94,7 +98,20 @@ export function ButtonView({ properties }: ButtonViewProps) {
       break;
     case 'RoundedCorner':
     default:
-      style.borderRadius = `${cornerRadius}px`;
+       // Prioritize individual corners if they are defined, otherwise use the general cornerRadius
+      if (
+        cornerRadiusTopLeft !== undefined ||
+        cornerRadiusTopRight !== undefined ||
+        cornerRadiusBottomLeft !== undefined ||
+        cornerRadiusBottomRight !== undefined
+      ) {
+        style.borderTopLeftRadius = `${cornerRadiusTopLeft ?? cornerRadius ?? 4}px`;
+        style.borderTopRightRadius = `${cornerRadiusTopRight ?? cornerRadius ?? 4}px`;
+        style.borderBottomLeftRadius = `${cornerRadiusBottomLeft ?? cornerRadius ?? 4}px`;
+        style.borderBottomRightRadius = `${cornerRadiusBottomRight ?? cornerRadius ?? 4}px`;
+      } else {
+        style.borderRadius = `${cornerRadius ?? 4}px`;
+      }
       break;
   }
 

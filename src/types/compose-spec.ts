@@ -212,6 +212,10 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         clickId: 'button_clicked',
         shape: 'RoundedCorner',
         cornerRadius: 4,
+        cornerRadiusTopLeft: 4,
+        cornerRadiusTopRight: 4,
+        cornerRadiusBottomLeft: 4,
+        cornerRadiusBottomRight: 4,
         iconName: '',
         iconPosition: 'Start',
         iconSize: 16,
@@ -628,7 +632,8 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
         { label: 'Circle', value: 'Circle' },
       ]
     },
-    { name: 'cornerRadius', type: 'number', label: 'Corner Radius (px)', placeholder: '4', group: 'Appearance' },
+    { name: 'cornerRadius', type: 'number', label: 'Corner Radius (dp)', placeholder: '4', group: 'Appearance' },
+    ...cornerRadiusProperties,
     ...clickableProperties,
   ],
   Image: [
