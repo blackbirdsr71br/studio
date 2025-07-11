@@ -175,8 +175,8 @@ export function Header({
     <header className="h-16 border-b bg-sidebar flex items-center justify-between px-6 shrink-0">
       <div className="flex items-center gap-3">
         <Image
-          src="/logo.png"
-          alt="Compose Builder Logo"
+          src="/LogoUIC.png"
+          alt="UI Compose Builder Logo"
           width={128}
           height={40}
           className="h-10 w-auto"
