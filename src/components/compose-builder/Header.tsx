@@ -3,6 +3,7 @@
 
 import React, { useState, RefObject } from 'react';
 import Image from 'next/image';
+import LogoImage from '@/app/LogoUIC.png';
 import { Button } from "@/components/ui/button";
 import { Code, Trash2, FileJson, UploadCloud, Loader2, Cog as SettingsIcon, Palette, Save, Undo, Redo, Copy, ClipboardPaste } from "lucide-react";
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
@@ -21,7 +22,6 @@ import { SettingsPanelContent } from "./SettingsPanelContent";
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
 import { CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
-import LogoImage from '@/app/LogoUIC.png';
 
 
 interface HeaderProps {
@@ -173,8 +173,8 @@ export function Header({
   const canRedo = future.length > 0;
 
   return (
-    <header className="h-16 border-b bg-sidebar flex items-center justify-between shrink-0">
-      <div className="h-full bg-black dark:bg-white flex items-center px-4">
+    <header className="h-16 border-b bg-black dark:bg-sidebar flex items-center justify-between shrink-0">
+      <div className="h-full bg-white flex items-center px-4">
           <Image
             src={LogoImage}
             alt="UI Compose Builder Logo"
@@ -191,7 +191,7 @@ export function Header({
                   onClick={undo}
                   disabled={!canUndo}
                   aria-label="Undo"
-                  className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+                  className="text-white border-white bg-transparent hover:bg-white/20 disabled:opacity-50 dark:text-sidebar-foreground dark:border-sidebar-border dark:bg-sidebar dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground"
                 >
                   <Undo />
                 </Button>
@@ -207,7 +207,7 @@ export function Header({
                   onClick={redo}
                   disabled={!canRedo}
                   aria-label="Redo"
-                  className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+                  className="text-white border-white bg-transparent hover:bg-white/20 disabled:opacity-50 dark:text-sidebar-foreground dark:border-sidebar-border dark:bg-sidebar dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground"
                 >
                   <Redo />
                 </Button>
@@ -215,7 +215,7 @@ export function Header({
               <TooltipContent><p>Redo (Ctrl+Y)</p></TooltipContent>
             </Tooltip>
 
-            <Separator orientation="vertical" className="h-6 mx-1" />
+            <Separator orientation="vertical" className="h-6 mx-1 bg-white/50 dark:bg-sidebar-border" />
 
             <Tooltip>
               <TooltipTrigger asChild>
@@ -225,7 +225,7 @@ export function Header({
                   onClick={handleCopy}
                   disabled={!canCopy}
                   aria-label="Copy Component"
-                  className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+                  className="text-white border-white bg-transparent hover:bg-white/20 disabled:opacity-50 dark:text-sidebar-foreground dark:border-sidebar-border dark:bg-sidebar dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground"
                 >
                   <Copy />
                 </Button>
@@ -241,7 +241,7 @@ export function Header({
                   onClick={handlePaste}
                   disabled={!canPaste}
                   aria-label="Paste Component"
-                  className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+                  className="text-white border-white bg-transparent hover:bg-white/20 disabled:opacity-50 dark:text-sidebar-foreground dark:border-sidebar-border dark:bg-sidebar dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground"
                 >
                   <ClipboardPaste />
                 </Button>
@@ -249,7 +249,7 @@ export function Header({
               <TooltipContent><p>Paste (Ctrl+V)</p></TooltipContent>
             </Tooltip>
 
-            <Separator orientation="vertical" className="h-6 mx-1" />
+            <Separator orientation="vertical" className="h-6 mx-1 bg-white/50 dark:bg-sidebar-border" />
 
             <Tooltip>
               <TooltipTrigger asChild>
@@ -259,7 +259,7 @@ export function Header({
                   onClick={handleClearCanvas}
                   disabled={!hasUserComponents && !isEditingTemplate && !isEditingLayout}
                   aria-label={isEditingTemplate ? "Discard Template Changes" : isEditingLayout ? "Discard Layout Changes" : "Clear Canvas"}
-                  className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+                  className="text-white border-white bg-transparent hover:bg-white/20 disabled:opacity-50 dark:text-sidebar-foreground dark:border-sidebar-border dark:bg-sidebar dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground"
                 >
                   <Trash2 />
                 </Button>
@@ -277,7 +277,7 @@ export function Header({
                   onClick={handleSaveOrUpdate}
                   disabled={(!hasUserComponents && !isEditingTemplate && !isEditingLayout) || isSaving}
                   aria-label={isEditingTemplate ? "Update Custom Component" : isEditingLayout ? "Update Layout" : "Save Current Layout"}
-                  className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+                  className="text-white border-white bg-transparent hover:bg-white/20 disabled:opacity-50 dark:text-sidebar-foreground dark:border-sidebar-border dark:bg-sidebar dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground"
                 >
                   {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
                 </Button>
@@ -295,7 +295,7 @@ export function Header({
                   onClick={handleOpenPublishConfigModal}
                   disabled={!hasUserComponents || isEditingTemplate || isEditingLayout}
                   aria-label="Publish to Remote Config"
-                  className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+                  className="text-white border-white bg-transparent hover:bg-white/20 disabled:opacity-50 dark:text-sidebar-foreground dark:border-sidebar-border dark:bg-sidebar dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground"
                 >
                   <UploadCloud />
                 </Button>
@@ -312,7 +312,7 @@ export function Header({
                   variant="outline"
                   onClick={handleOpenThemeEditor}
                   aria-label="Edit App Theme"
-                  className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  className="text-white border-white bg-transparent hover:bg-white/20 dark:text-sidebar-foreground dark:border-sidebar-border dark:bg-sidebar dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground"
                 >
                   <Palette />
                 </Button>
@@ -330,7 +330,7 @@ export function Header({
                       size="icon"
                       variant="outline"
                       aria-label="Settings"
-                      className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      className="text-white border-white bg-transparent hover:bg-white/20 dark:text-sidebar-foreground dark:border-sidebar-border dark:bg-sidebar dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground"
                     >
                       <SettingsIcon />
                     </Button>
@@ -353,7 +353,7 @@ export function Header({
                   onClick={handleViewJson}
                   aria-label="View/Edit Design JSON"
                   disabled={isEditingTemplate || isEditingLayout}
-                  className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+                  className="text-white border-white bg-transparent hover:bg-white/20 disabled:opacity-50 dark:text-sidebar-foreground dark:border-sidebar-border dark:bg-sidebar dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground"
                 >
                   <FileJson />
                 </Button>
