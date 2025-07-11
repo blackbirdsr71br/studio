@@ -21,6 +21,7 @@ import { SettingsPanelContent } from "./SettingsPanelContent";
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
 import { CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
+import LogoImage from '@/app/LogoUIC.png';
 
 
 interface HeaderProps {
@@ -175,10 +176,8 @@ export function Header({
     <header className="h-16 border-b bg-sidebar flex items-center justify-between px-6 shrink-0">
       <div className="flex items-center gap-3">
         <Image
-          src="/LogoUIC.png"
+          src={LogoImage}
           alt="UI Compose Builder Logo"
-          width={128}
-          height={40}
           className="h-10 w-auto"
         />
       </div>
