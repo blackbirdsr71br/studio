@@ -178,7 +178,7 @@ export function Header({
         <Image
           src={LogoImage}
           alt="UI Compose Builder Logo"
-          className="h-10 w-auto"
+          className="h-12 w-auto"
         />
       </div>
       <TooltipProvider delayDuration={200}>
