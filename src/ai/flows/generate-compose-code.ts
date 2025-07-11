@@ -33,8 +33,9 @@ const GenerateComposeCodeInputSchema = z.object({
 export type GenerateComposeCodeInput = z.infer<typeof GenerateComposeCodeInputSchema>;
 
 // The output is now a map of file paths to their content.
+// Using z.any() here to avoid overly strict schema validation from the model for dynamic keys.
 const GenerateComposeCodeOutputSchema = z.object({
-  files: z.record(z.string()).describe('A map of file paths to their string content for a complete Android project.'),
+  files: z.any().describe('A map of file paths to their string content for a complete Android project.'),
 });
 export type GenerateComposeCodeOutput = z.infer<typeof GenerateComposeCodeOutputSchema>;
 
