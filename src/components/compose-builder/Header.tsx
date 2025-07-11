@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { RefObject, useState } from 'react';
+import React, { useState, RefObject } from 'react';
 import { Button } from "@/components/ui/button";
 import { Code, Trash2, FileJson, UploadCloud, Loader2, Cog as SettingsIcon, Palette, Save, Undo, Redo, Copy, ClipboardPaste } from "lucide-react";
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
@@ -13,7 +13,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
-  TooltipTrigger
+  TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SettingsPanelContent } from "./SettingsPanelContent";
@@ -175,7 +175,7 @@ export function Header({
         <img
           src="/logo.png"
           alt="UI Compose Architect Logo"
-          className="w-32 h-auto"
+          className="h-auto w-32 rounded-sm"
         />
       </div>
       <TooltipProvider delayDuration={200}>
@@ -336,7 +336,7 @@ export function Header({
               <TooltipContent side="bottom">
                 <p>Interface Theme Settings</p>
               </TooltipContent>
-            </Popover>
+            </Tooltip>
             <PopoverContent className="w-auto p-0 mr-2" align="end">
               <SettingsPanelContent />
             </PopoverContent>
