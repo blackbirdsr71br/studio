@@ -20,6 +20,7 @@ import { SettingsPanelContent } from "./SettingsPanelContent";
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
 import { CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
+import { Logo } from '@/components/icons/Logo';
 
 interface HeaderProps {
   generateModalRef: RefObject<GenerateCodeModalRef>;
@@ -171,7 +172,8 @@ export function Header({
 
   return (
     <header className="h-16 border-b bg-sidebar flex items-center justify-between px-6 shrink-0">
-      <div className="flex items-center">
+      <div className="flex items-center gap-3">
+        <Logo className="h-8 w-8" />
         <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
           UI Compose Builder
         </h1>
