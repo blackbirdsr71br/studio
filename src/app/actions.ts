@@ -111,26 +111,24 @@ const buildComponentTreeForAi = (
 export async function generateJetpackComposeCodeAction(
   components: DesignComponent[],
   customComponentTemplates: CustomComponentTemplate[]
-): Promise<string> {
+): Promise<{ files?: Record<string, string>; error?: string }> {
   try {
     // Build the tree starting from the root Scaffold.
     const scaffoldStructureForAi = buildComponentTreeForAi(components, customComponentTemplates, ROOT_SCAFFOLD_ID, true);
 
     if (!scaffoldStructureForAi || (Array.isArray(scaffoldStructureForAi) && scaffoldStructureForAi.length === 0) || Object.keys(scaffoldStructureForAi).length === 0) {
-      return "No valid Scaffold structure found to generate code from.";
+      return { error: "No valid Scaffold structure found to generate code from." };
     }
 
     const designJson = JSON.stringify(scaffoldStructureForAi, null, 2);
     // console.log("JSON for AI (Jetpack Compose):", designJson); // For debugging
     const input: GenerateComposeCodeInput = { designJson };
     const result = await generateComposeCode(input);
-    return result.composeCode;
+    return { files: result.files };
   } catch (error) {
     console.error("Error generating Jetpack Compose code:", error);
-    if (error instanceof Error) {
-      return `Error: ${error.message}`;
-    }
-    return "An unknown error occurred while generating code.";
+    const message = error instanceof Error ? error.message : "An unknown error occurred while generating code.";
+    return { error: message };
   }
 }
 

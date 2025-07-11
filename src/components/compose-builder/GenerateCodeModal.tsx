@@ -58,8 +58,14 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
     setGeneratedScreenCode("");
     
     try {
-      const code = await generateJetpackComposeCodeAction(components, customComponentTemplates);
-      setGeneratedScreenCode(code);
+      const result = await generateJetpackComposeCodeAction(components, customComponentTemplates);
+      if (result.error) {
+        setScreenCodeError(result.error);
+        setGeneratedScreenCode("");
+      } else {
+        // For now, we display the MainActivity.kt content. The project structure is handled by download.
+        setGeneratedScreenCode(result.files?.['app/src/main/java/com/example/myapplication/MainActivity.kt'] || 'Error: MainActivity.kt not found in generated project.');
+      }
     } catch (error) {
       console.error("Error generating screen code:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to generate screen code.";
@@ -156,31 +162,25 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
     }
   };
 
-  const handleDownloadCode = () => {
-    const codeToDownload = activeTab === 'screenComposable' ? generatedScreenCode : generatedParserCode;
-    const errorExists = activeTab === 'screenComposable' ? !!screenCodeError : !!parserCodeError;
-    const filename = activeTab === 'screenComposable' ? 'GeneratedScreen.kt' : 'RemoteUiParser.kt';
+  const handleDownloadProject = () => {
+     toast({
+        title: "Coming Soon!",
+        description: "Project download functionality is under construction.",
+      });
+    // Placeholder for future ZIP download functionality
+    // const codeToDownload = activeTab === 'screenComposable' ? generatedScreenCode : generatedParserCode;
+    // const errorExists = activeTab === 'screenComposable' ? !!screenCodeError : !!parserCodeError;
+    // const filename = activeTab === 'screenComposable' ? 'GeneratedProject.zip' : 'RemoteUiParser.kt';
 
-    if (codeToDownload && !errorExists) {
-      const blob = new Blob([codeToDownload], { type: 'text/plain;charset=utf-8' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(link.href);
-      toast({
-        title: "Code Downloaded",
-        description: `${filename} has started downloading.`,
-      });
-    } else {
-      toast({
-        title: "Download Failed",
-        description: "No valid code to download.",
-        variant: "destructive",
-      });
-    }
+    // if (codeToDownload && !errorExists) {
+    //   // Logic to create and download ZIP would go here
+    // } else {
+    //   toast({
+    //     title: "Download Failed",
+    //     description: "No valid code to download.",
+    //     variant: "destructive",
+    //   });
+    // }
   };
 
   const isLoading = isScreenCodeLoading || isParserCodeLoading;
@@ -210,11 +210,11 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
               {isScreenCodeLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <span className="ml-2">Generating code...</span>
+                  <span className="ml-2">Generating project files...</span>
                 </div>
               ) : screenCodeError ? (
                   <div className="p-4">
-                    <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error Generating Screen Code</AlertTitle><AlertDescription>{screenCodeError}</AlertDescription></Alert>
+                    <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error Generating Project</AlertTitle><AlertDescription>{screenCodeError}</AlertDescription></Alert>
                   </div>
               ) : (
                 <CodeMirror
@@ -263,10 +263,10 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
           </Button>
           <div className="flex gap-2">
             <Button onClick={handleCopyToClipboard} disabled={!canPerformActions}>
-              <Copy className="mr-2 h-4 w-4" /> Copy
+              <Copy className="mr-2 h-4 w-4" /> Copy Code
             </Button>
-            <Button onClick={handleDownloadCode} disabled={!canPerformActions}>
-              <Download className="mr-2 h-4 w-4" /> Download .kt
+            <Button onClick={handleDownloadProject} disabled={!canPerformActions || activeTab !== 'screenComposable'}>
+              <Download className="mr-2 h-4 w-4" /> Download Project.zip
             </Button>
           </div>
         </DialogFooter>
