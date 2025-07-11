@@ -172,7 +172,9 @@ export function Header({
   return (
     <header className="h-16 border-b bg-sidebar flex items-center justify-between px-6 shrink-0">
       <div className="flex items-center">
-        <h1 className="text-lg font-semibold text-sidebar-foreground">UI Compose Builder</h1>
+        <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+          UI Compose Builder
+        </h1>
       </div>
       <TooltipProvider delayDuration={200}>
         <div className="flex items-center gap-2">
