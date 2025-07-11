@@ -173,214 +173,214 @@ export function Header({
   const canRedo = future.length > 0;
 
   return (
-    <header className="h-16 border-b bg-sidebar flex items-center justify-between px-6 shrink-0">
-      <div className="flex items-center gap-3">
-        <Image
-          src={LogoImage}
-          alt="UI Compose Builder Logo"
-          className="h-12 w-auto"
-        />
+    <header className="h-16 border-b bg-sidebar flex items-center justify-between shrink-0">
+      <div className="h-full bg-white flex items-center px-4">
+          <Image
+            src={LogoImage}
+            alt="UI Compose Builder Logo"
+            className="h-14 w-auto"
+          />
       </div>
-      <TooltipProvider delayDuration={200}>
-        <div className="flex items-center gap-2">
-           <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="outline"
-                onClick={undo}
-                disabled={!canUndo}
-                aria-label="Undo"
-                className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
-              >
-                <Undo />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent><p>Undo (Ctrl+Z)</p></TooltipContent>
-          </Tooltip>
-
+      <div className="flex items-center gap-2 px-6">
+        <TooltipProvider delayDuration={200}>
           <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="outline"
-                onClick={redo}
-                disabled={!canRedo}
-                aria-label="Redo"
-                className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
-              >
-                <Redo />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent><p>Redo (Ctrl+Y)</p></TooltipContent>
-          </Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={undo}
+                  disabled={!canUndo}
+                  aria-label="Undo"
+                  className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+                >
+                  <Undo />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>Undo (Ctrl+Z)</p></TooltipContent>
+            </Tooltip>
 
-          <Separator orientation="vertical" className="h-6 mx-1" />
-
-           <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="outline"
-                onClick={handleCopy}
-                disabled={!canCopy}
-                aria-label="Copy Component"
-                className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
-              >
-                <Copy />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent><p>Copy (Ctrl+C)</p></TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="outline"
-                onClick={handlePaste}
-                disabled={!canPaste}
-                aria-label="Paste Component"
-                className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
-              >
-                <ClipboardPaste />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent><p>Paste (Ctrl+V)</p></TooltipContent>
-          </Tooltip>
-
-          <Separator orientation="vertical" className="h-6 mx-1" />
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="outline"
-                onClick={handleClearCanvas}
-                disabled={!hasUserComponents && !isEditingTemplate && !isEditingLayout}
-                aria-label={isEditingTemplate ? "Discard Template Changes" : isEditingLayout ? "Discard Layout Changes" : "Clear Canvas"}
-                className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
-              >
-                <Trash2 />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{isEditingTemplate ? "Discard Template Changes" : isEditingLayout ? "Discard Layout Changes" : "Clear Canvas"}</p>
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="outline"
-                onClick={handleSaveOrUpdate}
-                disabled={(!hasUserComponents && !isEditingTemplate && !isEditingLayout) || isSaving}
-                aria-label={isEditingTemplate ? "Update Custom Component" : isEditingLayout ? "Update Layout" : "Save Current Layout"}
-                className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
-              >
-                {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{isEditingTemplate ? `Update "${editingTemplateInfo.name}"` : isEditingLayout ? `Update "${editingLayoutInfo.name}"` : "Save Current Layout"}</p>
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="outline"
-                onClick={handleOpenPublishConfigModal}
-                disabled={!hasUserComponents || isEditingTemplate || isEditingLayout}
-                aria-label="Publish to Remote Config"
-                className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
-              >
-                <UploadCloud />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Publish to Remote Config</p>
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="outline"
-                onClick={handleOpenThemeEditor}
-                aria-label="Edit App Theme"
-                className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              >
-                <Palette />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Edit App Theme</p>
-            </TooltipContent>
-          </Tooltip>
-
-          <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
-                <PopoverTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    aria-label="Settings"
-                    className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  >
-                    <SettingsIcon />
-                  </Button>
-                </PopoverTrigger>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={redo}
+                  disabled={!canRedo}
+                  aria-label="Redo"
+                  className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+                >
+                  <Redo />
+                </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <p>Interface Theme Settings</p>
+              <TooltipContent><p>Redo (Ctrl+Y)</p></TooltipContent>
+            </Tooltip>
+
+            <Separator orientation="vertical" className="h-6 mx-1" />
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={handleCopy}
+                  disabled={!canCopy}
+                  aria-label="Copy Component"
+                  className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+                >
+                  <Copy />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>Copy (Ctrl+C)</p></TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={handlePaste}
+                  disabled={!canPaste}
+                  aria-label="Paste Component"
+                  className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+                >
+                  <ClipboardPaste />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>Paste (Ctrl+V)</p></TooltipContent>
+            </Tooltip>
+
+            <Separator orientation="vertical" className="h-6 mx-1" />
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={handleClearCanvas}
+                  disabled={!hasUserComponents && !isEditingTemplate && !isEditingLayout}
+                  aria-label={isEditingTemplate ? "Discard Template Changes" : isEditingLayout ? "Discard Layout Changes" : "Clear Canvas"}
+                  className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+                >
+                  <Trash2 />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{isEditingTemplate ? "Discard Template Changes" : isEditingLayout ? "Discard Layout Changes" : "Clear Canvas"}</p>
               </TooltipContent>
             </Tooltip>
-            <PopoverContent className="w-auto p-0 mr-2" align="end">
-              <SettingsPanelContent />
-            </PopoverContent>
-          </Popover>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="outline"
-                onClick={handleViewJson}
-                aria-label="View/Edit Design JSON"
-                disabled={isEditingTemplate || isEditingLayout}
-                className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
-              >
-                <FileJson />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>View/Edit Design JSON</p>
-            </TooltipContent>
-          </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={handleSaveOrUpdate}
+                  disabled={(!hasUserComponents && !isEditingTemplate && !isEditingLayout) || isSaving}
+                  aria-label={isEditingTemplate ? "Update Custom Component" : isEditingLayout ? "Update Layout" : "Save Current Layout"}
+                  className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+                >
+                  {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{isEditingTemplate ? `Update "${editingTemplateInfo.name}"` : isEditingLayout ? `Update "${editingLayoutInfo.name}"` : "Save Current Layout"}</p>
+              </TooltipContent>
+            </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                onClick={handleGenerateCode}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                disabled={!hasUserComponents}
-                aria-label="Generate Jetpack Compose Code"
-              >
-                <Code />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Generate Jetpack Compose Code</p>
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      </TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={handleOpenPublishConfigModal}
+                  disabled={!hasUserComponents || isEditingTemplate || isEditingLayout}
+                  aria-label="Publish to Remote Config"
+                  className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+                >
+                  <UploadCloud />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Publish to Remote Config</p>
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={handleOpenThemeEditor}
+                  aria-label="Edit App Theme"
+                  className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                >
+                  <Palette />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Edit App Theme</p>
+              </TooltipContent>
+            </Tooltip>
+
+            <Popover>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <PopoverTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      aria-label="Settings"
+                      className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    >
+                      <SettingsIcon />
+                    </Button>
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>Interface Theme Settings</p>
+                </TooltipContent>
+              </Tooltip>
+              <PopoverContent className="w-auto p-0 mr-2" align="end">
+                <SettingsPanelContent />
+              </PopoverContent>
+            </Popover>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={handleViewJson}
+                  aria-label="View/Edit Design JSON"
+                  disabled={isEditingTemplate || isEditingLayout}
+                  className="border border-sidebar-border text-sidebar-foreground bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+                >
+                  <FileJson />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>View/Edit Design JSON</p>
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  onClick={handleGenerateCode}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                  disabled={!hasUserComponents}
+                  aria-label="Generate Jetpack Compose Code"
+                >
+                  <Code />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Generate Jetpack Compose Code</p>
+              </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+      </div>
     </header>
   );
 }
