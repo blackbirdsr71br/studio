@@ -174,7 +174,7 @@ export function Header({
 
   return (
     <header className="h-16 border-b bg-sidebar flex items-center justify-between shrink-0">
-      <div className="h-full bg-white flex items-center px-4">
+      <div className="h-full bg-black dark:bg-white flex items-center px-4">
           <Image
             src={LogoImage}
             alt="UI Compose Builder Logo"
