@@ -312,7 +312,7 @@ export function Header({
                   variant="outline"
                   onClick={handleOpenThemeEditor}
                   aria-label="Edit App Theme"
-                  className="text-white border-white bg-transparent hover:bg-white/20 dark:text-sidebar-foreground dark:border-sidebar-border dark:bg-sidebar dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground"
+                  className="text-white border-white bg-transparent hover:bg-white/20 disabled:opacity-50 dark:text-sidebar-foreground dark:border-sidebar-border dark:bg-sidebar dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground"
                 >
                   <Palette />
                 </Button>
@@ -330,7 +330,7 @@ export function Header({
                       size="icon"
                       variant="outline"
                       aria-label="Settings"
-                      className="text-white border-white bg-transparent hover:bg-white/20 dark:text-sidebar-foreground dark:border-sidebar-border dark:bg-sidebar dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground"
+                      className="text-white border-white bg-transparent hover:bg-white/20 disabled:opacity-50 dark:text-sidebar-foreground dark:border-sidebar-border dark:bg-sidebar dark:hover:bg-sidebar-accent dark:hover:text-sidebar-accent-foreground"
                     >
                       <SettingsIcon />
                     </Button>
