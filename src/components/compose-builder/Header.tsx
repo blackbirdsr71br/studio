@@ -1,20 +1,19 @@
 
 'use client';
 
-import React from 'react';
+import React, { RefObject, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Code, Trash2, FileJson, UploadCloud, Loader2, Cog as SettingsIcon, Palette, Save, Undo, Redo, Copy, ClipboardPaste } from "lucide-react";
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
 import type { ViewJsonModalRef } from "./ViewJsonModal";
 import type { ThemeEditorModalRef } from "./ThemeEditorModal";
 import type { PublishConfigModalRef } from "./PublishConfigModal";
-import type { RefObject } from "react";
 import { useDesign } from "@/contexts/DesignContext";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
+  TooltipTrigger
 } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SettingsPanelContent } from "./SettingsPanelContent";
@@ -43,7 +42,7 @@ export function Header({
     history, future, selectedComponentId, clipboard
   } = useDesign();
   const { toast } = useToast();
-  const [isSaving, setIsSaving] = React.useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleGenerateCode = () => {
     if (generateModalRef.current) {
