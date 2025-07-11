@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState, RefObject } from 'react';
+import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import { Code, Trash2, FileJson, UploadCloud, Loader2, Cog as SettingsIcon, Palette, Save, Undo, Redo, Copy, ClipboardPaste } from "lucide-react";
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
@@ -173,9 +174,11 @@ export function Header({
   return (
     <header className="h-16 border-b bg-sidebar flex items-center justify-between px-6 shrink-0">
       <div className="flex items-center gap-3">
-        <img
+        <Image
           src="/logo.png"
           alt="Compose Builder Logo"
+          width={128}
+          height={40}
           className="h-10 w-auto"
         />
       </div>
