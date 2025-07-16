@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useImperativeHandle, forwardRef, useCallback, useEffect } from 'react';
@@ -20,24 +21,28 @@ import {
   getDesignComponentsAsJsonAction,
   convertCanvasToCustomJsonAction,
   publishCustomJsonToRemoteConfigAction,
-  publishToRemoteConfigAction
+  publishToRemoteConfigAction,
+  generateJsonParserCodeAction
 } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Copy, Download, Wand2, FileJson, Save, AlertTriangle, UploadCloud } from 'lucide-react';
+import { Loader2, Copy, Download, Wand2, FileJson, Save, AlertTriangle, UploadCloud, FileCode } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
 import { json as jsonLang } from '@codemirror/lang-json';
+import { java as javaLang } from '@codemirror/lang-java';
 import { githubLight, githubDark } from '@uiw/codemirror-theme-github';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ModalJsonSchema, DEFAULT_CONTENT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
+import JSZip from 'jszip';
+
 
 export interface ViewJsonModalRef {
   openModal: () => void;
 }
 
-type ActiveTab = "canvasJson" | "generateCustomJsonFromCanvas";
+type ActiveTab = "canvasJson" | "generateCustomJsonFromCanvas" | "generateJsonParserCode";
 
 
 export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
@@ -68,6 +73,11 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
   const [publishCustomJsonParameterKey, setPublishCustomJsonParameterKey] = useState<string>("CUSTOM_COMMAND_JSON_V1");
   const [isPublishingCustomJson, setIsPublishingCustomJson] = useState(false);
 
+  // State for "Kotlin Parser" tab
+  const [parserProjectFiles, setParserProjectFiles] = useState<Record<string, string> | null>(null);
+  const [isParserLoading, setIsParserLoading] = useState(false);
+  const [parserError, setParserError] = useState<string | null>(null);
+
 
   const { components, customComponentTemplates, overwriteComponents } = useDesign();
   const { toast } = useToast();
@@ -77,6 +87,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     switch (activeTab) {
       case "canvasJson": return canvasJsonString;
       case "generateCustomJsonFromCanvas": return customJsonFromCanvasString;
+      case "generateJsonParserCode": return parserProjectFiles?.['app/src/main/java/com/example/myapplication/presentation/screen/MainActivity.kt'] || '';
       default: return "";
     }
   };
@@ -85,6 +96,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
      switch (activeTab) {
       case "canvasJson": return canvasJsonError || syntaxError || (validationErrors.length > 0 ? validationErrors.join('; ') : null);
       case "generateCustomJsonFromCanvas": return customJsonFromCanvasError;
+      case "generateJsonParserCode": return parserError;
       default: return null;
     }
   }
@@ -133,6 +145,33 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     }
   }, [components, customComponentTemplates, includeCustomJsonDefaults]);
 
+  const handleGenerateJsonParserCode = useCallback(async () => {
+    setIsParserLoading(true);
+    setParserError(null);
+    setParserProjectFiles(null);
+    // First, generate the custom JSON without default values, as this is the input for the parser generator.
+    const customJsonResult = await convertCanvasToCustomJsonAction(components, customComponentTemplates, false);
+    if (customJsonResult.error || !customJsonResult.customJsonString) {
+        setParserError(customJsonResult.error || "Could not generate input JSON for parser generation.");
+        setIsParserLoading(false);
+        return;
+    }
+
+    try {
+      const result = await generateJsonParserCodeAction(customJsonResult.customJsonString);
+      if (result.files && Object.keys(result.files).length > 0) {
+        setParserProjectFiles(result.files);
+      } else {
+        setParserError(result.error || "AI returned an empty or invalid project structure for the parser.");
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "An unexpected error occurred during parser generation.";
+      setParserError(message);
+    } finally {
+      setIsParserLoading(false);
+    }
+  }, [components, customComponentTemplates]);
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -140,6 +179,8 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
       handleFetchDesignJson();
     } else if (activeTab === 'generateCustomJsonFromCanvas') {
       handleGenerateCustomJsonFromCanvas();
+    } else if (activeTab === 'generateJsonParserCode') {
+      handleGenerateJsonParserCode();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, activeTab, includeDefaultValues, includeCustomJsonDefaults]);
@@ -147,22 +188,20 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
   useImperativeHandle(ref, () => ({
     openModal: () => {
       setIsOpen(true);
-      // Reset all states when modal opens to ensure fresh data on tab switch or reopen
+      // Reset all states when modal opens
+      setActiveTab('canvasJson'); // Default to first tab
       setIncludeDefaultValues(false);
-      setIncludeCustomJsonDefaults(false);
       setCanvasJsonString("");
       setCanvasJsonError(null);
       setSyntaxError(null);
       setValidationErrors([]);
-      setIsCanvasJsonLoading(false);
-      setIsPublishingCanvasJson(false);
-      setShowPublishCanvasJsonDialog(false);
-
+      
+      setIncludeCustomJsonDefaults(false);
       setCustomJsonFromCanvasString("");
       setCustomJsonFromCanvasError(null);
-      setIsCustomJsonFromCanvasLoading(false);
-      setIsPublishingCustomJson(false);
-      setShowPublishCustomJsonDialog(false);
+      
+      setParserProjectFiles(null);
+      setParserError(null);
     }
   }));
 
@@ -232,34 +271,56 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
   };
 
   const handleCopyToClipboard = async () => {
-    const jsonToCopy = currentJsonInEditor();
-    if (jsonToCopy) {
+    const contentToCopy = currentJsonInEditor();
+    if (contentToCopy) {
       try {
-        await navigator.clipboard.writeText(jsonToCopy);
+        await navigator.clipboard.writeText(contentToCopy);
         toast({
-          title: "JSON Copied!",
-          description: "JSON content copied to clipboard.",
+          title: "Content Copied!",
+          description: "Code content copied to clipboard.",
         });
       } catch (err) {
         toast({
           title: "Copy Failed",
-          description: "Could not copy JSON to clipboard.",
+          description: "Could not copy content to clipboard.",
           variant: "destructive",
         });
       }
     }
   };
 
-  const handleDownloadJson = () => {
-    const jsonToDownload = currentJsonInEditor();
+  const handleDownload = () => {
+    const contentToDownload = currentJsonInEditor();
     const currentErr = currentError();
-    if (jsonToDownload && !currentErr) {
-      const blob = new Blob([jsonToDownload], { type: 'application/json;charset=utf-char8' });
+    if (contentToDownload && !currentErr) {
+        let blob: Blob;
+        let filename: string;
+
+        if (activeTab === 'generateJsonParserCode' && parserProjectFiles) {
+            const zip = new JSZip();
+            for (const filePath in parserProjectFiles) {
+                zip.file(filePath, parserProjectFiles[filePath]);
+            }
+            zip.generateAsync({ type: "blob" }).then(blob => {
+                 const link = document.createElement('a');
+                 link.href = URL.createObjectURL(blob);
+                 link.download = 'MVI_Parser_Project.zip';
+                 document.body.appendChild(link);
+                 link.click();
+                 document.body.removeChild(link);
+                 URL.revokeObjectURL(link.href);
+                 toast({ title: "Project Downloaded", description: "Your MVI project is being downloaded." });
+            });
+            return; // Exit after starting zip generation
+        } else {
+            blob = new Blob([contentToDownload], { type: 'application/json;charset=utf-char8' });
+            filename = "design_output.json";
+            if (activeTab === "canvasJson") filename = "canvas_content_design.json";
+            else if (activeTab === "generateCustomJsonFromCanvas") filename = "custom_from_canvas.json";
+        }
+      
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      let filename = "design_output.json";
-      if (activeTab === "canvasJson") filename = "canvas_content_design.json";
-      else if (activeTab === "generateCustomJsonFromCanvas") filename = "custom_from_canvas.json";
       link.download = filename;
       document.body.appendChild(link);
       link.click();
@@ -272,7 +333,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     } else {
        toast({
         title: "Download Failed",
-        description: currentErr || "No valid JSON to download.",
+        description: currentErr || "No valid content to download.",
         variant: "destructive",
       });
     }
@@ -362,7 +423,6 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
 
     setIsPublishingCanvasJson(true);
     try {
-      // Pass the switch state to the action
       const result = await publishToRemoteConfigAction(components, customComponentTemplates, publishCanvasJsonParameterKey.trim(), includeDefaultValues);
       if (result.success) {
         toast({
@@ -389,7 +449,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
   };
 
 
-  const isLoading = isCanvasJsonLoading || isCustomJsonFromCanvasLoading;
+  const isLoading = isCanvasJsonLoading || isCustomJsonFromCanvasLoading || isParserLoading;
   const canPerformCopyDownloadActionsValue = !isLoading && !!currentJsonInEditor() && !currentError();
   
   const canSaveChangesValue = activeTab === 'canvasJson' && !isCanvasJsonLoading && !!canvasJsonString && !syntaxError && validationErrors.length === 0 && !canvasJsonError;
@@ -403,21 +463,20 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="font-headline">View / Generate JSON</DialogTitle>
+          <DialogTitle className="font-headline">View / Generate JSON & Code</DialogTitle>
           <DialogDescription>
-            View or edit the canvas design JSON (content area only).
-            Or generate and publish custom command JSON from the current canvas state.
+            Inspect or edit canvas JSON, or generate custom command JSON and full Kotlin parser projects.
           </DialogDescription>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ActiveTab)} className="flex-grow flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-2 mb-2 h-auto">
-            <TabsTrigger value="canvasJson" className="text-xs px-1 py-1.5"><FileJson className="mr-1.5"/>Canvas JSON (Content Area)</TabsTrigger>
-            <TabsTrigger value="generateCustomJsonFromCanvas" className="text-xs px-1 py-1.5"><Wand2 className="mr-1.5"/>Custom from Canvas</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 mb-2 h-auto">
+            <TabsTrigger value="canvasJson" className="text-xs px-1 py-1.5"><FileJson className="mr-1.5"/>Canvas JSON</TabsTrigger>
+            <TabsTrigger value="generateCustomJsonFromCanvas" className="text-xs px-1 py-1.5"><Wand2 className="mr-1.5"/>Custom JSON</TabsTrigger>
+            <TabsTrigger value="generateJsonParserCode" className="text-xs px-1 py-1.5"><FileCode className="mr-1.5"/>Kotlin Parser</TabsTrigger>
           </TabsList>
 
           <TabsContent value="canvasJson" className="flex-grow flex flex-col space-y-2 min-h-0">
-            {/* Label removed */}
             <div className="flex-grow rounded-md border bg-muted/30 overflow-auto min-h-[200px] relative">
               {isCanvasJsonLoading ? (
                 <div className="flex items-center justify-center h-full">
@@ -474,6 +533,33 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
             </div>
             {customJsonFromCanvasError && <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error Generating JSON</AlertTitle><AlertDescription>{customJsonFromCanvasError}</AlertDescription></Alert>}
           </TabsContent>
+
+          <TabsContent value="generateJsonParserCode" className="flex-grow flex flex-col space-y-2 min-h-0">
+            <div className="flex-grow rounded-md border bg-muted/30 overflow-auto min-h-[200px] relative">
+              {isParserLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <span className="ml-2">Generating Kotlin Project...</span>
+                </div>
+              ) : parserError ? (
+                <div className="p-4">
+                  <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error Generating Project</AlertTitle><AlertDescription>{parserError}</AlertDescription></Alert>
+                </div>
+              ) : (
+                <CodeMirror
+                  value={parserProjectFiles?.['app/src/main/java/com/example/myapplication/presentation/screen/MainActivity.kt'] || ''}
+                  height="100%"
+                  extensions={[javaLang()]}
+                  theme={resolvedTheme === 'dark' ? githubDark : githubLight}
+                  readOnly={true}
+                  className="text-sm h-full"
+                  basicSetup={{ lineNumbers: true, foldGutter: true, highlightActiveLine: true }}
+                />
+              )}
+            </div>
+            {parserError && <Alert variant="destructive" className="mt-2"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error Generating Project</AlertTitle><AlertDescription>{parserError}</AlertDescription></Alert>}
+          </TabsContent>
+
         </Tabs>
 
         <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2 mt-4 pt-4 border-t">
@@ -527,14 +613,20 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
                  </div>
               </div>
             )}
+            {activeTab === 'generateJsonParserCode' && (
+                <Button onClick={handleGenerateJsonParserCode} variant="outline" disabled={isParserLoading} className="w-full sm:w-auto">
+                  {isParserLoading ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Wand2 className="mr-1.5 h-4 w-4" />}
+                  Regenerate Project
+                </Button>
+            )}
           </div>
 
           {/* Right side: Common secondary actions */}
           <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
-            <Button onClick={handleCopyToClipboard} variant="outline" disabled={!canPerformCopyDownloadActionsValue} className="w-full sm:w-auto">
+            <Button onClick={handleCopyToClipboard} variant="outline" disabled={!canPerformCopyDownloadActionsValue || activeTab === 'generateJsonParserCode'} className="w-full sm:w-auto">
               <Copy className="mr-2 h-4 w-4" /> Copy
             </Button>
-            <Button onClick={handleDownloadJson} variant="outline" disabled={!canPerformCopyDownloadActionsValue} className="w-full sm:w-auto">
+            <Button onClick={handleDownload} variant="outline" disabled={!canPerformCopyDownloadActionsValue} className="w-full sm:w-auto">
               <Download className="mr-2 h-4 w-4" /> Download
             </Button>
           </div>

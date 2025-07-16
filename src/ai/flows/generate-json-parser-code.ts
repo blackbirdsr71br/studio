@@ -2,11 +2,12 @@
 'use server';
 
 /**
- * @fileOverview Generates Kotlin code for a data class and a parser function from a given JSON structure.
+ * @fileOverview Generates a complete, structured Android project with Jetpack Compose code from a JSON representation of a UI design.
+ * The project follows Clean Architecture and MVI patterns.
  *
- * - generateJsonParserCode - A function that takes a JSON string and returns Kotlin code for parsing it.
- * - GenerateJsonParserCodeInput - The input type for the function.
- * - GenerateJsonParserCodeOutput - The return type for the function.
+ * - generateJsonParserCode - A function that takes a JSON string representing a UI design and returns a set of project files.
+ * - GenerateJsonParserCodeInput - The input type for the generateJsonParserCode function.
+ * - GenerateJsonParserCodeOutput - The return type for the generateJsonParserCode function.
  */
 
 import {ai} from '@/ai/genkit';
@@ -15,7 +16,7 @@ import {z} from 'genkit';
 const GenerateJsonParserCodeInputSchema = z.object({
   customJson: z
     .string()
-    .describe('A JSON string representing the UI design, for which Kotlin data classes and a parser will be generated.')
+    .describe('A JSON string representing the UI design, for which a full Kotlin project will be generated.')
     .refine(
       (data) => {
         try {
@@ -31,11 +32,10 @@ const GenerateJsonParserCodeInputSchema = z.object({
 export type GenerateJsonParserCodeInput = z.infer<typeof GenerateJsonParserCodeInputSchema>;
 
 const GenerateJsonParserCodeOutputSchema = z.object({
-  kotlinCode: z
-    .string()
-    .describe('A string containing the generated Kotlin data classes and the parser function. This should be a single block of runnable Kotlin code.'),
+  files: z.any().describe('An object where keys are the full file paths (e.g., "app/build.gradle.kts") and values are the raw string content of the files for a complete Android project. This is NOT a stringified JSON, but a direct JSON object.'),
 });
 export type GenerateJsonParserCodeOutput = z.infer<typeof GenerateJsonParserCodeOutputSchema>;
+
 
 export async function generateJsonParserCode(input: GenerateJsonParserCodeInput): Promise<GenerateJsonParserCodeOutput> {
   return generateJsonParserCodeFlow(input);
@@ -45,43 +45,90 @@ const prompt = ai.definePrompt({
   name: 'generateJsonParserCodePrompt',
   input: {schema: GenerateJsonParserCodeInputSchema},
   output: {schema: GenerateJsonParserCodeOutputSchema},
-  prompt: `You are an expert Kotlin developer specializing in JSON serialization. Your task is to generate Kotlin data classes and a parser function for a given JSON string.
+  prompt: `You are an expert Android developer specializing in Clean Architecture, MVI, and Jetpack Compose. Your task is to generate a complete, minimal, and functional Android project structure that renders a UI from a given JSON string.
 
-**Requirements:**
-1.  **Data Classes:** Generate appropriate Kotlin data classes that model the structure of the input JSON. Use the \`@Serializable\` annotation from \`kotlinx.serialization\` for each class. Use \`@SerialName\` for JSON keys that are not valid Kotlin identifiers (e.g., keys with hyphens or starting with numbers). Make all properties nullable to handle potential missing fields in the JSON.
-2.  **Parser Function:** Create a top-level function named \`parseCustomUiFromJson\` that takes a single \`String\` argument (the JSON string) and returns an instance of the root data class (or a list of root data classes if the JSON is an array). The function should use \`kotlinx.serialization.json.Json\` to parse the string.
-3.  **Imports:** Include all necessary imports, such as \`kotlinx.serialization.*\` and \`kotlinx.serialization.json.*\`.
-4.  **Structure:** The final output should be a single string containing the complete, runnable Kotlin code.
+**The final output MUST be a JSON object where the root key is "files". The value of "files" must be another object where keys are the string file paths and values are the string file contents.**
 
-**Input JSON:**
+**Architectural Requirements:**
+- **MVI Pattern:** Implement UI State, UI Events, and UI Effects.
+- **Clean Architecture:** Separate code into Data, Domain, and Presentation layers.
+- **Dependency Injection:** Use Koin for managing dependencies.
+- **Image Loading:** Use Coil for asynchronously loading images from URLs.
+- **Remote Config:** Fetch the UI JSON from Firebase Remote Config and listen for real-time updates.
+
+**Input JSON to be parsed:**
 \`\`\`json
 {{{customJson}}}
 \`\`\`
 
-**Example Output:**
-\`\`\`kotlin
-import kotlinx.serialization.*
-import kotlinx.serialization.json.*
+**Generate the following project file structure and content:**
 
-@Serializable
-data class ModifierDto(
-    val base: BaseModifierDto? = null
-)
+**1. Build & Config Files:**
+*   **\`build.gradle.kts\` (Project Level):** Standard project-level gradle file with plugin definitions for Android, Kotlin, and KSP.
+*   **\`app/build.gradle.kts\`:** App-level gradle file.
+    - Include plugins: \`com.android.application\`, \`org.jetbrains.kotlin.android\`, \`com.google.devtools.ksp\`, \`kotlinx-serialization\`.
+    - Enable \`buildFeatures { compose = true }\`.
+    - Include dependencies for:
+        - Firebase BOM (\`firebase-bom\`), \`firebase-config-ktx\`.
+        - Koin for DI (\`io.insert-koin:koin-android\`, \`io.insert-koin:koin-androidx-compose\`).
+        - Coil for image loading (\`io.coil-kt:coil-compose\`).
+        - Kotlinx Serialization (\`org.jetbrains.kotlinx:kotlinx-serialization-json\`).
+        - Jetpack Compose BOM and necessary artifacts (\`activity-compose\`, \`lifecycle-viewmodel-compose\`).
+*   **\`settings.gradle.kts\`:** Standard settings file including \`:app\`.
+*   **\`app/src/main/AndroidManifest.xml\`:** Standard manifest declaring \`MainActivity\` and internet permissions.
 
-// ... other data classes
+**2. Presentation Layer (\`app/src/main/java/com/example/myapplication/presentation\`):**
+*   **Base MVI classes (\`mvi\` sub-package):**
+    - \`UiState.kt\`: A generic interface for all UI states.
+    - \`UiEvent.kt\`: A generic interface for all user interactions.
+    - \`UiEffect.kt\`: A generic interface for one-time side effects (e.g., Toasts, Navigation).
+    - \`BaseViewModel.kt\`: An abstract ViewModel implementing MVI logic (state, event, effect flows).
+*   **Screen-specific MVI (\`screen\` sub-package):**
+    - \`MainContract.kt\`: Defines the specific State, Event, and Effect for the main screen.
+        - \`State\`: Should include properties like \`isLoading: Boolean\` and \`uiComponent: UiComponentDto?\`.
+        - \`Event\`: Should include events like \`OnButtonClicked(clickId: String)\`.
+        - \`Effect\`: Should include effects like \`ShowToast(message: String)\`.
+    - \`MainViewModel.kt\`:
+        - Inherits from \`BaseViewModel<MainContract.Event, MainContract.State, MainContract.Effect>\`.
+        - Injects a \`GetUiConfigurationUseCase\` via constructor.
+        - Fetches the UI configuration from the use case on initialization and updates the state.
+        - Handles real-time updates from Firebase.
+        - Handles \`OnButtonClicked\` events by sending a \`ShowToast\` effect.
+    - \`MainActivity.kt\`:
+        - The main entry point. Sets up the Koin context.
+        - Calls a \`MainScreen\` composable.
+    - \`MainScreen.kt\`:
+        - The main UI Composable.
+        - Collects state and effects from the ViewModel.
+        - Renders a \`CircularProgressIndicator\` when loading.
+        - Renders the dynamic UI using a \`DynamicUiComponent\` when the data is available.
+        - Uses a \`LaunchedEffect\` to handle one-time side effects (Toasts).
+*   **Dynamic UI Composables (\`components\` sub-package):**
+    - \`DynamicUiComponent.kt\`: A master composable that takes a \`UiComponentDto\` and recursively renders the UI by calling other specific component composables based on the DTO type. This is the core of the dynamic rendering.
+    - \`ComponentMapper.kt\`: Maps DTOs to actual composables. This file will contain functions like \`@Composable fun CardComponent(dto: CardComponentDto, ...)\`, \`@Composable fun TextComponent(dto: TextComponentDto, ...)\`, etc. These composables use the DTO properties to configure standard Jetpack Compose elements (\`Card\`, \`Text\`, \`Button\`, \`Image\` via Coil, etc.).
 
-@Serializable
-data class UiComponentDto(
-    val card: CardComponentDto? = null
-)
+**3. Domain Layer (\`app/src/main/java/com/example/myapplication/domain\`):**
+*   **Repository Contract (\`repository/UiConfigRepository.kt\`):** An interface defining the contract for the data layer, e.g., \`fun getUiConfig(): Flow<UiComponentDto?>\`.
+*   **Use Case (\`usecase/GetUiConfigurationUseCase.kt\`):** A simple class that injects the repository and exposes a method to execute the repository's function.
 
-fun parseCustomUiFromJson(jsonString: String): UiComponentDto {
-    val json = Json { ignoreUnknownKeys = true }
-    return json.decodeFromString<UiComponentDto>(jsonString)
-}
-\`\`\`
+**4. Data Layer (\`app/src/main/java/com/example/myapplication/data\`):**
+*   **DTOs (\`model\` sub-package):**
+    - Generate all necessary Kotlin \`@Serializable\` data classes (DTOs) to perfectly match the structure of the input JSON (\`{{{customJson}}}\`). Name them logically, e.g., \`UiComponentDto\`, \`CardComponentDto\`, \`ModifierDto\`, \`BaseModifierDto\`, \`PaddingDto\`, etc. Make all properties nullable to handle missing fields gracefully. Use \`@SerialName\` for JSON keys that are not valid Kotlin identifiers.
+*   **Repository Implementation (\`repository/UiConfigRepositoryImpl.kt\`):**
+    - Implements the \`UiConfigRepository\` interface.
+    - Injects \`FirebaseRemoteConfig\`.
+    - Contains logic to fetch the JSON string from Remote Config using a specific key (e.g., "CUSTOM_COMMAND_JSON_V1").
+    - Sets up a listener for real-time updates from Remote Config.
+    - Uses \`kotlinx.serialization.json.Json\` to parse the fetched string into the DTOs.
+    - Emits the parsed DTO through a Kotlin \`Flow\`.
 
-Generate the Kotlin code now.
+**5. Dependency Injection (\`app/src/main/java/com/example/myapplication/di\`):**
+*   **\`AppModule.kt\`:** Defines a Koin module that provides dependencies for the ViewModel.
+*   **\`DataModule.kt\`:** Defines a Koin module that provides the Firebase Remote Config instance and binds the \`UiConfigRepositoryImpl\` to the \`UiConfigRepository\` interface.
+*   **\`DomainModule.kt\`:** Defines a Koin module that provides the \`GetUiConfigurationUseCase\`.
+*   **\`MyApplication.kt\`:** An \`Application\` class that initializes Koin with all the modules. Remember to add this class to the \`AndroidManifest.xml\`.
+
+Ensure all files are complete, functional, and include all necessary imports. The output must be a single, valid JSON object.
 `,
 });
 
@@ -93,8 +140,9 @@ const generateJsonParserCodeFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    if (!output?.kotlinCode) {
-      throw new Error("AI failed to generate Kotlin code.");
+    if (!output?.files || typeof output.files !== 'object' || Object.keys(output.files).length === 0) {
+      console.error("AI generation failed or returned invalid structure. Output:", output);
+      throw new Error("AI failed to generate a valid project file structure for the JSON parser.");
     }
     return output;
   }
