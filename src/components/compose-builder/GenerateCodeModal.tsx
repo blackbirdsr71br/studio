@@ -60,10 +60,10 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
       if (result.error) {
         setScreenCodeError(result.error);
         setGeneratedProjectFiles(null);
-      } else if (result.files) {
+      } else if (result.files && Object.keys(result.files).length > 0) {
         setGeneratedProjectFiles(result.files);
       } else {
-        setScreenCodeError("AI returned an empty project structure.");
+        setScreenCodeError("AI returned an empty or invalid project structure.");
         setGeneratedProjectFiles(null);
       }
     } catch (error) {

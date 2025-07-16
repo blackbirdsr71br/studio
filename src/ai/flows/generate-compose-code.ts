@@ -32,10 +32,9 @@ const GenerateComposeCodeInputSchema = z.object({
 });
 export type GenerateComposeCodeInput = z.infer<typeof GenerateComposeCodeInputSchema>;
 
-// The output is now a map of file paths to their content.
-// Using z.any() here to avoid overly strict schema validation from the model for dynamic keys.
+// Using z.any() and providing a detailed description to guide the model.
 const GenerateComposeCodeOutputSchema = z.object({
-  files: z.any().describe('A map of file paths to their string content for a complete Android project.'),
+  files: z.any().describe('A map of file paths to their string content for a complete Android project. The keys should be the full file paths (e.g., "app/build.gradle.kts") and the values should be the raw file content.'),
 });
 export type GenerateComposeCodeOutput = z.infer<typeof GenerateComposeCodeOutputSchema>;
 
@@ -47,7 +46,18 @@ const prompt = ai.definePrompt({
   name: 'generateComposeCodePrompt',
   input: {schema: GenerateComposeCodeInputSchema},
   output: {schema: GenerateComposeCodeOutputSchema},
-  prompt: `You are an expert Jetpack Compose developer. Your task is to generate a complete, minimal, and functional Android project structure as a JSON object where keys are file paths and values are the file contents.
+  prompt: `You are an expert Jetpack Compose developer. Your task is to generate a complete, minimal, and functional Android project structure.
+The final output MUST be a JSON object with a single root key "files", which itself is an object where keys are file paths and values are the file contents.
+
+Example Output Structure:
+{
+  "files": {
+    "build.gradle.kts": "...",
+    "app/build.gradle.kts": "...",
+    "app/src/main/AndroidManifest.xml": "...",
+    "app/src/main/java/com/example/myapplication/MainActivity.kt": "..."
+  }
+}
 
 The app's UI will be based on the following JSON representation (\`{{{designJson}}}\`).
 
@@ -113,7 +123,7 @@ Generate the following files with the specified content:
 \`\`\`
 
 **Output Format:**
-The output must be a single JSON object where keys are the full file paths (e.g., "app/build.gradle.kts") and values are the complete, raw string content of those files. Do not add any extra explanations.
+The output must be a single JSON object where the root key is "files". Do not add any extra explanations.
 `,
 });
 
@@ -125,6 +135,9 @@ const generateComposeCodeFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    return output!;
+    if (!output?.files || Object.keys(output.files).length === 0) {
+      throw new Error("AI failed to generate a valid project file structure.");
+    }
+    return output;
   }
 );
