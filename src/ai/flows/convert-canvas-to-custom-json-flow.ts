@@ -260,20 +260,10 @@ const convertCanvasToCustomJsonFlow = ai.defineFlow(
     if (trimmedOutput === '' || trimmedOutput === '{}') {
         return { customJsonString: '{}' }; 
     }
-
-    let jsonToFormat: any;
-
-    try {
-        jsonToFormat = JSON.parse(output.customJsonString);
-    } catch (e) {
-        console.error("Error parsing customJsonString from AI output despite Zod refine: ", e);
-        console.error("Invalid string was: ", output.customJsonString); // Log the bad string
-        throw new Error("AI returned an invalid JSON string for customJsonString that could not be formatted.");
-    }
     
-    // Ensure the JSON is "pretty-printed" with an indent of 2 spaces for display.
-    const formattedJsonString = JSON.stringify(jsonToFormat, null, 2);
-    
-    return { customJsonString: formattedJsonString };
+    // The Zod schema has already refined that the output is valid JSON.
+    // The fragile re-parsing and pretty-printing logic has been removed.
+    // We now trust the AI to provide a compact string, and if it's parsable, we use it directly.
+    return { customJsonString: output.customJsonString };
   }
 );
