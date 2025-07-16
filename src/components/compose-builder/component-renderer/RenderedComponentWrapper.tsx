@@ -255,13 +255,13 @@ export function RenderedComponentWrapper({ component, zoomLevel = 1, isPreview =
     const handleMouseMove = (event: MouseEvent) => {
       if (!isResizing || !resizeDetails || !ref.current) return;
 
-      const dx = (event.clientX - resizeDetails.startX) / (zoomLevel || 1);
-      const dy = (event.clientY - resizeDetails.startY) / (zoomLevel || 1);
+      const dx = (event.clientX - resizeDetails.startX) / zoomLevel;
+      const dy = (event.clientY - resizeDetails.startY) / zoomLevel;
       
       const updatedProps: Record<string, any> = {};
 
-      const initialUnscaledWidth = resizeDetails.initialWidth / (zoomLevel || 1);
-      const initialUnscaledHeight = resizeDetails.initialHeight / (zoomLevel || 1);
+      const initialUnscaledWidth = resizeDetails.initialWidth / zoomLevel;
+      const initialUnscaledHeight = resizeDetails.initialHeight / zoomLevel;
 
       const isHorizontalResize = resizeDetails.handle.includes('e') || resizeDetails.handle.includes('w');
       const isVerticalResize = resizeDetails.handle.includes('n') || resizeDetails.handle.includes('s');
@@ -541,7 +541,7 @@ export function RenderedComponentWrapper({ component, zoomLevel = 1, isPreview =
       {isReorderTarget && dropIndicator === 'bottom' && (
           <div className="absolute bottom-[-2px] left-0 right-0 h-[4px] bg-primary z-20 pointer-events-none" />
       )}
-      {component.type !== 'Spacer' && (
+      {component.type !== 'Spacer' && !isPreview && (
         <>
           {canResize && (['nw', 'ne', 'sw', 'se'] as HandleType[]).map(handle => (
             <div key={handle} className={`resize-handle ${handle}`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle)} />

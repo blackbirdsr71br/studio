@@ -12,7 +12,7 @@ interface ContainerViewProps {
   component: DesignComponent;
   childrenComponents: DesignComponent[];
   isRow: boolean;
-  zoomLevel?: number;
+  zoomLevel: number;
   isPreview?: boolean;
 }
 
@@ -30,7 +30,7 @@ const isNumericValue = (value: any): boolean => {
 };
 
 
-export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, zoomLevel = 1, isPreview = false }: ContainerViewProps) {
+export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, zoomLevel, isPreview = false }: ContainerViewProps) {
   const { customComponentTemplates } = useDesign();
   const { resolvedTheme } = useTheme();
 

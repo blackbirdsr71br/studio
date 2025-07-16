@@ -31,6 +31,7 @@ const PreviewDesignProvider: FC<{ components: DesignComponent[], children: React
         editingTemplateInfo: null,
         editingLayoutInfo: null,
         savedLayouts: [],
+        galleryImages: [],
         history: [],
         future: [],
         clipboard: null,
@@ -58,6 +59,8 @@ const PreviewDesignProvider: FC<{ components: DesignComponent[], children: React
         redo: () => {},
         copyComponent: () => {},
         pasteComponent: () => {},
+        addImageToGallery: async () => {},
+        removeImageFromGallery: async () => {},
     };
     return value;
   }, [components, allTemplates]);
