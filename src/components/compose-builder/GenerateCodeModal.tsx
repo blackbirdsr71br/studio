@@ -33,7 +33,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
   const [screenCodeError, setScreenCodeError] = useState<string | null>(null);
 
   // State for JSON Parser tab
-  const [generatedParserCode, setGeneratedParserCode] = useState<string>("");
+  const [generatedParserProject, setGeneratedParserProject] = useState<Record<string, string> | null>(null);
   const [isParserCodeLoading, setIsParserCodeLoading] = useState(false);
   const [parserCodeError, setParserCodeError] = useState<string | null>(null);
 
@@ -79,7 +79,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
   const handleGenerateParserCode = useCallback(async () => {
     setIsParserCodeLoading(true);
     setParserCodeError(null);
-    setGeneratedParserCode("");
+    setGeneratedParserProject(null);
     
     try {
       // Step 1: Generate the Canvas JSON from the canvas, always concise for AI
@@ -94,20 +94,20 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
         throw new Error("No user components in the content area to generate a parser for.");
       }
       
-      // Step 2: Generate the Kotlin parser code from the Canvas JSON
-      const parserCodeResult = await generateJsonParserCodeAction(canvasJsonString);
+      // Step 2: Generate the Kotlin parser project from the Canvas JSON
+      const parserProjectResult = await generateJsonParserCodeAction(canvasJsonString);
 
-      if (parserCodeResult.error || !parserCodeResult.kotlinCode) {
-        throw new Error(parserCodeResult.error || "Failed to generate Kotlin parser code.");
+      if (parserProjectResult.error || !parserProjectResult.files || Object.keys(parserProjectResult.files).length === 0) {
+        throw new Error(parserProjectResult.error || "Failed to generate Kotlin parser project.");
       }
       
-      setGeneratedParserCode(parserCodeResult.kotlinCode);
+      setGeneratedParserProject(parserProjectResult.files);
       
     } catch (error) {
-      console.error("Error generating parser code:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to generate parser code.";
+      console.error("Error generating parser project:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to generate parser project.";
       setParserCodeError(errorMessage);
-      setGeneratedParserCode("");
+      setGeneratedParserProject(null);
     } finally {
       setIsParserCodeLoading(false);
     }
@@ -119,7 +119,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
       // Trigger generation if tab is switched to and content is empty
       if (newTab === 'screenComposable' && !generatedProjectFiles && !isScreenCodeLoading) {
           handleGenerateScreenCode();
-      } else if (newTab === 'jsonParser' && !generatedParserCode && !isParserCodeLoading) {
+      } else if (newTab === 'jsonParser' && !generatedParserProject && !isParserCodeLoading) {
           handleGenerateParserCode();
       }
   };
@@ -131,7 +131,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
       // Reset states on open to ensure fresh generation
       setGeneratedProjectFiles(null);
       setScreenCodeError(null);
-      setGeneratedParserCode("");
+      setGeneratedParserProject(null);
       setParserCodeError(null);
 
       // Trigger generation for the initially active tab
@@ -142,13 +142,13 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
       }
     }
   }));
-
+  
   const handleCopyToClipboard = async () => {
     let codeToCopy = "";
     if (activeTab === 'screenComposable' && generatedProjectFiles) {
         codeToCopy = generatedProjectFiles['app/src/main/java/com/example/myapplication/MainActivity.kt'] || '';
-    } else if (activeTab === 'jsonParser') {
-        codeToCopy = generatedParserCode;
+    } else if (activeTab === 'jsonParser' && generatedParserProject) {
+        codeToCopy = generatedParserProject['app/src/main/java/com/example/myapplication/DynamicUiRenderer.kt'] || '';
     }
     
     if (codeToCopy) {
@@ -169,27 +169,38 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
   };
 
   const handleDownloadProject = async () => {
-    if (activeTab !== 'screenComposable' || !generatedProjectFiles) {
-      toast({ title: "Download Failed", description: "No project files to download.", variant: "destructive" });
+    let filesToZip: Record<string, string> | null = null;
+    let zipName = 'ComposeBuilderProject.zip';
+
+    if (activeTab === 'screenComposable' && generatedProjectFiles) {
+        filesToZip = generatedProjectFiles;
+        zipName = 'ComposeScreenProject.zip';
+    } else if (activeTab === 'jsonParser' && generatedParserProject) {
+        filesToZip = generatedParserProject;
+        zipName = 'ComposeParserProject.zip';
+    }
+
+    if (!filesToZip) {
+      toast({ title: "Download Failed", description: "No project files to download for this tab.", variant: "destructive" });
       return;
     }
 
     try {
         const zip = new JSZip();
-        for (const filePath in generatedProjectFiles) {
-            zip.file(filePath, generatedProjectFiles[filePath]);
+        for (const filePath in filesToZip) {
+            zip.file(filePath, filesToZip[filePath]);
         }
         const blob = await zip.generateAsync({ type: "blob" });
         
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = 'ComposeBuilderProject.zip';
+        link.download = zipName;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(link.href);
         
-        toast({ title: "Project Downloaded", description: "Your Jetpack Compose project is being downloaded." });
+        toast({ title: "Project Downloaded", description: `Your project ${zipName} is being downloaded.` });
 
     } catch (error) {
         console.error("Error creating project zip:", error);
@@ -201,10 +212,13 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
   
   const canCopyCode = !isLoading && (
     (activeTab === 'screenComposable' && generatedProjectFiles && Object.keys(generatedProjectFiles).length > 0) ||
-    (activeTab === 'jsonParser' && !!generatedParserCode && !parserCodeError)
+    (activeTab === 'jsonParser' && generatedParserProject && Object.keys(generatedParserProject).length > 0)
   );
-
-  const canDownloadProject = activeTab === 'screenComposable' && !isScreenCodeLoading && !!generatedProjectFiles && Object.keys(generatedProjectFiles).length > 0 && !screenCodeError;
+  
+  const canDownloadProject = !isLoading && (
+    (activeTab === 'screenComposable' && !screenCodeError && generatedProjectFiles && Object.keys(generatedProjectFiles).length > 0) ||
+    (activeTab === 'jsonParser' && !parserCodeError && generatedParserProject && Object.keys(generatedParserProject).length > 0)
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -252,15 +266,15 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
               {isParserCodeLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <span className="ml-2">Generating parser logic...</span>
+                  <span className="ml-2">Generating parser project...</span>
                 </div>
               ) : parserCodeError ? (
                   <div className="p-4">
-                    <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error Generating Parser Code</AlertTitle><AlertDescription>{parserCodeError}</AlertDescription></Alert>
+                    <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error Generating Parser Project</AlertTitle><AlertDescription>{parserCodeError}</AlertDescription></Alert>
                   </div>
               ) : (
                 <CodeMirror
-                  value={generatedParserCode}
+                  value={generatedParserProject?.['app/src/main/java/com/example/myapplication/DynamicUiRenderer.kt'] || 'Select a file to view...'}
                   height="100%"
                   extensions={[javaLang()]}
                   theme={resolvedTheme === 'dark' ? githubDark : githubLight}
