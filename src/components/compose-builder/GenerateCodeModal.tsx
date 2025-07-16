@@ -1,11 +1,11 @@
 
 'use client';
 
-import React, { useState, useImperativeHandle, forwardRef, useCallback, useEffect } from 'react';
+import React, { useState, useImperativeHandle, forwardRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useDesign } from '@/contexts/DesignContext';
-import { generateJetpackComposeCodeAction, convertCanvasToCustomJsonAction, generateJsonParserCodeAction, getDesignComponentsAsJsonAction } from '@/app/actions';
+import { generateJetpackComposeCodeAction, generateJsonParserCodeAction, getDesignComponentsAsJsonAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Copy, Download, Wand2, FileCode, AlertTriangle } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
@@ -14,6 +14,7 @@ import { githubLight, githubDark } from '@uiw/codemirror-theme-github';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import JSZip from 'jszip';
 
 
 export interface GenerateCodeModalRef {
@@ -27,7 +28,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
   const [activeTab, setActiveTab] = useState<ActiveTab>("screenComposable");
 
   // State for Screen Composable tab
-  const [generatedScreenCode, setGeneratedScreenCode] = useState<string>("");
+  const [generatedProjectFiles, setGeneratedProjectFiles] = useState<Record<string, string> | null>(null);
   const [isScreenCodeLoading, setIsScreenCodeLoading] = useState(false);
   const [screenCodeError, setScreenCodeError] = useState<string | null>(null);
 
@@ -40,37 +41,36 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
   const { toast } = useToast();
   const { resolvedTheme } = useTheme();
 
-  const handleScreenCodeChange = useCallback((value: string) => {
-    setGeneratedScreenCode(value);
-  }, []);
 
   const handleGenerateScreenCode = useCallback(async () => {
     const userComponentsExist = components.some(c => c.parentId === 'scaffold-content-lazy-column') || components.length > 4;
 
     if (!userComponentsExist) {
       setScreenCodeError("No user components on the canvas to generate code from.");
-      setGeneratedScreenCode("");
+      setGeneratedProjectFiles(null);
       return;
     }
     
     setIsScreenCodeLoading(true);
     setScreenCodeError(null);
-    setGeneratedScreenCode("");
+    setGeneratedProjectFiles(null);
     
     try {
       const result = await generateJetpackComposeCodeAction(components, customComponentTemplates);
       if (result.error) {
         setScreenCodeError(result.error);
-        setGeneratedScreenCode("");
+        setGeneratedProjectFiles(null);
+      } else if (result.files) {
+        setGeneratedProjectFiles(result.files);
       } else {
-        // For now, we display the MainActivity.kt content. The project structure is handled by download.
-        setGeneratedScreenCode(result.files?.['app/src/main/java/com/example/myapplication/MainActivity.kt'] || 'Error: MainActivity.kt not found in generated project.');
+        setScreenCodeError("AI returned an empty project structure.");
+        setGeneratedProjectFiles(null);
       }
     } catch (error) {
       console.error("Error generating screen code:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to generate screen code.";
       setScreenCodeError(errorMessage);
-      setGeneratedScreenCode("");
+      setGeneratedProjectFiles(null);
     } finally {
       setIsScreenCodeLoading(false);
     }
@@ -117,7 +117,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
       const newTab = value as ActiveTab;
       setActiveTab(newTab);
       // Trigger generation if tab is switched to and content is empty
-      if (newTab === 'screenComposable' && !generatedScreenCode && !isScreenCodeLoading) {
+      if (newTab === 'screenComposable' && !generatedProjectFiles && !isScreenCodeLoading) {
           handleGenerateScreenCode();
       } else if (newTab === 'jsonParser' && !generatedParserCode && !isParserCodeLoading) {
           handleGenerateParserCode();
@@ -129,7 +129,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
     openModal: () => {
       setIsOpen(true);
       // Reset states on open to ensure fresh generation
-      setGeneratedScreenCode("");
+      setGeneratedProjectFiles(null);
       setScreenCodeError(null);
       setGeneratedParserCode("");
       setParserCodeError(null);
@@ -144,13 +144,19 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
   }));
 
   const handleCopyToClipboard = async () => {
-    const codeToCopy = activeTab === 'screenComposable' ? generatedScreenCode : generatedParserCode;
+    let codeToCopy = "";
+    if (activeTab === 'screenComposable' && generatedProjectFiles) {
+        codeToCopy = generatedProjectFiles['app/src/main/java/com/example/myapplication/MainActivity.kt'] || '';
+    } else if (activeTab === 'jsonParser') {
+        codeToCopy = generatedParserCode;
+    }
+    
     if (codeToCopy) {
       try {
         await navigator.clipboard.writeText(codeToCopy);
         toast({
           title: "Code Copied!",
-          description: "Kotlin code copied to clipboard.",
+          description: "Active file's content copied to clipboard.",
         });
       } catch (err) {
         toast({
@@ -162,32 +168,43 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
     }
   };
 
-  const handleDownloadProject = () => {
-     toast({
-        title: "Coming Soon!",
-        description: "Project download functionality is under construction.",
-      });
-    // Placeholder for future ZIP download functionality
-    // const codeToDownload = activeTab === 'screenComposable' ? generatedScreenCode : generatedParserCode;
-    // const errorExists = activeTab === 'screenComposable' ? !!screenCodeError : !!parserCodeError;
-    // const filename = activeTab === 'screenComposable' ? 'GeneratedProject.zip' : 'RemoteUiParser.kt';
+  const handleDownloadProject = async () => {
+    if (activeTab !== 'screenComposable' || !generatedProjectFiles) {
+      toast({ title: "Download Failed", description: "No project files to download.", variant: "destructive" });
+      return;
+    }
 
-    // if (codeToDownload && !errorExists) {
-    //   // Logic to create and download ZIP would go here
-    // } else {
-    //   toast({
-    //     title: "Download Failed",
-    //     description: "No valid code to download.",
-    //     variant: "destructive",
-    //   });
-    // }
+    try {
+        const zip = new JSZip();
+        for (const filePath in generatedProjectFiles) {
+            zip.file(filePath, generatedProjectFiles[filePath]);
+        }
+        const blob = await zip.generateAsync({ type: "blob" });
+        
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'ComposeBuilderProject.zip';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+        
+        toast({ title: "Project Downloaded", description: "Your Jetpack Compose project is being downloaded." });
+
+    } catch (error) {
+        console.error("Error creating project zip:", error);
+        toast({ title: "Download Failed", description: "Could not create the project ZIP file.", variant: "destructive" });
+    }
   };
 
   const isLoading = isScreenCodeLoading || isParserCodeLoading;
-  const canPerformActions = !isLoading && (
-    (activeTab === 'screenComposable' && !!generatedScreenCode && !screenCodeError) ||
+  
+  const canCopyCode = !isLoading && (
+    (activeTab === 'screenComposable' && generatedProjectFiles) ||
     (activeTab === 'jsonParser' && !!generatedParserCode && !parserCodeError)
   );
+
+  const canDownloadProject = activeTab === 'screenComposable' && !isScreenCodeLoading && !!generatedProjectFiles && !screenCodeError;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -195,7 +212,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
         <DialogHeader>
           <DialogTitle className="font-headline">Generated Jetpack Compose Code</DialogTitle>
           <DialogDescription>
-            Select a tab to view the generated code. Edit, copy, or download it for your project.
+            Select a tab to view the generated code. Edit, copy, or download the complete project.
           </DialogDescription>
         </DialogHeader>
 
@@ -218,11 +235,11 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
                   </div>
               ) : (
                 <CodeMirror
-                  value={generatedScreenCode}
+                  value={generatedProjectFiles?.['app/src/main/java/com/example/myapplication/MainActivity.kt'] || ''}
                   height="100%"
                   extensions={[javaLang()]}
                   theme={resolvedTheme === 'dark' ? githubDark : githubLight}
-                  onChange={handleScreenCodeChange}
+                  readOnly // Editing a single file doesn't make sense for a full project view
                   className="text-sm h-full"
                   basicSetup={{ lineNumbers: true, foldGutter: true, autocompletion: true, highlightActiveLine: true, highlightActiveLineGutter: true, bracketMatching: true, closeBrackets: true }}
                 />
@@ -262,10 +279,10 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
             Regenerate
           </Button>
           <div className="flex gap-2">
-            <Button onClick={handleCopyToClipboard} disabled={!canPerformActions}>
+            <Button onClick={handleCopyToClipboard} disabled={!canCopyCode}>
               <Copy className="mr-2 h-4 w-4" /> Copy Code
             </Button>
-            <Button onClick={handleDownloadProject} disabled={!canPerformActions || activeTab !== 'screenComposable'}>
+            <Button onClick={handleDownloadProject} disabled={!canDownloadProject}>
               <Download className="mr-2 h-4 w-4" /> Download Project.zip
             </Button>
           </div>
