@@ -1,3 +1,4 @@
+
 'use client';
 import type { BaseComponentProps } from '@/types/compose-spec';
 

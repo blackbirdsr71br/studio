@@ -11,7 +11,7 @@ import { ItemTypes } from '@/lib/dnd-types';
 import { cn } from "@/lib/utils";
 import { DesignContext, useDesign } from '@/contexts/DesignContext';
 import { useMemo, FC, ReactNode } from "react";
-import { RenderedComponentWrapper } from './component-renderer/RenderedComponentWrapper';
+import { RenderedComponentWrapper } from './RenderedComponentWrapper';
 
 // A read-only, self-contained provider for rendering previews.
 // This sandboxes the rendering so it doesn't interfere with the main canvas.
@@ -206,3 +206,5 @@ export function DraggableComponentItem({ type, Icon, displayName, template }: Dr
     </Tooltip>
   );
 }
+
+    

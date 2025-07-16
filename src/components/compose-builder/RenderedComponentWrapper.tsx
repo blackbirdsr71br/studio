@@ -15,7 +15,8 @@ import { isContainerType, isCustomComponentType, ROOT_SCAFFOLD_ID, DEFAULT_CONTE
 
 interface RenderedComponentWrapperProps {
   component: DesignComponent;
-  zoomLevel: number;
+  zoomLevel?: number;
+  isPreview?: boolean;
 }
 
 interface DraggedCanvasItem {
@@ -99,7 +100,7 @@ const getDimensionValue = (
   };
   
 
-export function RenderedComponentWrapper({ component, zoomLevel }: RenderedComponentWrapperProps) {
+export function RenderedComponentWrapper({ component, zoomLevel = 1, isPreview = false }: RenderedComponentWrapperProps) {
   const { selectedComponentId, selectComponent, getComponentById, addComponent, moveComponent, updateComponent, customComponentTemplates } = useDesign();
   const ref = useRef<HTMLDivElement>(null);
   const [dropIndicator, setDropIndicator] = useState<DropIndicatorPosition>(null);
@@ -324,7 +325,7 @@ export function RenderedComponentWrapper({ component, zoomLevel }: RenderedCompo
           <div className="flex flex-col w-full h-full bg-[var(--scaffold-bg-color)]" style={{'--scaffold-bg-color': component.properties.backgroundColor || 'transparent'} as React.CSSProperties}>
             {topBarChild && (
               <div style={{ flexShrink: 0, width: '100%', height: `${topBarChild.properties.height || 56}px` }} className="flex w-full">
-                <RenderedComponentWrapper component={topBarChild} zoomLevel={zoomLevel} />
+                <RenderedComponentWrapper component={topBarChild} zoomLevel={zoomLevel} isPreview={isPreview} />
               </div>
             )}
             {contentChild && (
@@ -332,12 +333,12 @@ export function RenderedComponentWrapper({ component, zoomLevel }: RenderedCompo
                 style={{ flexGrow: 1, minHeight: 0, width: '100%' }}
                 className={cn("flex w-full", "overflow-y-auto overflow-x-hidden")}
               >
-                <RenderedComponentWrapper component={contentChild} zoomLevel={zoomLevel} />
+                <RenderedComponentWrapper component={contentChild} zoomLevel={zoomLevel} isPreview={isPreview} />
               </div>
             )}
             {bottomBarChild && (
               <div style={{ flexShrink: 0, width: '100%', height: `${bottomBarChild.properties.height || 56}px` }} className="flex w-full">
-                 <RenderedComponentWrapper component={bottomBarChild} zoomLevel={zoomLevel} />
+                 <RenderedComponentWrapper component={bottomBarChild} zoomLevel={zoomLevel} isPreview={isPreview} />
               </div>
             )}
           </div>
@@ -347,13 +348,13 @@ export function RenderedComponentWrapper({ component, zoomLevel }: RenderedCompo
       case 'Button':
         return <ButtonView properties={component.properties} />;
       case 'Image':
-        return <ImageView properties={component.properties} />;
+        return <ImageView properties={component.properties} isPreview={isPreview} />;
       
       case 'Column':
       case 'Box':
       case 'Card':
       case 'LazyColumn': 
-        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={false} zoomLevel={zoomLevel} />;
+        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={false} zoomLevel={zoomLevel} isPreview={isPreview} />;
 
       case 'Row':
       case 'LazyRow':
@@ -361,7 +362,7 @@ export function RenderedComponentWrapper({ component, zoomLevel }: RenderedCompo
       case 'LazyHorizontalGrid':
       case 'TopAppBar': 
       case 'BottomNavigationBar': 
-        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={true} zoomLevel={zoomLevel} />;
+        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={true} zoomLevel={zoomLevel} isPreview={isPreview} />;
       
       case 'Spacer':
         return (
@@ -384,7 +385,7 @@ export function RenderedComponentWrapper({ component, zoomLevel }: RenderedCompo
              if (rootTemplateComponent) {
                 // Here, we trust ContainerView to determine the flex direction based on the root's original type
                 const isTemplateRootRowLike = ['Row', 'LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar'].includes(rootTemplateComponent.type);
-                return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isTemplateRootRowLike} zoomLevel={zoomLevel} />;
+                return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isTemplateRootRowLike} zoomLevel={zoomLevel} isPreview={isPreview} />;
              }
            }
         }
@@ -415,7 +416,7 @@ export function RenderedComponentWrapper({ component, zoomLevel }: RenderedCompo
     width: getDimensionValue('width', component.properties.width, component.properties.fillMaxWidth, component.type, component.id, component.parentId, getComponentById, customComponentTemplates),
     height: getDimensionValue('height', component.properties.height, component.properties.fillMaxHeight, component.type, component.id, component.parentId, getComponentById, customComponentTemplates),
     position: 'relative', 
-    display: 'block', 
+    display: 'block',
   };
   
   let effectiveLayoutWeight = component.properties.layoutWeight || 0;
@@ -539,7 +540,7 @@ export function RenderedComponentWrapper({ component, zoomLevel }: RenderedCompo
       {isReorderTarget && dropIndicator === 'bottom' && (
           <div className="absolute bottom-[-2px] left-0 right-0 h-[4px] bg-primary z-20 pointer-events-none" />
       )}
-      {component.type !== 'Spacer' && (
+      {component.type !== 'Spacer' && !isPreview && (
         <>
           {canResize && (['nw', 'ne', 'sw', 'se'] as HandleType[]).map(handle => (
             <div key={handle} className={`resize-handle ${handle}`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle)} />
@@ -556,3 +557,4 @@ export function RenderedComponentWrapper({ component, zoomLevel }: RenderedCompo
   );
 }
 
+    

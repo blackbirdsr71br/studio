@@ -1,4 +1,5 @@
-'use client'; // Top-level client component for context and refs
+
+'use client';
 
 import { useRef, useState, useEffect } from 'react';
 import { DndProvider } from 'react-dnd';
@@ -15,12 +16,14 @@ import { ImageSourceModal, type ImageSourceModalRef } from '@/components/compose
 import { PublishConfigModal, type PublishConfigModalRef } from '@/components/compose-builder/PublishConfigModal';
 import { MobileFrame, FRAME_WIDTH, FRAME_HEIGHT } from '@/components/compose-builder/MobileFrame';
 import { ZoomControls } from '@/components/compose-builder/ZoomControls';
+import { useToast } from '@/hooks/use-toast';
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 2.0;
 
 function KeyboardShortcuts() {
   const { undo, redo, copyComponent, pasteComponent, selectedComponentId } = useDesign();
+  const { toast } = useToast();
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -28,7 +31,6 @@ function KeyboardShortcuts() {
       const ctrlKey = isMac ? event.metaKey : event.ctrlKey;
       const targetElement = event.target as HTMLElement;
 
-      // Prevent shortcuts when user is typing in an input field
       const isTyping = ['INPUT', 'TEXTAREA'].includes(targetElement.tagName) || targetElement.isContentEditable;
       if (isTyping) return;
 
@@ -45,11 +47,19 @@ function KeyboardShortcuts() {
       } else if (ctrlKey && event.key.toLowerCase() === 'c') {
         event.preventDefault();
         if (selectedComponentId) {
-          copyComponent(selectedComponentId);
+          const result = copyComponent(selectedComponentId);
+          if (result.success && result.message) {
+            toast({ title: "Component Copied", description: result.message });
+          }
         }
       } else if (ctrlKey && event.key.toLowerCase() === 'v') {
         event.preventDefault();
-        pasteComponent();
+        const result = pasteComponent();
+         if (result.success && result.message) {
+            toast({ title: "Component Pasted", description: result.message });
+         } else if (!result.success && result.message) {
+            toast({ title: "Paste Failed", description: result.message, variant: 'destructive' });
+         }
       }
     };
 
@@ -57,13 +67,12 @@ function KeyboardShortcuts() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [undo, redo, copyComponent, pasteComponent, selectedComponentId]);
+  }, [undo, redo, copyComponent, pasteComponent, selectedComponentId, toast]);
 
-  return null; // This component does not render anything
+  return null;
 }
 
-
-export default function ComposeBuilderPage() {
+function MainApp() {
   const generateModalRef = useRef<GenerateCodeModalRef>(null);
   const viewJsonModalRef = useRef<ViewJsonModalRef>(null);
   const themeEditorModalRef = useRef<ThemeEditorModalRef>(null);
@@ -94,47 +103,55 @@ export default function ComposeBuilderPage() {
   }, []);
 
   return (
-    <DndProvider backend={HTML5Backend}>
-      <DesignProvider>
-        <KeyboardShortcuts />
-        <div className="flex flex-col h-screen overflow-hidden bg-background">
-          <Header
-            generateModalRef={generateModalRef}
-            viewJsonModalRef={viewJsonModalRef}
-            themeEditorModalRef={themeEditorModalRef}
-            publishConfigModalRef={publishConfigModalRef}
-          />
-          <div className="flex flex-row flex-grow overflow-hidden">
-            <ComponentLibraryPanel />
-            <main className="flex-grow relative grid place-items-center overflow-auto bg-muted/20 p-8">
+    <>
+      <KeyboardShortcuts />
+      <div className="flex flex-col h-screen overflow-hidden bg-background">
+        <Header
+          generateModalRef={generateModalRef}
+          viewJsonModalRef={viewJsonModalRef}
+          themeEditorModalRef={themeEditorModalRef}
+          publishConfigModalRef={publishConfigModalRef}
+        />
+        <div className="flex flex-row flex-grow overflow-hidden">
+          <ComponentLibraryPanel />
+          <main className="flex-grow relative grid place-items-center overflow-auto bg-muted/20 p-8">
+            <div
+              style={{
+                width: FRAME_WIDTH * zoomLevel,
+                height: FRAME_HEIGHT * zoomLevel,
+              }}
+            >
               <div
+                className="transition-transform duration-150 ease-out"
                 style={{
-                  width: FRAME_WIDTH * zoomLevel,
-                  height: FRAME_HEIGHT * zoomLevel,
+                  transform: `scale(${zoomLevel})`,
+                  transformOrigin: 'top left',
                 }}
               >
-                <div
-                  className="transition-transform duration-150 ease-out"
-                  style={{
-                    transform: `scale(${zoomLevel})`,
-                    transformOrigin: 'top left',
-                  }}
-                >
-                  <MobileFrame>
-                    <DesignSurface zoomLevel={zoomLevel} />
-                  </MobileFrame>
-                </div>
+                <MobileFrame>
+                  <DesignSurface zoomLevel={zoomLevel} />
+                </MobileFrame>
               </div>
-              <ZoomControls zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} />
-            </main>
-            <PropertyPanel imageSourceModalRef={imageSourceModalRef} />
-          </div>
+            </div>
+            <ZoomControls zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} />
+          </main>
+          <PropertyPanel imageSourceModalRef={imageSourceModalRef} />
         </div>
-        <GenerateCodeModal ref={generateModalRef} />
-        <ViewJsonModal ref={viewJsonModalRef} />
-        <ThemeEditorModal ref={themeEditorModalRef} />
-        <ImageSourceModal ref={imageSourceModalRef} />
-        <PublishConfigModal ref={publishConfigModalRef} />
+      </div>
+      <GenerateCodeModal ref={generateModalRef} />
+      <ViewJsonModal ref={viewJsonModalRef} />
+      <ThemeEditorModal ref={themeEditorModalRef} />
+      <ImageSourceModal ref={imageSourceModalRef} />
+      <PublishConfigModal ref={publishConfigModalRef} />
+    </>
+  );
+}
+
+export default function ComposeBuilderPage() {
+  return (
+    <DndProvider backend={HTML5Backend}>
+      <DesignProvider>
+        <MainApp />
       </DesignProvider>
     </DndProvider>
   );

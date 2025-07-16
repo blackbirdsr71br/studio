@@ -2,11 +2,16 @@
 import admin from 'firebase-admin';
 
 let app: admin.app.App | undefined;
+let isInitialized = false;
 
 function initializeFirebaseAdmin() {
-  // Check if the app is already initialized to prevent re-initialization
-  if (admin.apps.length) {
-    app = admin.app();
+  if (isInitialized) {
+    return;
+  }
+  isInitialized = true; 
+
+  if (admin.apps.length > 0) {
+    app = admin.apps[0]!;
     console.log('Firebase Admin SDK: Using existing app.');
     return;
   }
@@ -35,16 +40,16 @@ function initializeFirebaseAdmin() {
 // Initialize on module load
 initializeFirebaseAdmin();
 
-export const getFirebaseAdminApp = (): admin.app.App | undefined => {
-  return app;
-};
-
 export const getRemoteConfig = (): admin.remoteConfig.RemoteConfig | undefined => {
   if (!app) {
-    console.warn('Firebase Admin SDK: App not initialized. Cannot get Remote Config instance.');
     return undefined;
   }
-  return admin.remoteConfig(app);
+  try {
+    return admin.remoteConfig(app);
+  } catch(e) {
+    console.error("Failed to get remote config instance", e);
+    return undefined;
+  }
 };
 
 export const isAdminInitialized = (): boolean => {

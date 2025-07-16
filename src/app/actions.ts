@@ -6,12 +6,11 @@ import { generateJsonFromComposeCommands, type GenerateJsonFromComposeCommandsIn
 import { convertCanvasToCustomJson, type ConvertCanvasToCustomJsonInput } from '@/ai/flows/convert-canvas-to-custom-json-flow';
 import { generateJsonParserCode, type GenerateJsonParserCodeInput } from '@/ai/flows/generate-json-parser-code';
 import type { DesignComponent, CustomComponentTemplate, BaseComponentProps, ComponentType } from '@/types/compose-spec';
-import { isContainerType, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID, CORE_SCAFFOLD_ELEMENT_IDS, propertyDefinitions, getDefaultProperties } from '@/types/compose-spec';
+import { isContainerType, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, CORE_SCAFFOLD_ELEMENT_IDS, propertyDefinitions, getDefaultProperties } from '@/types/compose-spec';
 import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { hexToHslCssString } from '@/lib/utils';
-
 
 // Helper function to remove properties with empty string or null values
 const cleanEmptyOrNullProperties = (properties: Record<string, any>): Record<string, any> => {
@@ -38,13 +37,10 @@ interface AiComponentTreeNode {
 }
 
 // Helper to create a hierarchical structure for the AI (Jetpack Compose)
-// This function now expects allComponents to be the complete list from the DesignContext,
-// and customComponentTemplates for type checking.
-// The entry point (isRootCall = true) will find the ROOT_SCAFFOLD_ID.
 const buildComponentTreeForAi = (
   allComponents: DesignComponent[],
   customComponentTemplates: CustomComponentTemplate[],
-  componentIdToBuildTreeFrom: string, // ID of the current component to process
+  componentIdToBuildTreeFrom: string,
   isRootCall: boolean = false
 ): AiComponentTreeNode | AiComponentTreeNode[] => {
 
@@ -52,33 +48,30 @@ const buildComponentTreeForAi = (
     const rootScaffold = allComponents.find(c => c.id === ROOT_SCAFFOLD_ID && c.parentId === null);
     if (!rootScaffold) {
       console.error("Root Scaffold component not found for AI tree generation.");
-      return []; // Or throw error
+      return [];
     }
 
-    // Find the TopAppBar, ContentLazyColumn, and BottomNavigationBar that are direct children of the Scaffold
     const topBarComponent = allComponents.find(c => c.parentId === ROOT_SCAFFOLD_ID && c.type === 'TopAppBar');
     const contentAreaComponent = allComponents.find(c => c.parentId === ROOT_SCAFFOLD_ID && c.type === 'LazyColumn' && c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID);
     const bottomBarComponent = allComponents.find(c => c.parentId === ROOT_SCAFFOLD_ID && c.type === 'BottomNavigationBar');
     
     const scaffoldNode: AiComponentTreeNode = {
       id: rootScaffold.id,
-      type: rootScaffold.type, // Should be "Scaffold"
+      type: rootScaffold.type,
       name: rootScaffold.name,
       properties: cleanEmptyOrNullProperties({ ...rootScaffold.properties }),
       topBar: topBarComponent ? buildComponentTreeForAi(allComponents, customComponentTemplates, topBarComponent.id) as AiComponentTreeNode : null,
       content: contentAreaComponent ? buildComponentTreeForAi(allComponents, customComponentTemplates, contentAreaComponent.id) as AiComponentTreeNode : null,
       bottomBar: bottomBarComponent ? buildComponentTreeForAi(allComponents, customComponentTemplates, bottomBarComponent.id) as AiComponentTreeNode : null,
     };
-    // Remove children property from Scaffold node itself, as slots are explicit
     delete scaffoldNode.properties.children; 
     return scaffoldNode;
   }
 
-  // Logic for non-root calls (building sub-trees for slots or nested components)
   const currentComponent = allComponents.find(c => c.id === componentIdToBuildTreeFrom);
   if (!currentComponent) {
     console.warn(`Component with ID ${componentIdToBuildTreeFrom} not found during AI tree build.`);
-    return []; // Or handle as appropriate
+    return [];
   }
 
   let nodeProperties = cleanEmptyOrNullProperties({ ...currentComponent.properties });
@@ -88,32 +81,31 @@ const buildComponentTreeForAi = (
     type: currentComponent.type,
     name: currentComponent.name,
     properties: nodeProperties,
-    ...(currentComponent.templateIdRef && { templateIdRef: currentComponent.templateIdRef }),
   };
 
-  // Recursively build children for container types (excluding Scaffold itself here)
+  if (currentComponent.templateIdRef) {
+    (node as any).templateIdRef = currentComponent.templateIdRef;
+  }
+
   if (isContainerType(currentComponent.type, customComponentTemplates) && currentComponent.type !== 'Scaffold') {
     const childrenOfThisComponent = allComponents.filter(c => c.parentId === currentComponent.id);
     const childNodes = childrenOfThisComponent
       .map(child => buildComponentTreeForAi(allComponents, customComponentTemplates, child.id) as AiComponentTreeNode)
-      .filter(n => n && Object.keys(n).length > 0); // Filter out empty results
+      .filter(n => n && Object.keys(n).length > 0);
 
     if (childNodes.length > 0) {
       node.children = childNodes;
-      // Remove children ID array from properties if we're nesting full objects for AI
       delete node.properties.children; 
     }
   }
   return node;
 };
 
-
 export async function generateJetpackComposeCodeAction(
   components: DesignComponent[],
   customComponentTemplates: CustomComponentTemplate[]
 ): Promise<{ files?: Record<string, string>; error?: string }> {
   try {
-    // Build the tree starting from the root Scaffold.
     const scaffoldStructureForAi = buildComponentTreeForAi(components, customComponentTemplates, ROOT_SCAFFOLD_ID, true);
 
     if (!scaffoldStructureForAi || (Array.isArray(scaffoldStructureForAi) && scaffoldStructureForAi.length === 0) || Object.keys(scaffoldStructureForAi).length === 0) {
@@ -121,7 +113,6 @@ export async function generateJetpackComposeCodeAction(
     }
 
     const designJson = JSON.stringify(scaffoldStructureForAi, null, 2);
-    // console.log("JSON for AI (Jetpack Compose):", designJson); // For debugging
     const input: GenerateComposeCodeInput = { designJson };
     const result = await generateComposeCode(input);
     return { files: result.files };
@@ -132,7 +123,6 @@ export async function generateJetpackComposeCodeAction(
   }
 }
 
-
 // Interface for nodes in the JSON for the "View JSON" modal and Remote Config (content part)
 interface ModalJsonNode {
   id: string;
@@ -140,38 +130,24 @@ interface ModalJsonNode {
   name: string;
   parentId: string | null;
   properties: BaseComponentProps; // Will contain nested children: ModalJsonNode[] if container
-  templateIdRef?: string; // Added to ModalJsonNode
+  templateIdRef?: string;
 }
 
 const PREFERRED_PROPERTY_ORDER = [
-  // Core Content
   'text', 'title', 'src', 'contentDescription', 'data-ai-hint',
-  // Sizing & Layout
   'fillMaxSize', 'fillMaxWidth', 'fillMaxHeight', 'width', 'height', 'layoutWeight', 'selfAlign',
-  // Container Alignment & Arrangement
   'verticalArrangement', 'horizontalAlignment', 'horizontalArrangement', 'verticalAlignment', 'contentAlignment',
-  // Individual Spacing
   'paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd',
-  // General Spacing
   'padding', 'itemSpacing',
-  // Typography
   'fontSize', 'titleFontSize', 'fontWeight', 'fontStyle', 'textColor', 'contentColor', 'textAlign', 'textDecoration', 'lineHeight', 'maxLines', 'textOverflow',
-  // Appearance
   'backgroundColor', 'elevation', 'contentScale',
-  // Individual Shape & Border
   'cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft',
-  // General Shape & Border
   'shape', 'cornerRadius', 'borderWidth', 'borderColor',
-  // Icons (for Button)
   'iconName', 'iconPosition', 'iconSize', 'iconSpacing',
-  // Animation
   'animationType', 'animationDuration',
-  // Behavior
   'clickable', 'clickId', 'userScrollEnabled', 'reverseLayout',
-  // Grid Specific
   'columns', 'rows',
 ];
-
 
 // Helper for "View JSON" modal (hierarchical, children in properties.children)
 const buildContentComponentTreeForModalJson = (
@@ -197,22 +173,16 @@ const buildContentComponentTreeForModalJson = (
     let objectToSort: Record<string, any>;
 
     if (includeDefaultValues) {
-      // Start with the component's current properties.
       const fullProps: Record<string, any> = { ...originalProperties };
-      // Get the full list of property definitions for this component type.
       const propDefs = propertyDefinitions[component.type as ComponentType] || [];
-      // Get the default values for this component type.
       const defaultProps = getDefaultProperties(component.type as ComponentType);
 
-      // Ensure every defined property exists in the final object.
       propDefs.forEach(def => {
           if (!(def.name in fullProps)) {
-              // Set the default value, but handle undefined by setting null for JSON stringification
               const defaultValue = defaultProps[def.name];
               fullProps[def.name] = defaultValue === undefined ? null : defaultValue;
           }
       });
-      // Special handling to ensure general props are also present if individuals are
       if (propDefs.some(d => d.name === 'cornerRadiusTopLeft') && !('cornerRadius' in fullProps)) {
           fullProps['cornerRadius'] = defaultProps['cornerRadius'] === undefined ? null : defaultProps['cornerRadius'];
       }
@@ -279,7 +249,7 @@ const buildContentComponentTreeForModalJson = (
         if (allCornersValue > 0) {
           cleaned.cornerRadius = allCornersValue;
         } else {
-          delete cleaned.cornerRadius; // Ensure it's not present if 0
+          delete cleaned.cornerRadius;
         }
         delete cleaned.cornerRadiusTopLeft;
         delete cleaned.cornerRadiusTopRight;
@@ -292,21 +262,14 @@ const buildContentComponentTreeForModalJson = (
     
     const keysToSort = Object.keys(objectToSort);
 
-    // Custom sort function based on PREFERRED_PROPERTY_ORDER
     const customSort = (a: string, b: string) => {
       const indexA = PREFERRED_PROPERTY_ORDER.indexOf(a);
       const indexB = PREFERRED_PROPERTY_ORDER.indexOf(b);
 
-      if (indexA !== -1 && indexB !== -1) {
-        return indexA - indexB; // Both keys are in the preferred order list
-      }
-      if (indexA !== -1) {
-        return -1; // Only A is in the list, so A comes first
-      }
-      if (indexB !== -1) {
-        return 1; // Only B is in the list, so B comes first
-      }
-      return a.localeCompare(b); // Neither is in the list, sort alphabetically
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+      if (indexA !== -1) return -1;
+      if (indexB !== -1) return 1;
+      return a.localeCompare(b);
     };
     
     keysToSort.sort(customSort);
@@ -322,8 +285,11 @@ const buildContentComponentTreeForModalJson = (
       name: component.name,
       parentId: component.parentId,
       properties: propertiesToUse,
-      ...(component.templateIdRef && { templateIdRef: component.templateIdRef }),
     };
+
+    if (component.templateIdRef) {
+      node.templateIdRef = component.templateIdRef;
+    }
 
     if (isContainerType(component.type, customComponentTemplates)) {
       const childrenObjectNodes = buildContentComponentTreeForModalJson(allComponents, customComponentTemplates, component.id, includeDefaultValues);
@@ -361,7 +327,7 @@ export async function publishToRemoteConfigAction(
   components: DesignComponent[],
   customComponentTemplates: CustomComponentTemplate[], 
   parameterKey: string,
-  includeDefaultValues: boolean // Added parameter
+  includeDefaultValues: boolean
 ): Promise<{ success: boolean; message: string; version?: string }> {
   if (!isAdminInitialized()) {
     return { success: false, message: 'Firebase Admin SDK not initialized. Publishing is disabled.' };
@@ -376,7 +342,6 @@ export async function publishToRemoteConfigAction(
   }
   
   try {
-    // Generate the hierarchical JSON, now respecting the flag
     const designJsonString = await getDesignComponentsAsJsonAction(components, customComponentTemplates, includeDefaultValues);
     
     if (designJsonString.startsWith("Error:")) {
@@ -441,7 +406,7 @@ export async function publishCustomJsonToRemoteConfigAction(
     return { success: false, message: 'Custom JSON string cannot be empty.' };
   }
    try {
-    JSON.parse(customJsonString); // Validate if it's a valid JSON
+    JSON.parse(customJsonString);
   } catch (e) {
     return { success: false, message: 'The provided string is not valid JSON.' };
   }
@@ -525,10 +490,8 @@ export async function convertCanvasToCustomJsonAction(
   includeDefaultValues: boolean
 ): Promise<{ customJsonString?: string; error?: string }> {
   try {
-    // Get JSON for the content area only, respecting the user's choice for verbosity
     const canvasContentJsonString = await getDesignComponentsAsJsonAction(allComponents, customComponentTemplates, includeDefaultValues);
 
-    // Validate if the content area JSON is meaningful before sending to AI
     if (canvasContentJsonString.startsWith("Error:")) {
         return { error: "Failed to prepare canvas data for conversion: " + canvasContentJsonString };
     }
@@ -655,7 +618,6 @@ export async function searchWebForImagesAction(query: string): Promise<{ imageUr
     });
 
     if (!response.ok) {
-      // Pexels API returns error details in the body
       const errorData = await response.json().catch(() => ({ error: "Unknown error response from Pexels." }));
       console.error("Pexels API Error:", errorData);
       return { imageUrls: null, error: `Failed to search on Pexels: ${errorData.error || response.statusText}` };
@@ -676,14 +638,3 @@ export async function searchWebForImagesAction(query: string): Promise<{ imageUr
     return { imageUrls: null, error: message };
   }
 }
-      
-
-    
-
-    
-
-    
-
-    
-
-    

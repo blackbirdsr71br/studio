@@ -9,13 +9,13 @@ import { ButtonView } from './ButtonView';
 import { ImageView } from './ImageView';
 import { ContainerView } from './ContainerView';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useDrag, useDrop, type XYCoord } from 'react-dnd';
+import { useDrag, useDrop } from 'react-dnd';
 import { ItemTypes } from '@/lib/dnd-types';
-import { isContainerType, isCustomComponentType, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID, CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
+import { isContainerType, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID, CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
 
 interface RenderedComponentWrapperProps {
   component: DesignComponent;
-  zoomLevel?: number;
+  zoomLevel: number;
   isPreview?: boolean;
 }
 
@@ -31,7 +31,6 @@ interface DraggedLibraryItem {
 type HandleType = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 type DropIndicatorPosition = 'top' | 'bottom' | null;
 
-
 const MIN_DIMENSION = 20;
 
 const isNumericValue = (value: any): boolean => {
@@ -46,7 +45,6 @@ const isNumericValue = (value: any): boolean => {
   }
   return false;
 };
-
 
 const getDimensionValue = (
     propName: 'width' | 'height',
@@ -85,26 +83,21 @@ const getDimensionValue = (
       const parentIsRowLike = ['LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar', 'Row'].includes(effectiveParentType);
       const parentIsColumnLike = ['LazyColumn', 'LazyVerticalGrid', 'Column', 'Card', 'Box'].includes(effectiveParentType);
       
-      // If we want to fill along the MAIN AXIS of the parent, this is handled by layoutWeight.
-      // The actual dimension (width/height) should be 'auto' to not interfere with flex-basis.
       if (fillValue) {
         if (propName === 'width' && parentIsRowLike) return 'auto';
         if (propName === 'height' && parentIsColumnLike) return 'auto';
       }
     }
   
-    // This part now implicitly handles the CROSS AXIS fill correctly, or just processes the value.
     if (fillValue) return '100%';
     if (isNumericValue(propValue)) return `${propValue}px`;
-    return 'auto'; // Default fallback (wrap_content behavior)
+    return 'auto';
   };
   
-
-export function RenderedComponentWrapper({ component, zoomLevel = 1, isPreview = false }: RenderedComponentWrapperProps) {
+export function RenderedComponentWrapper({ component, zoomLevel, isPreview = false }: RenderedComponentWrapperProps) {
   const { selectedComponentId, selectComponent, getComponentById, addComponent, moveComponent, updateComponent, customComponentTemplates } = useDesign();
   const ref = useRef<HTMLDivElement>(null);
   const [dropIndicator, setDropIndicator] = useState<DropIndicatorPosition>(null);
-
   const [isResizing, setIsResizing] = useState(false);
   const [resizeDetails, setResizeDetails] = useState<{
     handle: HandleType;
@@ -114,20 +107,19 @@ export function RenderedComponentWrapper({ component, zoomLevel = 1, isPreview =
     initialHeight: number;
   } | null>(null);
 
-
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.CANVAS_COMPONENT_ITEM,
     item: { id: component.id, type: ItemTypes.CANVAS_COMPONENT_ITEM },
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
-    canDrag: () => ![ROOT_SCAFFOLD_ID, ...CORE_SCAFFOLD_ELEMENT_IDS].includes(component.id),
+    canDrag: () => !isPreview && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id),
   }));
 
   const [{ isOverCurrent, canDropCurrent }, drop] = useDrop(() => ({
     accept: [ItemTypes.COMPONENT_LIBRARY_ITEM, ItemTypes.CANVAS_COMPONENT_ITEM],
     hover(item: DraggedCanvasItem | DraggedLibraryItem, monitor) {
-      if (!ref.current || !monitor.isOver({ shallow: true })) {
+      if (!ref.current || !monitor.isOver({ shallow: true }) || isPreview) {
         if (dropIndicator !== null) setDropIndicator(null);
         return;
       }
@@ -164,7 +156,7 @@ export function RenderedComponentWrapper({ component, zoomLevel = 1, isPreview =
       }
     },
     canDrop(item: DraggedCanvasItem | DraggedLibraryItem, monitor) {
-       if (!monitor.isOver({ shallow: true })) return false;
+       if (isPreview || !monitor.isOver({ shallow: true })) return false;
 
        const targetId = component.id;
        if (targetId === ROOT_SCAFFOLD_ID) return false;
@@ -183,7 +175,7 @@ export function RenderedComponentWrapper({ component, zoomLevel = 1, isPreview =
        return true;
     },
     drop(item, monitor) {
-        if (monitor.didDrop() || !monitor.isOver({ shallow: true })) {
+        if (isPreview || monitor.didDrop() || !monitor.isOver({ shallow: true })) {
             setDropIndicator(null);
             return;
         }
@@ -191,7 +183,6 @@ export function RenderedComponentWrapper({ component, zoomLevel = 1, isPreview =
         const itemType = monitor.getItemType();
         const targetId = component.id;
 
-        // Case 1: Drop INTO a container (no re-order indicator)
         if (dropIndicator === null && isContainerType(component.type, customComponentTemplates)) {
             if (itemType === ItemTypes.CANVAS_COMPONENT_ITEM) {
                 moveComponent((item as DraggedCanvasItem).id, targetId);
@@ -199,7 +190,6 @@ export function RenderedComponentWrapper({ component, zoomLevel = 1, isPreview =
                 addComponent((item as DraggedLibraryItem).type, targetId);
             }
         }
-        // Case 2: Drop BESIDE another component (re-order or re-parent)
         else if (component.parentId) {
             const parentComp = getComponentById(component.parentId);
             if (parentComp?.properties.children) {
@@ -220,21 +210,23 @@ export function RenderedComponentWrapper({ component, zoomLevel = 1, isPreview =
         
         setDropIndicator(null);
     }
-  }), [component.id, component.type, component.parentId, addComponent, moveComponent, getComponentById, customComponentTemplates, dropIndicator]);
+  }), [component.id, component.type, component.parentId, addComponent, moveComponent, getComponentById, customComponentTemplates, dropIndicator, isPreview]);
 
   drag(drop(ref));
 
-  const isSelected = component.id === selectedComponentId;
+  const isSelected = !isPreview && component.id === selectedComponentId;
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    selectComponent(component.id);
+    if (!isPreview) {
+      selectComponent(component.id);
+    }
   };
 
   const handleMouseDownOnResizeHandle = useCallback((event: React.MouseEvent<HTMLDivElement>, handle: HandleType) => {
     event.stopPropagation();
     event.preventDefault();
-    if (CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id)) return;
+    if (isPreview || CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id)) return;
 
     selectComponent(component.id);
     
@@ -249,7 +241,7 @@ export function RenderedComponentWrapper({ component, zoomLevel = 1, isPreview =
       initialWidth: rect.width,
       initialHeight: rect.height,
     });
-  }, [component.id, selectComponent]);
+  }, [component.id, selectComponent, isPreview]);
 
   useEffect(() => {
     const handleMouseMove = (event: MouseEvent) => {
@@ -377,13 +369,11 @@ export function RenderedComponentWrapper({ component, zoomLevel = 1, isPreview =
         );
 
       default:
-        // This logic handles instances of custom components by deferring to ContainerView
         if (component.templateIdRef) {
            const template = customComponentTemplates.find(t => t.templateId === component.templateIdRef);
            if (template) {
              const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
              if (rootTemplateComponent) {
-                // Here, we trust ContainerView to determine the flex direction based on the root's original type
                 const isTemplateRootRowLike = ['Row', 'LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar'].includes(rootTemplateComponent.type);
                 return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isTemplateRootRowLike} zoomLevel={zoomLevel} isPreview={isPreview} />;
              }
@@ -410,12 +400,11 @@ export function RenderedComponentWrapper({ component, zoomLevel = 1, isPreview =
       parentIsColumnLike = ['LazyColumn', 'LazyVerticalGrid', 'Column', 'Card', 'Box', 'Scaffold'].includes(effectiveParentType);
   }
 
-  
   const wrapperStyle: React.CSSProperties = {
     transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
     width: getDimensionValue('width', component.properties.width, component.properties.fillMaxWidth, component.type, component.id, component.parentId, getComponentById, customComponentTemplates),
     height: getDimensionValue('height', component.properties.height, component.properties.fillMaxHeight, component.type, component.id, component.parentId, getComponentById, customComponentTemplates),
-    position: 'relative', 
+    position: 'relative',
     display: 'block',
   };
   
@@ -451,7 +440,6 @@ export function RenderedComponentWrapper({ component, zoomLevel = 1, isPreview =
     }
   }
 
-  
   if (parent && (isContainerType(parent.type, customComponentTemplates) || parent.templateIdRef)) {
     const selfAlignProp = component.properties.selfAlign;
 
@@ -477,7 +465,6 @@ export function RenderedComponentWrapper({ component, zoomLevel = 1, isPreview =
     }
   }
 
-
   if (component.id === ROOT_SCAFFOLD_ID) {
     wrapperStyle.backgroundColor = component.properties.backgroundColor || 'transparent';
   }
@@ -501,15 +488,14 @@ export function RenderedComponentWrapper({ component, zoomLevel = 1, isPreview =
     ? 'drag-over-container'
     : '';
 
-  
   const canResizeHorizontally = isSelected && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxWidth;
   const canResizeVertically = isSelected && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxHeight;
   const canResize = canResizeHorizontally || canResizeVertically;
   
   const isReorderTarget = isOverCurrent && canDropCurrent && dropIndicator !== null;
 
-  const isDraggable = !isResizing && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && component.type !== 'Spacer';
-  const isClickable = !!component.properties.clickable && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id);
+  const isDraggable = !isResizing && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && component.type !== 'Spacer' && !isPreview;
+  const isClickable = !isPreview && !!component.properties.clickable && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id);
 
   return (
     <div
@@ -518,14 +504,14 @@ export function RenderedComponentWrapper({ component, zoomLevel = 1, isPreview =
       className={cn(
         'border border-transparent',
         { 
-          'ring-2 ring-primary/80 ring-offset-2 ring-offset-background shadow-lg': isSelected && ![ROOT_SCAFFOLD_ID, ...CORE_SCAFFOLD_ELEMENT_IDS].includes(component.id),
+          'ring-2 ring-primary/80 ring-offset-2 ring-offset-background shadow-lg': isSelected && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id),
           'ring-2 ring-accent ring-offset-2 ring-offset-background': isSelected && CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && component.id !== ROOT_SCAFFOLD_ID,
           'opacity-50': isDragging,
           'cursor-grabbing': isDragging,
           'cursor-pointer': !isDragging && isClickable,
           'cursor-grab': !isDragging && !isClickable && isDraggable,
           'cursor-default': !isDraggable,
-          'relative': true, // Always relative for indicators
+          'relative': true,
         },
         containerDropTargetStyle,
       )}
@@ -540,15 +526,15 @@ export function RenderedComponentWrapper({ component, zoomLevel = 1, isPreview =
       {isReorderTarget && dropIndicator === 'bottom' && (
           <div className="absolute bottom-[-2px] left-0 right-0 h-[4px] bg-primary z-20 pointer-events-none" />
       )}
-      {component.type !== 'Spacer' && !isPreview && (
+      {component.type !== 'Spacer' && !isPreview && canResize && (
         <>
-          {canResize && (['nw', 'ne', 'sw', 'se'] as HandleType[]).map(handle => (
+          {(['nw', 'ne', 'sw', 'se'] as HandleType[]).map(handle => (
             <div key={handle} className={`resize-handle ${handle}`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle)} />
           ))}
-          {canResizeVertically && !canResize && (['n', 's'] as HandleType[]).map(handle => (
+          {canResizeVertically && (['n', 's'] as HandleType[]).map(handle => (
             <div key={handle} className={`resize-handle ${handle}`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle)} />
           ))}
-          {canResizeHorizontally && !canResize && (['e', 'w'] as HandleType[]).map(handle => (
+          {canResizeHorizontally && (['e', 'w'] as HandleType[]).map(handle => (
             <div key={handle} className={`resize-handle ${handle}`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle)} />
           ))}
         </>
@@ -556,4 +542,3 @@ export function RenderedComponentWrapper({ component, zoomLevel = 1, isPreview =
     </div>
   );
 }
-
