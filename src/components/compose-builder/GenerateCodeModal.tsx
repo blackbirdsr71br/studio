@@ -5,14 +5,13 @@ import React, { useState, useImperativeHandle, forwardRef, useCallback } from 'r
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useDesign } from '@/contexts/DesignContext';
-import { generateJetpackComposeCodeAction, generateJsonParserCodeAction, getDesignComponentsAsJsonAction } from '@/app/actions';
+import { generateJetpackComposeCodeAction, generateJsonParserCodeAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Copy, Download, Wand2, FileCode, AlertTriangle } from 'lucide-react';
+import { Loader2, Copy, Download, Wand2 } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
 import { java as javaLang } from '@codemirror/lang-java';
 import { githubLight, githubDark } from '@uiw/codemirror-theme-github';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import JSZip from 'jszip';
 
@@ -21,186 +20,84 @@ export interface GenerateCodeModalRef {
   openModal: () => void;
 }
 
-type ActiveTab = "screenComposable" | "jsonParser";
-
-export const GenerateCodeModal = forwardRef<GenerateCode-ModalRef, {}>((props, ref) => {
+export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<ActiveTab>("screenComposable");
-
-  // State for Screen Composable tab
   const [generatedProjectFiles, setGeneratedProjectFiles] = useState<Record<string, string> | null>(null);
-  const [isScreenCodeLoading, setIsScreenCodeLoading] = useState(false);
-  const [screenCodeError, setScreenCodeError] = useState<string | null>(null);
-
-  // State for JSON Parser tab
-  const [generatedParserProject, setGeneratedParserProject] = useState<Record<string, string> | null>(null);
-  const [isParserCodeLoading, setIsParserCodeLoading] = useState(false);
-  const [parserCodeError, setParserCodeError] = useState<string | null>(null);
-
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { components, customComponentTemplates } = useDesign();
   const { toast } = useToast();
   const { resolvedTheme } = useTheme();
 
-
-  const handleGenerateScreenCode = useCallback(async () => {
-    const userComponentsExist = components.some(c => c.parentId === 'scaffold-content-lazy-column') || components.length > 4;
-
-    if (!userComponentsExist) {
-      setScreenCodeError("No user components on the canvas to generate code from.");
-      setGeneratedProjectFiles(null);
-      return;
-    }
-    
-    setIsScreenCodeLoading(true);
-    setScreenCodeError(null);
+  const handleGenerateCode = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
     setGeneratedProjectFiles(null);
-    
     try {
       const result = await generateJetpackComposeCodeAction(components, customComponentTemplates);
       if (result.error) {
-        setScreenCodeError(result.error);
+        setError(result.error);
         setGeneratedProjectFiles(null);
       } else if (result.files && Object.keys(result.files).length > 0) {
         setGeneratedProjectFiles(result.files);
       } else {
-        setScreenCodeError("AI returned an empty or invalid project structure.");
+        setError("AI returned an empty or invalid project structure.");
         setGeneratedProjectFiles(null);
       }
-    } catch (error) {
-      console.error("Error generating screen code:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to generate screen code.";
-      setScreenCodeError(errorMessage);
+    } catch (e) {
+      console.error("Error generating screen code:", e);
+      const errorMessage = e instanceof Error ? e.message : "Failed to generate screen code.";
+      setError(errorMessage);
       setGeneratedProjectFiles(null);
     } finally {
-      setIsScreenCodeLoading(false);
+      setIsLoading(false);
     }
   }, [components, customComponentTemplates]);
-  
-  const handleGenerateParserCode = useCallback(async () => {
-    setIsParserCodeLoading(true);
-    setParserCodeError(null);
-    setGeneratedParserProject(null);
-    
-    try {
-      // Step 1: Generate the Canvas JSON from the canvas, always concise for AI
-      const canvasJsonString = await getDesignComponentsAsJsonAction(components, customComponentTemplates, false);
-
-      if (canvasJsonString.startsWith("Error:")) {
-        throw new Error("Failed to generate underlying Canvas JSON: " + canvasJsonString);
-      }
-      
-      const parsedCanvasJson = JSON.parse(canvasJsonString);
-      if (Array.isArray(parsedCanvasJson) && parsedCanvasJson.length === 0) {
-        throw new Error("No user components in the content area to generate a parser for.");
-      }
-      
-      // Step 2: Generate the Kotlin parser project from the Canvas JSON
-      const parserProjectResult = await generateJsonParserCodeAction(canvasJsonString);
-
-      if (parserProjectResult.error || !parserProjectResult.files || Object.keys(parserProjectResult.files).length === 0) {
-        throw new Error(parserProjectResult.error || "Failed to generate Kotlin parser project.");
-      }
-      
-      setGeneratedParserProject(parserProjectResult.files);
-      
-    } catch (error) {
-      console.error("Error generating parser project:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to generate parser project.";
-      setParserCodeError(errorMessage);
-      setGeneratedParserProject(null);
-    } finally {
-      setIsParserCodeLoading(false);
-    }
-  }, [components, customComponentTemplates]);
-
-  const onTabChange = (value: string) => {
-      const newTab = value as ActiveTab;
-      setActiveTab(newTab);
-      // Trigger generation if tab is switched to and content is empty
-      if (newTab === 'screenComposable' && !generatedProjectFiles && !isScreenCodeLoading) {
-          handleGenerateScreenCode();
-      } else if (newTab === 'jsonParser' && !generatedParserProject && !isParserCodeLoading) {
-          handleGenerateParserCode();
-      }
-  };
-
 
   useImperativeHandle(ref, () => ({
     openModal: () => {
       setIsOpen(true);
-      // Reset states on open to ensure fresh generation
+      // Reset states on open
       setGeneratedProjectFiles(null);
-      setScreenCodeError(null);
-      setGeneratedParserProject(null);
-      setParserCodeError(null);
-
-      // Trigger generation for the initially active tab
-      if (activeTab === 'screenComposable') {
-        handleGenerateScreenCode();
-      } else if (activeTab === 'jsonParser') {
-        handleGenerateParserCode();
-      }
+      setError(null);
+      handleGenerateCode();
     }
   }));
   
   const handleCopyToClipboard = async () => {
-    let codeToCopy = "";
-    if (activeTab === 'screenComposable' && generatedProjectFiles) {
-        codeToCopy = generatedProjectFiles['app/src/main/java/com/example/myapplication/MainActivity.kt'] || '';
-    } else if (activeTab === 'jsonParser' && generatedParserProject) {
-        codeToCopy = generatedParserProject['app/src/main/java/com/example/myapplication/ui/components/DynamicUiRenderer.kt'] || '';
-    }
-    
+    const codeToCopy = generatedProjectFiles?.['app/src/main/java/com/example/myapplication/MainActivity.kt'] || '';
     if (codeToCopy) {
       try {
         await navigator.clipboard.writeText(codeToCopy);
-        toast({
-          title: "Code Copied!",
-          description: "Active file's content copied to clipboard.",
-        });
+        toast({ title: "Code Copied!", description: "MainActivity.kt copied to clipboard." });
       } catch (err) {
-        toast({
-          title: "Copy Failed",
-          description: "Could not copy code to clipboard.",
-          variant: "destructive",
-        });
+        toast({ title: "Copy Failed", description: "Could not copy code to clipboard.", variant: "destructive" });
       }
     }
   };
 
   const handleDownloadProject = async () => {
-    let filesToZip: Record<string, string> | null = null;
-    let zipName = 'ComposeBuilderProject.zip';
-
-    if (activeTab === 'screenComposable' && generatedProjectFiles) {
-        filesToZip = generatedProjectFiles;
-        zipName = 'ComposeScreenProject.zip';
-    } else if (activeTab === 'jsonParser' && generatedParserProject) {
-        filesToZip = generatedParserProject;
-        zipName = 'ComposeParserProject.zip';
-    }
-
-    if (!filesToZip) {
-      toast({ title: "Download Failed", description: "No project files to download for this tab.", variant: "destructive" });
+    if (!generatedProjectFiles) {
+      toast({ title: "Download Failed", description: "No project files to download.", variant: "destructive" });
       return;
     }
 
     try {
         const zip = new JSZip();
-        for (const filePath in filesToZip) {
-            zip.file(filePath, filesToZip[filePath]);
+        for (const filePath in generatedProjectFiles) {
+            zip.file(filePath, generatedProjectFiles[filePath]);
         }
         const blob = await zip.generateAsync({ type: "blob" });
         
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = zipName;
+        link.download = 'ComposeScreenProject.zip';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(link.href);
         
-        toast({ title: "Project Downloaded", description: `Your project ${zipName} is being downloaded.` });
+        toast({ title: "Project Downloaded", description: "Your project is being downloaded." });
 
     } catch (error) {
         console.error("Error creating project zip:", error);
@@ -208,17 +105,8 @@ export const GenerateCodeModal = forwardRef<GenerateCode-ModalRef, {}>((props, r
     }
   };
 
-  const isLoading = isScreenCodeLoading || isParserCodeLoading;
-  
-  const canCopyCode = !isLoading && (
-    (activeTab === 'screenComposable' && generatedProjectFiles && Object.keys(generatedProjectFiles).length > 0) ||
-    (activeTab === 'jsonParser' && generatedParserProject && Object.keys(generatedParserProject).length > 0)
-  );
-  
-  const canDownloadProject = !isLoading && (
-    (activeTab === 'screenComposable' && !screenCodeError && generatedProjectFiles && Object.keys(generatedProjectFiles).length > 0) ||
-    (activeTab === 'jsonParser' && !parserCodeError && generatedParserProject && Object.keys(generatedParserProject).length > 0)
-  );
+  const canCopyCode = !isLoading && generatedProjectFiles && Object.keys(generatedProjectFiles).length > 0;
+  const canDownloadProject = !isLoading && !error && generatedProjectFiles && Object.keys(generatedProjectFiles).length > 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -226,72 +114,35 @@ export const GenerateCodeModal = forwardRef<GenerateCode-ModalRef, {}>((props, r
         <DialogHeader>
           <DialogTitle className="font-headline">Generated Jetpack Compose Code</DialogTitle>
           <DialogDescription>
-             {activeTab === 'screenComposable'
-              ? "View the Composable code for your screen design. You can copy the main file or download the complete, runnable project."
-              : "View the code for a complete Android project that parses and renders your design from a remote source, using Koin and a Clean Architecture/MVI pattern."
-            }
+             View the Composable code for your screen design. You can copy the main file or download the complete, runnable project.
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={onTabChange} className="flex-grow flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-2 mb-2 h-auto">
-              <TabsTrigger value="screenComposable" className="text-xs px-1 py-1.5"><FileCode className="mr-1.5"/>Screen Composable</TabsTrigger>
-              <TabsTrigger value="jsonParser" className="text-xs px-1 py-1.5"><Wand2 className="mr-1.5"/>JSON Parser Logic</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="screenComposable" className="flex-grow flex flex-col min-h-0">
-            <div className="flex-grow my-2 rounded-md border bg-muted/30 overflow-y-auto relative">
-              {isScreenCodeLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <span className="ml-2">Generating project files...</span>
-                </div>
-              ) : screenCodeError ? (
-                  <div className="p-4">
-                    <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error Generating Project</AlertTitle><AlertDescription>{screenCodeError}</AlertDescription></Alert>
-                  </div>
-              ) : (
-                <CodeMirror
-                  value={generatedProjectFiles?.['app/src/main/java/com/example/myapplication/MainActivity.kt'] || ''}
-                  height="100%"
-                  extensions={[javaLang()]}
-                  theme={resolvedTheme === 'dark' ? githubDark : githubLight}
-                  readOnly // Editing a single file doesn't make sense for a full project view
-                  className="text-sm h-full"
-                  basicSetup={{ lineNumbers: true, foldGutter: true, autocompletion: true, highlightActiveLine: true, highlightActiveLineGutter: true, bracketMatching: true, closeBrackets: true }}
-                />
-              )}
+        <div className="flex-grow my-2 rounded-md border bg-muted/30 overflow-y-auto relative min-h-[400px]">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-2">Generating project files...</span>
             </div>
-          </TabsContent>
-          
-          <TabsContent value="jsonParser" className="flex-grow flex flex-col min-h-0">
-             <div className="flex-grow my-2 rounded-md border bg-muted/30 overflow-y-auto relative">
-              {isParserCodeLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <span className="ml-2">Generating parser project...</span>
-                </div>
-              ) : parserCodeError ? (
-                  <div className="p-4">
-                    <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error Generating Parser Project</AlertTitle><AlertDescription>{parserCodeError}</AlertDescription></Alert>
-                  </div>
-              ) : (
-                <CodeMirror
-                  value={generatedParserProject?.['app/src/main/java/com/example/myapplication/ui/components/DynamicUiRenderer.kt'] || 'Select a file to view...'}
-                  height="100%"
-                  extensions={[javaLang()]}
-                  theme={resolvedTheme === 'dark' ? githubDark : githubLight}
-                  readOnly={true}
-                  className="text-sm h-full"
-                  basicSetup={{ lineNumbers: true, foldGutter: true }}
-                />
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
-
+          ) : error ? (
+              <div className="p-4">
+                <Alert variant="destructive"><AlertTitle>Error Generating Project</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>
+              </div>
+          ) : (
+            <CodeMirror
+              value={generatedProjectFiles?.['app/src/main/java/com/example/myapplication/MainActivity.kt'] || ''}
+              height="100%"
+              extensions={[javaLang()]}
+              theme={resolvedTheme === 'dark' ? githubDark : githubLight}
+              readOnly
+              className="text-sm h-full"
+              basicSetup={{ lineNumbers: true, foldGutter: true, autocompletion: true, highlightActiveLine: true, highlightActiveLineGutter: true, bracketMatching: true, closeBrackets: true }}
+            />
+          )}
+        </div>
+        
         <DialogFooter className="sm:justify-between flex-wrap gap-2 pt-4 border-t shrink-0">
-           <Button variant="outline" onClick={activeTab === 'screenComposable' ? handleGenerateScreenCode : handleGenerateParserCode} disabled={isLoading}>
+           <Button variant="outline" onClick={handleGenerateCode} disabled={isLoading}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
             Regenerate
           </Button>

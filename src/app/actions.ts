@@ -584,17 +584,17 @@ export async function updateGlobalStylesheetAction(
 
 export async function generateJsonParserCodeAction(
   customJson: string
-): Promise<{ files?: Record<string, string>, error?: string }> {
+): Promise<{ kotlinCode?: string, error?: string }> {
   if (!customJson || customJson.trim() === "") {
     return { error: "Custom JSON input cannot be empty." };
   }
   try {
     const input: GenerateJsonParserCodeInput = { customJson };
     const result = await generateJsonParserCode(input);
-    if (!result || !result.files) {
-      return { error: "AI failed to generate parser project files." };
+    if (!result || !result.kotlinCode) {
+      return { error: "AI failed to generate parser code." };
     }
-    return { files: result.files };
+    return { kotlinCode: result.kotlinCode };
   } catch (error) {
     console.error("Error in generateJsonParserCodeAction:", error);
     const message = error instanceof Error ? error.message : "An unknown error occurred during Kotlin parser code generation.";
