@@ -294,55 +294,61 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     const contentToDownload = currentJsonInEditor();
     const currentErr = currentError();
-    if (contentToDownload && !currentErr) {
-        let blob: Blob;
-        let filename: string;
 
-        if (activeTab === 'generateJsonParserCode' && parserProjectFiles) {
+    if (!contentToDownload && activeTab !== 'generateJsonParserCode') {
+        toast({ title: "Download Failed", description: "No content available to download.", variant: "destructive" });
+        return;
+    }
+
+    if (currentErr) {
+        toast({ title: "Download Failed", description: currentErr, variant: "destructive" });
+        return;
+    }
+
+    try {
+        if (activeTab === 'generateJsonParserCode') {
+            if (!parserProjectFiles || Object.keys(parserProjectFiles).length === 0) {
+                toast({ title: "Download Failed", description: "Parser project files not generated yet.", variant: "destructive" });
+                return;
+            }
             const zip = new JSZip();
             for (const filePath in parserProjectFiles) {
                 zip.file(filePath, parserProjectFiles[filePath]);
             }
-            zip.generateAsync({ type: "blob" }).then(blob => {
-                 const link = document.createElement('a');
-                 link.href = URL.createObjectURL(blob);
-                 link.download = 'MVI_Parser_Project.zip';
-                 document.body.appendChild(link);
-                 link.click();
-                 document.body.removeChild(link);
-                 URL.revokeObjectURL(link.href);
-                 toast({ title: "Project Downloaded", description: "Your MVI project is being downloaded." });
-            });
-            return; // Exit after starting zip generation
+            const blob = await zip.generateAsync({ type: "blob" });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'MVI_Parser_Project.zip';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+            toast({ title: "Project Downloaded", description: "Your MVI project is being downloaded." });
+
         } else {
-            blob = new Blob([contentToDownload], { type: 'application/json;charset=utf-char8' });
-            filename = "design_output.json";
+            const blob = new Blob([contentToDownload], { type: 'application/json;charset=utf-8' });
+            let filename = "design_output.json";
             if (activeTab === "canvasJson") filename = "canvas_content_design.json";
             else if (activeTab === "generateCustomJsonFromCanvas") filename = "custom_from_canvas.json";
+
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+            toast({ title: "JSON Downloaded", description: `${filename} has started downloading.` });
         }
-      
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(link.href);
-      toast({
-        title: "JSON Downloaded",
-        description: `${filename} has started downloading.`,
-      });
-    } else {
-       toast({
-        title: "Download Failed",
-        description: currentErr || "No valid content to download.",
-        variant: "destructive",
-      });
+    } catch (error) {
+        console.error("Error during download:", error);
+        toast({ title: "Download Failed", description: "Could not prepare the file for download.", variant: "destructive" });
     }
   };
+
 
   // Publish Custom JSON from "Custom from Canvas" tab
   const handleOpenPublishCustomJsonDialog = () => {
@@ -455,7 +461,8 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
 
 
   const isLoading = isCanvasJsonLoading || isCustomJsonFromCanvasLoading || isParserLoading;
-  const canPerformCopyDownloadActionsValue = !isLoading && !!currentJsonInEditor() && !currentError();
+  const canPerformCopyDownloadActions = !isLoading && !!currentJsonInEditor() && !currentError();
+  const canDownloadProject = activeTab === 'generateJsonParserCode' && !isParserLoading && !parserError && !!parserProjectFiles;
   
   const canSaveChangesValue = activeTab === 'canvasJson' && !isCanvasJsonLoading && !!canvasJsonString && !syntaxError && validationErrors.length === 0 && !canvasJsonError;
   
@@ -628,10 +635,10 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
 
           {/* Right side: Common secondary actions */}
           <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
-            <Button onClick={handleCopyToClipboard} variant="outline" disabled={!canPerformCopyDownloadActionsValue || activeTab === 'generateJsonParserCode'} className="w-full sm:w-auto">
+            <Button onClick={handleCopyToClipboard} variant="outline" disabled={!canPerformCopyDownloadActions || activeTab === 'generateJsonParserCode'} className="w-full sm:w-auto">
               <Copy className="mr-2 h-4 w-4" /> Copy
             </Button>
-            <Button onClick={handleDownload} variant="outline" disabled={!canPerformCopyDownloadActionsValue} className="w-full sm:w-auto">
+            <Button onClick={handleDownload} variant="outline" disabled={!canPerformCopyDownloadActions && !canDownloadProject} className="w-full sm:w-auto">
               <Download className="mr-2 h-4 w-4" /> Download
             </Button>
           </div>

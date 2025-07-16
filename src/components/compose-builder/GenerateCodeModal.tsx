@@ -5,7 +5,7 @@ import React, { useState, useImperativeHandle, forwardRef, useCallback } from 'r
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useDesign } from '@/contexts/DesignContext';
-import { generateJetpackComposeCodeAction, generateJsonParserCodeAction } from '@/app/actions';
+import { generateJetpackComposeCodeAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Copy, Download, Wand2 } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
