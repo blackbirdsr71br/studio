@@ -86,13 +86,13 @@ const prompt = ai.definePrompt({
     - \`BaseViewModel.kt\`: An abstract ViewModel implementing MVI logic (state, event, effect flows).
 *   **Screen-specific MVI (\`screen\` sub-package):**
     - \`MainContract.kt\`: Defines the specific State, Event, and Effect for the main screen.
-        - \`State\`: Should include properties like \`isLoading: Boolean\` and \`components: List<ComponentModel>\`.
+        - \`State\`: Should include properties like \`isLoading: Boolean\`, \`components: List<ComponentModel>\`, and \`error: String?\`.
         - \`Event\`: Should include events like \`OnButtonClicked(clickId: String)\`.
         - \`Effect\`: Should include effects like \`ShowToast(message: String)\`.
     - \`MainViewModel.kt\`:
         - Inherits from \`BaseViewModel<MainContract.Event, MainContract.State, MainContract.Effect>\`.
         - Injects a \`GetUiConfigurationUseCase\` via constructor.
-        - Fetches the UI configuration from the use case on initialization and updates the state.
+        - Fetches the UI configuration from the use case on initialization and updates the state accordingly (isLoading, components, error).
         - Handles real-time updates from Firebase.
         - Handles \`OnButtonClicked\` events by sending a \`ShowToast\` effect.
     - \`MainActivity.kt\`:
@@ -102,29 +102,35 @@ const prompt = ai.definePrompt({
         - The main UI Composable.
         - Collects state and effects from the ViewModel.
         - Renders a \`CircularProgressIndicator\` when loading.
+        - Renders an error message if the state contains an error.
         - Renders the dynamic UI by iterating through the list of \`ComponentModel\` and calling a \`DynamicUiComponent\` for each.
         - Uses a \`LaunchedEffect\` to handle one-time side effects (Toasts).
 *   **Dynamic UI Composables (\`components\` sub-package):**
-    - \`DynamicUiComponent.kt\`: A master composable that takes a \`ComponentModel\` and recursively renders the UI by calling other specific component composables based on the model type. This is the core of the dynamic rendering.
+    - \`DynamicUiComponent.kt\`: A master composable that takes a \`ComponentModel\` and recursively renders the UI by calling other specific component composables based on the model type. This is the core of the dynamic rendering. It must handle nested children.
     - \`ComponentMapper.kt\`: Maps domain models to actual composables. This file will contain functions like \`@Composable fun CardComponent(model: ComponentModel, ...)\`, \`@Composable fun TextComponent(model: ComponentModel, ...)\`, etc. These composables use the model properties to configure standard Jetpack Compose elements (\`Card\`, \`Text\`, \`Button\`, \`Image\` via Coil, etc.).
+        - It's CRITICAL that these mappers correctly handle string-based sizes. For example, if a model has \`width = "match_parent"\`, the composable should use \`Modifier.fillMaxWidth()\`. If \`width\` is a number, it should use \`Modifier.width(model.width.dp)\`. If it's null or "wrap_content", it should not apply a width modifier.
 
 **3. Domain Layer (\`app/src/main/java/com/example/myapplication/domain\`):**
 *   **Models (\`model\` sub-package):**
-    - \`ComponentModel.kt\`: A pure Kotlin data class representing a UI component in the domain. It should be simpler than the DTO and focus on what the UI needs to render.
+    - \`ComponentModel.kt\`: A pure Kotlin data class representing a UI component in the domain. It must be a recursive structure, containing a list of child \`ComponentModel\` objects. Its properties should match what the UI needs to render.
 *   **Repository Contract (\`repository/UiConfigRepository.kt\`):** An interface defining the contract for the data layer, e.g., \`fun getUiConfig(): Flow<List<ComponentModel>>\`.
 *   **Use Case (\`usecase/GetUiConfigurationUseCase.kt\`):** A simple class that injects the repository and exposes a method to execute the repository's function.
 
 **4. Data Layer (\`app/src/main/java/com/example/myapplication/data\`):**
 *   **DTOs (\`model\` sub-package):**
-    - Generate all necessary Kotlin \`@Serializable\` data classes (DTOs) to perfectly match the structure of the input Canvas JSON (\`{{{canvasJson}}}\`). This JSON is an array of objects. The main DTO should be \`ComponentDto\`. It will have \`id\`, \`type\`, \`name\`, \`parentId\`, and a \`properties\` object. The \`properties\` object should itself be a serializable data class, \`PropertiesDto\`, containing all possible component properties (\`text\`, \`fontSize\`, \`padding\`, etc.) as nullable fields. If the \`properties\` object contains a \`children\` array, it should be of type \`List<ComponentDto>\`. Make all properties in the DTOs nullable to handle missing fields gracefully.
+    - Generate all necessary Kotlin \`@Serializable\` data classes (DTOs) to perfectly match the structure of the input Canvas JSON (\`{{{canvasJson}}}\`). This JSON is an array of objects.
+    - The main DTO should be \`ComponentDto\`. It will have \`id\`, \`type\`, \`name\`, \`parentId\`, and a \`properties\` object.
+    - The \`properties\` object should itself be a serializable data class, \`PropertiesDto\`, containing all possible component properties.
+    - If the \`properties\` object contains a \`children\` array, it should be of type \`List<ComponentDto>\`.
+    - **CRUCIAL**: Make all properties in the DTOs **nullable** (e.g., \`val text: String? = null\`) to handle missing or \`null\` fields in the JSON gracefully.
 *   **Mappers (\`mapper\` sub-package):**
-    - \`ComponentMapper.kt\`: Contains extension functions to map \`ComponentDto\` to \`ComponentModel\` and vice versa. This is the bridge between the Data and Domain layers.
+    - \`ComponentMapper.kt\`: Contains extension functions to map \`ComponentDto\` to \`ComponentModel\` (domain model) and vice versa. This mapping must be recursive to handle the children correctly. This is the bridge between the Data and Domain layers.
 *   **Repository Implementation (\`repository/UiConfigRepositoryImpl.kt\`):**
     - Implements the \`UiConfigRepository\` interface.
     - Injects \`FirebaseRemoteConfig\`.
     - Contains logic to fetch the JSON string from Remote Config using a specific key (e.g., "COMPOSE_DESIGN_JSON_V2").
-    - Sets up a listener for real-time updates from Remote Config.
-    - Uses \`kotlinx.serialization.json.Json\` to parse the fetched string into a \`List<ComponentDto>\`.
+    - **Sets up a listener for real-time updates from Remote Config.** When an update is detected, it re-fetches and re-parses the JSON.
+    - Uses \`kotlinx.serialization.json.Json { ignoreUnknownKeys = true, isLenient = true }\` to parse the fetched string into a \`List<ComponentDto>\`.
     - Uses the mapper to convert the DTO list to a list of domain models.
     - Emits the domain model list through a Kotlin \`Flow\`.
 
@@ -154,5 +160,3 @@ const generateJsonParserCodeFlow = ai.defineFlow(
     return output;
   }
 );
-
-    
