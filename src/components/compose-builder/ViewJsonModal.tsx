@@ -76,6 +76,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
 
   // State for "Kotlin Parser" tab
   const [parserProjectFiles, setParserProjectFiles] = useState<Record<string, string> | null>(null);
+  const [concatenatedParserCode, setConcatenatedParserCode] = useState<string>('');
   const [isParserLoading, setIsParserLoading] = useState(false);
   const [parserError, setParserError] = useState<string | null>(null);
 
@@ -88,7 +89,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     switch (activeTab) {
       case "canvasJson": return canvasJsonString;
       case "generateCustomJsonFromCanvas": return customJsonFromCanvasString;
-      case "generateJsonParserCode": return parserProjectFiles?.['app/src/main/java/com/example/myapplication/presentation/screen/MainActivity.kt'] || '';
+      case "generateJsonParserCode": return concatenatedParserCode;
       default: return "";
     }
   };
@@ -153,6 +154,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     setIsParserLoading(true);
     setParserError(null);
     setParserProjectFiles(null);
+    setConcatenatedParserCode('');
     
     const canvasJsonForParser = await getDesignComponentsAsJsonAction(components, customComponentTemplates, true);
     
@@ -166,6 +168,13 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
       const result = await generateJsonParserCodeAction(canvasJsonForParser);
       if (result.files && Object.keys(result.files).length > 0) {
         setParserProjectFiles(result.files);
+        
+        // Concatenate all files into one string for display
+        const allCode = Object.entries(result.files)
+          .map(([filePath, content]) => `// --- FILE: ${filePath} ---\n\n${content}\n\n`)
+          .join('\n');
+        setConcatenatedParserCode(allCode);
+
       } else {
         setParserError(result.error || "AI returned an empty or invalid project structure for the parser.");
       }
@@ -206,6 +215,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
       setCustomJsonFromCanvasError(null);
       
       setParserProjectFiles(null);
+      setConcatenatedParserCode('');
       setParserError(null);
     }
   }));
@@ -563,7 +573,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
                 </div>
               ) : (
                 <CodeMirror
-                  value={parserProjectFiles?.['app/src/main/java/com/example/myapplication/presentation/screen/MainActivity.kt'] || ''}
+                  value={concatenatedParserCode}
                   height="100%"
                   extensions={[javaLang()]}
                   theme={resolvedTheme === 'dark' ? githubDark : githubLight}
@@ -638,7 +648,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
 
           {/* Right side: Common secondary actions */}
           <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
-            <Button onClick={handleCopyToClipboard} variant="outline" disabled={!canPerformCopyDownloadActions || activeTab === 'generateJsonParserCode'} className="w-full sm:w-auto">
+            <Button onClick={handleCopyToClipboard} variant="outline" disabled={!canPerformCopyDownloadActions} className="w-full sm:w-auto">
               <Copy className="mr-2 h-4 w-4" /> Copy
             </Button>
             <Button onClick={handleDownload} variant="outline" disabled={!canPerformCopyDownloadActions && !canDownloadProject} className="w-full sm:w-auto">
@@ -712,3 +722,5 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
 });
 
 ViewJsonModal.displayName = 'ViewJsonModal';
+
+  

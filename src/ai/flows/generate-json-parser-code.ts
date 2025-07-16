@@ -67,16 +67,16 @@ const prompt = ai.definePrompt({
 **1. Build & Config Files:**
 *   **\`build.gradle.kts\` (Project Level):** Standard project-level gradle file with plugin definitions for Android, Kotlin, and KSP.
 *   **\`app/build.gradle.kts\`:** App-level gradle file.
-    - Include plugins: \`com.android.application\`, \`org.jetbrains.kotlin.android\`, \`com.google.devtools.ksp\`, \`kotlinx-serialization\`.
+    - Include plugins: \`com.android.application\`, \`org.jetbrains.kotlin.android\`, \`com.google.devtools.ksp\`, \`kotlinx-serialization\`, \`com.google.gms.google-services\`.
     - Enable \`buildFeatures { compose = true }\`.
-    - Include dependencies for:
-        - Firebase BOM (\`firebase-bom\`), \`firebase-config-ktx\`.
-        - Koin for DI (\`io.insert-koin:koin-android\`, \`io.insert-koin:koin-androidx-compose\`).
-        - Coil for image loading (\`io.coil-kt:coil-compose\`).
-        - Kotlinx Serialization (\`org.jetbrains.kotlinx:kotlinx-serialization-json\`).
-        - Jetpack Compose BOM and necessary artifacts (\`activity-compose\`, \`lifecycle-viewmodel-compose\`).
+    - Reference dependencies from the version catalog (\`libs.versions.toml\`).
+*   **\`gradle/libs.versions.toml\`**: A TOML file defining all library versions and dependencies.
+    - Include versions for AGP, Kotlin, Koin, Coil, Firebase, Compose, etc.
+    - Define libraries for koin, coil, firebase-bom, firebase-config, kotlinx-serialization, etc.
+    - Define bundles for compose, koin, etc.
 *   **\`settings.gradle.kts\`:** Standard settings file including \`:app\`.
-*   **\`app/src/main/AndroidManifest.xml\`:** Standard manifest declaring \`MainActivity\` and internet permissions.
+*   **\`app/src/main/AndroidManifest.xml\`:** Standard manifest declaring \`MainActivity\`, \`.MyApplication\`, and internet permissions.
+*   **\`app/google-services.json\`**: A placeholder \`google-services.json\` file. It's crucial for the build to pass.
 
 **2. Presentation Layer (\`app/src/main/java/com/example/myapplication/presentation\`):**
 *   **Base MVI classes (\`mvi\` sub-package):**
@@ -149,3 +149,5 @@ const generateJsonParserCodeFlow = ai.defineFlow(
     return output;
   }
 );
+
+  
