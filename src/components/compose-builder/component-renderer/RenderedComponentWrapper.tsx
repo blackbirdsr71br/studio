@@ -416,8 +416,7 @@ export function RenderedComponentWrapper({ component, zoomLevel = 1, isPreview =
     width: getDimensionValue('width', component.properties.width, component.properties.fillMaxWidth, component.type, component.id, component.parentId, getComponentById, customComponentTemplates),
     height: getDimensionValue('height', component.properties.height, component.properties.fillMaxHeight, component.type, component.id, component.parentId, getComponentById, customComponentTemplates),
     position: 'relative', 
-    display: 'block', 
-    flexShrink: 0, // Prevent shrinking when in a flex container (like Column/Row)
+    display: 'block',
   };
   
   let effectiveLayoutWeight = component.properties.layoutWeight || 0;
