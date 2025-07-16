@@ -34,7 +34,7 @@ export type GenerateComposeCodeInput = z.infer<typeof GenerateComposeCodeInputSc
 
 // Using z.any() and providing a detailed description to guide the model.
 const GenerateComposeCodeOutputSchema = z.object({
-  files: z.any().describe('A map of file paths to their string content for a complete Android project. The keys should be the full file paths (e.g., "app/build.gradle.kts") and the values should be the raw file content.'),
+  files: z.any().describe('An object where keys are the full file paths (e.g., "app/build.gradle.kts") and values are the raw string content of the files for a complete Android project. This is NOT a stringified JSON, but a direct JSON object.'),
 });
 export type GenerateComposeCodeOutput = z.infer<typeof GenerateComposeCodeOutputSchema>;
 
@@ -47,37 +47,41 @@ const prompt = ai.definePrompt({
   input: {schema: GenerateComposeCodeInputSchema},
   output: {schema: GenerateComposeCodeOutputSchema},
   prompt: `You are an expert Jetpack Compose developer. Your task is to generate a complete, minimal, and functional Android project structure.
-The final output MUST be a JSON object with a single root key "files", which itself is an object where keys are file paths and values are the file contents.
+The final output MUST be a JSON object where the root key is "files". The value of "files" must be another object where keys are the string file paths and values are the string file contents.
 
-Example Output Structure:
+**Example Output Structure:**
+\`\`\`json
 {
   "files": {
     "build.gradle.kts": "...",
     "app/build.gradle.kts": "...",
     "app/src/main/AndroidManifest.xml": "...",
-    "app/src/main/java/com/example/myapplication/MainActivity.kt": "..."
+    "app/src/main/java/com/example/myapplication/MainActivity.kt": "...",
+    "app/src/main/java/com/example/myapplication/ui/theme/Theme.kt": "...",
+    "settings.gradle.kts": "..."
   }
 }
+\`\`\`
 
 The app's UI will be based on the following JSON representation (\`{{{designJson}}}\`).
 
-The root of the JSON will be a "Scaffold" component. This Scaffold contains three main slots: "topBar", "content", and "bottomBar". Each slot can either be null or contain a single component object (e.g., TopAppBar for topBar, LazyColumn for content, BottomNavigationBar for bottomBar). These component objects will have their own "type", "properties", and potentially "children" if they are containers.
+The root of the JSON will be a "Scaffold" component. This Scaffold contains three main slots: "topBar", "content", and "bottomBar". Each slot can be null or contain a single component object (e.g., TopAppBar for topBar, LazyColumn for content, BottomNavigationBar for bottomBar). These component objects will have their own "type", "properties", and potentially "children" if they are containers.
 
 **Project Structure Requirements:**
-Generate the following files with the specified content:
+Generate the following files with the specified content. Ensure all files are complete and functional.
 
 1.  **\`app/src/main/java/com/example/myapplication/MainActivity.kt\`**:
-    *   This is the main entry point.
+    *   This is the main entry point. It must be a complete, runnable file.
     *   It must contain the \`MainActivity\` class inheriting from \`ComponentActivity\`.
     *   Inside \`onCreate\`, call \`setContent\` with a theme wrapper (e.g., \`MyApplicationTheme\`).
     *   Inside the theme, generate a \`@Composable\` function named \`GeneratedScreen\`. This function will contain the full UI.
     *   The \`GeneratedScreen\` function should render a \`Scaffold\` composable.
-    *   If \`{{{designJson.topBar}}}\` is present, generate its Composable and pass it to the \`topBar\` lambda of the \`Scaffold\`.
-    *   If \`{{{designJson.bottomBar}}}\` is present, generate its Composable and pass it to the \`bottomBar\` lambda of the \`Scaffold\`.
-    *   The \`{{{designJson.content}}}\` should be generated within the main content lambda of the \`Scaffold\`. This content lambda provides \`PaddingValues\` which you MUST apply as padding to the main content container (e.g., \`Modifier.padding(paddingValues)\`).
+    *   If a \`topBar\` object is present in the input JSON, generate its Composable and pass it to the \`topBar\` lambda of the \`Scaffold\`.
+    *   If a \`bottomBar\` object is present, generate its Composable and pass it to the \`bottomBar\` lambda of the \`Scaffold\`.
+    *   The \`content\` object should be generated within the main content lambda of the \`Scaffold\`. This content lambda provides \`PaddingValues\` which you MUST apply as padding to the main content container (e.g., \`Modifier.padding(paddingValues)\`).
     *   Include all necessary imports from Jetpack Compose (\`androidx.compose...\`, \`androidx.activity.compose.setContent\`, etc.).
     *   All hexadecimal colors from JSON (e.g., "#FF0000") must be converted to Compose \`Color\` objects (e.g., \`Color(android.graphics.Color.parseColor("#FF0000"))\`). You will need to import \`android.graphics.Color\` and \`androidx.compose.ui.graphics.Color\`.
-    *   Click Handling: If a component has 'clickable: true' AND a non-empty 'clickId' string property, add 'Modifier.clickable { /* TODO: Handle click for '{{{properties.clickId}}}' */ }' to its modifiers.
+    *   Click Handling: If a component has a non-empty 'clickId' string property, add 'Modifier.clickable { /* TODO: Handle click for '{{{properties.clickId}}}' */ }' to its modifiers.
     *   Modifier Rules:
         - fillMaxSize -> Modifier.fillMaxSize()
         - fillMaxWidth -> Modifier.fillMaxWidth()
@@ -92,7 +96,7 @@ Generate the following files with the specified content:
         - Spacer: Use Modifier.width/height/weight.
 
 2.  **\`app/src/main/java/com/example/myapplication/ui/theme/Theme.kt\`**:
-    *   Generate a standard \`Theme.kt\` file. It should define composable \`MyApplicationTheme\` that handles light and dark themes.
+    *   Generate a standard \`Theme.kt\` file. It should define a composable \`MyApplicationTheme\` that handles light and dark themes.
     *   Include basic color definitions (\`Purple80\`, \`PurpleGrey80\`, etc.) and the \`LightColorScheme\` and \`DarkColorScheme\`.
 
 3.  **\`app/src/main/AndroidManifest.xml\`**:
@@ -104,7 +108,7 @@ Generate the following files with the specified content:
     *   Generate a complete \`build.gradle.kts\` file for the app module.
     *   Use the \`plugins\` block for \`com.android.application\` and \`org.jetbrains.kotlin.android\`.
     *   Set \`namespace\`, \`compileSdk\`, \`defaultConfig\` (with \`applicationId\`, \`minSdk\`, \`targetSdk\`, \`versionCode\`, \`versionName\`), and \`buildTypes\`.
-    *   Enable \`buildFeatures { compose = true }\` and set \`composeOptions { kotlinCompilerExtensionVersion = "..." }\`.
+    *   Enable \`buildFeatures { compose = true }\` and set \`composeOptions { kotlinCompilerExtensionVersion = "1.5.1" }\`.
     *   Include essential dependencies for Jetpack Compose: \`core-ktx\`, \`lifecycle-runtime-ktx\`, \`activity-compose\`, and the Compose BOM (\`compose-bom\`).
 
 5.  **\`build.gradle.kts\` (Project Level)**:
@@ -123,7 +127,7 @@ Generate the following files with the specified content:
 \`\`\`
 
 **Output Format:**
-The output must be a single JSON object where the root key is "files". Do not add any extra explanations.
+The output must be a single JSON object where the root key is "files". The value of "files" is an object of file paths and their content. Do not add any extra explanations.
 `,
 });
 
@@ -135,7 +139,8 @@ const generateComposeCodeFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    if (!output?.files || Object.keys(output.files).length === 0) {
+    if (!output?.files || typeof output.files !== 'object' || Object.keys(output.files).length === 0) {
+      console.error("AI generation failed or returned invalid structure. Output:", output);
       throw new Error("AI failed to generate a valid project file structure.");
     }
     return output;

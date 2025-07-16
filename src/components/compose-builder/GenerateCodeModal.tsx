@@ -200,11 +200,11 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
   const isLoading = isScreenCodeLoading || isParserCodeLoading;
   
   const canCopyCode = !isLoading && (
-    (activeTab === 'screenComposable' && generatedProjectFiles) ||
+    (activeTab === 'screenComposable' && generatedProjectFiles && Object.keys(generatedProjectFiles).length > 0) ||
     (activeTab === 'jsonParser' && !!generatedParserCode && !parserCodeError)
   );
 
-  const canDownloadProject = activeTab === 'screenComposable' && !isScreenCodeLoading && !!generatedProjectFiles && !screenCodeError;
+  const canDownloadProject = activeTab === 'screenComposable' && !isScreenCodeLoading && !!generatedProjectFiles && Object.keys(generatedProjectFiles).length > 0 && !screenCodeError;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
