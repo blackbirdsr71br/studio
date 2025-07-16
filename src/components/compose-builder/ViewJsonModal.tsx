@@ -303,7 +303,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
         return;
     }
 
-    if (currentErr) {
+    if (currentErr && activeTab !== 'generateJsonParserCode') {
         toast({ title: "Download Failed", description: currentErr, variant: "destructive" });
         return;
     }
@@ -312,6 +312,10 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
         if (activeTab === 'generateJsonParserCode') {
             if (!parserProjectFiles || Object.keys(parserProjectFiles).length === 0) {
                 toast({ title: "Download Failed", description: "Parser project files not generated yet.", variant: "destructive" });
+                return;
+            }
+            if (parserError) {
+                toast({ title: "Download Failed", description: "Cannot download project with errors.", variant: "destructive" });
                 return;
             }
             const zip = new JSZip();
@@ -569,7 +573,6 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
                 />
               )}
             </div>
-            {parserError && <Alert variant="destructive" className="mt-2"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error Generating Project</AlertTitle><AlertDescription>{parserError}</AlertDescription></Alert>}
           </TabsContent>
 
         </Tabs>
