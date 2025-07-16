@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useImperativeHandle, forwardRef, useCallback, useEffect } from 'react';
@@ -133,7 +134,10 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     try {
       const result = await convertCanvasToCustomJsonAction(components, customComponentTemplates, includeCustomJsonDefaults);
       if (result.customJsonString) {
-        setCustomJsonFromCanvasString(result.customJsonString);
+        // Format the single-line JSON string to be pretty-printed
+        const parsed = JSON.parse(result.customJsonString);
+        const formattedJson = JSON.stringify(parsed, null, 2);
+        setCustomJsonFromCanvasString(formattedJson);
       } else {
         setCustomJsonFromCanvasError(result.error || "Failed to generate custom JSON from canvas.");
       }
@@ -150,7 +154,6 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     setParserError(null);
     setParserProjectFiles(null);
     
-    // Generate the full Canvas JSON, including all default values, as input for the parser.
     const canvasJsonForParser = await getDesignComponentsAsJsonAction(components, customComponentTemplates, true);
     
     if (canvasJsonForParser.startsWith("Error:")) {
