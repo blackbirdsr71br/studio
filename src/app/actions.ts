@@ -583,13 +583,13 @@ export async function updateGlobalStylesheetAction(
 }
 
 export async function generateJsonParserCodeAction(
-  customJson: string
+  canvasJson: string
 ): Promise<{ files?: Record<string, string>; error?: string }> {
-  if (!customJson || customJson.trim() === "") {
-    return { error: "Custom JSON input cannot be empty." };
+  if (!canvasJson || canvasJson.trim() === "") {
+    return { error: "Canvas JSON input cannot be empty." };
   }
   try {
-    const input: GenerateJsonParserCodeInput = { customJson };
+    const input: GenerateJsonParserCodeInput = { canvasJson };
     const result = await generateJsonParserCode(input);
     if (!result || !result.files) {
       return { error: "AI failed to generate parser project files." };
