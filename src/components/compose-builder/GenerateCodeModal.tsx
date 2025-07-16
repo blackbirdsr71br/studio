@@ -23,7 +23,7 @@ export interface GenerateCodeModalRef {
 
 type ActiveTab = "screenComposable" | "jsonParser";
 
-export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, ref) => {
+export const GenerateCodeModal = forwardRef<GenerateCode-ModalRef, {}>((props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>("screenComposable");
 
@@ -148,7 +148,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
     if (activeTab === 'screenComposable' && generatedProjectFiles) {
         codeToCopy = generatedProjectFiles['app/src/main/java/com/example/myapplication/MainActivity.kt'] || '';
     } else if (activeTab === 'jsonParser' && generatedParserProject) {
-        codeToCopy = generatedParserProject['app/src/main/java/com/example/myapplication/DynamicUiRenderer.kt'] || '';
+        codeToCopy = generatedParserProject['app/src/main/java/com/example/myapplication/ui/components/DynamicUiRenderer.kt'] || '';
     }
     
     if (codeToCopy) {
@@ -226,7 +226,10 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
         <DialogHeader>
           <DialogTitle className="font-headline">Generated Jetpack Compose Code</DialogTitle>
           <DialogDescription>
-            Select a tab to view the generated code. Edit, copy, or download the complete project.
+             {activeTab === 'screenComposable'
+              ? "View the Composable code for your screen design. You can copy the main file or download the complete, runnable project."
+              : "View the code for a complete Android project that parses and renders your design from a remote source, using Koin and a Clean Architecture/MVI pattern."
+            }
           </DialogDescription>
         </DialogHeader>
 
@@ -274,7 +277,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
                   </div>
               ) : (
                 <CodeMirror
-                  value={generatedParserProject?.['app/src/main/java/com/example/myapplication/DynamicUiRenderer.kt'] || 'Select a file to view...'}
+                  value={generatedParserProject?.['app/src/main/java/com/example/myapplication/ui/components/DynamicUiRenderer.kt'] || 'Select a file to view...'}
                   height="100%"
                   extensions={[javaLang()]}
                   theme={resolvedTheme === 'dark' ? githubDark : githubLight}

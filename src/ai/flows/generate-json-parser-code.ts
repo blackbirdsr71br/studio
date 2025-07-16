@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -45,7 +46,7 @@ const prompt = ai.definePrompt({
   name: 'generateJsonParserCodePrompt',
   input: {schema: GenerateJsonParserCodeInputSchema},
   output: {schema: GenerateJsonParserCodeOutputSchema},
-  prompt: `You are an expert Kotlin developer specializing in Server-Driven UI with Jetpack Compose. Your task is to generate a complete, minimal, and functional Android project that can fetch, parse, and render a UI from a given JSON structure.
+  prompt: `You are an expert Android developer specializing in Clean Architecture, MVI, and Server-Driven UI with Jetpack Compose. Your task is to generate a complete, minimal, and production-ready Android project that can fetch, parse, and render a UI from a given JSON structure.
 
 The final output MUST be a JSON object where the root key is "files". The value of "files" must be another object where keys are the string file paths and values are the string file contents.
 
@@ -56,63 +57,102 @@ The final output MUST be a JSON object where the root key is "files". The value 
     "build.gradle.kts": "...",
     "app/build.gradle.kts": "...",
     "app/src/main/AndroidManifest.xml": "...",
-    "app/src/main/java/com/example/myapplication/MainActivity.kt": "...",
-    "app/src/main/java/com/example/myapplication/ui/theme/Theme.kt": "...",
-    "app/src/main/java/com/example/myapplication/DynamicUiRenderer.kt": "...",
-    "settings.gradle.kts": "..."
+    "app/src/main/java/com/example/myapplication/MainActivity.kt": "..."
   }
 }
 \`\`\`
 
 The app's UI will be based on the following JSON representation (\`{{{customJson}}}\`).
 
-**Project Structure and Code Requirements:**
-Generate the following files with the specified content. Ensure all files are complete and functional.
+**Project Architecture and Requirements:**
+Generate the following files with the specified content. Ensure all files are complete, functional, and follow best practices.
 
-1.  **\`app/src/main/java/com/example/myapplication/MainActivity.kt\`**:
-    *   This is the main entry point. It must set up a theme and call the main screen composable.
-    *   The main screen should observe a ViewModel to get the UI components and render them using a \`DynamicUiRenderer\`.
-    *   It should handle loading and error states.
+**1. Dependency Injection with Koin:**
+   - Set up Koin for dependency injection.
+   - Create an Application class that initializes Koin.
+   - Define Koin modules for the repository and ViewModel.
 
-2.  **\`app/src/main/java/com/example/myapplication/DynamicUiRenderer.kt\`**:
-    *   This file will contain the core rendering logic.
-    *   It must have a \`@Composable fun DynamicUiRenderer(components: List<UiComponentModel>)\` that iterates through the list and calls a \`RenderNode\` composable for each component.
-    *   The \`RenderNode\` composable should use a \`when(component.type)\` block to decide which specific composable to call (e.g., \`TextComponent\`, \`ImageComponent\`).
-    *   It must include composables for each component type found in the input JSON (e.g., \`Text\`, \`Image\`, \`Column\`, \`Row\`, \`Card\`, \`Spacer\`).
-    *   Container composables (\`ColumnComponent\`, \`RowComponent\`, etc.) **must recursively call \`RenderNode\`** for their children.
-    *   Image loading MUST use the Coil library (\`io.coil-kt:coil-compose\`).
-    *   All hexadecimal colors from JSON must be converted to Compose \`Color\` objects.
+**2. MVI (Model-View-Intent) Pattern:**
+   - **Contract:** A file defining 'UiState', 'UiEvent', and 'UiEffect'.
+   - **ViewModel:** Inherits from a 'BaseViewModel' and handles business logic, state management, and side effects.
+   - **UI:** The Composable screen observes the ViewModel's state and sends events.
 
-3.  **\`app/src/main/java/com/example/myapplication/models.kt\`**:
-    *   This file will contain the data models.
-    *   Define a \`@Serializable data class UiComponentModel\` that matches the JSON structure. Use nullable types for all properties in the DTO to handle missing values gracefully.
-    *   Use \`kotlinx.serialization.SerialName\` for properties that are not valid Kotlin identifiers (like \`data-ai-hint\`).
-    *   The \`children\` property should be \`val children: List<UiComponentModel>? = null\`.
+**3. Clean Architecture Layers:**
+   - **Presentation:** (MainActivity, MainScreen, MainViewModel, MainContract, UiModels)
+   - **Domain:** (Repository interface, Domain Models, Mappers)
+   - **Data:** (Repository implementation, DTOs, Firebase Remote Config logic)
 
-4.  **\`app/src/main/java/com/example/myapplication/MainViewModel.kt\`**:
-    *   Create a simple ViewModel that fetches the JSON string (you can hardcode it for this example, simulating a fetch from a source like Firebase Remote Config).
-    *   It should parse the JSON into a list of \`UiComponentModel\` using \`kotlinx.serialization.json.Json\`.
-    *   Use \`StateFlow\` to expose the list of components, loading state, and any errors to the UI.
+**File Generation Specifications:**
 
-5.  **\`app/src/main/java/com/example/myapplication/ui/theme/Theme.kt\`**:
-    *   Generate a standard \`Theme.kt\` file.
+**A. Project & App Level Gradle Files:**
+   - **'build.gradle.kts' (Project Level):** Define plugins for application, kotlin, and kotlinx-serialization.
+   - **'app/build.gradle.kts' (App Level):**
+     - Apply necessary plugins: 'com.android.application', 'kotlin-android', 'kotlinx-serialization'.
+     - Enable Compose and set compiler extension version.
+     - Include dependencies for:
+       - Core KTX, Lifecycle, Activity Compose
+       - **Jetpack Compose BOM**
+       - **Koin** for Android ('io.insert-koin:koin-android', 'io.insert-koin:koin-androidx-compose')
+       - **Firebase BOM** and **Remote Config** ('firebase-config-ktx')
+       - **Kotlinx Serialization** ('kotlinx-serialization-json')
+       - **Coil** for image loading ('io.coil-kt:coil-compose')
 
-6.  **\`app/src/main/AndroidManifest.xml\`**:
-    *   Generate a standard \`AndroidManifest.xml\`.
-    *   Ensure it includes the \`INTERNET\` permission for Coil.
+**B. Application Setup:**
+   - **'app/src/main/AndroidManifest.xml':**
+     - Declare the main launcher activity.
+     - Add the **INTERNET** permission.
+     - Reference a custom Application class in the '<application>' tag ('android:name=".MyApplication"').
+   - **'app/src/main/java/com/example/myapplication/MyApplication.kt':**
+     - An 'Application' class that initializes Koin using 'startKoin'.
 
-7.  **\`app/build.gradle.kts\` (App Level)**:
-    *   Generate a complete \`build.gradle.kts\`.
-    *   Include the \`kotlinx-serialization\` plugin.
-    *   Include dependencies for Compose, ViewModel, Coil, and \`org.jetbrains.kotlinx:kotlinx-serialization-json\`.
+**C. Core UI and Presentation Layer:**
+   - **'app/src/main/java/com/example/myapplication/MainActivity.kt':** The entry point. Sets up the theme and calls 'MainScreen'.
+   - **'app/src/main/java/com/example/myapplication/ui/MainScreen.kt':**
+     - The main Composable screen.
+     - Injects and observes 'MainViewModel'.
+     - Handles displaying loading states, error messages, and the dynamic UI.
+     - Collects side effects ('UiEffect') using a 'LaunchedEffect'.
+   - **'app/src/main/java/com/example/myapplication/ui/components/DynamicUiRenderer.kt':**
+     - Contains the core rendering logic: '@Composable fun DynamicUiRenderer(components: List<UiComponentModel>)'.
+     - Uses a 'when(component.type)' block to render different components.
+     - Recursively calls itself for container components' children.
+     - Uses **Coil's 'AsyncImage'** for image loading.
+   - **'app/src/main/java/com/example/myapplication/ui/mvi/MainContract.kt':**
+     - Defines the MVI contract:
+       - 'sealed interface UiEvent': e.g., 'OnRetryClicked'.
+       - 'data class UiState(...)': e.g., 'isLoading: Boolean', 'error: String?', 'components: List<UiComponentModel>'.
+       - 'sealed interface UiEffect': e.g., 'ShowToast(message: String)'.
+   - **'app/src/main/java/com/example/myapplication/ui/mvi/MainViewModel.kt':**
+     - Inherits from 'BaseViewModel<UiEvent, UiState, UiEffect>'.
+     - Injects the 'UiRepository'.
+     - Fetches the UI configuration and updates the state.
+     - Implements a 'handleEvent' function to process user actions.
+     - **Crucially, it should call the repository method to listen for real-time updates.**
+   - **'app/src/main/java/com/example/myapplication/ui/mvi/BaseViewModel.kt':**
+     - An abstract base class for ViewModels to handle MVI boilerplate for StateFlow, SharedFlow, and event handling.
+   - **'app/src/main/java/com/example/myapplication/ui/theme/Theme.kt':** Standard theme file.
 
-8.  **\`build.gradle.kts\` (Project Level)**:
-    *   Generate a project-level \`build.gradle.kts\` with plugin definitions.
+**D. Domain Layer:**
+   - **'app/src/main/java/com/example/myapplication/domain/UiRepository.kt':**
+     - An **interface** defining the contract for data operations, e.g., 'fun getUiComponents(): Flow<Result<List<UiComponentModel>>>'.
+   - **'app/src/main/java/com/example/myapplication/domain/models/UiComponentModel.kt':**
+     - The domain/UI model for a component. Should be clean and not tied to serialization.
+   - **'app/src/main/java/com/example/myapplication/domain/mappers/UiModelMapper.kt':**
+     - An extension function 'fun ComponentDto.toDomain(): UiComponentModel' to map from the data layer DTO to the domain model.
 
-9.  **\`settings.gradle.kts\`**:
-    *   Generate a standard \`settings.gradle.kts\`.
+**E. Data Layer:**
+   - **'app/src/main/java/com/example/myapplication/data/UiRepositoryImpl.kt':**
+     - The implementation of 'UiRepository'.
+     - Injects 'FirebaseRemoteConfig'.
+     - Contains the logic to fetch the initial config and **set up a listener for real-time updates** using 'addOnConfigUpdateListener'.
+     - It should parse the JSON string from Remote Config into DTOs and then map them to domain models.
+     - It should use a 'callbackFlow' to emit updates.
+   - **'app/src/main/java/com/example/myapplication/data/dtos/ComponentDto.kt':**
+     - A '@Serializable data class' that **exactly matches the provided JSON structure**. Use '@SerialName' for keys with hyphens. All properties should be nullable to handle variations in the JSON.
+   - **'app/src/main/java/com/example/myapplication/di/AppModule.kt':**
+     - A Koin module that provides instances of 'UiRepository' and 'MainViewModel'.
 
-**Input JSON to be Parsed:**
+**Input JSON to be Parsed by the Generated App:**
 \`\`\`json
 {{{customJson}}}
 \`\`\`
@@ -137,3 +177,5 @@ const generateJsonParserCodeFlow = ai.defineFlow(
     return output;
   }
 );
+
+      
