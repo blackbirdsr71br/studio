@@ -149,16 +149,18 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     setIsParserLoading(true);
     setParserError(null);
     setParserProjectFiles(null);
-    // First, generate the custom JSON without default values, as this is the input for the parser generator.
-    const customJsonResult = await convertCanvasToCustomJsonAction(components, customComponentTemplates, false);
-    if (customJsonResult.error || !customJsonResult.customJsonString) {
-        setParserError(customJsonResult.error || "Could not generate input JSON for parser generation.");
+    
+    // Generate the full Canvas JSON, including all default values, as input for the parser.
+    const canvasJsonForParser = await getDesignComponentsAsJsonAction(components, customComponentTemplates, true);
+    
+    if (canvasJsonForParser.startsWith("Error:")) {
+        setParserError(canvasJsonForParser);
         setIsParserLoading(false);
         return;
     }
 
     try {
-      const result = await generateJsonParserCodeAction(customJsonResult.customJsonString);
+      const result = await generateJsonParserCodeAction(canvasJsonForParser);
       if (result.files && Object.keys(result.files).length > 0) {
         setParserProjectFiles(result.files);
       } else {

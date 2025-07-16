@@ -3,7 +3,8 @@
 
 /**
  * @fileOverview Generates a complete, structured Android project with Jetpack Compose code from a JSON representation of a UI design.
- * The project follows Clean Architecture and MVI patterns.
+ * The project follows Clean Architecture and MVI patterns. The input is the full "Canvas JSON" which is a hierarchical representation
+ * of the components in the main content area.
  *
  * - generateJsonParserCode - A function that takes a JSON string representing a UI design and returns a set of project files.
  * - GenerateJsonParserCodeInput - The input type for the generateJsonParserCode function.
@@ -14,9 +15,9 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const GenerateJsonParserCodeInputSchema = z.object({
-  customJson: z
+  canvasJson: z
     .string()
-    .describe('A JSON string representing the UI design, for which a full Kotlin project will be generated.')
+    .describe('A JSON string representing the UI design from the canvas content area, for which a full Kotlin project will be generated. This is an array of component objects, where each object has id, type, name, parentId, and properties. Container components have a "children" array within their properties, containing full child component objects.')
     .refine(
       (data) => {
         try {
@@ -56,9 +57,9 @@ const prompt = ai.definePrompt({
 - **Image Loading:** Use Coil for asynchronously loading images from URLs.
 - **Remote Config:** Fetch the UI JSON from Firebase Remote Config and listen for real-time updates.
 
-**Input JSON to be parsed:**
+**Input JSON to be parsed (This is the Canvas JSON, representing the content area):**
 \`\`\`json
-{{{customJson}}}
+{{{canvasJson}}}
 \`\`\`
 
 **Generate the following project file structure and content:**
@@ -85,7 +86,7 @@ const prompt = ai.definePrompt({
     - \`BaseViewModel.kt\`: An abstract ViewModel implementing MVI logic (state, event, effect flows).
 *   **Screen-specific MVI (\`screen\` sub-package):**
     - \`MainContract.kt\`: Defines the specific State, Event, and Effect for the main screen.
-        - \`State\`: Should include properties like \`isLoading: Boolean\` and \`uiComponent: UiComponentDto?\`.
+        - \`State\`: Should include properties like \`isLoading: Boolean\` and \`components: List<ComponentDto>\`.
         - \`Event\`: Should include events like \`OnButtonClicked(clickId: String)\`.
         - \`Effect\`: Should include effects like \`ShowToast(message: String)\`.
     - \`MainViewModel.kt\`:
@@ -101,26 +102,26 @@ const prompt = ai.definePrompt({
         - The main UI Composable.
         - Collects state and effects from the ViewModel.
         - Renders a \`CircularProgressIndicator\` when loading.
-        - Renders the dynamic UI using a \`DynamicUiComponent\` when the data is available.
+        - Renders the dynamic UI by iterating through the list of \`ComponentDto\` and calling a \`DynamicUiComponent\` for each.
         - Uses a \`LaunchedEffect\` to handle one-time side effects (Toasts).
 *   **Dynamic UI Composables (\`components\` sub-package):**
-    - \`DynamicUiComponent.kt\`: A master composable that takes a \`UiComponentDto\` and recursively renders the UI by calling other specific component composables based on the DTO type. This is the core of the dynamic rendering.
-    - \`ComponentMapper.kt\`: Maps DTOs to actual composables. This file will contain functions like \`@Composable fun CardComponent(dto: CardComponentDto, ...)\`, \`@Composable fun TextComponent(dto: TextComponentDto, ...)\`, etc. These composables use the DTO properties to configure standard Jetpack Compose elements (\`Card\`, \`Text\`, \`Button\`, \`Image\` via Coil, etc.).
+    - \`DynamicUiComponent.kt\`: A master composable that takes a \`ComponentDto\` and recursively renders the UI by calling other specific component composables based on the DTO type. This is the core of the dynamic rendering.
+    - \`ComponentMapper.kt\`: Maps DTOs to actual composables. This file will contain functions like \`@Composable fun CardComponent(dto: ComponentDto, ...)\`, \`@Composable fun TextComponent(dto: ComponentDto, ...)\`, etc. These composables use the DTO properties to configure standard Jetpack Compose elements (\`Card\`, \`Text\`, \`Button\`, \`Image\` via Coil, etc.).
 
 **3. Domain Layer (\`app/src/main/java/com/example/myapplication/domain\`):**
-*   **Repository Contract (\`repository/UiConfigRepository.kt\`):** An interface defining the contract for the data layer, e.g., \`fun getUiConfig(): Flow<UiComponentDto?>\`.
+*   **Repository Contract (\`repository/UiConfigRepository.kt\`):** An interface defining the contract for the data layer, e.g., \`fun getUiConfig(): Flow<List<ComponentDto>>\`.
 *   **Use Case (\`usecase/GetUiConfigurationUseCase.kt\`):** A simple class that injects the repository and exposes a method to execute the repository's function.
 
 **4. Data Layer (\`app/src/main/java/com/example/myapplication/data\`):**
 *   **DTOs (\`model\` sub-package):**
-    - Generate all necessary Kotlin \`@Serializable\` data classes (DTOs) to perfectly match the structure of the input JSON (\`{{{customJson}}}\`). Name them logically, e.g., \`UiComponentDto\`, \`CardComponentDto\`, \`ModifierDto\`, \`BaseModifierDto\`, \`PaddingDto\`, etc. Make all properties nullable to handle missing fields gracefully. Use \`@SerialName\` for JSON keys that are not valid Kotlin identifiers.
+    - Generate all necessary Kotlin \`@Serializable\` data classes (DTOs) to perfectly match the structure of the input Canvas JSON (\`{{{canvasJson}}}\`). This JSON is an array of objects. The main DTO should be \`ComponentDto\`. It will have \`id\`, \`type\`, \`name\`, \`parentId\`, and a \`properties\` object. The \`properties\` object should itself be a serializable data class, \`PropertiesDto\`, containing all possible component properties (\`text\`, \`fontSize\`, \`padding\`, etc.) as nullable fields. If the \`properties\` object contains a \`children\` array, it should be of type \`List<ComponentDto>\`. Make all properties in the DTOs nullable to handle missing fields gracefully.
 *   **Repository Implementation (\`repository/UiConfigRepositoryImpl.kt\`):**
     - Implements the \`UiConfigRepository\` interface.
     - Injects \`FirebaseRemoteConfig\`.
-    - Contains logic to fetch the JSON string from Remote Config using a specific key (e.g., "CUSTOM_COMMAND_JSON_V1").
+    - Contains logic to fetch the JSON string from Remote Config using a specific key (e.g., "COMPOSE_DESIGN_JSON_V2").
     - Sets up a listener for real-time updates from Remote Config.
-    - Uses \`kotlinx.serialization.json.Json\` to parse the fetched string into the DTOs.
-    - Emits the parsed DTO through a Kotlin \`Flow\`.
+    - Uses \`kotlinx.serialization.json.Json\` to parse the fetched string into a \`List<ComponentDto>\`.
+    - Emits the parsed DTO list through a Kotlin \`Flow\`.
 
 **5. Dependency Injection (\`app/src/main/java/com/example/myapplication/di\`):**
 *   **\`AppModule.kt\`:** Defines a Koin module that provides dependencies for the ViewModel.
@@ -139,6 +140,7 @@ const generateJsonParserCodeFlow = ai.defineFlow(
     outputSchema: GenerateJsonParserCodeOutputSchema,
   },
   async input => {
+    // The input schema now uses 'canvasJson'
     const {output} = await prompt(input);
     if (!output?.files || typeof output.files !== 'object' || Object.keys(output.files).length === 0) {
       console.error("AI generation failed or returned invalid structure. Output:", output);
