@@ -14,8 +14,15 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-// Log para depuración MUY IMPORTANTE
-console.log("Firebase Client SDK: Initializing with config:", firebaseConfig);
+// Log for debugging to ensure environment variables are loaded
+console.log("Firebase Client SDK: Initializing with config:", {
+  apiKey: firebaseConfig.apiKey ? '***' : 'MISSING',
+  authDomain: firebaseConfig.authDomain,
+  projectId: firebaseConfig.projectId,
+  storageBucket: firebaseConfig.storageBucket,
+  messagingSenderId: firebaseConfig.messagingSenderId,
+  appId: firebaseConfig.appId,
+});
 
 if (!firebaseConfig.projectId || firebaseConfig.projectId.trim() === "") {
   console.error(
@@ -28,32 +35,45 @@ if (!firebaseConfig.projectId || firebaseConfig.projectId.trim() === "") {
     "Example: NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-actual-project-id\n" +
     "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
   );
-} else {
-  console.log("Firebase Client SDK: NEXT_PUBLIC_FIREBASE_PROJECT_ID appears to be set:", firebaseConfig.projectId);
 }
 
-
-// Initialize Firebase
+// Initialize Firebase App and Firestore
 let app: FirebaseApp;
 let db: Firestore;
 
-if (typeof window !== "undefined") { // Ensure this only runs on the client-side
-  if (getApps().length === 0) {
-    // Only initialize if projectId is somewhat valid to prevent further confusing errors,
-    // though the SDK might still try and fail if it's a completely wrong ID.
-    // The main check above should guide the user.
-    app = initializeApp(firebaseConfig);
-  } else {
-    app = getApps()[0];
-  }
-  // @ts-ignore Type 'Firestore | undefined' is not assignable to type 'Firestore'
-  db = getFirestore(app);
-} else {
-  // Handle server-side case if necessary, though db is mostly client-side here
-  // For this app, db is primarily used client-side in DesignContext
-  // Assign a placeholder or handle error if db is accessed server-side without init
-  // For now, db might be undefined on server, which is fine if not used.
-}
+// This function can be called on both server and client.
+// It ensures that initialization happens only once.
+const initializeFirebase = () => {
+    if (getApps().length === 0) {
+        if (!firebaseConfig.projectId) {
+            // This check is crucial. If there's no projectId, don't even attempt to initialize.
+            console.error("Firebase initialization skipped: Project ID is missing.");
+            return;
+        }
+        try {
+            app = initializeApp(firebaseConfig);
+            console.log("Firebase Client SDK: App initialized successfully.");
+        } catch (e) {
+            console.error("Firebase Client SDK: Error initializing app.", e);
+        }
+    } else {
+        app = getApps()[0];
+        // console.log("Firebase Client SDK: Using existing app instance.");
+    }
 
-// @ts-ignore Export possibly undefined db, context using it should check
+    if (app) {
+        try {
+            db = getFirestore(app);
+        } catch (e) {
+            console.error("Firebase Client SDK: Error getting Firestore instance.", e);
+        }
+    }
+};
+
+// Run the initialization logic.
+initializeFirebase();
+
+// Export the instances. They might be undefined if initialization failed.
+// Code using `db` should handle this possibility, especially in client components
+// where they might be rendered before the context provider has fully loaded data.
 export { app, db };
