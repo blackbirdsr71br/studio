@@ -67,15 +67,72 @@ const prompt = ai.definePrompt({
 **Generate the following project file structure and content:**
 
 **1. Build & Config Files:**
+*   **\`gradle/libs.versions.toml\`**: Generate this file with the following **EXACT** content. Do not omit any part of it.
+    \`\`\`toml
+    [versions]
+    agp = "8.2.0"
+    kotlin = "1.9.22"
+    coreKtx = "1.13.1"
+    junit = "4.13.2"
+    androidxTestExtJunit = "1.1.5"
+    espressoCore = "3.5.1"
+    lifecycleRuntimeKtx = "2.8.1"
+    activityCompose = "1.9.0"
+    composeBom = "2024.05.00"
+    koin = "3.5.6"
+    coil = "2.6.0"
+    firebaseBom = "33.1.0"
+    kotlinxSerializationJson = "1.6.3"
+    googleServices = "4.4.2"
+    ksp = "1.9.22-1.0.17"
+
+    [libraries]
+    # Core & UI
+    core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+    lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+    activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+    compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
+    ui = { group = "androidx.compose.ui", name = "ui" }
+    ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
+    ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+    material3 = { group = "androidx.compose.material3", name = "material3" }
+    coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+
+    # Koin for Dependency Injection
+    koin-android = { group = "io.insert-koin", name = "koin-android", version.ref = "koin" }
+    koin-androidx-compose = { group = "io.insert-koin", name = "koin-androidx-compose", version.ref = "koin" }
+
+    # Firebase
+    firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+    firebase-config = { group = "com.google.firebase", name = "firebase-config-ktx" }
+    firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics-ktx" }
+
+    # Kotlinx Serialization
+    kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
+
+    # Testing
+    junit = { group = "junit", name = "junit", version.ref = "junit" }
+    androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExtJunit" }
+    espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+    ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+    ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+    ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+
+    [plugins]
+    androidApplication = { id = "com.android.application", version.ref = "agp" }
+    kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+    kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+    googleServices = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+    ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+
+    [bundles]
+    compose = ["ui", "ui-graphics", "ui-tooling-preview", "material3"]
+    \`\`\`
 *   **\`build.gradle.kts\` (Project Level):** Standard project-level gradle file with plugin definitions for Android, Kotlin, and KSP.
 *   **\`app/build.gradle.kts\`:** App-level gradle file.
-    - Include plugins: \`com.android.application\`, \`org.jetbrains.kotlin.android\`, \`com.google.devtools.ksp\`, \`kotlinx-serialization\`, \`com.google.gms.google-services\`.
+    - Include plugins using aliases from the version catalog: \`alias(libs.plugins.androidApplication)\`, \`alias(libs.plugins.kotlinAndroid)\`, etc.
     - Enable \`buildFeatures { compose = true }\`.
-    - Reference dependencies from the version catalog (\`libs.versions.toml\`). For example: \`implementation(libs.koin.android)\`.
-*   **\`gradle/libs.versions.toml\`**: A TOML file defining all library versions and dependencies.
-    - Include versions for AGP, Kotlin, Koin, Coil, Firebase, etc.
-    - Define libraries for koin, coil, firebase-bom, firebase-config, kotlinx-serialization, etc.
-    - Define bundles for compose, koin, etc.
+    - Reference dependencies from the version catalog (\`libs.versions.toml\`). For example: \`implementation(libs.koin.android)\`. It must implement \`firebase-bom\`, \`compose-bom\` and \`kotlinx-serialization-json\`.
 *   **\`settings.gradle.kts\`:** Standard settings file including \`:app\`.
 *   **\`app/src/main/AndroidManifest.xml\`:** Standard manifest declaring \`MainActivity\`, \`.MyApplication\`, and internet permissions.
 *   **\`app/google-services.json\`**: A placeholder \`google-services.json\` file. It's crucial for the build to pass.
@@ -248,5 +305,7 @@ const generateJsonParserCodeFlow = ai.defineFlow(
     return output;
   }
 );
+
+    
 
     
