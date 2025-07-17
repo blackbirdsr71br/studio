@@ -72,7 +72,7 @@ const prompt = ai.definePrompt({
     - Enable \`buildFeatures { compose = true }\`.
     - Reference dependencies from the version catalog (\`libs.versions.toml\`).
 *   **\`gradle/libs.versions.toml\`**: A TOML file defining all library versions and dependencies.
-    - Include versions for AGP, Kotlin, Koin, Coil, Firebase, Compose, etc.
+    - Include versions for AGP, Kotlin, Koin, Coil, Firebase, etc.
     - Define libraries for koin, coil, firebase-bom, firebase-config, kotlinx-serialization, etc.
     - Define bundles for compose, koin, etc.
 *   **\`settings.gradle.kts\`:** Standard settings file including \`:app\`.
@@ -184,5 +184,3 @@ const generateJsonParserCodeFlow = ai.defineFlow(
     return output;
   }
 );
-
-    
