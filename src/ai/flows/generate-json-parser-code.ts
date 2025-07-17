@@ -44,6 +44,7 @@ export async function generateJsonParserCode(input: GenerateJsonParserCodeInput)
 
 const prompt = ai.definePrompt({
   name: 'generateJsonParserCodePrompt',
+  model: 'googleai/gemini-1.5-pro-latest', // Explicitly use the powerful model here
   input: {schema: GenerateJsonParserCodeInputSchema},
   output: {schema: GenerateJsonParserCodeOutputSchema},
   prompt: `You are an expert Android developer specializing in Clean Architecture, MVI, and Jetpack Compose. Your task is to generate a complete, minimal, and functional Android project structure that renders a UI from a given JSON string.
@@ -183,3 +184,5 @@ const generateJsonParserCodeFlow = ai.defineFlow(
     return output;
   }
 );
+
+    
