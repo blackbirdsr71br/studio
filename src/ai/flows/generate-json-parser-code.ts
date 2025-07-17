@@ -133,7 +133,33 @@ const prompt = ai.definePrompt({
     - Include plugins using aliases from the version catalog: \`alias(libs.plugins.androidApplication)\`, \`alias(libs.plugins.kotlinAndroid)\`, etc.
     - Enable \`buildFeatures { compose = true }\`.
     - Reference dependencies from the version catalog (\`libs.versions.toml\`). For example: \`implementation(libs.koin.android)\`. It must implement \`firebase-bom\`, \`compose-bom\` and \`kotlinx-serialization-json\`.
-*   **\`settings.gradle.kts\`:** Standard settings file including \`:app\`.
+*   **\`settings.gradle.kts\`:** Generate this file with the EXACT content:
+    \`\`\`kotlin
+    pluginManagement {
+        repositories {
+            google()
+            mavenCentral()
+            gradlePluginPortal()
+        }
+    }
+    dependencyResolutionManagement {
+        repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+        repositories {
+            google()
+            mavenCentral()
+        }
+    }
+
+    rootProject.name = "My Application"
+    include(":app")
+    \`\`\`
+*   **\`gradle.properties\`:** Generate this file with the EXACT content:
+    \`\`\`properties
+    org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+    android.useAndroidX=true
+    kotlin.code.style=official
+    android.nonTransitiveRClass=true
+    \`\`\`
 *   **\`app/src/main/AndroidManifest.xml\`:** Standard manifest declaring \`MainActivity\`, \`.MyApplication\`, and internet permissions.
 *   **\`app/google-services.json\`**: A placeholder \`google-services.json\` file. It's crucial for the build to pass.
 
@@ -309,3 +335,4 @@ const generateJsonParserCodeFlow = ai.defineFlow(
     
 
     
+
