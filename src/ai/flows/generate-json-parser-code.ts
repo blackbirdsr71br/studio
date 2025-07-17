@@ -46,7 +46,6 @@ const prompt = ai.definePrompt({
   name: 'generateJsonParserCodePrompt',
   input: {schema: GenerateJsonParserCodeInputSchema},
   output: {schema: GenerateJsonParserCodeOutputSchema},
-  model: 'googleai/gemini-1.5-pro-latest',
   prompt: `You are an expert Android developer specializing in Clean Architecture, MVI, and Jetpack Compose. Your task is to generate a complete, minimal, and functional Android project structure that renders a UI from a given JSON string.
 
 **The final output MUST be a JSON object where the root key is "files". The value of "files" must be another object where keys are the string file paths and values are the string file contents.**
@@ -58,7 +57,7 @@ const prompt = ai.definePrompt({
 - **Image Loading:** Use Coil for asynchronously loading images from URLs.
 - **Remote Config:** Fetch the UI JSON from Firebase Remote Config and listen for real-time updates.
 - **Build System:** Use Gradle with Version Catalogs (\`libs.versions.toml\`) for dependency management. Use KSP for any necessary annotation processing.
-- **JSON Parsing:** Use \`kotlinx.serialization\` for parsing JSON.
+- **JSON Parsing:** Use kotlinx.serialization for parsing JSON.
 
 **Input JSON to be parsed (This is the Canvas JSON, representing the content area):**
 \`\`\`json
