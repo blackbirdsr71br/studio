@@ -46,9 +46,14 @@ const prompt = ai.definePrompt({
   name: 'generateJsonParserCodePrompt',
   input: {schema: GenerateJsonParserCodeInputSchema},
   output: {schema: GenerateJsonParserCodeOutputSchema},
-  prompt: `You are an expert Android developer specializing in Clean Architecture, MVI, and Jetpack Compose. Your task is to generate a complete, minimal, and functional Android project structure that renders a UI from a given JSON string.
+  prompt: `You are an expert Android developer specializing in Clean Architecture, MVI, and Jetpack Compose. Your primary task is to generate a complete, minimal, and functional Android project structure that parses and renders a UI from a specific JSON string provided below.
 
-**The final output MUST be a JSON object where the root key is "files". The value of "files" must be another object where keys are the string file paths and values are the string file contents.**
+**THE MOST IMPORTANT INSTRUCTION:** The entire project must be built to parse and display the UI represented by this EXACT "Canvas JSON" input. The DTOs in the data layer MUST perfectly match the structure of this JSON.
+
+**Input Canvas JSON to be parsed (This is the Canvas JSON, representing the content area):**
+\`\`\`json
+{{{canvasJson}}}
+\`\`\`
 
 **Architectural Requirements:**
 - **MVI Pattern:** Implement UI State, UI Events, and UI Effects using sealed classes for Events/Effects and a data class for State.
@@ -58,11 +63,6 @@ const prompt = ai.definePrompt({
 - **Remote Config:** Fetch the UI JSON from Firebase Remote Config and listen for real-time updates.
 - **Build System:** Use Gradle with Version Catalogs (\`libs.versions.toml\`) for dependency management. Use KSP for any necessary annotation processing.
 - **JSON Parsing:** Use kotlinx.serialization for parsing JSON.
-
-**Input JSON to be parsed (This is the Canvas JSON, representing the content area):**
-\`\`\`json
-{{{canvasJson}}}
-\`\`\`
 
 **Generate the following project file structure and content:**
 
@@ -207,11 +207,11 @@ const prompt = ai.definePrompt({
 
 **4. Data Layer (\`app/src/main/java/com/example/myapplication/data\`):**
 *   **DTOs (\`model\` sub-package):**
-    - Generate all necessary Kotlin \`@Serializable\` data classes (DTOs) to perfectly match the structure of the input Canvas JSON (\`{{{canvasJson}}}\`). This JSON is an array of objects.
+    - **CRITICAL**: Generate all necessary Kotlin \`@Serializable\` data classes (DTOs) to perfectly match the structure of the input Canvas JSON (\`{{{canvasJson}}}\`). This JSON is an array of objects.
     - The main DTO should be \`ComponentDto\`. It will have \`id\`, \`type\`, \`name\`, \`parentId\`, and a \`properties\` object.
-    - The \`properties\` object should itself be a serializable data class, \`PropertiesDto\`, containing all possible component properties.
-    - If the \`properties\` object contains a \`children\` array, it should be of type \`List<ComponentDto>\`.
-    - **CRUCIAL**: Make all properties in the DTOs **nullable** (e.g., \`val text: String? = null\`) to handle missing or \`null\` fields in the JSON gracefully.
+    - The \`properties\` object should itself be a serializable data class, \`PropertiesDto\`, containing all possible component properties found in the input JSON.
+    - If the \`properties\` object in the input JSON contains a \`children\` array, the \`PropertiesDto\` must have a \`val children: List<ComponentDto>? = null\` property.
+    - **CRUCIAL**: Make all properties in ALL DTOs **nullable** (e.g., \`val text: String? = null\`) to handle missing or \`null\` fields in the JSON gracefully.
 *   **Mappers (\`mapper\` sub-package):**
     - \`ComponentMapper.kt\`: Contains extension functions to map \`ComponentDto\` to \`ComponentModel\` (domain model). This mapping must be recursive to handle the children correctly.
 *   **Repository Implementation (\`repository/UiConfigRepositoryImpl.kt\`):**
@@ -228,7 +228,7 @@ const prompt = ai.definePrompt({
 *   **\`DomainModule.kt\`:** Defines a Koin module that provides the \`GetUiConfigurationUseCase\`.
 *   **\`MyApplication.kt\`:** An \`Application\` class that initializes Koin with all the modules. Remember to add this class to the \`AndroidManifest.xml\`.
 
-Ensure all files are complete, functional, and include all necessary imports. The output must be a single, valid JSON object.
+Ensure all files are complete, functional, and include all necessary imports. The output must be a single, valid JSON object with the "files" root key.
 `,
 });
 
