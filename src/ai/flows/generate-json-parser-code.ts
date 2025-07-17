@@ -46,6 +46,7 @@ const prompt = ai.definePrompt({
   name: 'generateJsonParserCodePrompt',
   input: {schema: GenerateJsonParserCodeInputSchema},
   output: {schema: GenerateJsonParserCodeOutputSchema},
+  model: 'googleai/gemini-1.5-flash-latest',
   prompt: `You are an expert Android developer specializing in Clean Architecture, MVI, and Jetpack Compose. Your task is to generate a complete, minimal, and functional Android project structure that renders a UI from a given JSON string.
 
 **The final output MUST be a JSON object where the root key is "files". The value of "files" must be another object where keys are the string file paths and values are the string file contents.**
@@ -83,7 +84,70 @@ const prompt = ai.definePrompt({
     - \`UiState.kt\`: An empty marker interface for all UI states.
     - \`UiEvent.kt\`: An empty marker interface for all user interactions.
     - \`UiEffect.kt\`: An empty marker interface for one-time side effects.
-    - \`BaseViewModel.kt\`: An abstract ViewModel implementing MVI logic (state, event, effect flows).
+    - **\`BaseViewModel.kt\`**: Generate this file with the following complete, generic MVI implementation:
+        \`\`\`kotlin
+        package com.example.myapplication.presentation.mvi
+
+        import androidx.lifecycle.ViewModel
+        import androidx.lifecycle.viewModelScope
+        import kotlinx.coroutines.channels.Channel
+        import kotlinx.coroutines.flow.Flow
+        import kotlinx.coroutines.flow.MutableSharedFlow
+        import kotlinx.coroutines.flow.MutableStateFlow
+        import kotlinx.coroutines.flow.SharedFlow
+        import kotlinx.coroutines.flow.StateFlow
+        import kotlinx.coroutines.flow.asSharedFlow
+        import kotlinx.coroutines.flow.asStateFlow
+        import kotlinx.coroutines.flow.receiveAsFlow
+        import kotlinx.coroutines.launch
+
+        abstract class BaseViewModel<E : UiEvent, S : UiState, F : UiEffect> : ViewModel() {
+
+            private val initialState: S by lazy { createInitialState() }
+            abstract fun createInitialState(): S
+
+            val currentState: S
+                get() = uiState.value
+
+            private val _uiState: MutableStateFlow<S> = MutableStateFlow(initialState)
+            val uiState: StateFlow<S> = _uiState.asStateFlow()
+
+            private val _event: MutableSharedFlow<E> = MutableSharedFlow()
+            val event: SharedFlow<E> = _event.asSharedFlow()
+
+            private val _effect: Channel<F> = Channel()
+            val effect: Flow<F> = _effect.receiveAsFlow()
+
+            init {
+                subscribeEvents()
+            }
+
+            private fun subscribeEvents() {
+                viewModelScope.launch {
+                    event.collect {
+                        handleEvent(it)
+                    }
+                }
+            }
+
+            abstract fun handleEvent(event: E)
+
+            fun setEvent(event: E) {
+                val newEvent = event
+                viewModelScope.launch { _event.emit(newEvent) }
+            }
+
+            protected fun setState(reduce: S.() -> S) {
+                val newState = currentState.reduce()
+                _uiState.value = newState
+            }
+
+            protected fun setEffect(builder: () -> F) {
+                val effectValue = builder()
+                viewModelScope.launch { _effect.send(effectValue) }
+            }
+        }
+        \`\`\`
 *   **Screen-specific MVI (\`screen\` sub-package):**
     - **\`MainContract.kt\`**: Defines the specific State, Event, and Effect for the main screen using the following precise structure:
         \`\`\`kotlin
@@ -114,10 +178,11 @@ const prompt = ai.definePrompt({
     - \`MainViewModel.kt\`:
         - Inherits from \`BaseViewModel<ComponentsUiEvent, ComponentsUiState, ComponentsUiEffect>\`.
         - Injects a \`GetUiConfigurationUseCase\` via constructor.
-        - On initialization, it should send a \`ComponentsUiEvent.LoadComponents\` to itself.
+        - Implements \`createInitialState\` to return an empty \`ComponentsUiState\`.
+        - On initialization (\`init\` block), it should send a \`ComponentsUiEvent.LoadComponents\` to itself.
         - Implement \`handleEvent\` to process events:
-            - On \`LoadComponents\`: Use a coroutine to call the use case, updating state to \`isLoading = true\`, then either updating \`components\` on success or \`error\` on failure.
-            - On \`OnComponentClick\`: Send a \`ComponentsUiEffect.ShowToast\` with a message like "Clicked on: [clickId]".
+            - On \`LoadComponents\`: Use a coroutine to call the use case, using \`setState\` to update \`isLoading\`, then either updating \`components\` on success or \`error\` on failure.
+            - On \`OnComponentClick\`: Use \`setEffect\` to send a \`ComponentsUiEffect.ShowToast\` with a message like "Clicked on: [clickId]".
             - On \`RefreshComponents\`: Similar to \`LoadComponents\`.
         - Collect the flow from the use case to handle real-time updates from Firebase.
     - \`MainActivity.kt\`: The main entry point. Sets up the Koin context and calls a \`MainScreen\` composable.
@@ -127,7 +192,7 @@ const prompt = ai.definePrompt({
         - Renders a \`CircularProgressIndicator\` when \`state.isLoading\` is true.
         - Renders an error message if \`state.error\` is not null.
         - Renders the dynamic UI by iterating through \`state.components\` and calling \`DynamicUiComponent\` for each.
-        - The event handler for clicks should call \`onEvent(ComponentsUiEvent.OnComponentClick(clickId))\`.
+        - The event handler for clicks should call \`viewModel.setEvent(ComponentsUiEvent.OnComponentClick(clickId))\`.
         - Uses a \`LaunchedEffect\` to handle one-time side effects (Toasts from \`ComponentsUiEffect.ShowToast\`).
 *   **Dynamic UI Composables (\`components\` sub-package):**
     - \`DynamicUiComponent.kt\`: A master composable that takes a \`ComponentModel\` and recursively renders the UI by calling other specific component composables based on the model type. This is the core of the dynamic rendering. It must handle nested children.
@@ -183,3 +248,5 @@ const generateJsonParserCodeFlow = ai.defineFlow(
     return output;
   }
 );
+
+    
