@@ -46,7 +46,7 @@ const prompt = ai.definePrompt({
   name: 'generateJsonParserCodePrompt',
   input: {schema: GenerateJsonParserCodeInputSchema},
   output: {schema: GenerateJsonParserCodeOutputSchema},
-  model: 'googleai/gemini-1.5-flash-latest',
+  model: 'googleai/gemini-1.5-pro-latest',
   prompt: `You are an expert Android developer specializing in Clean Architecture, MVI, and Jetpack Compose. Your task is to generate a complete, minimal, and functional Android project structure that renders a UI from a given JSON string.
 
 **The final output MUST be a JSON object where the root key is "files". The value of "files" must be another object where keys are the string file paths and values are the string file contents.**
@@ -57,6 +57,8 @@ const prompt = ai.definePrompt({
 - **Dependency Injection:** Use Koin for managing dependencies.
 - **Image Loading:** Use Coil for asynchronously loading images from URLs.
 - **Remote Config:** Fetch the UI JSON from Firebase Remote Config and listen for real-time updates.
+- **Build System:** Use Gradle with Version Catalogs (\`libs.versions.toml\`) for dependency management. Use KSP for any necessary annotation processing.
+- **JSON Parsing:** Use \`kotlinx.serialization\` for parsing JSON.
 
 **Input JSON to be parsed (This is the Canvas JSON, representing the content area):**
 \`\`\`json
@@ -70,7 +72,7 @@ const prompt = ai.definePrompt({
 *   **\`app/build.gradle.kts\`:** App-level gradle file.
     - Include plugins: \`com.android.application\`, \`org.jetbrains.kotlin.android\`, \`com.google.devtools.ksp\`, \`kotlinx-serialization\`, \`com.google.gms.google-services\`.
     - Enable \`buildFeatures { compose = true }\`.
-    - Reference dependencies from the version catalog (\`libs.versions.toml\`).
+    - Reference dependencies from the version catalog (\`libs.versions.toml\`). For example: \`implementation(libs.koin.android)\`.
 *   **\`gradle/libs.versions.toml\`**: A TOML file defining all library versions and dependencies.
     - Include versions for AGP, Kotlin, Koin, Coil, Firebase, etc.
     - Define libraries for koin, coil, firebase-bom, firebase-config, kotlinx-serialization, etc.
@@ -197,7 +199,6 @@ const prompt = ai.definePrompt({
 *   **Dynamic UI Composables (\`components\` sub-package):**
     - \`DynamicUiComponent.kt\`: A master composable that takes a \`ComponentModel\` and recursively renders the UI by calling other specific component composables based on the model type. This is the core of the dynamic rendering. It must handle nested children.
     - \`ComponentMapper.kt\`: Maps domain models to actual composables. This file will contain functions like \`@Composable fun CardComponent(model: ComponentModel, ...)\`, etc. These composables use the model properties to configure standard Jetpack Compose elements (\`Card\`, \`Text\`, \`Button\`, \`Image\` via Coil, etc.).
-        - It's CRITICAL that these mappers correctly handle string-based sizes. For example, if a model has \`width = "match_parent"\`, the composable should use \`Modifier.fillMaxWidth()\`. If \`width\` is a number, it should use \`Modifier.width(model.width.dp)\`. If it's null or "wrap_content", it should not apply a width modifier.
 
 **3. Domain Layer (\`app/src/main/java/com/example/myapplication/domain\`):**
 *   **Models (\`model\` sub-package):**
@@ -248,5 +249,3 @@ const generateJsonParserCodeFlow = ai.defineFlow(
     return output;
   }
 );
-
-    
