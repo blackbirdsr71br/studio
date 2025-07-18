@@ -48,7 +48,13 @@ You MUST ONLY generate the content for these two files. The rest of the project 
      - Define a main Composable function, e.g., \`@Composable fun DynamicUiComponent(componentDto: ComponentDto)\`.
      - Use a \`when (componentDto.type)\` statement to handle different component types found in the JSON (\`Text\`, \`Button\`, \`Column\`, \`Row\`, \`Image\`, \`Card\`, etc.).
      - For container components (\`Column\`, \`Row\`, \`Card\`, etc.), recursively call \`DynamicUiComponent\` for each item in \`componentDto.properties?.children\`.
-     - Apply modifiers correctly based on the properties in the DTOs. Convert numeric dp values to \`dimensionResource\` or \`.dp\`. Handle colors by parsing hex strings.
+     - **Color Handling (VERY IMPORTANT):**
+       - **Prioritize Theme Colors:** Instead of parsing hex strings directly, map properties to \`MaterialTheme.colorScheme\`.
+       - \`backgroundColor\` for containers (Card, Column, etc.) should map to \`MaterialTheme.colorScheme.surface\` or \`MaterialTheme.colorScheme.background\`.
+       - General \`textColor\` should map to \`MaterialTheme.colorScheme.onSurface\` or \`onBackground\`.
+       - A Button's \`backgroundColor\` should map to \`MaterialTheme.colorScheme.primary\`, and its \`textColor\` to \`MaterialTheme.colorScheme.onPrimary\`.
+       - **Only if a specific hex color is provided in the JSON**, parse it using \`Color(android.graphics.Color.parseColor("#RRGGBB"))\`. Otherwise, always use the theme colors.
+     - Apply modifiers correctly based on the properties in the DTOs. Convert numeric dp values to \`.dp\`.
      - Use \`io.coil.compose.AsyncImage\` for rendering images from URLs.
      - Ensure the generated code is clean, idiomatic, and functional.
      - It MUST handle all component types and properties present in the \`canvasJson\`.
