@@ -227,7 +227,7 @@ const prompt = ai.definePrompt({
 
         sealed class ComponentsUiEvent : UiEvent {
             object LoadComponents : ComponentsUiEvent()
-            object RefreshComponents : ComponentsUiEvent()
+            object RefreshComponents : UiEvent()
             data class OnComponentClick(val clickId: String) : ComponentsUiEvent()
         }
 
@@ -289,3 +289,4 @@ const generateJsonParserCodeFlow = ai.defineFlow(
     return output;
   }
 );
+
