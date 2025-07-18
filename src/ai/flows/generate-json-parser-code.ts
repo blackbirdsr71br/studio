@@ -133,7 +133,7 @@ const prompt = ai.definePrompt({
     - Include plugins using aliases from the version catalog: \`alias(libs.plugins.androidApplication)\`, \`alias(libs.plugins.kotlinAndroid)\`, etc.
     - Enable \`buildFeatures { compose = true }\`.
     - Reference dependencies from the version catalog (\`libs.versions.toml\`). For example: \`implementation(libs.koin.android)\`. It must implement \`firebase-bom\`, \`compose-bom\` and \`kotlinx-serialization-json\`.
-*   **\`settings.gradle.kts\`:** Generate this file with the EXACT content:
+*   **\`settings.gradle.kts\`**: Generate this file with the EXACT content:
     \`\`\`kotlin
     pluginManagement {
         repositories {
@@ -153,7 +153,7 @@ const prompt = ai.definePrompt({
     rootProject.name = "My Application"
     include(":app")
     \`\`\`
-*   **\`gradle.properties\`:** Generate this file with the EXACT content:
+*   **\`gradle.properties\`**: Generate this file with the EXACT content:
     \`\`\`properties
     org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
     android.useAndroidX=true
@@ -331,8 +331,3 @@ const generateJsonParserCodeFlow = ai.defineFlow(
     return output;
   }
 );
-
-    
-
-    
-
