@@ -46,7 +46,7 @@ const prompt = ai.definePrompt({
   name: 'generateJsonParserCodePrompt',
   input: {schema: GenerateJsonParserCodeInputSchema},
   output: {schema: GenerateJsonParserCodeOutputSchema},
-  prompt: `You are an expert Android developer specializing in Clean Architecture, MVI, and Jetpack Compose. Your primary task is to generate a complete, minimal, and functional Android project structure that parses and renders a UI from a specific JSON string provided below.
+  prompt: `You are an expert Android developer specializing in Clean Architecture, MVI, and Jetpack Compose. Your task is to generate a complete, minimal, and functional Android project structure that parses and renders a UI from a specific JSON string provided below.
 
 **THE MOST IMPORTANT INSTRUCTION:** The entire project must be built to parse and display the UI represented by this EXACT "Canvas JSON" input. The DTOs in the data layer MUST perfectly match the structure of this JSON.
 
@@ -56,13 +56,13 @@ const prompt = ai.definePrompt({
 \`\`\`
 
 **Architectural Requirements:**
-- **MVI Pattern:** Implement UI State, UI Events, and UI Effects using sealed classes for Events/Effects and a data class for State.
+- **MVI Pattern:** Implement UI State, UI Events, and UI Effects.
 - **Clean Architecture:** Separate code into Data, Domain, and Presentation layers.
-- **Dependency Injection:** Use Koin for managing dependencies.
-- **Image Loading:** Use Coil for asynchronously loading images from URLs.
+- **Dependency Injection:** Use Koin.
+- **Image Loading:** Use Coil.
 - **Remote Config:** Fetch the UI JSON from Firebase Remote Config and listen for real-time updates.
-- **Build System:** Use Gradle with Version Catalogs (\`libs.versions.toml\`) for dependency management. Use KSP for any necessary annotation processing.
-- **JSON Parsing:** Use kotlinx.serialization for parsing JSON.
+- **Build System:** Use Gradle with Version Catalogs (\`libs.versions.toml\`). Use KSP for annotation processing.
+- **JSON Parsing:** Use kotlinx.serialization.
 
 **Generate the following project file structure and content:**
 
@@ -128,11 +128,11 @@ const prompt = ai.definePrompt({
     [bundles]
     compose = ["ui", "ui-graphics", "ui-tooling-preview", "material3"]
     \`\`\`
-*   **\`build.gradle.kts\` (Project Level):** Standard project-level gradle file with plugin definitions for Android, Kotlin, and KSP.
+*   **\`build.gradle.kts\` (Project Level):** Standard project-level gradle file with plugin definitions for Android, Kotlin, KSP, and Google Services.
 *   **\`app/build.gradle.kts\`:** App-level gradle file.
     - Include plugins using aliases from the version catalog: \`alias(libs.plugins.androidApplication)\`, \`alias(libs.plugins.kotlinAndroid)\`, etc.
     - Enable \`buildFeatures { compose = true }\`.
-    - Reference dependencies from the version catalog (\`libs.versions.toml\`). For example: \`implementation(libs.koin.android)\`. It must implement \`firebase-bom\`, \`compose-bom\` and \`kotlinx-serialization-json\`.
+    - Reference dependencies from the version catalog (\`libs.versions.toml\`). It must implement \`firebase-bom\`, \`compose-bom\` and \`kotlinx-serialization-json\`.
 *   **\`settings.gradle.kts\`**: Generate this file with the EXACT content:
     \`\`\`kotlin
     pluginManagement {
@@ -165,9 +165,7 @@ const prompt = ai.definePrompt({
 
 **2. Presentation Layer (\`app/src/main/java/com/example/myapplication/presentation\`):**
 *   **Base MVI classes (\`mvi\` sub-package):**
-    - \`UiState.kt\`: An empty marker interface for all UI states.
-    - \`UiEvent.kt\`: An empty marker interface for all user interactions.
-    - \`UiEffect.kt\`: An empty marker interface for one-time side effects.
+    - \`UiState.kt\`, \`UiEvent.kt\`, \`UiEffect.kt\`: Empty marker interfaces.
     - **\`BaseViewModel.kt\`**: Generate this file with the following complete, generic MVI implementation:
         \`\`\`kotlin
         package com.example.myapplication.presentation.mvi
@@ -331,4 +329,5 @@ const generateJsonParserCodeFlow = ai.defineFlow(
     return output;
   }
 );
+
 
