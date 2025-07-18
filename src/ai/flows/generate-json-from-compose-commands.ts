@@ -3,61 +3,24 @@
 /**
  * @fileOverview Converts Jetpack Compose-like text commands into a structured JSON representation of the UI design.
  * The output JSON should be an array of components intended to be children of the main content area of a Scaffold.
- *
- * - generateJsonFromComposeCommands - A function that takes text commands and returns a JSON string for the UI.
- * - GenerateJsonFromComposeCommandsInput - The input type for the function.
- * - GenerateJsonFromComposeCommandsOutput - The return type for the function.
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
-import { ModalJsonSchema, DEFAULT_CONTENT_LAZY_COLUMN_ID, type ComponentType } from '@/types/compose-spec'; // Updated ID
+import { GenerateJsonFromComposeCommandsInputSchema, GenerateJsonFromComposeCommandsOutputSchema, type GenerateJsonFromComposeCommandsInput, type GenerateJsonFromComposeCommandsOutput } from '@/types/ai-spec';
+import { DEFAULT_CONTENT_LAZY_COLUMN_ID, type ComponentType } from '@/types/compose-spec'; 
 
-const GenerateJsonFromComposeCommandsInputSchema = z.object({
-  composeCommands: z
-    .string()
-    .min(10, {message: 'Compose commands must be at least 10 characters long.'})
-    .describe('A string containing text-based commands that mimic Jetpack Compose syntax for UI design. These commands describe the content area of an app screen.'),
-});
-export type GenerateJsonFromComposeCommandsInput = z.infer<typeof GenerateJsonFromComposeCommandsInputSchema>;
+const availableContentComponentTypes: (ComponentType)[] = [
+  'Text', 'Button', 'Column', 'Row', 'Image', 'Box', 'Card',
+  'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid', 'Spacer',
+  'AnimatedContent'
+];
 
-const GenerateJsonFromComposeCommandsOutputSchema = z.object({
-  designJson: z
-    .string()
-    .describe(
-      'A JSON string representing the UI design for the content area, structured as an array of component objects. This JSON should be parsable and adhere to the application\'s ModalJsonSchema.'
-    )
-    .refine(
-      (data) => {
-        try {
-          const parsed = JSON.parse(data);
-          // The output is an array of components, which is what ModalJsonSchema expects
-          return ModalJsonSchema.safeParse(parsed).success;
-        } catch (e) {
-          return false;
-        }
-      },
-      {
-        message:
-          'The generated design data is not in a valid JSON format or does not match the required UI component schema (ModalJsonSchema for an array of components).',
-      }
-    ),
-});
-export type GenerateJsonFromComposeCommandsOutput = z.infer<typeof GenerateJsonFromComposeCommandsOutputSchema>;
 
 export async function generateJsonFromComposeCommands(
   input: GenerateJsonFromComposeCommandsInput
 ): Promise<GenerateJsonFromComposeCommandsOutput> {
   return generateJsonFromComposeCommandsFlow(input);
 }
-
-// Available component types that can be placed *within* the content area
-const availableContentComponentTypes: (ComponentType)[] = [
-  'Text', 'Button', 'Column', 'Row', 'Image', 'Box', 'Card',
-  'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid', 'Spacer',
-  'AnimatedContent'
-  // TopAppBar and BottomNavigationBar are part of the Scaffold structure, not typically placed *inside* the main content by this flow.
-];
 
 
 const prompt = ai.definePrompt({

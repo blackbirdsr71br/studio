@@ -2,43 +2,10 @@
 
 /**
  * @fileOverview A UI improvements suggestion AI agent.
- *
- * - suggestUiImprovements - A function that handles the UI improvements process.
- * - SuggestUiImprovementsInput - The input type for the suggestUiImprovements function.
- * - SuggestUiImprovementsOutput - The return type for the suggestUiImprovements function.
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
-
-const SuggestUiImprovementsInputSchema = z.object({
-  designJson: z
-    .string()
-    .describe(
-      'A JSON representation of the UI design, specifying the layout, components, and properties.'
-    ),
-  userFeedback: z
-    .string()
-    .optional()
-    .describe('Optional user feedback on the current UI design.'),
-});
-export type SuggestUiImprovementsInput = z.infer<
-  typeof SuggestUiImprovementsInputSchema
->;
-
-const SuggestUiImprovementsOutputSchema = z.object({
-  suggestions: z
-    .array(z.string())
-    .describe('An array of suggestions for improving the UI design.'),
-  rationale: z
-    .string()
-    .describe(
-      'A rationale explaining why each suggestion would improve the UI design and user experience.'
-    ),
-});
-export type SuggestUiImprovementsOutput = z.infer<
-  typeof SuggestUiImprovementsOutputSchema
->;
+import { SuggestUiImprovementsInputSchema, SuggestUiImprovementsOutputSchema, type SuggestUiImprovementsInput, type SuggestUiImprovementsOutput } from '@/types/ai-spec';
 
 export async function suggestUiImprovements(
   input: SuggestUiImprovementsInput

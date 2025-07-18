@@ -3,67 +3,10 @@
 /**
  * @fileOverview Converts a canvas design JSON (hierarchical array of components from the content area)
  * into a user-specified structured "custom command" JSON format (Compose Remote Layout).
- *
- * - convertCanvasToCustomJson - A function that takes the canvas design JSON and returns the custom command JSON string.
- * - ConvertCanvasToCustomJsonInput - The input type for the function.
- * - ConvertCanvasToCustomJsonOutput - The return type for the function.
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
-
-const ConvertCanvasToCustomJsonInputSchema = z.object({
-  designJson: z
-    .string()
-    .describe(
-      'A JSON string representing the UI design from the canvas content area. This is an array of component objects, where each object has id, type, name, parentId, and properties. Container components have a "children" array within their properties, containing full child component objects.'
-    )
-    .refine(
-      (data) => {
-        try {
-          JSON.parse(data);
-          return true;
-        } catch (e) {
-          return false;
-        }
-      },
-      { message: 'The input design data is not in a valid JSON format.' }
-    ),
-  includeDefaultValues: z
-    .boolean()
-    .optional()
-    .describe(
-      'If true, include properties with default, empty, or zero values. If false or omitted, omit them for a cleaner JSON.'
-    ),
-});
-export type ConvertCanvasToCustomJsonInput = z.infer<typeof ConvertCanvasToCustomJsonInputSchema>;
-
-const ConvertCanvasToCustomJsonOutputSchema = z.object({
-  customJsonString: z
-    .string()
-    .describe(
-      'A JSON string representing the UI in the "Compose Remote Layout" custom command format. The root key should be the lowercase name of the main component (e.g., "card", "column", "spacer"). This must be a compact, single-line JSON string.'
-    )
-    .refine(
-      (data) => {
-        try {
-          // Check if it's parsable JSON.
-          // An empty string is not valid JSON, but the AI might return it for an empty canvas.
-          // We'll allow an empty string or a string representing an empty object '{}'.
-          if (data.trim() === '' || data.trim() === '{}') return true;
-          JSON.parse(data);
-          return true; 
-        } catch (e) {
-          return false;
-        }
-      },
-      {
-        message:
-          'The generated data is not in a valid JSON format.',
-      }
-    ),
-});
-export type ConvertCanvasToCustomJsonOutput = z.infer<typeof ConvertCanvasToCustomJsonOutputSchema>;
+import { ConvertCanvasToCustomJsonInputSchema, ConvertCanvasToCustomJsonOutputSchema, type ConvertCanvasToCustomJsonInput, type ConvertCanvasToCustomJsonOutput } from '@/types/ai-spec';
 
 export async function convertCanvasToCustomJson(
   input: ConvertCanvasToCustomJsonInput

@@ -2,27 +2,10 @@
 'use server';
 /**
  * @fileOverview Generates an image based on a text hint using an AI model.
- *
- * - generateImageFromHint - A function that takes a text hint and returns a data URI for the generated image.
- * - GenerateImageFromHintInput - The input type for the generateImageFromHint function.
- * - GenerateImageFromHintOutput - The return type for the generateImageFromHint function.
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
-
-const GenerateImageFromHintInputSchema = z.object({
-  hint: z
-    .string()
-    .min(1, {message: 'Hint cannot be empty.'})
-    .describe('A short description or keywords for the image to be generated. For example, "a cat wearing a hat" or "futuristic city".'),
-});
-export type GenerateImageFromHintInput = z.infer<typeof GenerateImageFromHintInputSchema>;
-
-const GenerateImageFromHintOutputSchema = z.object({
-  imageUrls: z.array(z.string()).describe('An array of data URIs of the generated images, typically in PNG format.'),
-});
-export type GenerateImageFromHintOutput = z.infer<typeof GenerateImageFromHintOutputSchema>;
+import { GenerateImageFromHintInputSchema, GenerateImageFromHintOutputSchema, type GenerateImageFromHintInput, type GenerateImageFromHintOutput } from '@/types/ai-spec';
 
 export async function generateImageFromHint(input: GenerateImageFromHintInput): Promise<GenerateImageFromHintOutput> {
   return generateImageFromHintFlow(input);

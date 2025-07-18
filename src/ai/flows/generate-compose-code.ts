@@ -4,39 +4,10 @@
 /**
  * @fileOverview Generates a complete, structured Android project with Jetpack Compose code from a JSON representation of a UI design.
  * The design now expects a root "Scaffold" component which contains topBar, content, and bottomBar.
- *
- * - generateComposeCode - A function that takes a JSON string representing a UI design and returns a set of project files.
- * - GenerateComposeCodeInput - The input type for the generateComposeCode function.
- * - GenerateComposeCodeOutput - The return type for the generateComposeCode function.
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
-
-const GenerateComposeCodeInputSchema = z.object({
-  designJson: z
-    .string()
-    .describe('A JSON string representing the UI design. Expects a root "Scaffold" component with "topBar", "content", and "bottomBar" properties containing their respective component trees.')
-    .refine(
-      (data) => {
-        try {
-          const parsed = JSON.parse(data);
-          // Basic check for scaffold structure
-          return typeof parsed === 'object' && parsed !== null && parsed.type === 'Scaffold';
-        } catch (e) {
-          return false;
-        }
-      },
-      { message: 'The design data is not in a valid JSON format or is not a root Scaffold object.' }
-    ),
-});
-export type GenerateComposeCodeInput = z.infer<typeof GenerateComposeCodeInputSchema>;
-
-// Using z.any() and providing a detailed description to guide the model.
-const GenerateComposeCodeOutputSchema = z.object({
-  files: z.any().describe('An object where keys are the full file paths (e.g., "app/build.gradle.kts") and values are the raw string content of the files for a complete Android project. This is NOT a stringified JSON, but a direct JSON object.'),
-});
-export type GenerateComposeCodeOutput = z.infer<typeof GenerateComposeCodeOutputSchema>;
+import { GenerateComposeCodeInputSchema, GenerateComposeCodeOutputSchema, type GenerateComposeCodeInput, type GenerateComposeCodeOutput } from '@/types/ai-spec';
 
 export async function generateComposeCode(input: GenerateComposeCodeInput): Promise<GenerateComposeCodeOutput> {
   return generateComposeCodeFlow(input);
@@ -118,7 +89,6 @@ Generate the following files with the specified content. Ensure all files are co
 6.  **\`settings.gradle.kts\`**:
     *   Generate a standard \`settings.gradle.kts\`.
     *   Define plugin management with repositories (\`google()\`, \`mavenCentral()\`).
-    *   Define dependency resolution management.
     *   Include the \`:app\` module.
 
 **Input Design JSON:**

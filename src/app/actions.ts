@@ -1,10 +1,13 @@
 
 'use server';
-import { generateComposeCode, type GenerateComposeCodeInput } from '@/ai/flows/generate-compose-code';
-import { generateImageFromHint, type GenerateImageFromHintInput } from '@/ai/flows/generate-image-from-hint-flow';
-import { generateJsonFromComposeCommands, type GenerateJsonFromComposeCommandsInput } from '@/ai/flows/generate-json-from-compose-commands';
-import { convertCanvasToCustomJson, type ConvertCanvasToCustomJsonInput } from '@/ai/flows/convert-canvas-to-custom-json-flow';
-import { generateJsonParserCode, type GenerateJsonParserCodeInput } from '@/ai/flows/generate-json-parser-code';
+import { generateComposeCode } from '@/ai/flows/generate-compose-code';
+import { generateImageFromHint } from '@/ai/flows/generate-image-from-hint-flow';
+import { generateJsonFromComposeCommands } from '@/ai/flows/generate-json-from-compose-commands';
+import { convertCanvasToCustomJson } from '@/ai/flows/convert-canvas-to-custom-json-flow';
+import { generateDynamicUiComponent } from '@/ai/flows/generate-dynamic-ui-component';
+import { getAndroidProjectTemplates } from '@/lib/android-project-templates';
+import type { GenerateComposeCodeInput, GenerateImageFromHintInput, GenerateJsonFromComposeCommandsInput, ConvertCanvasToCustomJsonInput, GenerateDynamicUiComponentInput } from '@/types/ai-spec';
+
 import type { DesignComponent, CustomComponentTemplate, BaseComponentProps, ComponentType } from '@/types/compose-spec';
 import { isContainerType, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, CORE_SCAFFOLD_ELEMENT_IDS, propertyDefinitions, getDefaultProperties } from '@/types/compose-spec';
 import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
@@ -582,25 +585,38 @@ export async function updateGlobalStylesheetAction(
   }
 }
 
-export async function generateJsonParserCodeAction(
+export async function generateProjectFromTemplatesAction(
   canvasJson: string
 ): Promise<{ files?: Record<string, string>; error?: string }> {
   if (!canvasJson || canvasJson.trim() === "") {
     return { error: "Canvas JSON input cannot be empty." };
   }
+
+  // Get all the static template files for the Android project
+  const projectFiles = getAndroidProjectTemplates();
+  
   try {
-    const input: GenerateJsonParserCodeInput = { canvasJson };
-    const result = await generateJsonParserCode(input);
-    if (!result || !result.files) {
-      return { error: "AI failed to generate parser project files." };
+    const input: GenerateDynamicUiComponentInput = { canvasJson };
+    // Call the new, focused AI flow to get the dynamic parts
+    const dynamicCodeResult = await generateDynamicUiComponent(input);
+
+    if (dynamicCodeResult.error) {
+      return { error: `AI failed to generate dynamic UI code: ${dynamicCodeResult.error}` };
     }
-    return { files: result.files };
+
+    // Add the dynamically generated files to our project structure
+    projectFiles['app/src/main/java/com/example/myapplication/data/model/ComponentDto.kt'] = dynamicCodeResult.dtoFileContent;
+    projectFiles['app/src/main/java/com/example/myapplication/presentation/components/DynamicUiComponent.kt'] = dynamicCodeResult.rendererFileContent;
+    
+    return { files: projectFiles };
+
   } catch (error) {
-    console.error("Error in generateJsonParserCodeAction:", error);
-    const message = error instanceof Error ? error.message : "An unknown error occurred during Kotlin parser project generation.";
+    console.error("Error in generateProjectFromTemplatesAction:", error);
+    const message = error instanceof Error ? error.message : "An unknown error occurred during Kotlin project generation.";
     return { error: message };
   }
 }
+
 
 export async function searchWebForImagesAction(query: string): Promise<{ imageUrls: string[] | null; error?: string }> {
   const apiKey = process.env.PEXELS_API_KEY;

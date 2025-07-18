@@ -23,7 +23,7 @@ import {
   convertCanvasToCustomJsonAction,
   publishCustomJsonToRemoteConfigAction,
   publishToRemoteConfigAction,
-  generateJsonParserCodeAction
+  generateProjectFromTemplatesAction
 } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Copy, Download, Wand2, FileJson, Save, AlertTriangle, UploadCloud, FileCode } from 'lucide-react';
@@ -156,6 +156,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     setParserProjectFiles(null);
     setConcatenatedParserCode('');
     
+    // Generate the full canvas JSON including defaults, as this is what the parser needs to be built for.
     const canvasJsonForParser = await getDesignComponentsAsJsonAction(components, customComponentTemplates, true);
     
     if (canvasJsonForParser.startsWith("Error:")) {
@@ -165,7 +166,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     }
 
     try {
-      const result = await generateJsonParserCodeAction(canvasJsonForParser);
+      const result = await generateProjectFromTemplatesAction(canvasJsonForParser);
       if (result.files && Object.keys(result.files).length > 0) {
         setParserProjectFiles(result.files);
         
