@@ -311,7 +311,7 @@ const prompt = ai.definePrompt({
 *   **\`DomainModule.kt\`:** Defines a Koin module that provides the \`GetUiConfigurationUseCase\`.
 *   **\`MyApplication.kt\`:** An \`Application\` class that initializes Koin with all the modules. Remember to add this class to the \`AndroidManifest.xml\`.
 
-Ensure all files are complete, functional, and include all necessary imports. The output must be a single, valid JSON object with the "files" root key.
+Ensure all files are complete, functional, and include all necessary imports. The output must be a single, valid JSON object with the "files" root key. Do not include files like \`gradlew\` or \`.jar\` files.
 `,
 });
 
@@ -331,3 +331,4 @@ const generateJsonParserCodeFlow = ai.defineFlow(
     return output;
   }
 );
+
