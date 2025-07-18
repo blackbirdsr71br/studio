@@ -65,11 +65,7 @@ const generateDynamicUiComponentFlow = ai.defineFlow(
     outputSchema: GenerateDynamicUiComponentOutputSchema,
   },
   async (input) => {
-    const { output } = await ai.generate({
-        prompt: prompt.compile(input),
-        model: 'googleai/gemini-1.5-flash-latest',
-        output: { schema: GenerateDynamicUiComponentOutputSchema }
-    });
+    const { output } = await prompt(input);
 
     if (!output || !output.dtoFileContent || !output.rendererFileContent) {
       console.error("AI generation failed or returned invalid structure. Output:", output);
@@ -78,5 +74,3 @@ const generateDynamicUiComponentFlow = ai.defineFlow(
     return output;
   }
 );
-
-    
