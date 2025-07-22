@@ -42,22 +42,28 @@ You MUST ONLY generate the content for these two files. The rest of the project 
 
 **2. \`DynamicUiComponent.kt\` File Content:**
    - **Package:** \`com.example.myapplication.presentation.components\`
-   - **Imports:** All necessary Jetpack Compose imports (\`androidx.compose.material3...\` for Material 3 components), Coil for image loading (\`io.coil.compose.AsyncImage\`), and the DTOs from \`com.example.myapplication.data.model\`.
+   - **Imports:** All necessary Jetpack Compose imports (\`androidx.compose.material3.*\` for Material 3 components), Coil for image loading (\`io.coil.compose.AsyncImage\`), and the DTOs from \`com.example.myapplication.data.model\`. Also include necessary imports like \`androidx.compose.ui.graphics.Color\`, \`androidx.compose.ui.unit.dp\`, \`androidx.compose.ui.text.font.FontWeight\`, etc.
    - **Purpose:** Create a recursive Composable function that renders the UI based on the parsed DTOs.
    - **Requirements:**
      - Define a main Composable function, e.g., \`@Composable fun DynamicUiComponent(componentDto: ComponentDto)\`.
-     - Use a \`when (componentDto.type)\` statement to handle different component types found in the JSON (\`Text\`, \`Button\`, \`Column\`, \`Row\`, \`Image\`, \`Card\`, etc.).
-     - For container components (\`Column\`, \`Row\`, \`Card\`, etc.), recursively call \`DynamicUiComponent\` for each item in \`componentDto.properties?.children\`.
+     - Inside each \`when\` branch, first assign \`componentDto.properties\` to a nullable local variable: \`val properties = componentDto.properties\`. Use this local variable for accessing all properties to make the code safer and more readable.
+     - Use a \`when (componentDto.type)\` statement to handle different component types (\`Text\`, \`Button\`, \`Column\`, \`Row\`, \`Image\`, \`Card\`, etc.). For unknown types, render an empty composable or a placeholder Text.
+     - For container components (\`Column\`, \`Row\`, \`Card\`, etc.), recursively call \`DynamicUiComponent\` for each item in \`properties?.children\`.
+     - **Safe Enum/Type Conversion:** Property values from JSON will be strings. You MUST safely convert them to the correct Compose types using a \`when\` statement with a sensible default in the \`else\` branch. For example:
+        - For \`fontWeight\`: \`when (properties?.fontWeight) { "Bold" -> FontWeight.Bold; "SemiBold" -> FontWeight.SemiBold; else -> FontWeight.Normal }\`
+        - For \`contentScale\`: \`when (properties?.contentScale) { "Crop" -> ContentScale.Crop; "Fit" -> ContentScale.Fit; else -> ContentScale.Crop }\`
+        - This applies to \`fontStyle\`, \`textAlign\`, \`textDecoration\`, \`Arrangement\`, \`Alignment\`, etc.
      - **Color Handling (VERY IMPORTANT):**
        - **Prioritize Theme Colors:** Instead of parsing hex strings directly, map properties to \`MaterialTheme.colorScheme\`.
        - \`backgroundColor\` for containers (Card, Column, etc.) should map to \`MaterialTheme.colorScheme.surface\` or \`MaterialTheme.colorScheme.background\`. For Card, use \`CardDefaults.cardColors(containerColor = ...)\`
        - General \`textColor\` should map to \`MaterialTheme.colorScheme.onSurface\` or \`onBackground\`.
        - A Button's \`backgroundColor\` should use \`ButtonDefaults.buttonColors(containerColor = ...)\` mapping to \`MaterialTheme.colorScheme.primary\`, and its text color to \`MaterialTheme.colorScheme.onPrimary\`.
-       - **Only if a specific hex color is provided in the JSON**, parse it using \`Color(android.graphics.Color.parseColor("#RRGGBB"))\`. Otherwise, always use the theme colors.
-     - Apply modifiers correctly based on the properties in the DTOs. Convert numeric dp values to \`.dp\`.
+       - **Only if a specific hex color string is provided in the JSON**, parse it using \`Color(android.graphics.Color.parseColor("#RRGGBB"))\`. Wrap this in a try-catch block to prevent crashes from invalid formats.
+     - **Card Elevation**: For a Card component, you MUST use \`elevation = CardDefaults.cardElevation(defaultElevation = (properties?.elevation?.dp ?: 2.dp))\`. Do not use the deprecated \`elevation\` parameter directly on the Card.
+     - Apply modifiers correctly based on the properties in the DTOs. Use \`.dp\` and \`.sp\` for dimensions and provide safe defaults (e.g., \`properties?.width?.toIntOrNull()?.dp ?: 100.dp\`, \`properties?.padding?.dp ?: 0.dp\`).
      - Use \`io.coil.compose.AsyncImage\` for rendering images from URLs.
-     - Ensure the generated code is clean, idiomatic, and functional using Material 3 components.
      - It MUST handle all component types and properties present in the \`canvasJson\`.
+     - Ensure the generated code is clean, idiomatic, and functional using Material 3 components.
 
 **Final Output:**
 Provide a single JSON object with two keys: \`dtoFileContent\` and \`rendererFileContent\`. The values should be the complete, raw string content for each respective Kotlin file.
