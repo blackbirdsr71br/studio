@@ -486,8 +486,9 @@ class MainViewModel(
         viewModelScope.launch {
             getUiConfigurationUseCase()
                 .onStart { setState { MainContract.State.Loading } }
-                .catch {
-                    setState { MainContract.State.Error(it.message ?: "Unknown error") }
+                .catch { exception ->
+                    val errorMessage = exception.message ?: "An unknown error occurred while fetching UI configuration."
+                    setState { MainContract.State.Error(errorMessage) }
                 }
                 .collect { components ->
                     setState { MainContract.State.Success(components) }
@@ -509,6 +510,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
+/**
+ * A base class for ViewModels that follow the MVI (Model-View-Intent) pattern.
+ * It provides a structured way to manage state, events, and side effects.
+ *
+ * @param Event The type of events that the UI can send to the ViewModel.
+ * @param State The type of the state that the ViewModel holds and the UI observes.
+ * @param Effect The type of side effects that the ViewModel can trigger in the UI (e.g., showing a toast).
+ */
 abstract class BaseViewModel<Event, State, Effect> : ViewModel() {
 
     private val initialState: State by lazy { createInitialState() }
@@ -519,6 +528,8 @@ abstract class BaseViewModel<Event, State, Effect> : ViewModel() {
 
     private val _event: Channel<Event> = Channel()
 
+    // A channel for one-time side effects.
+    // Using a Channel ensures that each effect is consumed only once by the UI.
     private val _effect: Channel<Effect> = Channel(Channel.UNLIMITED)
     val effect = _effect.receiveAsFlow()
 
@@ -526,6 +537,9 @@ abstract class BaseViewModel<Event, State, Effect> : ViewModel() {
         subscribeEvents()
     }
 
+    /**
+     * Starts a coroutine to listen for incoming events from the UI.
+     */
     private fun subscribeEvents() {
         viewModelScope.launch {
             _event.receiveAsFlow().collect {
@@ -534,17 +548,31 @@ abstract class BaseViewModel<Event, State, Effect> : ViewModel() {
         }
     }
 
+    /**
+     * Processes an incoming event. This must be implemented by subclasses.
+     */
     abstract fun handleEvent(event: Event)
 
+    /**
+     * Sends an event from the UI to the ViewModel.
+     */
     fun setEvent(event: Event) {
         viewModelScope.launch { _event.send(event) }
     }
 
+    /**
+     * Updates the UI state.
+     * @param reducer A lambda function that takes the current state and returns the new state.
+     */
     protected fun setState(reducer: State.() -> State) {
         val newState = uiState.value.reducer()
         _uiState.value = newState
     }
 
+    /**
+     * Triggers a one-time side effect in the UI.
+     * @param builder A lambda function that creates the effect.
+     */
     protected fun setEffect(builder: () -> Effect) {
         val effectValue = builder()
         viewModelScope.launch { _effect.send(effectValue) }
@@ -557,17 +585,30 @@ package com.example.myapplication.presentation
 
 import com.example.myapplication.data.model.ComponentDto
 
+/**
+ * Defines the contract between the MainScreen (View) and the MainViewModel.
+ * It includes all possible Events, States, and Effects for this feature.
+ */
 class MainContract {
+    /**
+     * Represents user actions or events from the UI.
+     */
     sealed class Event {
         data object FetchUi : Event()
     }
 
+    /**
+     * Represents the state of the UI. It should be an immutable data class.
+     */
     sealed class State {
         data object Loading : State()
         data class Success(val components: List<ComponentDto>) : State()
         data class Error(val message: String) : State()
     }
 
+    /**
+     * Represents one-time side effects that should be handled by the UI (e.g., showing a Toast).
+     */
     sealed class Effect {
         // No effects needed for this simple case
     }
@@ -616,6 +657,7 @@ class UiConfigRepositoryImpl(
 
             override fun onError(error: FirebaseRemoteConfigException) {
                 Log.w("UiConfigRepository", "Config update error with code: " + error.code, error)
+                // Optionally, you could try to send a specific error state or event here.
             }
         }
 
@@ -625,16 +667,22 @@ class UiConfigRepositoryImpl(
         remoteConfig.fetchAndActivate().addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 val jsonString = remoteConfig.getString(key)
-                try {
-                    val components = json.decodeFromString<List<ComponentDto>>(jsonString)
-                    trySend(components).isSuccess
-                } catch (e: Exception) {
-                    Log.e("UiConfigRepository", "Error parsing initial JSON for key '\$key'", e)
-                    trySend(emptyList()).isSuccess // Send empty list on initial parse error
+                if (jsonString.isNotBlank()) {
+                    try {
+                        val components = json.decodeFromString<List<ComponentDto>>(jsonString)
+                        trySend(components).isSuccess
+                    } catch (e: Exception) {
+                        Log.e("UiConfigRepository", "Error parsing initial JSON for key '\$key'", e)
+                        close(e) // Close the flow with an exception on parse error
+                    }
+                } else {
+                    Log.w("UiConfigRepository", "Initial fetch returned empty JSON for key '\$key'")
+                    trySend(emptyList()).isSuccess
                 }
             } else {
-                 Log.e("UiConfigRepository", "Failed to fetch remote config")
-                 trySend(emptyList()).isSuccess // Send empty list on fetch error
+                 val exception = task.exception ?: FirebaseRemoteConfigException("Failed to fetch remote config")
+                 Log.e("UiConfigRepository", "Failed to fetch remote config", exception)
+                 close(exception) // Close the flow with an exception on fetch error
             }
         }
 
@@ -664,6 +712,7 @@ class GetUiConfigurationUseCase(
     private val repository: UiConfigRepository
 ) {
     companion object {
+        // The Remote Config key to fetch the UI design from.
         private const val UI_CONFIG_KEY = "COMPOSE_DESIGN_JSON_V2"
     }
 
