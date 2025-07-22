@@ -589,19 +589,22 @@ export async function generateProjectFromTemplatesAction(
   allComponents: DesignComponent[],
   customComponentTemplates: CustomComponentTemplate[],
 ): Promise<{ files?: Record<string, string>; error?: string }> {
-  const canvasJsonForParser = await getDesignComponentsAsJsonAction(allComponents, customComponentTemplates, true);
-  if (canvasJsonForParser.startsWith("Error:")) {
-      return { error: `Failed to generate canvas JSON for parser: ${canvasJsonForParser}` };
-  }
-   if (!canvasJsonForParser || canvasJsonForParser.trim() === "[]") {
-    return { error: "Cannot generate a project from an empty canvas content area." };
-  }
-
-
-  // Get all the static template files for the Android project
-  const projectFiles = getAndroidProjectTemplates();
-  
   try {
+    const canvasJsonForParser = await getDesignComponentsAsJsonAction(allComponents, customComponentTemplates, true);
+    
+    if (canvasJsonForParser.startsWith("Error:")) {
+        return { error: `Failed to generate canvas JSON for parser: ${canvasJsonForParser}` };
+    }
+     if (!canvasJsonForParser || canvasJsonForParser.trim() === "[]") {
+      const contentComponentsExist = allComponents.some(c => c.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID);
+      if (!contentComponentsExist) {
+        return { error: "Cannot generate a project from an empty canvas content area." };
+      }
+    }
+
+    // Get all the static template files for the Android project
+    const projectFiles = getAndroidProjectTemplates();
+    
     const input: GenerateDynamicUiComponentInput = { canvasJson: canvasJsonForParser };
     // Call the new, focused AI flow to get the dynamic parts
     const dynamicCodeResult = await generateDynamicUiComponent(input);
