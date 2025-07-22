@@ -351,26 +351,16 @@ val domainModule = module {
 files['app/src/main/java/com/example/myapplication/di/DataModule.kt'] = `
 package com.example.myapplication.di
 
+import com.example.myapplication.data.datasource.FirebaseRemoteConfigDataSource
+import com.example.myapplication.data.datasource.RemoteConfigDataSource
 import com.example.myapplication.data.repository.UiConfigRepositoryImpl
 import com.example.myapplication.domain.repository.UiConfigRepository
-import com.google.firebase.ktx.Firebase
-import com.google.firebase.remoteconfig.ktx.remoteConfig
-import com.google.firebase.remoteconfig.ktx.remoteConfigSettings
 import kotlinx.serialization.json.Json
 import org.koin.dsl.module
-import com.example.myapplication.BuildConfig
 
 val dataModule = module {
-    single<UiConfigRepository> { UiConfigRepositoryImpl(get(), get()) }
-
-    single {
-        val remoteConfig = Firebase.remoteConfig
-        val configSettings = remoteConfigSettings {
-            minimumFetchIntervalInSeconds = if (BuildConfig.DEBUG) 0 else 3600
-        }
-        remoteConfig.setConfigSettingsAsync(configSettings)
-        remoteConfig
-    }
+    single<UiConfigRepository> { UiConfigRepositoryImpl(get()) }
+    single<RemoteConfigDataSource> { FirebaseRemoteConfigDataSource(get()) }
 
     single {
         Json {
@@ -466,8 +456,6 @@ package com.example.myapplication.presentation
 
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.domain.usecase.GetUiConfigurationUseCase
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 
 class MainViewModel(
@@ -490,16 +478,15 @@ class MainViewModel(
 
     private fun fetchUiConfiguration() {
         viewModelScope.launch {
-            getUiConfigurationUseCase()
-                .onStart { setState { MainContract.State.Loading } }
-                .catch { exception ->
-                    val errorMessage = exception.message ?: "An unknown error occurred while fetching UI configuration."
-                    setState { MainContract.State.Error(errorMessage) }
-                    setEffect { MainContract.Effect.ShowToast(errorMessage) }
-                }
-                .collect { components ->
-                    setState { MainContract.State.Success(components) }
-                }
+            setState { MainContract.State.Loading }
+            try {
+                val components = getUiConfigurationUseCase()
+                setState { MainContract.State.Success(components) }
+            } catch (e: Exception) {
+                val errorMessage = e.message ?: "An unknown error occurred."
+                setState { MainContract.State.Error(errorMessage) }
+                setEffect { MainContract.Effect.ShowToast(errorMessage) }
+            }
         }
     }
 }
@@ -594,75 +581,91 @@ class MainContract {
 files['app/src/main/java/com/example/myapplication/data/repository/UiConfigRepositoryImpl.kt'] = `
 package com.example.myapplication.data.repository
 
-import android.util.Log
+import com.example.myapplication.data.datasource.RemoteConfigDataSource
 import com.example.myapplication.data.model.ComponentDto
 import com.example.myapplication.domain.repository.UiConfigRepository
-import com.google.firebase.remoteconfig.ConfigUpdate
-import com.google.firebase.remoteconfig.ConfigUpdateListener
-import com.google.firebase.remoteconfig.FirebaseRemoteConfig
-import com.google.firebase.remoteconfig.FirebaseRemoteConfigException
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.serialization.json.Json
 
 class UiConfigRepositoryImpl(
-    private val remoteConfig: FirebaseRemoteConfig,
-    private val json: Json
+    private val remoteConfigDataSource: RemoteConfigDataSource
 ) : UiConfigRepository {
 
-    override fun getUiConfiguration(key: String): Flow<List<ComponentDto>> = callbackFlow {
-        val listener = object : ConfigUpdateListener {
-            override fun onUpdate(configUpdate: ConfigUpdate) {
-                Log.d("UiConfigRepository", "Remote Config updated for keys: \${configUpdate.updatedKeys}")
-                if (configUpdate.updatedKeys.contains(key)) {
-                    remoteConfig.activate().addOnCompleteListener { task ->
-                        if (task.isSuccessful) {
-                            val jsonString = remoteConfig.getString(key)
-                            try {
-                                val components = json.decodeFromString<List<ComponentDto>>(jsonString)
-                                trySend(components).isSuccess
-                            } catch (e: Exception) {
-                                Log.e("UiConfigRepository", "Error parsing updated JSON for key '\$key'", e)
-                            }
-                        } else {
-                            Log.w("UiConfigRepository", "Failed to activate updated config.")
-                        }
-                    }
-                }
-            }
+    override suspend fun getUiConfiguration(): List<ComponentDto> {
+        return remoteConfigDataSource.getComponents()
+    }
+}
+`;
 
-            override fun onError(error: FirebaseRemoteConfigException) {
-                Log.w("UiConfigRepository", "Config update error with code: " + error.code, error)
-                close(error)
-            }
+// New DataSource Layer
+files['app/src/main/java/com/example/myapplication/data/datasource/RemoteConfigDataSource.kt'] = `
+package com.example.myapplication.data.datasource
+
+import android.util.Log
+import com.example.myapplication.data.model.ComponentDto
+import com.example.myapplication.data.util.await
+import com.google.firebase.ktx.Firebase
+import com.google.firebase.remoteconfig.ConfigUpdate
+import com.google.firebase.remoteconfig.ConfigUpdateListener
+import com.google.firebase.remoteconfig.FirebaseRemoteConfigException
+import com.google.firebase.remoteconfig.ktx.remoteConfig
+import com.google.firebase.remoteconfig.ktx.remoteConfigSettings
+import kotlinx.serialization.json.Json
+import java.lang.Exception
+
+interface RemoteConfigDataSource {
+    suspend fun getComponents(): List<ComponentDto>
+}
+
+class FirebaseRemoteConfigDataSource(
+    private val json: Json
+) : RemoteConfigDataSource {
+
+    private val remoteConfig = Firebase.remoteConfig
+    private val configKey = "COMPOSE_DESIGN_JSON_V2"
+
+    init {
+        val configSettings = remoteConfigSettings {
+            minimumFetchIntervalInSeconds = if (com.example.myapplication.BuildConfig.DEBUG) 0 else 3600
         }
+        remoteConfig.setConfigSettingsAsync(configSettings)
+        remoteConfig.setDefaultsAsync(mapOf(configKey to "[]"))
+    }
 
-        remoteConfig.addOnConfigUpdateListener(listener)
-
-        remoteConfig.fetchAndActivate().addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                val jsonString = remoteConfig.getString(key)
-                if (jsonString.isNotBlank()) {
-                    try {
-                        val components = json.decodeFromString<List<ComponentDto>>(jsonString)
-                        trySend(components).isSuccess
-                    } catch (e: Exception) {
-                        Log.e("UiConfigRepository", "Error parsing initial JSON for key '\$key'", e)
-                        close(e) 
-                    }
-                } else {
-                    Log.w("UiConfigRepository", "Initial fetch returned empty JSON for key '\$key'")
-                    trySend(emptyList()).isSuccess
-                }
+    override suspend fun getComponents(): List<ComponentDto> {
+        return try {
+            remoteConfig.fetchAndActivate().await()
+            val jsonString = remoteConfig.getString(configKey)
+            if (jsonString.isNotBlank()) {
+                json.decodeFromString<List<ComponentDto>>(jsonString)
             } else {
-                 val exception = task.exception ?: FirebaseRemoteConfigException("Failed to fetch remote config")
-                 Log.e("UiConfigRepository", "Failed to fetch remote config", exception)
-                 close(exception)
+                Log.w("RemoteConfigDataSource", "Remote config for key '\$configKey' is blank.")
+                emptyList()
+            }
+        } catch (e: Exception) {
+            Log.e("RemoteConfigDataSource", "Failed to fetch or parse components for key '\$configKey'", e)
+            emptyList()
+        }
+    }
+}
+`;
+
+// New Util Layer
+files['app/src/main/java/com/example/myapplication/data/util/FirebaseExtensions.kt'] = `
+package com.example.myapplication.data.util
+
+import com.google.android.gms.tasks.Task
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+
+suspend fun <T> Task<T>.await(): T {
+    return suspendCancellableCoroutine { cont ->
+        addOnCompleteListener { task ->
+            if (task.exception != null) {
+                cont.resumeWithException(task.exception!!)
+            } else {
+                cont.resume(task.result)
             }
         }
-
-        awaitClose { remoteConfig.removeOnConfigUpdateListener(listener) }
     }
 }
 `;
@@ -672,10 +675,9 @@ files['app/src/main/java/com/example/myapplication/domain/repository/UiConfigRep
 package com.example.myapplication.domain.repository
 
 import com.example.myapplication.data.model.ComponentDto
-import kotlinx.coroutines.flow.Flow
 
 interface UiConfigRepository {
-    fun getUiConfiguration(key: String): Flow<List<ComponentDto>>
+    suspend fun getUiConfiguration(): List<ComponentDto>
 }
 `;
 
@@ -687,12 +689,7 @@ import com.example.myapplication.domain.repository.UiConfigRepository
 class GetUiConfigurationUseCase(
     private val repository: UiConfigRepository
 ) {
-    companion object {
-        // The Remote Config key to fetch the UI design from.
-        private const val UI_CONFIG_KEY = "COMPOSE_DESIGN_JSON_V2"
-    }
-
-    operator fun invoke() = repository.getUiConfiguration(UI_CONFIG_KEY)
+    suspend operator fun invoke() = repository.getUiConfiguration()
 }
 `;
 
@@ -904,3 +901,4 @@ export function getAndroidProjectTemplates(): Record<string, string> {
     });
     return mutableFiles;
 }
+
