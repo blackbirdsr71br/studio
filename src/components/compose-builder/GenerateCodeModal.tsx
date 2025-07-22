@@ -5,7 +5,7 @@ import React, { useState, useImperativeHandle, forwardRef, useCallback } from 'r
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useDesign } from '@/contexts/DesignContext';
-import { generateJetpackComposeCodeAction } from '@/app/actions';
+import { generateProjectFromTemplatesAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Copy, Download, Wand2 } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
@@ -34,7 +34,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
     setError(null);
     setGeneratedProjectFiles(null);
     try {
-      const result = await generateJetpackComposeCodeAction(components, customComponentTemplates);
+      const result = await generateProjectFromTemplatesAction(components, customComponentTemplates);
       if (result.error) {
         setError(result.error);
         setGeneratedProjectFiles(null);
@@ -65,11 +65,11 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
   }));
   
   const handleCopyToClipboard = async () => {
-    const codeToCopy = generatedProjectFiles?.['app/src/main/java/com/example/myapplication/MainActivity.kt'] || '';
+    const codeToCopy = generatedProjectFiles?.['app/src/main/java/com/example/myapplication/presentation/components/DynamicUiComponent.kt'] || '';
     if (codeToCopy) {
       try {
         await navigator.clipboard.writeText(codeToCopy);
-        toast({ title: "Code Copied!", description: "MainActivity.kt copied to clipboard." });
+        toast({ title: "Code Copied!", description: "DynamicUiComponent.kt copied to clipboard." });
       } catch (err) {
         toast({ title: "Copy Failed", description: "Could not copy code to clipboard.", variant: "destructive" });
       }
@@ -91,7 +91,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
         
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = 'ComposeScreenProject.zip';
+        link.download = 'MVI_Dynamic_UI_Project.zip';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -107,14 +107,15 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
 
   const canCopyCode = !isLoading && generatedProjectFiles && Object.keys(generatedProjectFiles).length > 0;
   const canDownloadProject = !isLoading && !error && generatedProjectFiles && Object.keys(generatedProjectFiles).length > 0;
+  const mainFileToDisplay = generatedProjectFiles?.['app/src/main/java/com/example/myapplication/presentation/components/DynamicUiComponent.kt'] || '';
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-4xl max-h-[95vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="font-headline">Generated Jetpack Compose Code</DialogTitle>
+          <DialogTitle className="font-headline">Generated Jetpack Compose Project</DialogTitle>
           <DialogDescription>
-             View the Composable code for your screen design. You can copy the main file or download the complete, runnable project.
+             Below is the dynamic UI rendering component. You can copy the code or download the complete, runnable Android MVI project.
           </DialogDescription>
         </DialogHeader>
 
@@ -130,7 +131,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
               </div>
           ) : (
             <CodeMirror
-              value={generatedProjectFiles?.['app/src/main/java/com/example/myapplication/MainActivity.kt'] || ''}
+              value={mainFileToDisplay}
               height="100%"
               extensions={[javaLang()]}
               theme={resolvedTheme === 'dark' ? githubDark : githubLight}

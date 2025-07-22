@@ -61,6 +61,7 @@ activityCompose = "1.9.0"
 
 # Compose
 composeBom = "2024.05.00"
+composeCompiler = "1.5.13"
 
 # Koin (Dependency Injection)
 koin = "3.5.6"
@@ -172,7 +173,7 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.13"
+        kotlinCompilerExtensionVersion = libs.versions.composeCompiler.get()
     }
     packaging {
         resources {
@@ -357,6 +358,7 @@ import com.google.firebase.remoteconfig.ktx.remoteConfig
 import com.google.firebase.remoteconfig.ktx.remoteConfigSettings
 import kotlinx.serialization.json.Json
 import org.koin.dsl.module
+import com.example.myapplication.BuildConfig
 
 val dataModule = module {
     single<UiConfigRepository> { UiConfigRepositoryImpl(get(), get()) }
@@ -443,8 +445,12 @@ fun MainScreen(
                 CircularProgressIndicator()
             }
             is MainContract.State.Success -> {
-                s.components.forEach {
-                    DynamicUiComponent(componentDto = it)
+                if (s.components.isEmpty()) {
+                    Text(text = "No UI configuration found or content is empty.", color = Color.Gray)
+                } else {
+                    s.components.forEach {
+                        DynamicUiComponent(componentDto = it)
+                    }
                 }
             }
             is MainContract.State.Error -> {
@@ -489,6 +495,7 @@ class MainViewModel(
                 .catch { exception ->
                     val errorMessage = exception.message ?: "An unknown error occurred while fetching UI configuration."
                     setState { MainContract.State.Error(errorMessage) }
+                    setEffect { MainContract.Effect.ShowToast(errorMessage) }
                 }
                 .collect { components ->
                     setState { MainContract.State.Success(components) }
@@ -528,8 +535,6 @@ abstract class BaseViewModel<Event, State, Effect> : ViewModel() {
 
     private val _event: Channel<Event> = Channel()
 
-    // A channel for one-time side effects.
-    // Using a Channel ensures that each effect is consumed only once by the UI.
     private val _effect: Channel<Effect> = Channel(Channel.UNLIMITED)
     val effect = _effect.receiveAsFlow()
 
@@ -537,9 +542,6 @@ abstract class BaseViewModel<Event, State, Effect> : ViewModel() {
         subscribeEvents()
     }
 
-    /**
-     * Starts a coroutine to listen for incoming events from the UI.
-     */
     private fun subscribeEvents() {
         viewModelScope.launch {
             _event.receiveAsFlow().collect {
@@ -548,31 +550,17 @@ abstract class BaseViewModel<Event, State, Effect> : ViewModel() {
         }
     }
 
-    /**
-     * Processes an incoming event. This must be implemented by subclasses.
-     */
     abstract fun handleEvent(event: Event)
 
-    /**
-     * Sends an event from the UI to the ViewModel.
-     */
     fun setEvent(event: Event) {
         viewModelScope.launch { _event.send(event) }
     }
 
-    /**
-     * Updates the UI state.
-     * @param reducer A lambda function that takes the current state and returns the new state.
-     */
     protected fun setState(reducer: State.() -> State) {
         val newState = uiState.value.reducer()
         _uiState.value = newState
     }
 
-    /**
-     * Triggers a one-time side effect in the UI.
-     * @param builder A lambda function that creates the effect.
-     */
     protected fun setEffect(builder: () -> Effect) {
         val effectValue = builder()
         viewModelScope.launch { _effect.send(effectValue) }
@@ -585,32 +573,19 @@ package com.example.myapplication.presentation
 
 import com.example.myapplication.data.model.ComponentDto
 
-/**
- * Defines the contract between the MainScreen (View) and the MainViewModel.
- * It includes all possible Events, States, and Effects for this feature.
- */
 class MainContract {
-    /**
-     * Represents user actions or events from the UI.
-     */
     sealed class Event {
         data object FetchUi : Event()
     }
 
-    /**
-     * Represents the state of the UI. It should be an immutable data class.
-     */
     sealed class State {
         data object Loading : State()
         data class Success(val components: List<ComponentDto>) : State()
         data class Error(val message: String) : State()
     }
 
-    /**
-     * Represents one-time side effects that should be handled by the UI (e.g., showing a Toast).
-     */
     sealed class Effect {
-        // No effects needed for this simple case
+        data class ShowToast(val message: String) : Effect()
     }
 }
 `;
@@ -650,6 +625,8 @@ class UiConfigRepositoryImpl(
                             } catch (e: Exception) {
                                 Log.e("UiConfigRepository", "Error parsing updated JSON for key '\$key'", e)
                             }
+                        } else {
+                            Log.w("UiConfigRepository", "Failed to activate updated config.")
                         }
                     }
                 }
@@ -657,13 +634,12 @@ class UiConfigRepositoryImpl(
 
             override fun onError(error: FirebaseRemoteConfigException) {
                 Log.w("UiConfigRepository", "Config update error with code: " + error.code, error)
-                // Optionally, you could try to send a specific error state or event here.
+                close(error)
             }
         }
 
         remoteConfig.addOnConfigUpdateListener(listener)
 
-        // Initial fetch
         remoteConfig.fetchAndActivate().addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 val jsonString = remoteConfig.getString(key)
@@ -673,7 +649,7 @@ class UiConfigRepositoryImpl(
                         trySend(components).isSuccess
                     } catch (e: Exception) {
                         Log.e("UiConfigRepository", "Error parsing initial JSON for key '\$key'", e)
-                        close(e) // Close the flow with an exception on parse error
+                        close(e) 
                     }
                 } else {
                     Log.w("UiConfigRepository", "Initial fetch returned empty JSON for key '\$key'")
@@ -682,7 +658,7 @@ class UiConfigRepositoryImpl(
             } else {
                  val exception = task.exception ?: FirebaseRemoteConfigException("Failed to fetch remote config")
                  Log.e("UiConfigRepository", "Failed to fetch remote config", exception)
-                 close(exception) // Close the flow with an exception on fetch error
+                 close(exception)
             }
         }
 
@@ -770,7 +746,7 @@ fun MyApplicationTheme(
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }
 
@@ -831,6 +807,25 @@ files['app/src/main/res/values/colors.xml'] = `
 </resources>
 `;
 
+files['app/src/main/res/xml/backup_rules.xml'] = `
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+</full-backup-content>
+`;
+
+files['app/src/main/res/xml/data_extraction_rules.xml'] = `
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+    </device-transfer>
+</data-extraction-rules>
+`;
+
+
 files['app/src/main/res/values/themes.xml'] = `
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
@@ -851,12 +846,61 @@ files['app/src/main/res/drawable/ic_launcher_background.xml'] = `
 </vector>
 `;
 
+files['app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml'] = `
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+</adaptive-icon>
+`;
+
+files['app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml'] = `
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+</adaptive-icon>
+`;
+
+// For simplicity, foreground is a simple vector
+files['app/src/main/res/mipmap-hdpi/ic_launcher_foreground.xml'] = `
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,54m-24,0a24,24 0,1 1,48 0a24,24 0,1 1,-48 0" />
+</vector>
+`;
+
+// Providing all mipmap folder variants for completeness
+files['app/src/main/res/mipmap-hdpi/ic_launcher.png'] = "";
+files['app/src/main/res/mipmap-hdpi/ic_launcher_round.png'] = "";
+files['app/src/main/res/mipmap-mdpi/ic_launcher.png'] = "";
+files['app/src/main/res/mipmap-mdpi/ic_launcher_round.png'] = "";
+files['app/src/main/res/mipmap-mdpi/ic_launcher_foreground.xml'] = files['app/src/main/res/mipmap-hdpi/ic_launcher_foreground.xml'];
+files['app/src/main/res/mipmap-xhdpi/ic_launcher.png'] = "";
+files['app/src/main/res/mipmap-xhdpi/ic_launcher_round.png'] = "";
+files['app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.xml'] = files['app/src/main/res/mipmap-hdpi/ic_launcher_foreground.xml'];
+files['app/src/main/res/mipmap-xxhdpi/ic_launcher.png'] = "";
+files['app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png'] = "";
+files['app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.xml'] = files['app/src/main/res/mipmap-hdpi/ic_launcher_foreground.xml'];
+files['app/src/main/res/mipmap-xxxhdpi/ic_launcher.png'] = "";
+files['app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png'] = "";
+files['app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.xml'] = files['app/src/main/res/mipmap-hdpi/ic_launcher_foreground.xml'];
+
+
 
 export function getAndroidProjectTemplates(): Record<string, string> {
-    return { ...files };
+    const mutableFiles = { ...files };
+    // Create empty png files to ensure folders are created, actual content is not needed
+    Object.keys(mutableFiles).forEach(key => {
+        if (key.endsWith(".png")) {
+            // This is a placeholder for a binary file, which we can't really generate.
+            // The file entry itself is what matters for the project structure.
+        }
+    });
+    return mutableFiles;
 }
-
-
-
-
-    

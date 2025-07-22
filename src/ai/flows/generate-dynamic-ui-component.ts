@@ -34,6 +34,7 @@ You MUST ONLY generate the content for these two files. The rest of the project 
    - **Imports:** \`kotlinx.serialization.Serializable\`.
    - **Purpose:** Create Kotlin \`data class\` DTOs that EXACTLY mirror the structure of the provided \`canvasJson\`. This is for parsing with \`kotlinx.serialization\`.
    - **Requirements:**
+     - The file must start with the package declaration on line 1. No empty lines before it.
      - The file should contain a root data class, likely \`ComponentDto\`, and other necessary nested data classes (like \`PropertiesDto\`, \`ModifierDto\`, etc.) to represent the entire JSON structure.
      - **CRITICAL:** Every single property in every DTO data class MUST be **nullable** (e.g., \`val text: String? = null\`). This is essential for robust parsing.
      - Annotate every data class with \`@Serializable\`.
@@ -42,9 +43,10 @@ You MUST ONLY generate the content for these two files. The rest of the project 
 
 **2. \`DynamicUiComponent.kt\` File Content:**
    - **Package:** \`com.example.myapplication.presentation.components\`
-   - **Imports:** All necessary Jetpack Compose imports (\`androidx.compose.material3.*\` for Material 3 components), Coil for image loading (\`io.coil.compose.AsyncImage\`), and the DTOs from \`com.example.myapplication.data.model\`. Also include necessary imports like \`androidx.compose.ui.graphics.Color\`, \`androidx.compose.ui.unit.dp\`, \`androidx.compose.ui.text.font.FontWeight\`, etc.
+   - **Imports:** All necessary Jetpack Compose imports (\`androidx.compose.material3.*\` for Material 3 components), Coil for image loading (\`io.coil.compose.AsyncImage\`), and the DTOs from \`com.example.myapplication.data.model\`. Also include necessary imports like \`androidx.compose.ui.graphics.Color\`, \`android.graphics.Color as AndroidColor\`, \`androidx.compose.ui.unit.dp\`, \`androidx.compose.ui.unit.sp\`, \`androidx.compose.ui.text.font.FontWeight\`, etc.
    - **Purpose:** Create a recursive Composable function that renders the UI based on the parsed DTOs.
    - **Requirements:**
+     - The file must start with the package declaration on line 1.
      - Define a main Composable function, e.g., \`@Composable fun DynamicUiComponent(componentDto: ComponentDto)\`.
      - Inside each \`when\` branch, first assign \`componentDto.properties\` to a nullable local variable: \`val properties = componentDto.properties\`. Use this local variable for accessing all properties to make the code safer and more readable.
      - Use a \`when (componentDto.type)\` statement to handle different component types (\`Text\`, \`Button\`, \`Column\`, \`Row\`, \`Image\`, \`Card\`, etc.). For unknown types, render an empty composable or a placeholder Text.
@@ -58,7 +60,7 @@ You MUST ONLY generate the content for these two files. The rest of the project 
        - \`backgroundColor\` for containers (Card, Column, etc.) should map to \`MaterialTheme.colorScheme.surface\` or \`MaterialTheme.colorScheme.background\`. For Card, use \`CardDefaults.cardColors(containerColor = ...)\`
        - General \`textColor\` should map to \`MaterialTheme.colorScheme.onSurface\` or \`onBackground\`.
        - A Button's \`backgroundColor\` should use \`ButtonDefaults.buttonColors(containerColor = ...)\` mapping to \`MaterialTheme.colorScheme.primary\`, and its text color to \`MaterialTheme.colorScheme.onPrimary\`.
-       - **Only if a specific hex color string is provided in the JSON**, parse it using \`Color(android.graphics.Color.parseColor("#RRGGBB"))\`. Wrap this in a try-catch block to prevent crashes from invalid formats.
+       - **Only if a specific hex color string is provided in the JSON**, parse it using \`Color(AndroidColor.parseColor("#RRGGBB"))\`. Wrap this in a try-catch block to prevent crashes from invalid formats and fall back to a theme color.
      - **Card Elevation**: For a Card component, you MUST use \`elevation = CardDefaults.cardElevation(defaultElevation = (properties?.elevation?.dp ?: 2.dp))\`. Do not use the deprecated \`elevation\` parameter directly on the Card.
      - Apply modifiers correctly based on the properties in the DTOs. Use \`.dp\` and \`.sp\` for dimensions and provide safe defaults (e.g., \`properties?.width?.toIntOrNull()?.dp ?: 100.dp\`, \`properties?.padding?.dp ?: 0.dp\`).
      - Use \`io.coil.compose.AsyncImage\` for rendering images from URLs.
