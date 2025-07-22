@@ -595,25 +595,24 @@ export async function generateProjectFromTemplatesAction(
     if (canvasJsonForParser.startsWith("Error:")) {
         return { error: `Failed to generate canvas JSON for parser: ${canvasJsonForParser}` };
     }
-     if (!canvasJsonForParser || canvasJsonForParser.trim() === "[]") {
-      const contentComponentsExist = allComponents.some(c => c.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID);
-      if (!contentComponentsExist) {
-        return { error: "Cannot generate a project from an empty canvas content area." };
-      }
+    
+    const contentComponentsExist = allComponents.some(c => c.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID);
+    if (!contentComponentsExist) {
+        const rootContentChildren = allComponents.find(c => c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID)?.properties.children;
+        if (!rootContentChildren || rootContentChildren.length === 0) {
+            return { error: "Cannot generate a project from an empty canvas content area." };
+        }
     }
 
-    // Get all the static template files for the Android project
     const projectFiles = getAndroidProjectTemplates();
     
     const input: GenerateDynamicUiComponentInput = { canvasJson: canvasJsonForParser };
-    // Call the new, focused AI flow to get the dynamic parts
     const dynamicCodeResult = await generateDynamicUiComponent(input);
 
     if (dynamicCodeResult.error) {
       return { error: `AI failed to generate dynamic UI code: ${dynamicCodeResult.error}` };
     }
 
-    // Add the dynamically generated files to our project structure
     projectFiles['app/src/main/java/com/example/myapplication/data/model/ComponentDto.kt'] = dynamicCodeResult.dtoFileContent;
     projectFiles['app/src/main/java/com/example/myapplication/presentation/components/DynamicUiComponent.kt'] = dynamicCodeResult.rendererFileContent;
     

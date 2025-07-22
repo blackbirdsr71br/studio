@@ -57,7 +57,7 @@ You MUST ONLY generate the content for these two files. The rest of the project 
         - This applies to \`fontStyle\`, \`textAlign\`, \`textDecoration\`, \`Arrangement\`, \`Alignment\`, etc.
      - **Color Handling (VERY IMPORTANT):**
        - **Prioritize Theme Colors:** Instead of parsing hex strings directly, map properties to \`MaterialTheme.colorScheme\`.
-       - \`backgroundColor\` for containers (Card, Column, etc.) should map to \`MaterialTheme.colorScheme.surface\` or \`MaterialTheme.colorScheme.background\`. For Card, use \`CardDefaults.cardColors(containerColor = ...)\`
+       - \`backgroundColor\` for containers (Card, Column, etc.) should map to \`MaterialTheme.colorScheme.surface\` or \`MaterialTheme.colorScheme.background\`. For Card, use \`CardDefaults.cardColors(containerColor = ...)\`.
        - General \`textColor\` should map to \`MaterialTheme.colorScheme.onSurface\` or \`onBackground\`.
        - A Button's \`backgroundColor\` should use \`ButtonDefaults.buttonColors(containerColor = ...)\` mapping to \`MaterialTheme.colorScheme.primary\`, and its text color to \`MaterialTheme.colorScheme.onPrimary\`.
        - **Only if a specific hex color string is provided in the JSON**, parse it using \`Color(AndroidColor.parseColor("#RRGGBB"))\`. Wrap this in a try-catch block to prevent crashes from invalid formats and fall back to a theme color.
@@ -88,3 +88,5 @@ const generateDynamicUiComponentFlow = ai.defineFlow(
     return output;
   }
 );
+
+    

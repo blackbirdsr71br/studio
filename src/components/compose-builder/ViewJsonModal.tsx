@@ -156,21 +156,11 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     setParserProjectFiles(null);
     setConcatenatedParserCode('');
     
-    // Generate the full canvas JSON including defaults, as this is what the parser needs to be built for.
-    const canvasJsonForParser = await getDesignComponentsAsJsonAction(components, customComponentTemplates, true);
-    
-    if (canvasJsonForParser.startsWith("Error:")) {
-        setParserError(canvasJsonForParser);
-        setIsParserLoading(false);
-        return;
-    }
-
     try {
-      const result = await generateProjectFromTemplatesAction(canvasJsonForParser);
+      const result = await generateProjectFromTemplatesAction(components, customComponentTemplates);
       if (result.files && Object.keys(result.files).length > 0) {
         setParserProjectFiles(result.files);
         
-        // Concatenate all files into one string for display
         const allCode = Object.entries(result.files)
           .map(([filePath, content]) => `// --- FILE: ${filePath} ---\n\n${content}\n\n`)
           .join('\n');
@@ -723,5 +713,3 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
 });
 
 ViewJsonModal.displayName = 'ViewJsonModal';
-
-  

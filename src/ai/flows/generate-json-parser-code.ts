@@ -10,7 +10,9 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { GenerateDynamicUiComponentInputSchema } from '@/types/ai-spec'; // Keep reference for posterity, even if unused
 
+// Using z.any() as the types are deprecated.
 const GenerateJsonParserCodeInputSchema = z.object({
   canvasJson: z.string(),
 });
@@ -30,3 +32,5 @@ export async function generateJsonParserCode(input: GenerateJsonParserCodeInput)
     "DEPRECATED.txt": "This AI flow is no longer used. Please see src/app/actions.ts for the new template-based generation logic.",
   }});
 }
+
+    
