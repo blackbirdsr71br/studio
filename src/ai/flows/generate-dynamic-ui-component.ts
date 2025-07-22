@@ -42,7 +42,7 @@ You MUST ONLY generate the content for these two files. The rest of the project 
 
 **2. \`DynamicUiComponent.kt\` File Content:**
    - **Package:** \`com.example.myapplication.presentation.components\`
-   - **Imports:** All necessary Jetpack Compose imports (\`androidx.compose...\`), Coil for image loading (\`io.coil.compose.AsyncImage\`), and the DTOs from \`com.example.myapplication.data.model\`.
+   - **Imports:** All necessary Jetpack Compose imports (\`androidx.compose.material3...\` for Material 3 components), Coil for image loading (\`io.coil.compose.AsyncImage\`), and the DTOs from \`com.example.myapplication.data.model\`.
    - **Purpose:** Create a recursive Composable function that renders the UI based on the parsed DTOs.
    - **Requirements:**
      - Define a main Composable function, e.g., \`@Composable fun DynamicUiComponent(componentDto: ComponentDto)\`.
@@ -50,13 +50,13 @@ You MUST ONLY generate the content for these two files. The rest of the project 
      - For container components (\`Column\`, \`Row\`, \`Card\`, etc.), recursively call \`DynamicUiComponent\` for each item in \`componentDto.properties?.children\`.
      - **Color Handling (VERY IMPORTANT):**
        - **Prioritize Theme Colors:** Instead of parsing hex strings directly, map properties to \`MaterialTheme.colorScheme\`.
-       - \`backgroundColor\` for containers (Card, Column, etc.) should map to \`MaterialTheme.colorScheme.surface\` or \`MaterialTheme.colorScheme.background\`.
+       - \`backgroundColor\` for containers (Card, Column, etc.) should map to \`MaterialTheme.colorScheme.surface\` or \`MaterialTheme.colorScheme.background\`. For Card, use \`CardDefaults.cardColors(containerColor = ...)\`
        - General \`textColor\` should map to \`MaterialTheme.colorScheme.onSurface\` or \`onBackground\`.
-       - A Button's \`backgroundColor\` should map to \`MaterialTheme.colorScheme.primary\`, and its \`textColor\` to \`MaterialTheme.colorScheme.onPrimary\`.
+       - A Button's \`backgroundColor\` should use \`ButtonDefaults.buttonColors(containerColor = ...)\` mapping to \`MaterialTheme.colorScheme.primary\`, and its text color to \`MaterialTheme.colorScheme.onPrimary\`.
        - **Only if a specific hex color is provided in the JSON**, parse it using \`Color(android.graphics.Color.parseColor("#RRGGBB"))\`. Otherwise, always use the theme colors.
      - Apply modifiers correctly based on the properties in the DTOs. Convert numeric dp values to \`.dp\`.
      - Use \`io.coil.compose.AsyncImage\` for rendering images from URLs.
-     - Ensure the generated code is clean, idiomatic, and functional.
+     - Ensure the generated code is clean, idiomatic, and functional using Material 3 components.
      - It MUST handle all component types and properties present in the \`canvasJson\`.
 
 **Final Output:**
