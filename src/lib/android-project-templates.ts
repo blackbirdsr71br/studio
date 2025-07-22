@@ -581,7 +581,10 @@ package com.example.myapplication.data.repository
 import android.util.Log
 import com.example.myapplication.data.model.ComponentDto
 import com.example.myapplication.domain.repository.UiConfigRepository
+import com.google.firebase.remoteconfig.ConfigUpdate
+import com.google.firebase.remoteconfig.ConfigUpdateListener
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
+import com.google.firebase.remoteconfig.FirebaseRemoteConfigException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -593,22 +596,30 @@ class UiConfigRepositoryImpl(
 ) : UiConfigRepository {
 
     override fun getUiConfiguration(key: String): Flow<List<ComponentDto>> = callbackFlow {
-        val listener = remoteConfig.addOnConfigUpdateListener { configUpdate, _ ->
-            Log.d("UiConfigRepository", "Remote Config updated for keys: \${configUpdate.updatedKeys}")
-            if (configUpdate.updatedKeys.contains(key)) {
-                remoteConfig.activate().addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        val jsonString = remoteConfig.getString(key)
-                        try {
-                            val components = json.decodeFromString<List<ComponentDto>>(jsonString)
-                            trySend(components).isSuccess
-                        } catch (e: Exception) {
-                            Log.e("UiConfigRepository", "Error parsing updated JSON for key '\$key'", e)
+        val listener = object : ConfigUpdateListener {
+            override fun onUpdate(configUpdate: ConfigUpdate) {
+                Log.d("UiConfigRepository", "Remote Config updated for keys: \${configUpdate.updatedKeys}")
+                if (configUpdate.updatedKeys.contains(key)) {
+                    remoteConfig.activate().addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            val jsonString = remoteConfig.getString(key)
+                            try {
+                                val components = json.decodeFromString<List<ComponentDto>>(jsonString)
+                                trySend(components).isSuccess
+                            } catch (e: Exception) {
+                                Log.e("UiConfigRepository", "Error parsing updated JSON for key '\$key'", e)
+                            }
                         }
                     }
                 }
             }
+
+            override fun onError(error: FirebaseRemoteConfigException) {
+                Log.w("UiConfigRepository", "Config update error with code: " + error.code, error)
+            }
         }
+
+        remoteConfig.addOnConfigUpdateListener(listener)
 
         // Initial fetch
         remoteConfig.fetchAndActivate().addOnCompleteListener { task ->
@@ -802,3 +813,4 @@ files['app/src/main/res/drawable/ic_launcher_background.xml'] = `
 export function getAndroidProjectTemplates(): Record<string, string> {
     return { ...files };
 }
+
