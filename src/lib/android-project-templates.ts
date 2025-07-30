@@ -11,10 +11,11 @@ const files: Record<string, string> = {};
 // Root build.gradle.kts
 files['build.gradle.kts'] = `// Top-level build file where you can add configuration options common to all sub-projects/modules.
 plugins {
-    alias(libs.plugins.androidApplication) apply false
-    alias(libs.plugins.kotlinAndroid) apply false
-    alias(libs.plugins.kotlinSerialization) apply false
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.kotlin.android) apply false
+    alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.ksp) apply false
+    alias(libs.plugins.googleServices) apply false
 }
 `;
 
@@ -46,100 +47,112 @@ include(":app")
 
 // gradle/libs.versions.toml (Version Catalog)
 files['gradle/libs.versions.toml'] = `[versions]
-# Core & AndroidX
-compileSdk = "34"
-minSdk = "26"
-targetSdk = "34"
-agp = "8.4.1"
-kotlin = "1.9.23"
-coreKtx = "1.13.1"
-lifecycleRuntimeKtx = "2.8.1"
-activityCompose = "1.9.0"
-
-# Compose
-composeBom = "2024.05.00"
-composeCompiler = "1.5.13"
-
-# Koin (Dependency Injection)
-koin = "3.5.6"
-
-# Kotlinx Serialization
-kotlinxSerialization = "1.6.3"
-
-# Firebase
-firebaseBom = "33.1.0"
-
-# Coil (Image Loading)
-coil = "2.6.0"
-
-# KSP
-ksp = "1.9.23-1.0.19"
-
-# Testing
+agp = "8.10.1"
+kotlin = "2.1.20"
 junit = "4.13.2"
-androidxTestExtJunit = "1.1.5"
-espressoCore = "3.5.1"
+junitVersion = "1.2.1"
+lifecycleRuntimeKtx = "2.9.1"
+ksp = "2.1.20-2.0.0"
+compose-bom = "2025.06.01"
+compose-compiler = "1.5.5"
+activity-compose = "1.10.1"
+lifecycle = "2.9.1"
+navigation = "2.9.0"
+koin = "3.5.3"
+koin-compose = "3.5.3"
+coroutines = "1.10.2"
+serialization = "1.7.3"
+retrofit = "2.11.0"
+okhttp = "4.12.0"
+coil = "2.7.0"
+firebase-bom = "33.15.0"
+core-ktx = "1.13.1"
+androidx-test-ext-junit = "1.2.1"
+espresso-core = "3.6.1"
 
 
 [libraries]
-# Core & AndroidX
-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 
-# Compose
-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
-ui = { group = "androidx.compose.ui", name = "ui" }
-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
-material3 = { group = "androidx.compose.material3", name = "material3" }
+# Android Core
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
+androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
+androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity-compose" }
+
+# Compose BOM
+androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "compose-bom" }
+androidx-ui = { group = "androidx.compose.ui", name = "ui" }
+androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
+androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation" }
 
 # Koin
 koin-android = { group = "io.insert-koin", name = "koin-android", version.ref = "koin" }
-koin-androidx-compose = { group = "io.insert-koin", name = "koin-androidx-compose", version.ref = "koin" }
+koin-androidx-compose = { group = "io.insert-koin", name = "koin-androidx-compose", version.ref = "koin-compose" }
 
-# Kotlinx Serialization
-kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+# Coroutines
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+
+# Serialization
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
+
+# Network
+retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
+retrofit-kotlin-serialization = { group = "com.jakewharton.retrofit", name = "retrofit2-kotlinx-serialization-converter", version = "1.0.0" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
+
+# Image Loading
+coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 
 # Firebase
-firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebase-bom" }
 firebase-config = { group = "com.google.firebase", name = "firebase-config-ktx" }
-
-# Coil
-coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }
-androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExtJunit" }
-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidx-test-ext-junit" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso-core" }
 
 
 [plugins]
-androidApplication = { id = "com.android.application", version.ref = "agp" }
-kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+googleServices = { id = "com.google.gms.google-services", version = "4.4.0" }
+
+[bundles]
+compose = ["androidx-ui", "androidx-ui-graphics", "androidx-ui-tooling-preview", "androidx-material3"]
+koin = ["koin-android", "koin-androidx-compose"]
+coroutines = ["kotlinx-coroutines-core", "kotlinx-coroutines-android"]
+network = ["retrofit", "retrofit-kotlin-serialization", "okhttp", "okhttp-logging"]
 `;
 
 // app/build.gradle.kts
 files['app/build.gradle.kts'] = `plugins {
-    alias(libs.plugins.androidApplication)
-    alias(libs.plugins.kotlinAndroid)
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.googleServices)
 }
 
 android {
     namespace = "com.example.myapplication"
-    compileSdk = libs.versions.compileSdk.get().toInt()
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.example.myapplication"
-        minSdk = libs.versions.minSdk.get().toInt()
-        targetSdk = libs.versions.targetSdk.get().toInt()
+        minSdk = 26
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
@@ -169,7 +182,7 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = libs.versions.composeCompiler.get()
+        kotlinCompilerExtensionVersion = libs.versions.compose.compiler.get()
     }
     packaging {
         resources {
@@ -180,20 +193,20 @@ android {
 
 dependencies {
     // Core & AndroidX
-    implementation(libs.core.ktx)
-    implementation(libs.lifecycle.runtime.ktx)
-    implementation(libs.activity.compose)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
 
     // Compose
-    implementation(platform(libs.compose.bom))
-    implementation(libs.ui)
-    implementation(libs.ui.graphics)
-    implementation(libs.ui.tooling.preview)
-    implementation(libs.material3)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.bundles.compose)
 
     // Koin (DI)
-    implementation(libs.koin.android)
-    implementation(libs.koin.androidx.compose)
+    implementation(libs.bundles.koin)
+
+    // Coroutines
+    implementation(libs.bundles.coroutines)
 
     // Kotlinx Serialization
     implementation(libs.kotlinx.serialization.json)
@@ -207,12 +220,12 @@ dependencies {
 
     // Testing
     testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.test.ext.junit)
-    androidTestImplementation(libs.espresso.core)
-    androidTestImplementation(platform(libs.compose.bom))
-    androidTestImplementation(libs.ui.test.junit4)
-    debugImplementation(libs.ui.tooling)
-    debugImplementation(libs.ui.test.manifest)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.androidx.ui.tooling)
+    debugImplementation(libs.androidx.ui.test.manifest)
 }
 `;
 
@@ -470,8 +483,9 @@ class MainViewModel(
                 setState { MainContract.State.Success(components) }
             } catch (e: Exception) {
                 val errorMessage = e.message ?: "An unknown error occurred."
-                setState { MainContract.State.Error(errorMessage) }
                 setEffect { MainContract.Effect.ShowToast(errorMessage) }
+                // Set success with empty list on error to not block UI
+                setState { MainContract.State.Success(emptyList()) }
             }
         }
     }
@@ -591,6 +605,7 @@ import com.google.firebase.remoteconfig.FirebaseRemoteConfigException
 import com.google.firebase.remoteconfig.ktx.remoteConfig
 import com.google.firebase.remoteconfig.ktx.remoteConfigSettings
 import kotlinx.serialization.json.Json
+import com.example.myapplication.BuildConfig
 
 interface RemoteConfigDataSource {
     suspend fun getComponents(): List<ComponentDto>
@@ -605,12 +620,12 @@ class FirebaseRemoteConfigDataSource(
 
     init {
         val configSettings = remoteConfigSettings {
-            minimumFetchIntervalInSeconds = if (com.example.myapplication.BuildConfig.DEBUG) 0 else 3600
+            minimumFetchIntervalInSeconds = if (BuildConfig.DEBUG) 0 else 3600
         }
         remoteConfig.setConfigSettingsAsync(configSettings)
         remoteConfig.setDefaultsAsync(mapOf(configKey to "[]"))
         
-        remoteConfig.addOnConfigUpdateListener(object : ConfigUpdateListener {
+        val listener = object : ConfigUpdateListener {
             override fun onUpdate(configUpdate: ConfigUpdate) {
                 if (configUpdate.updatedKeys.contains(configKey)) {
                     remoteConfig.activate().addOnCompleteListener { task ->
@@ -625,7 +640,8 @@ class FirebaseRemoteConfigDataSource(
             override fun onError(error: FirebaseRemoteConfigException) {
                 Log.e("RemoteConfigDataSource", "Config update listener error", error)
             }
-        })
+        }
+        remoteConfig.addOnConfigUpdateListener(listener)
     }
 
     override suspend fun getComponents(): List<ComponentDto> {
@@ -679,12 +695,15 @@ interface UiConfigRepository {
 
 files['app/src/main/java/com/example/myapplication/domain/usecase/GetUiConfigurationUseCase.kt'] = `package com.example.myapplication.domain.usecase
 
+import com.example.myapplication.data.model.ComponentDto
 import com.example.myapplication.domain.repository.UiConfigRepository
 
 class GetUiConfigurationUseCase(
     private val repository: UiConfigRepository
 ) {
-    suspend operator fun invoke() = repository.getUiConfiguration()
+    suspend operator fun invoke(): List<ComponentDto> {
+        return repository.getUiConfiguration()
+    }
 }
 `;
 
@@ -782,7 +801,8 @@ val Typography = Typography(
 `;
 
 // Resource files
-files['app/src/main/res/values/strings.xml'] = `<resources>
+files['app/src/main/res/values/strings.xml'] = `<?xml version="1.0" encoding="utf-8"?>
+<resources>
     <string name="app_name">My Application</string>
 </resources>
 `;
