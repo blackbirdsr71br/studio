@@ -628,6 +628,23 @@ class FirebaseRemoteConfigDataSource(
         }
         remoteConfig.setConfigSettingsAsync(configSettings)
         remoteConfig.setDefaultsAsync(mapOf(configKey to "[]"))
+        
+        remoteConfig.addOnConfigUpdateListener(object : ConfigUpdateListener {
+            override fun onUpdate(configUpdate: ConfigUpdate) {
+                if (configUpdate.updatedKeys.contains(configKey)) {
+                    remoteConfig.activate().addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            Log.d("RemoteConfigDataSource", "Remote config activated for key: \$configKey")
+                        } else {
+                            Log.w("RemoteConfigDataSource", "Failed to activate remote config.")
+                        }
+                    }
+                }
+            }
+            override fun onError(error: FirebaseRemoteConfigException) {
+                Log.e("RemoteConfigDataSource", "Config update listener error", error)
+            }
+        })
     }
 
     override suspend fun getComponents(): List<ComponentDto> {
@@ -902,3 +919,4 @@ export function getAndroidProjectTemplates(): Record<string, string> {
     return mutableFiles;
 }
 
+    

@@ -662,3 +662,5 @@ export async function searchWebForImagesAction(query: string): Promise<{ imageUr
     return { imageUrls: null, error: message };
   }
 }
+
+    
