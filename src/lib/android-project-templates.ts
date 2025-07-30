@@ -3,6 +3,7 @@
  * @fileOverview This file contains static string templates for a complete,
  * functional Android project structure. This allows for reliable project generation
  * by minimizing the amount of code the AI needs to generate from scratch.
+ * This template is based on the MVI architecture with Koin for DI, as per user's reference project.
  */
 
 const files: Record<string, string> = {};
@@ -609,7 +610,6 @@ import com.google.firebase.remoteconfig.FirebaseRemoteConfigException
 import com.google.firebase.remoteconfig.ktx.remoteConfig
 import com.google.firebase.remoteconfig.ktx.remoteConfigSettings
 import kotlinx.serialization.json.Json
-import java.lang.Exception
 
 interface RemoteConfigDataSource {
     suspend fun getComponents(): List<ComponentDto>
@@ -670,9 +670,9 @@ files['app/src/main/java/com/example/myapplication/data/util/FirebaseExtensions.
 package com.example.myapplication.data.util
 
 import com.google.android.gms.tasks.Task
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 suspend fun <T> Task<T>.await(): T {
     return suspendCancellableCoroutine { cont ->
@@ -919,4 +919,3 @@ export function getAndroidProjectTemplates(): Record<string, string> {
     return mutableFiles;
 }
 
-    
