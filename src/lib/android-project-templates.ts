@@ -9,8 +9,7 @@
 const files: Record<string, string> = {};
 
 // Root build.gradle.kts
-files['build.gradle.kts'] = `
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
+files['build.gradle.kts'] = `// Top-level build file where you can add configuration options common to all sub-projects/modules.
 plugins {
     alias(libs.plugins.androidApplication) apply false
     alias(libs.plugins.kotlinAndroid) apply false
@@ -20,15 +19,13 @@ plugins {
 `;
 
 // Root gradle.properties
-files['gradle.properties'] = `
-org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+files['gradle.properties'] = `org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
 org.gradle.parallel=true
 android.useAndroidX=true
 `;
 
 // settings.gradle.kts
-files['settings.gradle.kts'] = `
-pluginManagement {
+files['settings.gradle.kts'] = `pluginManagement {
     repositories {
         google()
         mavenCentral()
@@ -48,8 +45,7 @@ include(":app")
 `;
 
 // gradle/libs.versions.toml (Version Catalog)
-files['gradle/libs.versions.toml'] = `
-[versions]
+files['gradle/libs.versions.toml'] = `[versions]
 # Core & AndroidX
 compileSdk = "34"
 minSdk = "26"
@@ -129,8 +125,7 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 `;
 
 // app/build.gradle.kts
-files['app/build.gradle.kts'] = `
-plugins {
+files['app/build.gradle.kts'] = `plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.kotlinSerialization)
@@ -222,8 +217,7 @@ dependencies {
 `;
 
 // app/proguard-rules.pro
-files['app/proguard-rules.pro'] = `
--keep class kotlin.io.File** { *; }
+files['app/proguard-rules.pro'] = `-keep class kotlin.io.File** { *; }
 -keepnames class kotlinx.** { *; }
 -keepclassmembers class ** {
     @kotlinx.serialization.Serializable <methods>;
@@ -234,8 +228,7 @@ files['app/proguard-rules.pro'] = `
 `;
 
 // app/src/main/AndroidManifest.xml
-files['app/src/main/AndroidManifest.xml'] = `
-<?xml version="1.0" encoding="utf-8"?>
+files['app/src/main/AndroidManifest.xml'] = `<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
@@ -268,8 +261,7 @@ files['app/src/main/AndroidManifest.xml'] = `
 `;
 
 // Placeholder google-services.json
-files['app/google-services.json'] = `
-{
+files['app/google-services.json'] = `{
   "project_info": {
     "project_number": "1234567890",
     "project_id": "my-application",
@@ -301,8 +293,7 @@ files['app/google-services.json'] = `
 `;
 
 // Main Application Class for Koin setup
-files['app/src/main/java/com/example/myapplication/MyApplication.kt'] = `
-package com.example.myapplication
+files['app/src/main/java/com/example/myapplication/MyApplication.kt'] = `package com.example.myapplication
 
 import android.app.Application
 import com.example.myapplication.di.appModule
@@ -326,8 +317,7 @@ class MyApplication : Application() {
 `;
 
 // DI Modules
-files['app/src/main/java/com/example/myapplication/di/AppModule.kt'] = `
-package com.example.myapplication.di
+files['app/src/main/java/com/example/myapplication/di/AppModule.kt'] = `package com.example.myapplication.di
 
 import com.example.myapplication.presentation.MainViewModel
 import org.koin.androidx.viewmodel.dsl.viewModel
@@ -338,8 +328,7 @@ val appModule = module {
 }
 `;
 
-files['app/src/main/java/com/example/myapplication/di/DomainModule.kt'] = `
-package com.example.myapplication.di
+files['app/src/main/java/com/example/myapplication/di/DomainModule.kt'] = `package com.example.myapplication.di
 
 import com.example.myapplication.domain.usecase.GetUiConfigurationUseCase
 import org.koin.dsl.module
@@ -349,8 +338,7 @@ val domainModule = module {
 }
 `;
 
-files['app/src/main/java/com/example/myapplication/di/DataModule.kt'] = `
-package com.example.myapplication.di
+files['app/src/main/java/com/example/myapplication/di/DataModule.kt'] = `package com.example.myapplication.di
 
 import com.example.myapplication.data.datasource.FirebaseRemoteConfigDataSource
 import com.example.myapplication.data.datasource.RemoteConfigDataSource
@@ -376,8 +364,7 @@ val dataModule = module {
 
 
 // Presentation Layer
-files['app/src/main/java/com/example/myapplication/presentation/MainActivity.kt'] = `
-package com.example.myapplication.presentation
+files['app/src/main/java/com/example/myapplication/presentation/MainActivity.kt'] = `package com.example.myapplication.presentation
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -405,8 +392,7 @@ class MainActivity : ComponentActivity() {
 }
 `;
 
-files['app/src/main/java/com/example/myapplication/presentation/MainScreen.kt'] = `
-package com.example.myapplication.presentation
+files['app/src/main/java/com/example/myapplication/presentation/MainScreen.kt'] = `package com.example.myapplication.presentation
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -452,8 +438,7 @@ fun MainScreen(
 }
 `;
 
-files['app/src/main/java/com/example/myapplication/presentation/MainViewModel.kt'] = `
-package com.example.myapplication.presentation
+files['app/src/main/java/com/example/myapplication/presentation/MainViewModel.kt'] = `package com.example.myapplication.presentation
 
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.domain.usecase.GetUiConfigurationUseCase
@@ -493,8 +478,7 @@ class MainViewModel(
 }
 `;
 
-files['app/src/main/java/com/example/myapplication/presentation/BaseViewModel.kt'] = `
-package com.example.myapplication.presentation
+files['app/src/main/java/com/example/myapplication/presentation/BaseViewModel.kt'] = `package com.example.myapplication.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -556,8 +540,7 @@ abstract class BaseViewModel<Event, State, Effect> : ViewModel() {
 }
 `;
 
-files['app/src/main/java/com/example/myapplication/presentation/MainContract.kt'] = `
-package com.example.myapplication.presentation
+files['app/src/main/java/com/example/myapplication/presentation/MainContract.kt'] = `package com.example.myapplication.presentation
 
 import com.example.myapplication.data.model.ComponentDto
 
@@ -579,8 +562,7 @@ class MainContract {
 `;
 
 // Data Layer
-files['app/src/main/java/com/example/myapplication/data/repository/UiConfigRepositoryImpl.kt'] = `
-package com.example.myapplication.data.repository
+files['app/src/main/java/com/example/myapplication/data/repository/UiConfigRepositoryImpl.kt'] = `package com.example.myapplication.data.repository
 
 import com.example.myapplication.data.datasource.RemoteConfigDataSource
 import com.example.myapplication.data.model.ComponentDto
@@ -597,8 +579,7 @@ class UiConfigRepositoryImpl(
 `;
 
 // New DataSource Layer
-files['app/src/main/java/com/example/myapplication/data/datasource/RemoteConfigDataSource.kt'] = `
-package com.example.myapplication.data.datasource
+files['app/src/main/java/com/example/myapplication/data/datasource/RemoteConfigDataSource.kt'] = `package com.example.myapplication.data.datasource
 
 import android.util.Log
 import com.example.myapplication.data.model.ComponentDto
@@ -666,8 +647,7 @@ class FirebaseRemoteConfigDataSource(
 `;
 
 // New Util Layer
-files['app/src/main/java/com/example/myapplication/data/util/FirebaseExtensions.kt'] = `
-package com.example.myapplication.data.util
+files['app/src/main/java/com/example/myapplication/data/util/FirebaseExtensions.kt'] = `package com.example.myapplication.data.util
 
 import com.google.android.gms.tasks.Task
 import kotlin.coroutines.resume
@@ -688,8 +668,7 @@ suspend fun <T> Task<T>.await(): T {
 `;
 
 // Domain Layer
-files['app/src/main/java/com/example/myapplication/domain/repository/UiConfigRepository.kt'] = `
-package com.example.myapplication.domain.repository
+files['app/src/main/java/com/example/myapplication/domain/repository/UiConfigRepository.kt'] = `package com.example.myapplication.domain.repository
 
 import com.example.myapplication.data.model.ComponentDto
 
@@ -698,8 +677,7 @@ interface UiConfigRepository {
 }
 `;
 
-files['app/src/main/java/com/example/myapplication/domain/usecase/GetUiConfigurationUseCase.kt'] = `
-package com.example.myapplication.domain.usecase
+files['app/src/main/java/com/example/myapplication/domain/usecase/GetUiConfigurationUseCase.kt'] = `package com.example.myapplication.domain.usecase
 
 import com.example.myapplication.domain.repository.UiConfigRepository
 
@@ -711,8 +689,7 @@ class GetUiConfigurationUseCase(
 `;
 
 // Theme files
-files['app/src/main/java/com/example/myapplication/presentation/theme/Theme.kt'] = `
-package com.example.myapplication.presentation.theme
+files['app/src/main/java/com/example/myapplication/presentation/theme/Theme.kt'] = `package com.example.myapplication.presentation.theme
 
 import android.app.Activity
 import android.os.Build
@@ -772,8 +749,7 @@ fun MyApplicationTheme(
 }
 `;
 
-files['app/src/main/java/com/example/myapplication/presentation/theme/Color.kt'] = `
-package com.example.myapplication.presentation.theme
+files['app/src/main/java/com/example/myapplication/presentation/theme/Color.kt'] = `package com.example.myapplication.presentation.theme
 
 import androidx.compose.ui.graphics.Color
 
@@ -786,8 +762,7 @@ val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
 `;
 
-files['app/src/main/java/com/example/myapplication/presentation/theme/Type.kt'] = `
-package com.example.myapplication.presentation.theme
+files['app/src/main/java/com/example/myapplication/presentation/theme/Type.kt'] = `package com.example.myapplication.presentation.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
@@ -807,28 +782,24 @@ val Typography = Typography(
 `;
 
 // Resource files
-files['app/src/main/res/values/strings.xml'] = `
-<resources>
+files['app/src/main/res/values/strings.xml'] = `<resources>
     <string name="app_name">My Application</string>
 </resources>
 `;
 
-files['app/src/main/res/values/colors.xml'] = `
-<?xml version="1.0" encoding="utf-8"?>
+files['app/src/main/res/values/colors.xml'] = `<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>
 `;
 
-files['app/src/main/res/xml/backup_rules.xml'] = `
-<?xml version="1.0" encoding="utf-8"?>
+files['app/src/main/res/xml/backup_rules.xml'] = `<?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
 </full-backup-content>
 `;
 
-files['app/src/main/res/xml/data_extraction_rules.xml'] = `
-<?xml version="1.0" encoding="utf-8"?>
+files['app/src/main/res/xml/data_extraction_rules.xml'] = `<?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="root" />
@@ -840,15 +811,13 @@ files['app/src/main/res/xml/data_extraction_rules.xml'] = `
 `;
 
 
-files['app/src/main/res/values/themes.xml'] = `
-<?xml version="1.0" encoding="utf-8"?>
+files['app/src/main/res/values/themes.xml'] = `<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.MyApplication" parent="android:Theme.Material.Light.NoActionBar" />
 </resources>
 `;
 
-files['app/src/main/res/drawable/ic_launcher_background.xml'] = `
-<?xml version="1.0" encoding="utf-8"?>
+files['app/src/main/res/drawable/ic_launcher_background.xml'] = `<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -860,16 +829,14 @@ files['app/src/main/res/drawable/ic_launcher_background.xml'] = `
 </vector>
 `;
 
-files['app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml'] = `
-<?xml version="1.0" encoding="utf-8"?>
+files['app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml'] = `<?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@drawable/ic_launcher_background" />
     <foreground android:drawable="@mipmap/ic_launcher_foreground" />
 </adaptive-icon>
 `;
 
-files['app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml'] = `
-<?xml version="1.0" encoding="utf-8"?>
+files['app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml'] = `<?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@drawable/ic_launcher_background" />
     <foreground android:drawable="@mipmap/ic_launcher_foreground" />
@@ -877,8 +844,7 @@ files['app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml'] = `
 `;
 
 // For simplicity, foreground is a simple vector
-files['app/src/main/res/mipmap-hdpi/ic_launcher_foreground.xml'] = `
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
+files['app/src/main/res/mipmap-hdpi/ic_launcher_foreground.xml'] = `<vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
@@ -918,4 +884,3 @@ export function getAndroidProjectTemplates(): Record<string, string> {
     });
     return mutableFiles;
 }
-
