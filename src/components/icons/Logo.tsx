@@ -3,7 +3,7 @@
 
 export function Logo() {
   return (
-    <div className="h-14 w-auto flex items-center" aria-label="UI Compose Builder Logo">
+    <div className="h-14 w-auto flex items-center" aria-label="Dashboard Builder Logo">
       <svg 
         viewBox="0 0 200 50" 
         xmlns="http://www.w3.org/2000/svg" 
@@ -22,7 +22,7 @@ export function Logo() {
         <rect x="15" y="15" width="20" height="20" rx="4" fill="#FFFFFF" />
         
         <g className="logo-text">
-          <text x="58" y="28" fontSize="22" fontWeight="700">UI Compose</text>
+          <text x="58" y="28" fontSize="22" fontWeight="700">Dashboard</text>
           <text x="58" y="46" fontSize="14" fontWeight="500" fill="#6B7280">Builder</text>
         </g>
       </svg>
