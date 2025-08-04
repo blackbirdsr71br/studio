@@ -14,29 +14,6 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-// Log for debugging to ensure environment variables are loaded
-console.log("Firebase Client SDK: Initializing with config:", {
-  apiKey: firebaseConfig.apiKey ? '***' : 'MISSING',
-  authDomain: firebaseConfig.authDomain,
-  projectId: firebaseConfig.projectId,
-  storageBucket: firebaseConfig.storageBucket,
-  messagingSenderId: firebaseConfig.messagingSenderId,
-  appId: firebaseConfig.appId,
-});
-
-if (!firebaseConfig.projectId || firebaseConfig.projectId.trim() === "") {
-  console.error(
-    "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n" +
-    "CRITICAL FIREBASE CONFIGURATION ERROR:\n" +
-    "NEXT_PUBLIC_FIREBASE_PROJECT_ID is missing or empty.\n" +
-    "This WILL cause Firestore operations to fail with an HTTP 400 error.\n" +
-    "The database URL will be malformed (e.g., 'projects//databases/(default)').\n" +
-    "Please verify this variable in your .env.local file and RESTART your dev server.\n" +
-    "Example: NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-actual-project-id\n" +
-    "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-  );
-}
-
 // Initialize Firebase App and Firestore
 let app: FirebaseApp;
 let db: Firestore;
