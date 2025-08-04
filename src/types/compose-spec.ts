@@ -27,6 +27,13 @@ export const DEFAULT_TOP_APP_BAR_ID = 'scaffold-top-app-bar';
 export const DEFAULT_BOTTOM_NAV_BAR_ID = 'scaffold-bottom-nav-bar';
 export const CORE_SCAFFOLD_ELEMENT_IDS = [ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_BOTTOM_NAV_BAR_ID];
 
+// Firestore and localStorage collection names
+export const DESIGNS_COLLECTION = "designs";
+export const MAIN_DESIGN_DOC_ID = "main-design-doc";
+export const CUSTOM_TEMPLATES_COLLECTION = "custom-component-templates";
+export const SAVED_LAYOUTS_COLLECTION = "saved-layouts";
+export const GALLERY_IMAGES_COLLECTION = "gallery-images";
+
 
 export interface ComponentPropertyOption {
   label: string;
@@ -926,3 +933,4 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
 );
 
 export const ModalJsonSchema = z.array(ModalComponentNodeSchema);
+
