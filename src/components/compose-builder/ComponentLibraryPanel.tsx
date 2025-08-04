@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { DraggableComponentItem, SavedLayoutPreview } from "./DraggableComponentItem";
+import { DraggableComponentItem, SavedLayoutPreview, ScreenPreview } from "./DraggableComponentItem";
 import type { ComponentType, CustomComponentTemplate, SavedLayout, Screen } from "@/types/compose-spec";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -310,41 +310,37 @@ export function ComponentLibraryPanel() {
                     {screens.map(screen => (
                       <div
                         key={screen.id}
+                        onClick={() => setActiveScreen(screen.id)}
                         className={cn(
-                          "flex items-center gap-2 p-2 rounded-md border text-sm cursor-pointer hover:bg-accent/10",
+                          "flex items-center p-1 rounded-md border text-sm cursor-pointer hover:bg-accent/10",
                            activeScreenId === screen.id ? 'bg-accent/20 border-accent' : 'border-sidebar-border'
                         )}
                       >
-                         <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 shrink-0"
-                            onClick={() => setActiveScreen(screen.id)}
-                            aria-label={`View ${screen.name}`}
-                          >
-                           <Eye className="h-4 w-4"/>
-                         </Button>
+                         <ScreenPreview screen={screen} />
+                         <div className='flex flex-col flex-grow items-start'>
+                            <span className="font-medium flex-grow truncate">{screen.name}</span>
 
-                         <span className="flex-grow truncate" onClick={() => setActiveScreen(screen.id)}>{screen.name}</span>
-
-                         <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => duplicateScreen(screen.id)} aria-label={`Duplicate ${screen.name}`}><Copy className="h-3.5 w-3.5"/></Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top"><p>Duplicate</p></TooltipContent>
-                         </Tooltip>
-                          <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRenameClick(screen, 'screen')} aria-label={`Rename ${screen.name}`}><Pencil className="h-3.5 w-3.5"/></Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top"><p>Rename</p></TooltipContent>
-                         </Tooltip>
-                         <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => handleDeleteClick(screen, 'screen')} aria-label={`Delete ${screen.name}`}><Trash2 className="h-3.5 w-3.5"/></Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top"><p>Delete</p></TooltipContent>
-                         </Tooltip>
+                            <div className="flex items-center gap-0.5 mt-1">
+                                <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => {e.stopPropagation(); duplicateScreen(screen.id)}} aria-label={`Duplicate ${screen.name}`}><Copy className="h-3.5 w-3.5"/></Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top"><p>Duplicate</p></TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => {e.stopPropagation(); handleRenameClick(screen, 'screen')}} aria-label={`Rename ${screen.name}`}><Pencil className="h-3.5 w-3.5"/></Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top"><p>Rename</p></TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={(e) => {e.stopPropagation(); handleDeleteClick(screen, 'screen')}} aria-label={`Delete ${screen.name}`}><Trash2 className="h-3.5 w-3.5"/></Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top"><p>Delete</p></TooltipContent>
+                                </Tooltip>
+                            </div>
+                         </div>
                       </div>
                     ))}
                   </div>

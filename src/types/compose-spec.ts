@@ -174,8 +174,8 @@ export interface DesignState {
     firestoreId?: string;
     name: string;
   } | null;
-  history: Screen[][]; // History of screen states
-  future: Screen[][]; // Future of screen states
+  history: { screens: Screen[], activeScreenId: string }[];
+  future: { screens: Screen[], activeScreenId: string }[];
   clipboard: DesignComponent[] | null;
 }
 
@@ -437,8 +437,6 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         clickId: 'animated_content_clicked',
       };
     default:
-      // For unknown types (which shouldn't happen for base types, but could be a template ID passed inadvertently)
-      // or if a type string like `custom/...` is passed directly.
       if (type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
          console.warn(`getDefaultProperties called with a custom template ID '${type}'. This is unexpected. Returning generic defaults.`);
          return { ...commonLayout, children: [], width: undefined, height: undefined, padding: 0, fillMaxWidth: false, fillMaxHeight: false, selfAlign: 'Inherit' };
@@ -447,8 +445,6 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
   }
 };
 
-// This function primarily provides display names for base component types.
-// The PropertyPanel will handle displaying the custom template's name for instances.
 export const getComponentDisplayName = (type: ComponentType | string): string => {
   switch (type as ComponentType) {
     case 'Scaffold': return 'Scaffold (Root)';
@@ -469,7 +465,6 @@ export const getComponentDisplayName = (type: ComponentType | string): string =>
     case 'BottomNavigationItem': return 'Nav Item';
     case 'AnimatedContent': return 'Animated Content';
     default: 
-      // If a custom type ID (e.g., "custom/...") was passed by mistake, try to make it readable.
       if (type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
         return type.replace(CUSTOM_COMPONENT_TYPE_PREFIX, "").replace(/-\d+$/, "").replace(/-/g, ' ');
       }
@@ -841,8 +836,6 @@ export function isContainerType(type: ComponentType | string, customTemplates?: 
         }
       }
     }
-    // If template not found or no root, or customTemplates not provided for a custom type string,
-    // assume not a container by default for safety.
     return false;
   }
   return CONTAINER_TYPES.includes(type as ComponentType);
@@ -851,8 +844,6 @@ export function isContainerType(type: ComponentType | string, customTemplates?: 
 
 const ColorStringSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").or(z.literal('transparent'));
 
-// Schema for validating JSON that is pasted into the "View JSON" modal
-// This JSON represents the *content area* of the scaffold (children of DEFAULT_CONTENT_LAZY_COLUMN_ID)
 const BaseModalPropertiesSchema = z.object({
   text: z.string().optional(),
   fontSize: z.number().min(0, "Font size must be non-negative").optional(),
@@ -909,53 +900,29 @@ const BaseModalPropertiesSchema = z.object({
   iconSpacing: z.number().min(0).optional(),
   animationType: z.enum(['Fade', 'Scale', 'SlideFromTop', 'SlideFromBottom', 'SlideFromStart', 'SlideFromEnd']).optional(),
   animationDuration: z.number().int().min(0).optional(),
-  // children property is handled by the recursive schema definition below
-}).catchall(z.any()); // Allow other properties not explicitly defined, for flexibility
+}).catchall(z.any()); 
 
 
-// Recursive type for component nodes in the "View JSON" modal (content area only)
 type ModalComponentNodePlain = {
   id: string;
-  type: string; // Could be ComponentType or custom template ID string
+  type: string;
   name: string;
-  parentId: string | null; // For content area items, parentId would be their container *within* the content area
-  templateIdRef?: string; // If it's an instance of a custom component
+  parentId: string | null;
+  templateIdRef?: string;
   properties?: Partial<BaseComponentProps> & { children?: ModalComponentNodePlain[] };
 };
 
-// Zod schema for a single component node in the "View JSON" modal (content area)
 const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =>
   z.object({
     id: z.string().min(1, "Component ID cannot be empty"),
-    type: z.string().min(1, "Component type cannot be empty"), // Validate against known types if stricter control is needed
+    type: z.string().min(1, "Component type cannot be empty"),
     name: z.string().min(1, "Component name cannot be empty"),
-    parentId: z.string().nullable(), // This parentId is relative to other components in the content area JSON
+    parentId: z.string().nullable(),
     templateIdRef: z.string().startsWith(CUSTOM_COMPONENT_TYPE_PREFIX).optional(),
     properties: BaseModalPropertiesSchema.extend({
-      children: z.array(ModalComponentNodeSchema).optional(), // Recursively define children
+      children: z.array(ModalComponentNodeSchema).optional(),
     }).optional(),
-  }).refine(data => {
-    // Example custom validation: if type is Image, src should ideally exist
-    if (data.type === 'Image') {
-      if (data.properties?.src && !z.string().url().or(z.string().startsWith("data:image/")).safeParse(data.properties.src).success) {
-        // This would be caught by BaseModalPropertiesSchema's .url() or .startsWith()
-      }
-    }
-    // Example for Spacer: must have width, height, or weight if not filling
-    if (data.type === 'Spacer') {
-        const props = data.properties || {};
-        const hasWeight = typeof props.layoutWeight === 'number' && props.layoutWeight > 0;
-        const hasWidth = typeof props.width === 'number' && props.width > 0;
-        const hasHeight = typeof props.height === 'number' && props.height > 0;
-        // If it's not weighted, it should have explicit dimensions
-        // This is more complex than a simple refine, might need to be checked post-parse or by AI.
-        if (!hasWeight && !hasWidth && !hasHeight) {
-          // This is a validation, not a type error. Zod's .refine needs to return false for error.
-        }
-    }
-    return true;
   })
 );
 
-// The schema for the entire JSON content of the "View JSON" modal (content area)
 export const ModalJsonSchema = z.array(ModalComponentNodeSchema);

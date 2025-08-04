@@ -15,7 +15,6 @@ import { isContainerType, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFA
 
 interface RenderedComponentWrapperProps {
   component: DesignComponent;
-  zoomLevel: number;
   isPreview?: boolean;
 }
 
@@ -94,8 +93,8 @@ const getDimensionValue = (
     return 'auto';
   };
   
-export function RenderedComponentWrapper({ component, zoomLevel, isPreview = false }: RenderedComponentWrapperProps) {
-  const { activeScreenId, setActiveScreen, selectedComponentId, selectComponent, getComponentById, addComponent, moveComponent, updateComponent, customComponentTemplates } = useDesign();
+export function RenderedComponentWrapper({ component, isPreview = false }: RenderedComponentWrapperProps) {
+  const { activeScreenId, setActiveScreen, selectedComponentId, selectComponent, getComponentById, addComponent, moveComponent, updateComponent, customComponentTemplates, zoomLevel } = useDesign();
   const ref = useRef<HTMLDivElement>(null);
   const [dropIndicator, setDropIndicator] = useState<DropIndicatorPosition>(null);
   const [isResizing, setIsResizing] = useState(false);
@@ -218,11 +217,11 @@ export function RenderedComponentWrapper({ component, zoomLevel, isPreview = fal
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (component.type === 'BottomNavigationItem' && component.properties.navigateTo) {
-        setActiveScreen(component.properties.navigateTo);
-        return;
-    }
     if (!isPreview) {
+      if (component.type === 'BottomNavigationItem' && component.properties.navigateTo) {
+          setActiveScreen(component.properties.navigateTo);
+          return;
+      }
       selectComponent(component.id);
     }
   };
@@ -321,7 +320,7 @@ export function RenderedComponentWrapper({ component, zoomLevel, isPreview = fal
           <div className="flex flex-col w-full h-full bg-[var(--scaffold-bg-color)]" style={{'--scaffold-bg-color': component.properties.backgroundColor || 'transparent'} as React.CSSProperties}>
             {topBarChild && (
               <div style={{ flexShrink: 0, width: '100%', height: `${topBarChild.properties.height || 56}px` }} className="flex w-full">
-                <RenderedComponentWrapper component={topBarChild} zoomLevel={zoomLevel} isPreview={isPreview} />
+                <RenderedComponentWrapper component={topBarChild} isPreview={isPreview} />
               </div>
             )}
             {contentChild && (
@@ -329,12 +328,12 @@ export function RenderedComponentWrapper({ component, zoomLevel, isPreview = fal
                 style={{ flexGrow: 1, minHeight: 0, width: '100%' }}
                 className={cn("flex w-full", "overflow-y-auto overflow-x-hidden")}
               >
-                <RenderedComponentWrapper component={contentChild} zoomLevel={zoomLevel} isPreview={isPreview} />
+                <RenderedComponentWrapper component={contentChild} isPreview={isPreview} />
               </div>
             )}
             {bottomBarChild && (
               <div style={{ flexShrink: 0, width: '100%', height: `${bottomBarChild.properties.height || 56}px` }} className="flex w-full">
-                 <RenderedComponentWrapper component={bottomBarChild} zoomLevel={zoomLevel} isPreview={isPreview} />
+                 <RenderedComponentWrapper component={bottomBarChild} isPreview={isPreview} />
               </div>
             )}
           </div>
@@ -350,7 +349,7 @@ export function RenderedComponentWrapper({ component, zoomLevel, isPreview = fal
       case 'Box':
       case 'Card':
       case 'LazyColumn': 
-        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={false} zoomLevel={zoomLevel} isPreview={isPreview} />;
+        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={false} isPreview={isPreview} />;
 
       case 'Row':
       case 'LazyRow':
@@ -358,8 +357,11 @@ export function RenderedComponentWrapper({ component, zoomLevel, isPreview = fal
       case 'LazyHorizontalGrid':
       case 'TopAppBar': 
       case 'BottomNavigationBar':
+      case 'AnimatedContent':
+        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={true} isPreview={isPreview} />;
+      
       case 'BottomNavigationItem':
-        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={component.type === 'BottomNavigationItem' ? false : true} zoomLevel={zoomLevel} isPreview={isPreview} />;
+        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={false} isPreview={isPreview} />;
       
       case 'Spacer':
         return (
@@ -380,7 +382,7 @@ export function RenderedComponentWrapper({ component, zoomLevel, isPreview = fal
              const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
              if (rootTemplateComponent) {
                 const isTemplateRootRowLike = ['Row', 'LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar'].includes(rootTemplateComponent.type);
-                return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isTemplateRootRowLike} zoomLevel={zoomLevel} isPreview={isPreview} />;
+                return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isTemplateRootRowLike} isPreview={isPreview} />;
              }
            }
         }

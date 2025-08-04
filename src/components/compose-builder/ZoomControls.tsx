@@ -1,19 +1,18 @@
+
 'use client';
 
 import { Button } from "@/components/ui/button";
 import { ZoomIn, ZoomOut } from "lucide-react";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { useDesign } from "@/contexts/DesignContext";
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 2.0;
 const ZOOM_STEP = 0.1;
 
-interface ZoomControlsProps {
-    zoomLevel: number;
-    setZoomLevel: (level: number | ((prevLevel: number) => number)) => void;
-}
+export function ZoomControls() {
+    const { zoomLevel, setZoomLevel } = useDesign();
 
-export function ZoomControls({ zoomLevel, setZoomLevel }: ZoomControlsProps) {
     const handleZoomIn = () => {
         setZoomLevel(prev => Math.min(MAX_ZOOM, prev + ZOOM_STEP));
     };

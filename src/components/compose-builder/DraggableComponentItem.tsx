@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { ComponentType, CustomComponentTemplate, DesignComponent, SavedLayout } from "@/types/compose-spec";
+import type { ComponentType, CustomComponentTemplate, DesignComponent, SavedLayout, Screen } from "@/types/compose-spec";
 import type { DesignContextType } from "@/contexts/DesignContext";
 import { getComponentDisplayName, ROOT_SCAFFOLD_ID, isContainerType } from "@/types/compose-spec";
 import type { Icon as LucideIcon } from "lucide-react";
@@ -12,14 +12,15 @@ import { cn } from "@/lib/utils";
 import { DesignContext, useDesign } from '@/contexts/DesignContext';
 import { useMemo, FC, ReactNode } from "react";
 import { RenderedComponentWrapper } from './RenderedComponentWrapper';
+import { MobileFrame } from "./MobileFrame";
 
 // A read-only, self-contained provider for rendering previews.
 // This sandboxes the rendering so it doesn't interfere with the main canvas.
 const PreviewDesignProvider: FC<{ components: DesignComponent[], children: ReactNode }> = ({ components, children }) => {
-  const { customComponentTemplates: allTemplates } = useDesign(); // Get all templates from the main context
+  const { customComponentTemplates: allTemplates, screens, activeScreenId } = useDesign(); // Get all templates from the main context
   
   const dummyContextValue = useMemo(() => {
-    const contextComponents = components; // No data modification needed here anymore
+    const contextComponents = components;
     const getComponentById = (id: string) => contextComponents.find(c => c.id === id);
 
     const value: DesignContextType = {
@@ -30,6 +31,8 @@ const PreviewDesignProvider: FC<{ components: DesignComponent[], children: React
         nextId: 0,
         editingTemplateInfo: null,
         editingLayoutInfo: null,
+        screens,
+        activeScreenId,
         savedLayouts: [],
         galleryImages: [],
         history: [],
@@ -41,7 +44,6 @@ const PreviewDesignProvider: FC<{ components: DesignComponent[], children: React
         updateComponent: () => {},
         updateComponentPosition: () => {},
         clearDesign: () => {},
-        setDesign: () => {},
         overwriteComponents: () => ({success: true}),
         moveComponent: () => {},
         saveSelectedAsCustomTemplate: async () => {},
@@ -61,9 +63,14 @@ const PreviewDesignProvider: FC<{ components: DesignComponent[], children: React
         pasteComponent: () => {},
         addImageToGallery: async () => {},
         removeImageFromGallery: async () => {},
+        addScreen: () => '',
+        deleteScreen: () => {},
+        renameScreen: () => {},
+        setActiveScreen: () => {},
+        duplicateScreen: () => {},
     };
     return value;
-  }, [components, allTemplates]);
+  }, [components, allTemplates, screens, activeScreenId]);
 
   return <DesignContext.Provider value={dummyContextValue}>{children}</DesignContext.Provider>
 };
@@ -93,7 +100,6 @@ const CustomComponentPreview = ({ template }: { template: CustomComponentTemplat
   } else if (rootComponent.properties.fillMaxHeight || rootComponent.properties.fillMaxSize) {
     unscaledHeight = 400;
   } else {
-    // A better heuristic for wrap_content height, assuming a standard aspect ratio if not defined
     unscaledHeight = isContainerType(rootComponent.type, []) ? unscaledWidth * (4/3) : 100;
   }
   
@@ -159,6 +165,30 @@ export const SavedLayoutPreview = ({ layout }: { layout: SavedLayout }) => {
 };
 
 
+export const ScreenPreview = ({ screen }: { screen: Screen }) => {
+  const rootComponent = screen.components.find(c => c.id === ROOT_SCAFFOLD_ID && c.parentId === null);
+  if (!rootComponent) {
+    return <div className="text-xs text-destructive flex items-center justify-center h-full">Preview Error: No Scaffold</div>;
+  }
+  
+  const PREVIEW_WIDTH = 50; 
+  const FRAME_WIDTH = 432 + 16;
+  const scale = PREVIEW_WIDTH / FRAME_WIDTH;
+
+  return (
+    <div className="w-14 h-auto bg-muted/20 rounded-sm overflow-hidden border border-sidebar-border/50 pointer-events-none flex items-center justify-center mr-2 shrink-0">
+      <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+        <MobileFrame isPreview>
+          <PreviewDesignProvider components={screen.components}>
+            <RenderedComponentWrapper component={rootComponent} isPreview={true} />
+          </PreviewDesignProvider>
+        </MobileFrame>
+      </div>
+    </div>
+  );
+}
+
+
 interface DraggableComponentItemProps {
   type: ComponentType | string;
   Icon: LucideIcon;
@@ -206,5 +236,3 @@ export function DraggableComponentItem({ type, Icon, displayName, template }: Dr
     </Tooltip>
   );
 }
-
-    

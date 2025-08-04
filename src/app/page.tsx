@@ -73,13 +73,12 @@ function KeyboardShortcuts() {
 }
 
 function MainApp() {
+  const { zoomLevel, setZoomLevel } = useDesign();
   const generateModalRef = useRef<GenerateCodeModalRef>(null);
   const viewJsonModalRef = useRef<ViewJsonModalRef>(null);
   const themeEditorModalRef = useRef<ThemeEditorModalRef>(null);
   const imageSourceModalRef = useRef<ImageSourceModalRef>(null);
   const publishConfigModalRef = useRef<PublishConfigModalRef>(null);
-
-  const [zoomLevel, setZoomLevel] = useState(0.65);
 
   useEffect(() => {
     const mainElement = document.querySelector('main');
@@ -100,7 +99,7 @@ function MainApp() {
     return () => {
       mainElement.removeEventListener('wheel', handleWheel);
     };
-  }, []);
+  }, [setZoomLevel]);
 
   return (
     <>
@@ -129,11 +128,11 @@ function MainApp() {
                 }}
               >
                 <MobileFrame>
-                  <DesignSurface zoomLevel={zoomLevel} />
+                  <DesignSurface />
                 </MobileFrame>
               </div>
             </div>
-            <ZoomControls zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} />
+            <ZoomControls />
           </main>
           <PropertyPanel imageSourceModalRef={imageSourceModalRef} />
         </div>

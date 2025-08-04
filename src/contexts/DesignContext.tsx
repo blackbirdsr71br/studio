@@ -6,7 +6,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { DesignComponent, DesignState, ComponentType, BaseComponentProps, CustomComponentTemplate, SavedLayout, GalleryImage, Screen } from '@/types/compose-spec';
 import { getDefaultProperties, CUSTOM_COMPONENT_TYPE_PREFIX, isContainerType, getComponentDisplayName, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID, CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
 import { db } from '@/lib/firebase';
-import { collection, doc, setDoc, getDocs, deleteDoc, updateDoc, query, orderBy } from "firebase/firestore";
+import { collection, doc, setDoc, getDocs, deleteDoc, updateDoc, query, orderBy, getDoc } from "firebase/firestore";
+import { useToast } from '@/hooks/use-toast';
+import { useDebouncedCallback } from 'use-debounce';
+
 
 interface DesignContextType extends DesignState {
   // Methods for the active screen
@@ -53,6 +56,8 @@ const DesignContext = React.createContext<DesignContextType | undefined>(undefin
 const CUSTOM_TEMPLATES_COLLECTION = 'customComponentTemplates';
 const SAVED_LAYOUTS_COLLECTION = 'savedLayouts';
 const GALLERY_IMAGES_COLLECTION = 'galleryImages';
+const DESIGNS_COLLECTION = 'designs';
+const MAIN_DESIGN_DOC_ID = 'main_design';
 
 
 const deepClone = <T>(obj: T): T => {
@@ -91,7 +96,6 @@ export function createNewScreen(id: string, name: string, nextIdStart: number): 
   const contentLazyColumnProps = getDefaultProperties('LazyColumn', DEFAULT_CONTENT_LAZY_COLUMN_ID);
   const bottomNavBarProps = getDefaultProperties('BottomNavigationBar', DEFAULT_BOTTOM_NAV_BAR_ID);
   
-  // Create default nav items for a new screen
   let currentNextId = nextIdStart;
   const navItems = ['Home', 'Store', 'Benefits', 'Profile'].map((item, index) => {
     const navItemId = `comp-${currentNextId++}`;
@@ -161,9 +165,11 @@ const createInitialDesignState = (): DesignState => {
   return {
     screens: [firstScreen],
     activeScreenId: firstScreen.id,
+    
     components: firstScreen.components,
     selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID,
     nextId: firstScreen.nextId,
+    
     customComponentTemplates: [],
     savedLayouts: [],
     galleryImages: [],
@@ -239,6 +245,27 @@ const defaultGalleryImages: GalleryImage[] = uniqueDefaultUrls.map((url, index) 
 export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [designState, setDesignState] = React.useState<DesignState>(initialDesignState);
   const [isClient, setIsClient] = React.useState(false);
+  const { toast } = useToast();
+
+  const saveDesignToFirestore = useDebouncedCallback(async (stateToSave: DesignState) => {
+    if (!db || stateToSave.editingTemplateInfo || stateToSave.editingLayoutInfo) return;
+    try {
+        const designDocRef = doc(db, DESIGNS_COLLECTION, MAIN_DESIGN_DOC_ID);
+        // We only persist the core parts of the design state, not the entire context
+        const persistentState = {
+            screens: stateToSave.screens,
+            activeScreenId: stateToSave.activeScreenId,
+        };
+        await setDoc(designDocRef, sanitizeForFirestore(persistentState));
+    } catch (e) {
+        console.error("Failed to save design to Firestore:", e);
+        toast({
+            title: "Sync Error",
+            description: "Could not save changes to the cloud. They are saved locally.",
+            variant: "destructive"
+        });
+    }
+  }, 1500);
 
   const updateStateWithHistory = React.useCallback((
     updater: (prevState: DesignState) => Partial<DesignState>,
@@ -274,33 +301,23 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
               nextState.nextId = currentActiveScreen.nextId;
           }
       }
-
+      saveDesignToFirestore(nextState);
       return nextState;
     });
-  }, []);
+  }, [saveDesignToFirestore]);
 
   React.useEffect(() => {
     setIsClient(true);
     const loadInitialData = async () => {
       try {
-        let galleryToSet: GalleryImage[] = [];
         const savedImagesJson = localStorage.getItem(GALLERY_IMAGES_COLLECTION);
-        
-        if (savedImagesJson) {
-          const savedImages = JSON.parse(savedImagesJson);
-          if (Array.isArray(savedImages) && savedImages.length > 0) {
-            galleryToSet = savedImages;
-          } else {
-            galleryToSet = defaultGalleryImages;
+        const galleryToSet = savedImagesJson ? JSON.parse(savedImagesJson) : defaultGalleryImages;
+        if (!savedImagesJson) {
             localStorage.setItem(GALLERY_IMAGES_COLLECTION, JSON.stringify(galleryToSet));
-          }
-        } else {
-          galleryToSet = defaultGalleryImages;
-          localStorage.setItem(GALLERY_IMAGES_COLLECTION, JSON.stringify(galleryToSet));
         }
         setDesignState(prev => ({ ...prev, galleryImages: galleryToSet.sort((a, b) => b.timestamp - a.timestamp) }));
       } catch (error) {
-        console.error("Error loading gallery images from localStorage:", error);
+        console.error("Error loading gallery from localStorage:", error);
         setDesignState(prev => ({ ...prev, galleryImages: defaultGalleryImages.sort((a, b) => b.timestamp - a.timestamp) }));
       }
 
@@ -308,31 +325,42 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         console.warn("Firestore not available. Loading from local only.");
         return;
       }
+
       try {
+        const designDocRef = doc(db, DESIGNS_COLLECTION, MAIN_DESIGN_DOC_ID);
+        const designDocSnap = await getDoc(designDocRef);
+
+        if (designDocSnap.exists()) {
+            const data = designDocSnap.data() as {screens: Screen[], activeScreenId: string};
+            const activeScreen = data.screens.find(s => s.id === data.activeScreenId);
+            setDesignState(prev => ({
+                ...prev,
+                screens: data.screens,
+                activeScreenId: data.activeScreenId,
+                components: activeScreen?.components || prev.components,
+                nextId: activeScreen?.nextId || prev.nextId
+            }));
+        } else {
+            saveDesignToFirestore(initialDesignState); // Save initial state if none exists
+        }
+
         const templatesQuery = query(collection(db, CUSTOM_TEMPLATES_COLLECTION));
         const templatesSnapshot = await getDocs(templatesQuery);
-        const templates: CustomComponentTemplate[] = templatesSnapshot.docs.map(docSnap => ({
-          firestoreId: docSnap.id,
-          ...docSnap.data(),
-        } as CustomComponentTemplate));
+        const templates: CustomComponentTemplate[] = templatesSnapshot.docs.map(docSnap => ({ firestoreId: docSnap.id, ...docSnap.data() } as CustomComponentTemplate));
         setDesignState(prev => ({ ...prev, customComponentTemplates: templates }));
-      } catch (error) {
-        console.error("Error loading custom templates:", error);
-      }
-      try {
+        
         const layoutsQuery = query(collection(db, SAVED_LAYOUTS_COLLECTION), orderBy("timestamp", "desc"));
         const layoutsSnapshot = await getDocs(layoutsQuery);
-        const layouts: SavedLayout[] = layoutsSnapshot.docs.map(docSnap => ({
-          firestoreId: docSnap.id,
-          ...docSnap.data(),
-        } as SavedLayout));
+        const layouts: SavedLayout[] = layoutsSnapshot.docs.map(docSnap => ({ firestoreId: docSnap.id, ...docSnap.data() } as SavedLayout));
         setDesignState(prev => ({ ...prev, savedLayouts: layouts }));
+
       } catch (error) {
-        console.error("Error loading saved layouts:", error);
+        console.error("Error loading initial data from Firestore:", error);
+        toast({title: "Data Load Error", description: "Could not load data from the cloud.", variant: "destructive"});
       }
     };
     loadInitialData();
-  }, []); 
+  }, [toast, saveDesignToFirestore]); 
 
   const getComponentById = React.useCallback(
     (id: string) => designState.components.find(comp => comp.id === id),
@@ -712,13 +740,13 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     if (db && firestoreId) {
         try {
             await updateDoc(doc(db, SAVED_LAYOUTS_COLLECTION, firestoreId), { name: newName });
-            setDesignState(prev => ({ ...prev, savedLayouts: prev.savedLayouts.map(l => l.layoutId === layoutId ? { ...l, name: newName } : l) }));
+            setDesignState(prev => ({ ...prev, savedLayouts: prev.savedLayouts.map(l => l.layoutId === layoutId ? { ...l, name: newName } : t) }));
             return { success: true, message: "Layout renamed in Firestore." };
         } catch (e) {
             return { success: false, message: "Could not rename layout." };
         }
     }
-    setDesignState(prev => ({ ...prev, savedLayouts: prev.savedLayouts.map(l => l.layoutId === layoutId ? { ...l, name: newName } : l) }));
+    setDesignState(prev => ({ ...prev, savedLayouts: prev.savedLayouts.map(l => l.layoutId === layoutId ? { ...l, name: newName } : t) }));
     return { success: true, message: "Layout renamed locally." };
   }, []);
   
@@ -729,9 +757,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     let maxId = 0;
     template.componentTree.forEach(c => { const n = parseInt(c.id.split('-').pop() || '0'); if (n > maxId) maxId = n; });
     
-    // This action replaces the entire design state temporarily
-    setDesignState(prev => ({
-        ...prev,
+    updateStateWithHistory(prev => ({
         components: deepClone(template.componentTree),
         nextId: maxId + 1,
         selectedComponentId: template.rootComponentId,
@@ -739,22 +765,20 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         editingLayoutInfo: null,
     }));
     return { success: true, message: `Editing template "${template.name}".` };
-  }, [designState.customComponentTemplates]);
+  }, [designState.customComponentTemplates, updateStateWithHistory]);
 
   const loadLayoutForEditing = React.useCallback((layoutId: string) => {
     const layout = designState.savedLayouts.find(l => l.layoutId === layoutId);
     if (!layout) return;
 
-    // This action replaces the entire design state temporarily
-    setDesignState(prev => ({
-        ...prev,
+    updateStateWithHistory(prev => ({
         components: deepClone(layout.components),
         nextId: layout.nextId,
         selectedComponentId: layout.components.find(c => c.parentId === null)?.id || DEFAULT_CONTENT_LAZY_COLUMN_ID,
         editingTemplateInfo: null,
         editingLayoutInfo: { layoutId, firestoreId: layout.firestoreId, name: layout.name },
     }));
-  }, [designState.savedLayouts]);
+  }, [designState.savedLayouts, updateStateWithHistory]);
   
   const updateCustomTemplate = React.useCallback(async (): Promise<{success: boolean, message: string}> => {
     const { editingTemplateInfo, components } = designState;
@@ -788,46 +812,22 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, [designState, clearDesign]);
 
   const undo = React.useCallback(() => {
-    setDesignState(prev => {
-        if (prev.history.length === 0) return prev;
+    updateStateWithHistory(prev => {
+        if (prev.history.length === 0) return {};
         const lastState = prev.history[prev.history.length - 1];
-        const newHistory = prev.history.slice(0, prev.history.length - 1);
         const newFuture = [{screens: prev.screens, activeScreenId: prev.activeScreenId}, ...prev.future];
-
-        const activeScreen = lastState.screens.find(s => s.id === lastState.activeScreenId);
-
-        return {
-            ...prev,
-            ...lastState,
-            components: activeScreen?.components || [],
-            nextId: activeScreen?.nextId || 0,
-            selectedComponentId: null,
-            future: newFuture,
-            history: newHistory,
-        };
+        return { ...lastState, future: newFuture, history: prev.history.slice(0, prev.history.length-1) };
     });
-  }, []);
+  }, [updateStateWithHistory]);
 
   const redo = React.useCallback(() => {
-    setDesignState(prev => {
-        if (prev.future.length === 0) return prev;
+    updateStateWithHistory(prev => {
+        if (prev.future.length === 0) return {};
         const nextState = prev.future[0];
-        const newFuture = prev.future.slice(1);
         const newHistory = [...prev.history, {screens: prev.screens, activeScreenId: prev.activeScreenId}];
-        
-        const activeScreen = nextState.screens.find(s => s.id === nextState.activeScreenId);
-
-        return {
-            ...prev,
-            ...nextState,
-            components: activeScreen?.components || [],
-            nextId: activeScreen?.nextId || 0,
-            selectedComponentId: null,
-            history: newHistory,
-            future: newFuture,
-        };
+        return { ...nextState, future: prev.future.slice(1), history: newHistory };
     });
-  }, []);
+  }, [updateStateWithHistory]);
 
   const copyComponent = React.useCallback((id: string): {success: boolean, message?: string} => {
     const compToCopy = getComponentById(id);
@@ -957,7 +957,14 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const renameScreen = useCallback((screenId: string, newName: string) => {
     updateStateWithHistory(prev => ({
-      screens: prev.screens.map(s => s.id === screenId ? { ...s, name: newName } : s)
+      screens: prev.screens.map(s => {
+          if (s.id === screenId) {
+            const topBar = s.components.find(c => c.id === DEFAULT_TOP_APP_BAR_ID);
+            if (topBar) topBar.properties.title = newName;
+            return { ...s, name: newName };
+          }
+          return s;
+      })
     }));
   }, [updateStateWithHistory]);
 

@@ -1,3 +1,4 @@
+
 'use client';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
@@ -6,6 +7,7 @@ import { useTheme } from '@/contexts/ThemeContext'; // Import useTheme
 interface MobileFrameProps {
   children: ReactNode;
   className?: string;
+  isPreview?: boolean;
 }
 
 // Target screen dimensions: 432px width, 896px height
@@ -20,7 +22,7 @@ const SPEAKER_BAR_MARGIN_BOTTOM = 4; // mb-1
 export const FRAME_WIDTH = SCREEN_WIDTH_TARGET + (FRAME_BODY_PADDING * 2);
 export const FRAME_HEIGHT = SCREEN_HEIGHT_TARGET + (FRAME_BODY_PADDING * 2) + SPEAKER_BAR_HEIGHT + SPEAKER_BAR_MARGIN_BOTTOM;
 
-export function MobileFrame({ children, className }: MobileFrameProps) {
+export function MobileFrame({ children, className, isPreview = false }: MobileFrameProps) {
   const { resolvedTheme } = useTheme();
 
   const frameBodyColor = resolvedTheme === 'dark' ? 'bg-neutral-300' : 'bg-neutral-900';
@@ -31,7 +33,8 @@ export function MobileFrame({ children, className }: MobileFrameProps) {
       className={cn(
         "rounded-[44px] shadow-xl mx-auto my-auto flex flex-col",
         frameBodyColor,
-        className
+        className,
+        { 'shadow-none': isPreview }
       )}
       style={{
         width: `${FRAME_WIDTH}px`,
@@ -56,8 +59,6 @@ export function MobileFrame({ children, className }: MobileFrameProps) {
         className={cn(
           "bg-background overflow-hidden rounded-[32px] w-full flex-grow" 
         )}
-        // The actual screen content area will be SCREEN_WIDTH_TARGET x SCREEN_HEIGHT_TARGET
-        // because DesignSurface inside this will be w-full h-full.
       >
         {children} {/* DesignSurface will go here */}
       </div>
