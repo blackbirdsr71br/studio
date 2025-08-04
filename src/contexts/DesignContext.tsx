@@ -48,6 +48,10 @@ interface DesignContextType extends DesignState {
   clearDesign: () => void; // Resets the active screen
   addImageToGallery: (url: string) => Promise<{success: boolean, message: string}>;
   removeImageFromGallery: (id: string) => Promise<{success: boolean, message: string}>;
+  
+  // Zoom functionality
+  zoomLevel: number;
+  setZoomLevel: React.Dispatch<React.SetStateAction<number>>;
 }
 
 
@@ -246,6 +250,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [designState, setDesignState] = React.useState<DesignState>(initialDesignState);
   const [isClient, setIsClient] = React.useState(false);
   const { toast } = useToast();
+  const [zoomLevel, setZoomLevel] = useState(1.0);
 
   const saveDesignToFirestore = useDebouncedCallback(async (stateToSave: DesignState) => {
     if (!db || stateToSave.editingTemplateInfo || stateToSave.editingLayoutInfo) return;
@@ -990,7 +995,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     saveCurrentCanvasAsLayout, loadLayoutToCanvas, deleteSavedLayout, renameSavedLayout,
     loadTemplateForEditing, updateCustomTemplate, loadLayoutForEditing, updateSavedLayout,
     undo, redo, copyComponent, pasteComponent, addImageToGallery, removeImageFromGallery,
-    addScreen, deleteScreen, renameScreen, setActiveScreen, duplicateScreen
+    addScreen, deleteScreen, renameScreen, setActiveScreen, duplicateScreen,
+    zoomLevel, setZoomLevel,
   };
 
   if (!isClient) {

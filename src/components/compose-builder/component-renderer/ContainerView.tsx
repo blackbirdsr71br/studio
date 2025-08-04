@@ -13,7 +13,6 @@ interface ContainerViewProps {
   component: DesignComponent;
   childrenComponents: DesignComponent[];
   isRow: boolean;
-  zoomLevel: number;
   isPreview?: boolean;
 }
 
@@ -50,7 +49,7 @@ const DynamicLucideIcon = ({ name, ...props }: { name: string } & icons.LucidePr
 };
 
 
-export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, zoomLevel, isPreview = false }: ContainerViewProps) {
+export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, isPreview = false }: ContainerViewProps) {
   const { customComponentTemplates } = useDesign();
   const { resolvedTheme } = useTheme();
 
@@ -409,7 +408,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       {bottomNavItemIcon}
       {bottomNavItemLabel}
       {childrenComponents.map(child => (
-        <RenderedComponentWrapper key={child.id} component={child} zoomLevel={zoomLevel} isPreview={isPreview} />
+        <RenderedComponentWrapper key={child.id} component={child} isPreview={isPreview} />
       ))}
     </div>
   );
