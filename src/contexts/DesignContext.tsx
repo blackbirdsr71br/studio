@@ -2,23 +2,33 @@
 'use client';
 
 import type { ReactNode} from 'react';
-import React, from 'react';
-import type { DesignComponent, DesignState, ComponentType, BaseComponentProps, CustomComponentTemplate, SavedLayout, GalleryImage } from '@/types/compose-spec';
+import React, { useState, useEffect, useCallback } from 'react';
+import type { DesignComponent, DesignState, ComponentType, BaseComponentProps, CustomComponentTemplate, SavedLayout, GalleryImage, Screen } from '@/types/compose-spec';
 import { getDefaultProperties, CUSTOM_COMPONENT_TYPE_PREFIX, isContainerType, getComponentDisplayName, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID, CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
 import { db } from '@/lib/firebase';
 import { collection, doc, setDoc, getDocs, deleteDoc, updateDoc, query, orderBy } from "firebase/firestore";
 
 interface DesignContextType extends DesignState {
+  // Methods for the active screen
   addComponent: (typeOrTemplateId: ComponentType | string, parentId?: string | null, dropPosition?: { x: number; y: number }, index?: number) => void;
   deleteComponent: (id: string) => void;
   selectComponent: (id: string | null) => void;
   updateComponent: (id: string, updates: { name?: string; properties?: Partial<BaseComponentProps>; templateIdRef?: string }) => void;
   updateComponentPosition: (id: string, position: { x: number; y: number }) => void;
   getComponentById: (id: string) => DesignComponent | undefined;
-  clearDesign: () => void;
-  setDesign: (newDesign: DesignState) => void;
   overwriteComponents: (hierarchicalUserComponentsJson: any[]) => { success: boolean, error?: string };
   moveComponent: (draggedId: string, newParentId: string | null, newIndex?: number) => void;
+  copyComponent: (id: string) => {success: boolean, message?: string};
+  pasteComponent: (targetParentId?: string | null) => {success: boolean, message?: string};
+
+  // Methods for managing screens
+  addScreen: (name?: string, componentsToCopy?: DesignComponent[], nextIdToUse?: number) => string;
+  deleteScreen: (screenId: string) => void;
+  renameScreen: (screenId: string, newName: string) => void;
+  setActiveScreen: (screenId: string) => void;
+  duplicateScreen: (screenId: string) => void;
+  
+  // Methods for global items (templates, layouts, gallery)
   saveSelectedAsCustomTemplate: (name: string) => Promise<{success: boolean, message: string}>;
   deleteCustomComponentTemplate: (templateId: string, firestoreDocId?: string) => Promise<{success: boolean, message: string}>;
   renameCustomComponentTemplate: (templateId: string, newName: string, firestoreDocId?: string) => Promise<{success: boolean, message: string}>;
@@ -32,11 +42,11 @@ interface DesignContextType extends DesignState {
   updateSavedLayout: () => Promise<{success: boolean, message: string}>;
   undo: () => void;
   redo: () => void;
-  copyComponent: (id: string) => {success: boolean, message?: string};
-  pasteComponent: (targetParentId?: string | null) => {success: boolean, message?: string};
+  clearDesign: () => void; // Resets the active screen
   addImageToGallery: (url: string) => Promise<{success: boolean, message: string}>;
   removeImageFromGallery: (id: string) => Promise<{success: boolean, message: string}>;
 }
+
 
 const DesignContext = React.createContext<DesignContextType | undefined>(undefined);
 
@@ -74,11 +84,25 @@ const sanitizeForFirestore = (obj: any): any => {
   return sanitizedObj;
 };
 
-export function createInitialScaffoldDesign(): { components: DesignComponent[], nextId: number, selectedId: string } {
+// Creates a single, fresh screen with a default scaffold structure.
+export function createNewScreen(id: string, name: string, nextIdStart: number): Screen {
   const scaffoldProps = getDefaultProperties('Scaffold', ROOT_SCAFFOLD_ID);
   const topAppBarProps = getDefaultProperties('TopAppBar', DEFAULT_TOP_APP_BAR_ID);
   const contentLazyColumnProps = getDefaultProperties('LazyColumn', DEFAULT_CONTENT_LAZY_COLUMN_ID);
   const bottomNavBarProps = getDefaultProperties('BottomNavigationBar', DEFAULT_BOTTOM_NAV_BAR_ID);
+  
+  // Create default nav items for a new screen
+  let currentNextId = nextIdStart;
+  const navItems = ['Home', 'Store', 'Benefits', 'Profile'].map((item, index) => {
+    const navItemId = `comp-${currentNextId++}`;
+    return {
+      id: navItemId,
+      type: 'BottomNavigationItem',
+      name: `${item} Nav Item`,
+      properties: { ...getDefaultProperties('BottomNavigationItem', navItemId), text: item, iconName: item },
+      parentId: DEFAULT_BOTTOM_NAV_BAR_ID,
+    } as DesignComponent;
+  });
 
   const rootScaffold: DesignComponent = {
     id: ROOT_SCAFFOLD_ID,
@@ -95,7 +119,7 @@ export function createInitialScaffoldDesign(): { components: DesignComponent[], 
     id: DEFAULT_TOP_APP_BAR_ID,
     type: 'TopAppBar',
     name: 'Top App Bar',
-    properties: topAppBarProps,
+    properties: { ...topAppBarProps, title: name },
     parentId: ROOT_SCAFFOLD_ID,
   };
 
@@ -114,31 +138,44 @@ export function createInitialScaffoldDesign(): { components: DesignComponent[], 
     id: DEFAULT_BOTTOM_NAV_BAR_ID,
     type: 'BottomNavigationBar',
     name: 'Bottom Navigation Bar',
-    properties: bottomNavBarProps,
+    properties: {
+      ...bottomNavBarProps,
+      children: navItems.map(item => item.id),
+    },
     parentId: ROOT_SCAFFOLD_ID,
   };
 
   return {
-    components: [rootScaffold, topAppBar, contentLazyColumn, bottomNavBar],
-    nextId: 1,
-    selectedId: DEFAULT_CONTENT_LAZY_COLUMN_ID,
+    id,
+    name,
+    components: [rootScaffold, topAppBar, contentLazyColumn, bottomNavBar, ...navItems],
+    nextId: currentNextId,
   };
 }
 
-const { components: initialComponents, nextId: initialNextId, selectedId: initialSelectedId } = createInitialScaffoldDesign();
-const initialDesignState: DesignState = {
-  components: initialComponents,
-  selectedComponentId: initialSelectedId,
-  nextId: initialNextId,
-  customComponentTemplates: [],
-  savedLayouts: [],
-  galleryImages: [],
-  editingTemplateInfo: null,
-  editingLayoutInfo: null,
-  history: [],
-  future: [],
-  clipboard: null,
-};
+// Generates the initial state for the entire application, including one default screen.
+const createInitialDesignState = (): DesignState => {
+  const firstScreenId = `screen-${Date.now()}`;
+  const firstScreen = createNewScreen(firstScreenId, 'Screen 1', 1);
+
+  return {
+    screens: [firstScreen],
+    activeScreenId: firstScreen.id,
+    components: firstScreen.components,
+    selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID,
+    nextId: firstScreen.nextId,
+    customComponentTemplates: [],
+    savedLayouts: [],
+    galleryImages: [],
+    editingTemplateInfo: null,
+    editingLayoutInfo: null,
+    history: [],
+    future: [],
+    clipboard: null,
+  };
+}
+
+const initialDesignState = createInitialDesignState();
 
 
 const flattenComponentsFromModalJson = (
@@ -207,20 +244,38 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     updater: (prevState: DesignState) => Partial<DesignState>,
   ) => {
     setDesignState(prev => {
-        const updates = updater(prev);
-        if (Object.keys(updates).length === 0) return prev;
-
-        if (updates.components) {
-            const newHistory = [...prev.history, prev.components];
-            if (newHistory.length > 50) newHistory.shift();
-            return {
-                ...prev,
-                ...updates,
-                history: newHistory,
-                future: [],
-            };
+      const updates = updater(prev);
+      if (Object.keys(updates).length === 0) return prev;
+  
+      const newHistory = [...prev.history, { screens: prev.screens, activeScreenId: prev.activeScreenId }];
+      if (newHistory.length > 50) newHistory.shift();
+      
+      const nextState: DesignState = {
+        ...prev,
+        ...updates,
+        history: newHistory,
+        future: [],
+      };
+      
+      // If the active screen has changed, we also need to update the top-level component/nextId pointers
+      if (updates.activeScreenId && updates.activeScreenId !== prev.activeScreenId) {
+        const newActiveScreen = (updates.screens || prev.screens).find(s => s.id === updates.activeScreenId);
+        if (newActiveScreen) {
+          nextState.components = newActiveScreen.components;
+          nextState.nextId = newActiveScreen.nextId;
         }
-        return { ...prev, ...updates };
+      }
+      
+      // If the screens array itself is updated, ensure top-level pointers are in sync
+      if (updates.screens) {
+          const currentActiveScreen = updates.screens.find(s => s.id === nextState.activeScreenId);
+          if (currentActiveScreen) {
+              nextState.components = currentActiveScreen.components;
+              nextState.nextId = currentActiveScreen.nextId;
+          }
+      }
+
+      return nextState;
     });
   }, []);
 
@@ -283,6 +338,18 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     (id: string) => designState.components.find(comp => comp.id === id),
     [designState.components]
   );
+  
+  const modifyActiveScreen = (updater: (screen: Screen) => Screen) => {
+    updateStateWithHistory(prev => {
+      const newScreens = prev.screens.map(s => {
+        if (s.id === prev.activeScreenId) {
+          return updater(s);
+        }
+        return s;
+      });
+      return { screens: newScreens };
+    });
+  }
 
   const addComponent = React.useCallback((
     typeOrTemplateId: ComponentType | string,
@@ -290,15 +357,16 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     _dropPosition?: { x: number; y: number },
     index?: number
   ) => {
-    updateStateWithHistory(prev => {
-      let currentNextId = prev.nextId;
-      let updatedComponentsList = [...prev.components];
+    modifyActiveScreen(screen => {
+      const newScreen = deepClone(screen);
+      let { components: updatedComponentsList, nextId: currentNextId } = newScreen;
+
       let finalSelectedComponentId = '';
       let componentsToAdd: DesignComponent[] = [];
       let effectiveParentId = parentIdOrNull;
   
       const rootScaffold = updatedComponentsList.find(c => c.id === ROOT_SCAFFOLD_ID);
-      if (!rootScaffold) return {};
+      if (!rootScaffold) return screen;
       
       if (typeOrTemplateId === 'TopAppBar') effectiveParentId = ROOT_SCAFFOLD_ID;
       else if (typeOrTemplateId === 'BottomNavigationBar') effectiveParentId = ROOT_SCAFFOLD_ID;
@@ -306,13 +374,13 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       else if (!parentIdOrNull) effectiveParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
   
       let parentComponent = updatedComponentsList.find(c => c.id === effectiveParentId);
-      if (!parentComponent || !isContainerType(parentComponent.type, prev.customComponentTemplates)) {
+      if (!parentComponent || !isContainerType(parentComponent.type, designState.customComponentTemplates)) {
         effectiveParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
       }
   
       if (typeOrTemplateId.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
-        const template = prev.customComponentTemplates.find(t => t.templateId === typeOrTemplateId);
-        if (!template) return {};
+        const template = designState.customComponentTemplates.find(t => t.templateId === typeOrTemplateId);
+        if (!template) return screen;
   
         const idMap: Record<string, string> = {};
         const newComponentsBatch: DesignComponent[] = [];
@@ -358,7 +426,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const parentIdx = updatedComponentsList.findIndex(c => c.id === effectiveParentId);
         if (parentIdx !== -1) {
             const parent = updatedComponentsList[parentIdx];
-            if (isContainerType(parent.type, prev.customComponentTemplates) || parent.templateIdRef) {
+            if (isContainerType(parent.type, designState.customComponentTemplates) || parent.templateIdRef) {
                 const childIdsToAdd = componentsToAdd.filter(c => c.parentId === effectiveParentId).map(c => c.id);
                 let children = [...(parent.properties.children || [])];
                 if (index !== undefined && index >= 0) children.splice(index, 0, ...childIdsToAdd);
@@ -368,13 +436,12 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         }
       }
       
-      return {
-        components: updatedComponentsList,
-        selectedComponentId: finalSelectedComponentId || prev.selectedComponentId,
-        nextId: currentNextId,
-      };
+      newScreen.components = updatedComponentsList;
+      newScreen.nextId = currentNextId;
+      setDesignState(prev => ({...prev, selectedComponentId: finalSelectedComponentId || prev.selectedComponentId}));
+      return newScreen;
     });
-  }, [updateStateWithHistory]);
+  }, [designState.customComponentTemplates, modifyActiveScreen]);
 
 
   const saveSelectedAsCustomTemplate = React.useCallback(async (name: string): Promise<{success: boolean, message: string}> => {
@@ -430,8 +497,11 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
 
   const deleteComponent = React.useCallback((id: string) => {
-    updateStateWithHistory(prev => {
-      if (CORE_SCAFFOLD_ELEMENT_IDS.includes(id)) return {};
+    modifyActiveScreen(screen => {
+      if (CORE_SCAFFOLD_ELEMENT_IDS.includes(id)) return screen;
+      
+      const newScreen = deepClone(screen);
+      const { components: currentComponents } = newScreen;
 
       const idsToDelete = new Set<string>();
       const queue: string[] = [id];
@@ -439,106 +509,101 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const currentId = queue.shift()!;
         if (idsToDelete.has(currentId)) continue;
         idsToDelete.add(currentId);
-        const currentComp = prev.components.find(c => c.id === currentId);
+        const currentComp = currentComponents.find(c => c.id === currentId);
         if (currentComp?.properties.children) queue.push(...currentComp.properties.children);
       }
 
-      let newComps = prev.components.filter(c => !idsToDelete.has(c.id));
-      const parentId = prev.components.find(c => c.id === id)?.parentId;
+      let newComps = currentComponents.filter(c => !idsToDelete.has(c.id));
+      const parentId = currentComponents.find(c => c.id === id)?.parentId;
       if (parentId) {
         const parent = newComps.find(c => c.id === parentId);
         if (parent?.properties.children) {
           parent.properties.children = parent.properties.children.filter(cid => cid !== id);
         }
       }
-      const newSelectedId = idsToDelete.has(prev.selectedComponentId || "") ? (parentId || DEFAULT_CONTENT_LAZY_COLUMN_ID) : prev.selectedComponentId;
-      return { components: newComps, selectedComponentId: newSelectedId };
+      const newSelectedId = idsToDelete.has(designState.selectedComponentId || "") ? (parentId || DEFAULT_CONTENT_LAZY_COLUMN_ID) : designState.selectedComponentId;
+      setDesignState(prev => ({...prev, selectedComponentId: newSelectedId}));
+      
+      newScreen.components = newComps;
+      return newScreen;
     });
-  }, [updateStateWithHistory]);
+  }, [modifyActiveScreen, designState.selectedComponentId]);
 
 
   const selectComponent = React.useCallback((id: string | null) => {
-    updateStateWithHistory(prev => ({ ...prev, selectedComponentId: id, history: prev.history }));
-  }, [updateStateWithHistory]);
+    setDesignState(prev => ({ ...prev, selectedComponentId: id }));
+  }, []);
 
   const updateComponent = React.useCallback((id: string, updates: { name?: string; properties?: Partial<BaseComponentProps>; templateIdRef?: string }) => {
-    updateStateWithHistory(prev => ({
-      components: prev.components.map(comp => {
-        if (comp.id === id) {
-          const newComp = { ...comp, properties: { ...comp.properties} };
-          if (updates.name !== undefined && !(CORE_SCAFFOLD_ELEMENT_IDS.includes(id) && !comp.templateIdRef)) newComp.name = updates.name;
-          if (updates.properties) newComp.properties = { ...newComp.properties, ...updates.properties };
-          if (updates.templateIdRef !== undefined) newComp.templateIdRef = updates.templateIdRef;
-          if (updates.properties?.fillMaxSize) {
-            newComp.properties.fillMaxWidth = true;
-            newComp.properties.fillMaxHeight = true;
-          }
-          return newComp;
-        }
-        return comp;
-      }),
-    }));
-  }, [updateStateWithHistory]);
+    modifyActiveScreen(screen => {
+        const newScreen = deepClone(screen);
+        newScreen.components = newScreen.components.map(comp => {
+            if (comp.id === id) {
+                const newComp = { ...comp, properties: { ...comp.properties} };
+                if (updates.name !== undefined && !(CORE_SCAFFOLD_ELEMENT_IDS.includes(id) && !comp.templateIdRef)) newComp.name = updates.name;
+                if (updates.properties) newComp.properties = { ...newComp.properties, ...updates.properties };
+                if (updates.templateIdRef !== undefined) newComp.templateIdRef = updates.templateIdRef;
+                if (updates.properties?.fillMaxSize) {
+                    newComp.properties.fillMaxWidth = true;
+                    newComp.properties.fillMaxHeight = true;
+                }
+                return newComp;
+            }
+            return comp;
+        });
+        return newScreen;
+    });
+  }, [modifyActiveScreen]);
 
   const updateComponentPosition = React.useCallback((_id: string, _position: { x: number; y: number }) => {
      console.warn("updateComponentPosition is deprecated.");
   }, []);
 
   const clearDesign = React.useCallback(() => {
-    updateStateWithHistory(() => {
-        const { components, nextId, selectedId } = createInitialScaffoldDesign();
-        return {
-            components, selectedComponentId: selectedId, nextId,
-            editingTemplateInfo: null, editingLayoutInfo: null,
-        };
+    modifyActiveScreen(screen => {
+      const newScreenContent = createNewScreen(screen.id, screen.name, 1);
+      return newScreenContent;
     });
-  }, [updateStateWithHistory]);
-
-  const setDesign = React.useCallback((newDesign: DesignState) => {
-    let { components, selectedComponentId, nextId } = newDesign;
-    const hasScaffold = components.some(c => c.id === ROOT_SCAFFOLD_ID);
-    if (!hasScaffold) {
-      const scaffoldDesign = createInitialScaffoldDesign();
-      const userContent = components.filter(c => !CORE_SCAFFOLD_ELEMENT_IDS.includes(c.id));
-      userContent.forEach(c => { if(c.parentId === null) c.parentId = DEFAULT_CONTENT_LAZY_COLUMN_ID; });
-      scaffoldDesign.components.find(c => c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID)!.properties.children = userContent.map(c => c.id);
-      components = [...scaffoldDesign.components, ...userContent];
-      nextId = Math.max(nextId, scaffoldDesign.nextId);
-      selectedComponentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
-    }
-    updateStateWithHistory(() => ({ components, selectedComponentId, nextId, history: [], future: [] }));
-  }, [updateStateWithHistory]);
+    setDesignState(prev => ({...prev, editingLayoutInfo: null, editingTemplateInfo: null}));
+  }, [modifyActiveScreen]);
 
   const overwriteComponents = React.useCallback((hierarchicalUserComponentsJson: any[]): { success: boolean, error?: string } => {
     if (!Array.isArray(hierarchicalUserComponentsJson)) return { success: false, error: "Data must be an array." };
     
     let error: string | undefined;
-    updateStateWithHistory(prev => {
+    modifyActiveScreen(screen => {
         const flatList = flattenComponentsFromModalJson(hierarchicalUserComponentsJson, DEFAULT_CONTENT_LAZY_COLUMN_ID);
-        const { components: baseScaffold } = createInitialScaffoldDesign();
-        const contentArea = baseScaffold.find(c => c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID)!;
+        const newScreen = createNewScreen(screen.id, screen.name, screen.nextId);
+        
+        const contentArea = newScreen.components.find(c => c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID)!;
         contentArea.properties.children = flatList.filter(c => c.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID).map(c => c.id);
         
-        const finalComponents = [...baseScaffold, ...flatList];
+        const finalComponents = [...newScreen.components, ...flatList];
         const allIds = new Set(finalComponents.map(c => c.id));
         if (allIds.size !== finalComponents.length) {
             error = "Duplicate IDs found in JSON.";
-            return {};
+            return screen; // Return original screen on error
         }
         let maxIdNum = 0;
         finalComponents.forEach(c => { const n = parseInt(c.id.split('-').pop() || '0'); if (n > maxIdNum) maxIdNum = n; });
-        return { components: finalComponents, nextId: maxIdNum + 1, selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID };
+        
+        newScreen.components = finalComponents;
+        newScreen.nextId = maxIdNum + 1;
+        
+        setDesignState(prev => ({...prev, selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID}));
+        return newScreen;
     });
     
     if (error) return { success: false, error };
     return { success: true };
-  }, [updateStateWithHistory]);
+  }, [modifyActiveScreen]);
 
   const moveComponent = React.useCallback((draggedId: string, newParentId: string | null, newIndex?: number) => {
-    updateStateWithHistory(prev => {
-        let comps = [...prev.components];
+    modifyActiveScreen(screen => {
+        const newScreen = deepClone(screen);
+        let comps = newScreen.components;
         const draggedIdx = comps.findIndex(c => c.id === draggedId);
-        if (draggedIdx === -1) return {};
+        if (draggedIdx === -1) return screen;
         
         const oldParentId = comps[draggedIdx].parentId;
         if (oldParentId) {
@@ -561,9 +626,12 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 p.properties.children = children;
             }
         }
-        return { components: comps, selectedComponentId: draggedId };
+        
+        setDesignState(prev => ({...prev, selectedComponentId: draggedId}));
+        newScreen.components = comps;
+        return newScreen;
     });
-  }, [updateStateWithHistory]);
+  }, [modifyActiveScreen]);
 
   const deleteCustomComponentTemplate = React.useCallback(async (templateId: string, firestoreId?: string) => {
     if (db && firestoreId) {
@@ -611,12 +679,20 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const loadLayoutToCanvas = React.useCallback((layoutId: string): {success: boolean, message: string} => {
     const layout = designState.savedLayouts.find(l => l.layoutId === layoutId);
-    if (layout) {
-      setDesign({ ...designState, components: layout.components, nextId: layout.nextId, editingLayoutInfo: null });
-      return { success: true, message: `Layout "${layout.name}" loaded.` };
-    }
-    return { success: false, message: "Layout not found." };
-  }, [designState, setDesign]);
+    if (!layout) return { success: false, message: "Layout not found." };
+    
+    modifyActiveScreen(screen => {
+      const newScreen = {
+        ...screen,
+        components: layout.components,
+        nextId: layout.nextId,
+      };
+      setDesignState(prev => ({...prev, editingLayoutInfo: null, editingTemplateInfo: null}));
+      return newScreen;
+    });
+
+    return { success: true, message: `Layout "${layout.name}" loaded.` };
+  }, [designState.savedLayouts, modifyActiveScreen]);
 
   const deleteSavedLayout = React.useCallback(async (layoutId: string, firestoreId?: string) => {
     if (db && firestoreId) {
@@ -652,7 +728,10 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     let maxId = 0;
     template.componentTree.forEach(c => { const n = parseInt(c.id.split('-').pop() || '0'); if (n > maxId) maxId = n; });
-    updateStateWithHistory(() => ({
+    
+    // This action replaces the entire design state temporarily
+    setDesignState(prev => ({
+        ...prev,
         components: deepClone(template.componentTree),
         nextId: maxId + 1,
         selectedComponentId: template.rootComponentId,
@@ -660,19 +739,22 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         editingLayoutInfo: null,
     }));
     return { success: true, message: `Editing template "${template.name}".` };
-  }, [designState.customComponentTemplates, updateStateWithHistory]);
+  }, [designState.customComponentTemplates]);
 
   const loadLayoutForEditing = React.useCallback((layoutId: string) => {
     const layout = designState.savedLayouts.find(l => l.layoutId === layoutId);
     if (!layout) return;
-    updateStateWithHistory(() => ({
+
+    // This action replaces the entire design state temporarily
+    setDesignState(prev => ({
+        ...prev,
         components: deepClone(layout.components),
         nextId: layout.nextId,
         selectedComponentId: layout.components.find(c => c.parentId === null)?.id || DEFAULT_CONTENT_LAZY_COLUMN_ID,
         editingTemplateInfo: null,
         editingLayoutInfo: { layoutId, firestoreId: layout.firestoreId, name: layout.name },
     }));
-  }, [designState.savedLayouts, updateStateWithHistory]);
+  }, [designState.savedLayouts]);
   
   const updateCustomTemplate = React.useCallback(async (): Promise<{success: boolean, message: string}> => {
     const { editingTemplateInfo, components } = designState;
@@ -708,12 +790,20 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const undo = React.useCallback(() => {
     setDesignState(prev => {
         if (prev.history.length === 0) return prev;
-        const previousComponents = prev.history.pop()!;
+        const lastState = prev.history[prev.history.length - 1];
+        const newHistory = prev.history.slice(0, prev.history.length - 1);
+        const newFuture = [{screens: prev.screens, activeScreenId: prev.activeScreenId}, ...prev.future];
+
+        const activeScreen = lastState.screens.find(s => s.id === lastState.activeScreenId);
+
         return {
             ...prev,
-            components: previousComponents,
-            future: [prev.components, ...prev.future],
+            ...lastState,
+            components: activeScreen?.components || [],
+            nextId: activeScreen?.nextId || 0,
             selectedComponentId: null,
+            future: newFuture,
+            history: newHistory,
         };
     });
   }, []);
@@ -721,12 +811,20 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const redo = React.useCallback(() => {
     setDesignState(prev => {
         if (prev.future.length === 0) return prev;
-        const nextComponents = prev.future.shift()!;
+        const nextState = prev.future[0];
+        const newFuture = prev.future.slice(1);
+        const newHistory = [...prev.history, {screens: prev.screens, activeScreenId: prev.activeScreenId}];
+        
+        const activeScreen = nextState.screens.find(s => s.id === nextState.activeScreenId);
+
         return {
             ...prev,
-            components: nextComponents,
-            history: [...prev.history, prev.components],
+            ...nextState,
+            components: activeScreen?.components || [],
+            nextId: activeScreen?.nextId || 0,
             selectedComponentId: null,
+            history: newHistory,
+            future: newFuture,
         };
     });
   }, []);
@@ -762,8 +860,10 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     let pasteSucceeded = false;
     let pasteMessage = "";
 
-    updateStateWithHistory(prev => {
-        let nextId = prev.nextId;
+    modifyActiveScreen(screen => {
+        const newScreen = deepClone(screen);
+        let nextId = newScreen.nextId;
+
         const idMap: Record<string, string> = {};
         const newComps: DesignComponent[] = clipboard.map(c => {
             const newId = `comp-${nextId++}`;
@@ -778,31 +878,33 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         
         let parentId = targetParentId;
         if(parentId === undefined) {
-            const selected = prev.components.find(c => c.id === prev.selectedComponentId);
-            parentId = selected ? (isContainerType(selected.type, prev.customComponentTemplates) ? selected.id : selected.parentId) : DEFAULT_CONTENT_LAZY_COLUMN_ID;
+            const selected = newScreen.components.find(c => c.id === designState.selectedComponentId);
+            parentId = selected ? (isContainerType(selected.type, designState.customComponentTemplates) ? selected.id : selected.parentId) : DEFAULT_CONTENT_LAZY_COLUMN_ID;
         }
         if (!parentId) parentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
         rootPasted.parentId = parentId;
 
-        const parentIdx = prev.components.findIndex(c => c.id === parentId);
+        const parentIdx = newScreen.components.findIndex(c => c.id === parentId);
         if (parentIdx === -1) {
             pasteSucceeded = false;
             pasteMessage = "Target parent not found.";
-            return {};
+            return screen;
         }
 
-        const allComps = [...prev.components, ...newComps];
-        const parent = allComps[parentIdx];
+        newScreen.components.push(...newComps);
+        const parent = newScreen.components[parentIdx];
         parent.properties.children = [...(parent.properties.children || []), rootPasted.id];
 
         pasteSucceeded = true;
         pasteMessage = `Pasted "${rootPasted.name}".`;
-
-        return { components: allComps, nextId, selectedComponentId: rootPasted.id };
+        
+        setDesignState(prev => ({...prev, selectedComponentId: rootPasted.id}));
+        newScreen.nextId = nextId;
+        return newScreen;
     });
 
     return { success: pasteSucceeded, message: pasteMessage };
-  }, [designState.clipboard, updateStateWithHistory]);
+  }, [designState.clipboard, modifyActiveScreen, designState.selectedComponentId, designState.customComponentTemplates]);
 
   const addImageToGallery = React.useCallback(async (url: string): Promise<{success: boolean, message: string}> => {
     try { new URL(url); } catch (_) { return { success: false, message: "Invalid URL."}; }
@@ -820,19 +922,74 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     return { success: true, message: "Image Removed." };
   }, [designState.galleryImages]);
 
+  // Screen management
+  const addScreen = useCallback((name?: string, componentsToCopy?: DesignComponent[], nextIdToUse?: number): string => {
+    const newScreenId = `screen-${Date.now()}`;
+    let newScreen: Screen;
+
+    if (componentsToCopy && nextIdToUse !== undefined) {
+        newScreen = {
+            id: newScreenId,
+            name: name || `Screen ${designState.screens.length + 1}`,
+            components: deepClone(componentsToCopy),
+            nextId: nextIdToUse,
+        };
+    } else {
+        const nextIdForNewScreen = Math.max(...designState.screens.map(s => s.nextId), 0) + 1;
+        newScreen = createNewScreen(newScreenId, name || `Screen ${designState.screens.length + 1}`, nextIdForNewScreen);
+    }
+
+    updateStateWithHistory(prev => ({
+        screens: [...prev.screens, newScreen],
+        activeScreenId: newScreenId,
+    }));
+    return newScreenId;
+  }, [updateStateWithHistory, designState.screens]);
+  
+  const deleteScreen = useCallback((screenId: string) => {
+    if (designState.screens.length <= 1) return;
+    updateStateWithHistory(prev => {
+        const newScreens = prev.screens.filter(s => s.id !== screenId);
+        const newActiveScreenId = prev.activeScreenId === screenId ? newScreens[0].id : prev.activeScreenId;
+        return { screens: newScreens, activeScreenId: newActiveScreenId };
+    });
+  }, [designState.screens.length, updateStateWithHistory]);
+
+  const renameScreen = useCallback((screenId: string, newName: string) => {
+    updateStateWithHistory(prev => ({
+      screens: prev.screens.map(s => s.id === screenId ? { ...s, name: newName } : s)
+    }));
+  }, [updateStateWithHistory]);
+
+  const setActiveScreen = useCallback((screenId: string) => {
+    updateStateWithHistory(prev => {
+      if (prev.activeScreenId === screenId) return {};
+      return { activeScreenId: screenId };
+    });
+  }, [updateStateWithHistory]);
+  
+  const duplicateScreen = useCallback((screenId: string) => {
+    const screenToCopy = designState.screens.find(s => s.id === screenId);
+    if (screenToCopy) {
+      addScreen(`${screenToCopy.name} (Copy)`, screenToCopy.components, screenToCopy.nextId);
+    }
+  }, [designState.screens, addScreen]);
+
   const contextValue: DesignContextType = {
     ...designState,
     addComponent, deleteComponent, selectComponent, updateComponent, updateComponentPosition,
-    getComponentById, clearDesign, setDesign, overwriteComponents, moveComponent,
+    getComponentById, clearDesign, overwriteComponents, moveComponent,
     saveSelectedAsCustomTemplate, deleteCustomComponentTemplate, renameCustomComponentTemplate,
     saveCurrentCanvasAsLayout, loadLayoutToCanvas, deleteSavedLayout, renameSavedLayout,
     loadTemplateForEditing, updateCustomTemplate, loadLayoutForEditing, updateSavedLayout,
     undo, redo, copyComponent, pasteComponent, addImageToGallery, removeImageFromGallery,
+    addScreen, deleteScreen, renameScreen, setActiveScreen, duplicateScreen
   };
 
   if (!isClient) {
+    const dummyContext = createInitialDesignState();
     return (
-      <DesignContext.Provider value={{...initialDesignState, getComponentById: (id: string) => initialDesignState.components.find(c => c.id === id)} as any}>
+      <DesignContext.Provider value={{...dummyContext, getComponentById: (id: string) => dummyContext.components.find(c => c.id === id)} as any}>
         {children}
       </DesignContext.Provider>
     );
