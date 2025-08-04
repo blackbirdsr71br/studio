@@ -57,13 +57,6 @@ interface DesignContextType extends DesignState {
 
 const DesignContext = React.createContext<DesignContextType | undefined>(undefined);
 
-const CUSTOM_TEMPLATES_COLLECTION = 'customComponentTemplates';
-const SAVED_LAYOUTS_COLLECTION = 'savedLayouts';
-const GALLERY_IMAGES_COLLECTION = 'galleryImages';
-const DESIGNS_COLLECTION = 'designs';
-const MAIN_DESIGN_DOC_ID = 'main_design';
-
-
 const deepClone = <T>(obj: T): T => {
   return JSON.parse(JSON.stringify(obj));
 };
@@ -249,7 +242,6 @@ const defaultGalleryImages: GalleryImage[] = uniqueDefaultUrls.map((url, index) 
 export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [designState, setDesignState] = React.useState<DesignState>(initialDesignState);
   const [isClient, setIsClient] = React.useState(false);
-  const [isDbReady, setIsDbReady] = useState(false);
   const { toast } = useToast();
   const [zoomLevel, setZoomLevel] = useState(1.0);
 
@@ -311,14 +303,55 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   
   useEffect(() => {
     setIsClient(true);
-    if (db) {
-        setIsDbReady(true);
-    }
   }, []);
 
   useEffect(() => {
     const loadInitialData = async () => {
+      if (!db) {
+        console.warn("Firestore not ready. Skipping cloud data load.");
+        return;
+      }
       try {
+        // Load Design State (Screens, etc.)
+        const designDocRef = doc(db, DESIGNS_COLLECTION, MAIN_DESIGN_DOC_ID);
+        const designDocSnap = await getDoc(designDocRef);
+        if (designDocSnap.exists()) {
+            const data = designDocSnap.data() as {screens: Screen[], activeScreenId: string};
+            const activeScreen = data.screens.find(s => s.id === data.activeScreenId);
+            setDesignState(prev => ({
+                ...prev,
+                screens: data.screens,
+                activeScreenId: data.activeScreenId,
+                components: activeScreen?.components || prev.components,
+                nextId: activeScreen?.nextId || prev.nextId,
+                history: [],
+                future: [],
+            }));
+        } else {
+            // If no doc exists, save the initial local state to Firestore
+            await saveDesignToFirestore(initialDesignState);
+        }
+
+        // Load Templates
+        const templatesQuery = query(collection(db, CUSTOM_TEMPLATES_COLLECTION));
+        const templatesSnapshot = await getDocs(templatesQuery);
+        const templates: CustomComponentTemplate[] = templatesSnapshot.docs.map(docSnap => ({ firestoreId: docSnap.id, ...docSnap.data() } as CustomComponentTemplate));
+        setDesignState(prev => ({ ...prev, customComponentTemplates: templates }));
+        
+        // Load Layouts
+        const layoutsQuery = query(collection(db, SAVED_LAYOUTS_COLLECTION), orderBy("timestamp", "desc"));
+        const layoutsSnapshot = await getDocs(layoutsQuery);
+        const layouts: SavedLayout[] = layoutsSnapshot.docs.map(docSnap => ({ firestoreId: docSnap.id, ...docSnap.data() } as SavedLayout));
+        setDesignState(prev => ({ ...prev, savedLayouts: layouts }));
+
+      } catch (error) {
+        console.error("Error loading initial data from Firestore:", error);
+        toast({title: "Data Load Error", description: "Could not load data from the cloud. Using local state.", variant: "destructive"});
+      }
+    };
+    
+    // Load local gallery from localStorage first
+     try {
         const savedImagesJson = localStorage.getItem(GALLERY_IMAGES_COLLECTION);
         const galleryToSet = savedImagesJson ? JSON.parse(savedImagesJson) : defaultGalleryImages;
         if (!savedImagesJson) {
@@ -330,46 +363,11 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         setDesignState(prev => ({ ...prev, galleryImages: defaultGalleryImages.sort((a,b) => b.timestamp - a.timestamp) }));
       }
       
-      if (!isDbReady) {
-        console.warn("Firestore not ready. Skipping cloud data load.");
-        return;
+      if (db) {
+        loadInitialData();
       }
-      
-      try {
-        const designDocRef = doc(db, DESIGNS_COLLECTION, MAIN_DESIGN_DOC_ID);
-        const designDocSnap = await getDoc(designDocRef);
 
-        if (designDocSnap.exists()) {
-            const data = designDocSnap.data() as {screens: Screen[], activeScreenId: string};
-            const activeScreen = data.screens.find(s => s.id === data.activeScreenId);
-            setDesignState(prev => ({
-                ...prev,
-                screens: data.screens,
-                activeScreenId: data.activeScreenId,
-                components: activeScreen?.components || prev.components,
-                nextId: activeScreen?.nextId || prev.nextId
-            }));
-        } else {
-            saveDesignToFirestore(initialDesignState); // Save initial state if none exists
-        }
-
-        const templatesQuery = query(collection(db, CUSTOM_TEMPLATES_COLLECTION));
-        const templatesSnapshot = await getDocs(templatesQuery);
-        const templates: CustomComponentTemplate[] = templatesSnapshot.docs.map(docSnap => ({ firestoreId: docSnap.id, ...docSnap.data() } as CustomComponentTemplate));
-        setDesignState(prev => ({ ...prev, customComponentTemplates: templates }));
-        
-        const layoutsQuery = query(collection(db, SAVED_LAYOUTS_COLLECTION), orderBy("timestamp", "desc"));
-        const layoutsSnapshot = await getDocs(layoutsQuery);
-        const layouts: SavedLayout[] = layoutsSnapshot.docs.map(docSnap => ({ firestoreId: docSnap.id, ...docSnap.data() } as SavedLayout));
-        setDesignState(prev => ({ ...prev, savedLayouts: layouts }));
-
-      } catch (error) {
-        console.error("Error loading initial data from Firestore:", error);
-        toast({title: "Data Load Error", description: "Could not load data from the cloud. Using local state.", variant: "destructive"});
-      }
-    };
-    loadInitialData();
-  }, [isDbReady, toast, saveDesignToFirestore]);
+  }, [toast, saveDesignToFirestore]);
 
   const getComponentById = React.useCallback(
     (id: string) => designState.components.find(comp => comp.id === id),
@@ -749,13 +747,13 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     if (db && firestoreId) {
         try {
             await updateDoc(doc(db, SAVED_LAYOUTS_COLLECTION, firestoreId), { name: newName });
-            setDesignState(prev => ({ ...prev, savedLayouts: prev.savedLayouts.map(l => l.layoutId === layoutId ? { ...l, name: newName } : t) }));
+            setDesignState(prev => ({ ...prev, savedLayouts: prev.savedLayouts.map(l => l.layoutId === layoutId ? { ...l, name: newName } : l) }));
             return { success: true, message: "Layout renamed in Firestore." };
         } catch (e) {
             return { success: false, message: "Could not rename layout." };
         }
     }
-    setDesignState(prev => ({ ...prev, savedLayouts: prev.savedLayouts.map(l => l.layoutId === layoutId ? { ...l, name: newName } : t) }));
+    setDesignState(prev => ({ ...prev, savedLayouts: prev.savedLayouts.map(l => l.layoutId === layoutId ? { ...l, name: newName } : l) }));
     return { success: true, message: "Layout renamed locally." };
   }, []);
   
