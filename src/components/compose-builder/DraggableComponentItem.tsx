@@ -11,7 +11,7 @@ import { ItemTypes } from '@/lib/dnd-types';
 import { cn } from "@/lib/utils";
 import { DesignContext, useDesign } from '@/contexts/DesignContext';
 import { useMemo, FC, ReactNode } from "react";
-import { RenderedComponentWrapper } from './RenderedComponentWrapper';
+import { RenderedComponentWrapper } from './component-renderer/RenderedComponentWrapper';
 import { MobileFrame } from "./MobileFrame";
 
 // A read-only, self-contained provider for rendering previews.
@@ -68,6 +68,8 @@ const PreviewDesignProvider: FC<{ components: DesignComponent[], children: React
         renameScreen: () => {},
         setActiveScreen: () => {},
         duplicateScreen: () => {},
+        zoomLevel: 1.0,
+        setZoomLevel: () => {},
     };
     return value;
   }, [components, allTemplates, screens, activeScreenId]);

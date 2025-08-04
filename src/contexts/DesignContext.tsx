@@ -248,7 +248,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const saveDesignToFirestore = useDebouncedCallback(async (stateToSave: DesignState) => {
     if (!db || stateToSave.editingTemplateInfo || stateToSave.editingLayoutInfo) return;
     try {
-        const designDocRef = doc(db, DESIGNS_COLLECTION, MAIN_DESIGN_DOC_ID);
+        const designDocRef = doc(db, "designs", "main-design-doc");
         const persistentState = {
             screens: stateToSave.screens,
             activeScreenId: stateToSave.activeScreenId,
@@ -313,7 +313,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       }
       try {
         // Load Design State (Screens, etc.)
-        const designDocRef = doc(db, DESIGNS_COLLECTION, MAIN_DESIGN_DOC_ID);
+        const designDocRef = doc(db, "designs", "main-design-doc");
         const designDocSnap = await getDoc(designDocRef);
         if (designDocSnap.exists()) {
             const data = designDocSnap.data() as {screens: Screen[], activeScreenId: string};
@@ -333,13 +333,13 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         }
 
         // Load Templates
-        const templatesQuery = query(collection(db, CUSTOM_TEMPLATES_COLLECTION));
+        const templatesQuery = query(collection(db, "custom-component-templates"));
         const templatesSnapshot = await getDocs(templatesQuery);
         const templates: CustomComponentTemplate[] = templatesSnapshot.docs.map(docSnap => ({ firestoreId: docSnap.id, ...docSnap.data() } as CustomComponentTemplate));
         setDesignState(prev => ({ ...prev, customComponentTemplates: templates }));
         
         // Load Layouts
-        const layoutsQuery = query(collection(db, SAVED_LAYOUTS_COLLECTION), orderBy("timestamp", "desc"));
+        const layoutsQuery = query(collection(db, "saved-layouts"), orderBy("timestamp", "desc"));
         const layoutsSnapshot = await getDocs(layoutsQuery);
         const layouts: SavedLayout[] = layoutsSnapshot.docs.map(docSnap => ({ firestoreId: docSnap.id, ...docSnap.data() } as SavedLayout));
         setDesignState(prev => ({ ...prev, savedLayouts: layouts }));
@@ -352,10 +352,10 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     
     // Load local gallery from localStorage first
      try {
-        const savedImagesJson = localStorage.getItem(GALLERY_IMAGES_COLLECTION);
+        const savedImagesJson = localStorage.getItem("gallery-images");
         const galleryToSet = savedImagesJson ? JSON.parse(savedImagesJson) : defaultGalleryImages;
         if (!savedImagesJson) {
-            localStorage.setItem(GALLERY_IMAGES_COLLECTION, JSON.stringify(galleryToSet));
+            localStorage.setItem("gallery-images", JSON.stringify(galleryToSet));
         }
         setDesignState(prev => ({ ...prev, galleryImages: galleryToSet.sort((a,b) => b.timestamp - a.timestamp) }));
       } catch (error) {
@@ -520,7 +520,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     if (db) {
       try {
-        await setDoc(doc(db, CUSTOM_TEMPLATES_COLLECTION, firestoreId), sanitizeForFirestore(newTemplate));
+        await setDoc(doc(db, "custom-component-templates", firestoreId), sanitizeForFirestore(newTemplate));
         return { success: true, message: `Template "${name}" saved and synced.`};
       } catch (e) {
         console.error("Firestore save error:", e);
@@ -671,7 +671,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const deleteCustomComponentTemplate = React.useCallback(async (templateId: string, firestoreId?: string) => {
     if (db && firestoreId) {
         try {
-            await deleteDoc(doc(db, CUSTOM_TEMPLATES_COLLECTION, firestoreId));
+            await deleteDoc(doc(db, "custom-component-templates", firestoreId));
             setDesignState(prev => ({ ...prev, customComponentTemplates: prev.customComponentTemplates.filter(t => t.templateId !== templateId) }));
             return { success: true, message: "Template deleted from Firestore." };
         } catch (e) {
@@ -685,7 +685,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const renameCustomComponentTemplate = React.useCallback(async (templateId: string, newName: string, firestoreId?: string) => {
     if (db && firestoreId) {
         try {
-            await updateDoc(doc(db, CUSTOM_TEMPLATES_COLLECTION, firestoreId), { name: newName });
+            await updateDoc(doc(db, "custom-component-templates", firestoreId), { name: newName });
             setDesignState(prev => ({ ...prev, customComponentTemplates: prev.customComponentTemplates.map(t => t.templateId === templateId ? { ...t, name: newName } : t) }));
             return { success: true, message: "Template renamed in Firestore." };
         } catch (e) {
@@ -703,7 +703,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setDesignState(prev => ({ ...prev, savedLayouts: [newLayout, ...prev.savedLayouts].sort((a,b) => (b.timestamp||0) - (a.timestamp||0)) }));
     if (db) {
         try {
-            await setDoc(doc(db, SAVED_LAYOUTS_COLLECTION, layoutId), sanitizeForFirestore(newLayout));
+            await setDoc(doc(db, "saved-layouts", layoutId), sanitizeForFirestore(newLayout));
             return { success: true, message: `Layout "${name}" saved and synced.` };
         } catch (e) {
             return { success: false, message: "Layout saved locally, but sync failed." };
@@ -732,7 +732,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const deleteSavedLayout = React.useCallback(async (layoutId: string, firestoreId?: string) => {
     if (db && firestoreId) {
         try {
-            await deleteDoc(doc(db, SAVED_LAYOUTS_COLLECTION, firestoreId));
+            await deleteDoc(doc(db, "saved-layouts", firestoreId));
             setDesignState(prev => ({ ...prev, savedLayouts: prev.savedLayouts.filter(l => l.layoutId !== layoutId) }));
             return { success: true, message: "Layout deleted from Firestore." };
         } catch (e) {
@@ -746,7 +746,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const renameSavedLayout = React.useCallback(async (layoutId: string, newName: string, firestoreId?: string) => {
     if (db && firestoreId) {
         try {
-            await updateDoc(doc(db, SAVED_LAYOUTS_COLLECTION, firestoreId), { name: newName });
+            await updateDoc(doc(db, "saved-layouts", firestoreId), { name: newName });
             setDesignState(prev => ({ ...prev, savedLayouts: prev.savedLayouts.map(l => l.layoutId === layoutId ? { ...l, name: newName } : l) }));
             return { success: true, message: "Layout renamed in Firestore." };
         } catch (e) {
@@ -795,7 +795,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     const updatedTemplate: CustomComponentTemplate = { ...editingTemplateInfo, rootComponentId: rootComponent.id, componentTree: components };
     try {
-        await setDoc(doc(db, CUSTOM_TEMPLATES_COLLECTION, editingTemplateInfo.firestoreId!), sanitizeForFirestore(updatedTemplate));
+        await setDoc(doc(db, "custom-component-templates", editingTemplateInfo.firestoreId!), sanitizeForFirestore(updatedTemplate));
         setDesignState(prev => ({...prev, customComponentTemplates: prev.customComponentTemplates.map(t => t.templateId === editingTemplateInfo.templateId ? updatedTemplate : t)}));
         clearDesign();
         return { success: true, message: "Template updated and synced."};
@@ -809,7 +809,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     if (!editingLayoutInfo || !db) return { success: false, message: "Not in layout editing mode or DB not connected."};
     const updatedLayout: SavedLayout = { ...editingLayoutInfo, components, nextId, timestamp: Date.now() };
     try {
-        await setDoc(doc(db, SAVED_LAYOUTS_COLLECTION, editingLayoutInfo.firestoreId!), sanitizeForFirestore(updatedLayout));
+        await setDoc(doc(db, "saved-layouts", editingLayoutInfo.firestoreId!), sanitizeForFirestore(updatedLayout));
         setDesignState(prev => ({...prev, savedLayouts: prev.savedLayouts.map(l => l.layoutId === editingLayoutInfo.layoutId ? updatedLayout : l).sort((a,b) => (b.timestamp||0) - (a.timestamp||0))}));
         clearDesign();
         return { success: true, message: "Layout updated and synced."};
@@ -917,14 +917,14 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     try { new URL(url); } catch (_) { return { success: false, message: "Invalid URL."}; }
     const newImage: GalleryImage = { id: `gallery-${Date.now()}`, url, timestamp: Date.now() };
     const newGallery = [newImage, ...designState.galleryImages].sort((a,b) => b.timestamp - a.timestamp);
-    localStorage.setItem(GALLERY_IMAGES_COLLECTION, JSON.stringify(newGallery));
+    localStorage.setItem("gallery-images", JSON.stringify(newGallery));
     setDesignState(prev => ({ ...prev, galleryImages: newGallery }));
     return { success: true, message: "Image Added." };
   }, [designState.galleryImages]);
 
   const removeImageFromGallery = React.useCallback(async (id: string): Promise<{success: boolean, message: string}> => {
     const newGallery = designState.galleryImages.filter(img => img.id !== id);
-    localStorage.setItem(GALLERY_IMAGES_COLLECTION, JSON.stringify(newGallery));
+    localStorage.setItem("gallery-images", JSON.stringify(newGallery));
     setDesignState(prev => ({ ...prev, galleryImages: newGallery }));
     return { success: true, message: "Image Removed." };
   }, [designState.galleryImages]);

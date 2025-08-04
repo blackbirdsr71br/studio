@@ -94,7 +94,7 @@ const getDimensionValue = (
   };
   
 export function RenderedComponentWrapper({ component, isPreview = false }: RenderedComponentWrapperProps) {
-  const { activeScreenId, setActiveScreen, selectedComponentId, selectComponent, getComponentById, addComponent, moveComponent, updateComponent, customComponentTemplates, zoomLevel } = useDesign();
+  const { zoomLevel, activeScreenId, setActiveScreen, selectedComponentId, selectComponent, getComponentById, addComponent, moveComponent, updateComponent, customComponentTemplates } = useDesign();
   const ref = useRef<HTMLDivElement>(null);
   const [dropIndicator, setDropIndicator] = useState<DropIndicatorPosition>(null);
   const [isResizing, setIsResizing] = useState(false);
@@ -349,6 +349,7 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
       case 'Box':
       case 'Card':
       case 'LazyColumn': 
+      case 'AnimatedContent':
         return <ContainerView component={component} childrenComponents={childrenToRender} isRow={false} isPreview={isPreview} />;
 
       case 'Row':
@@ -357,7 +358,6 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
       case 'LazyHorizontalGrid':
       case 'TopAppBar': 
       case 'BottomNavigationBar':
-      case 'AnimatedContent':
         return <ContainerView component={component} childrenComponents={childrenToRender} isRow={true} isPreview={isPreview} />;
       
       case 'BottomNavigationItem':
@@ -367,8 +367,8 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
         return (
           <div
             style={{
-              width: isNumericValue(component.properties.width) ? `${component.properties.width}px` : '8px',
-              height: isNumericValue(component.properties.height) ? `${component.properties.height}px` : '8px',
+              width: `${component.properties.width || 8}px`,
+              height: `${component.properties.height || 8}px`,
               flexShrink: 0, 
             }}
             className="select-none"
