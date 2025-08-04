@@ -249,6 +249,7 @@ const defaultGalleryImages: GalleryImage[] = uniqueDefaultUrls.map((url, index) 
 export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [designState, setDesignState] = React.useState<DesignState>(initialDesignState);
   const [isClient, setIsClient] = React.useState(false);
+  const [isDbReady, setIsDbReady] = useState(false);
   const { toast } = useToast();
   const [zoomLevel, setZoomLevel] = useState(1.0);
 
@@ -256,7 +257,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     if (!db || stateToSave.editingTemplateInfo || stateToSave.editingLayoutInfo) return;
     try {
         const designDocRef = doc(db, DESIGNS_COLLECTION, MAIN_DESIGN_DOC_ID);
-        // We only persist the core parts of the design state, not the entire context
         const persistentState = {
             screens: stateToSave.screens,
             activeScreenId: stateToSave.activeScreenId,
@@ -289,7 +289,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         future: [],
       };
       
-      // If the active screen has changed, we also need to update the top-level component/nextId pointers
       if (updates.activeScreenId && updates.activeScreenId !== prev.activeScreenId) {
         const newActiveScreen = (updates.screens || prev.screens).find(s => s.id === updates.activeScreenId);
         if (newActiveScreen) {
@@ -298,7 +297,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         }
       }
       
-      // If the screens array itself is updated, ensure top-level pointers are in sync
       if (updates.screens) {
           const currentActiveScreen = updates.screens.find(s => s.id === nextState.activeScreenId);
           if (currentActiveScreen) {
@@ -310,9 +308,15 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       return nextState;
     });
   }, [saveDesignToFirestore]);
-
-  React.useEffect(() => {
+  
+  useEffect(() => {
     setIsClient(true);
+    if (db) {
+        setIsDbReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
     const loadInitialData = async () => {
       try {
         const savedImagesJson = localStorage.getItem(GALLERY_IMAGES_COLLECTION);
@@ -320,17 +324,17 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         if (!savedImagesJson) {
             localStorage.setItem(GALLERY_IMAGES_COLLECTION, JSON.stringify(galleryToSet));
         }
-        setDesignState(prev => ({ ...prev, galleryImages: galleryToSet.sort((a, b) => b.timestamp - a.timestamp) }));
+        setDesignState(prev => ({ ...prev, galleryImages: galleryToSet.sort((a,b) => b.timestamp - a.timestamp) }));
       } catch (error) {
         console.error("Error loading gallery from localStorage:", error);
-        setDesignState(prev => ({ ...prev, galleryImages: defaultGalleryImages.sort((a, b) => b.timestamp - a.timestamp) }));
+        setDesignState(prev => ({ ...prev, galleryImages: defaultGalleryImages.sort((a,b) => b.timestamp - a.timestamp) }));
       }
-
-      if (!db) {
-        console.warn("Firestore not available. Loading from local only.");
+      
+      if (!isDbReady) {
+        console.warn("Firestore not ready. Skipping cloud data load.");
         return;
       }
-
+      
       try {
         const designDocRef = doc(db, DESIGNS_COLLECTION, MAIN_DESIGN_DOC_ID);
         const designDocSnap = await getDoc(designDocRef);
@@ -361,11 +365,11 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
       } catch (error) {
         console.error("Error loading initial data from Firestore:", error);
-        toast({title: "Data Load Error", description: "Could not load data from the cloud.", variant: "destructive"});
+        toast({title: "Data Load Error", description: "Could not load data from the cloud. Using local state.", variant: "destructive"});
       }
     };
     loadInitialData();
-  }, [toast, saveDesignToFirestore]); 
+  }, [isDbReady, toast, saveDesignToFirestore]);
 
   const getComponentById = React.useCallback(
     (id: string) => designState.components.find(comp => comp.id === id),
@@ -1024,3 +1028,6 @@ export const useDesign = (): DesignContextType => {
 };
 
 export { DesignContext };
+
+
+      
