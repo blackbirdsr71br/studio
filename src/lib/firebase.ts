@@ -22,9 +22,9 @@ let db: Firestore;
 // It ensures that initialization happens only once.
 const initializeFirebase = () => {
     if (getApps().length === 0) {
-        if (!firebaseConfig.projectId) {
+        if (!firebaseConfig.projectId || firebaseConfig.projectId === "your-project-id") {
             // This check is crucial. If there's no projectId, don't even attempt to initialize.
-            console.error("Firebase initialization skipped: Project ID is missing.");
+            console.error("Firebase initialization skipped: Project ID is missing or is a placeholder. Please update .env with your Firebase project's credentials.");
             return;
         }
         try {
