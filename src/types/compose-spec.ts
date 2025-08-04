@@ -17,7 +17,6 @@ export type ComponentType =
   | 'TopAppBar' // Added
   | 'BottomNavigationBar' // Added
   | 'AnimatedContent' // Added
-  | 'BottomNavigationItem' // Added for navigation
   | 'Scaffold'; // Explicitly a root type
 
 export const CUSTOM_COMPONENT_TYPE_PREFIX = "custom/";
@@ -41,7 +40,7 @@ export interface ComponentPropertyOption {
 }
 export interface ComponentProperty {
   name:string;
-  type: 'string' | 'number' | 'color' | 'boolean' | 'enum' | 'screen';
+  type: 'string' | 'number' | 'color' | 'boolean' | 'enum';
   value: string | number | boolean;
   options?: ComponentPropertyOption[];
   label: string;
@@ -109,7 +108,6 @@ export interface BaseComponentProps {
   animationType?: 'Fade' | 'Scale' | 'SlideFromTop' | 'SlideFromBottom' | 'SlideFromStart' | 'SlideFromEnd';
   animationDuration?: number;
   shape?: 'Rectangle' | 'RoundedCorner' | 'Circle';
-  navigateTo?: string; // Screen ID to navigate to
 
   // Properties for Scaffold structure, used by AI generation
   topBarId?: string; // ID of the TopAppBar component
@@ -124,13 +122,6 @@ export interface DesignComponent {
   properties: BaseComponentProps & { children?: string[] };
   parentId?: string | null;
   templateIdRef?: string; // If this component is an instance of a custom template, this holds the templateId (e.g., "custom/my-template-123")
-}
-
-export interface Screen {
-  id: string;
-  name: string;
-  components: DesignComponent[];
-  nextId: number;
 }
 
 export interface CustomComponentTemplate {
@@ -157,16 +148,9 @@ export interface GalleryImage {
 }
 
 export interface DesignState {
-  // Now manages multiple screens
-  screens: Screen[];
-  activeScreenId: string;
-  
-  // These are now derived from the active screen
   components: DesignComponent[];
   selectedComponentId: string | null;
   nextId: number;
-  
-  // Global items
   customComponentTemplates: CustomComponentTemplate[];
   savedLayouts: SavedLayout[];
   galleryImages: GalleryImage[];
@@ -181,8 +165,8 @@ export interface DesignState {
     firestoreId?: string;
     name: string;
   } | null;
-  history: { screens: Screen[], activeScreenId: string }[];
-  future: { screens: Screen[], activeScreenId: string }[];
+  history: { components: DesignComponent[]; nextId: number; selectedComponentId: string | null }[];
+  future: { components: DesignComponent[]; nextId: number; selectedComponentId: string | null }[];
   clipboard: DesignComponent[] | null;
 }
 
@@ -419,16 +403,6 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         clickable: false,
         clickId: 'bottom_nav_bar_clicked',
       };
-    case 'BottomNavigationItem':
-      return {
-        ...commonLayout,
-        width: undefined,
-        height: undefined,
-        text: 'Label',
-        iconName: 'HelpCircle',
-        navigateTo: undefined,
-        clickable: true, // Always clickable for navigation
-      };
     case 'AnimatedContent':
       return {
         ...commonLayout,
@@ -469,7 +443,6 @@ export const getComponentDisplayName = (type: ComponentType | string): string =>
     case 'Spacer': return 'Spacer';
     case 'TopAppBar': return 'Top App Bar';
     case 'BottomNavigationBar': return 'Bottom Nav Bar';
-    case 'BottomNavigationItem': return 'Nav Item';
     case 'AnimatedContent': return 'Animated Content';
     default: 
       if (type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
@@ -783,13 +756,6 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     ...rowSpecificLayoutProperties,
     ...clickableProperties,
   ],
-  BottomNavigationItem: [
-    { name: 'text', type: 'string', label: 'Label', placeholder: 'Home', group: 'Content' },
-    { name: 'iconName', type: 'string', label: 'Icon Name (Lucide)', placeholder: 'Home', group: 'Content' },
-    { name: 'fontSize', type: 'number', label: 'Label Font Size', placeholder: '12', group: 'Appearance' },
-    { name: 'iconSize', type: 'number', label: 'Icon Size', placeholder: '24', group: 'Appearance' },
-    { name: 'navigateTo', type: 'screen', label: 'Navigate To Screen', group: 'Behavior' },
-  ],
   AnimatedContent: [
     ...commonLayoutProperties,
     ...columnSpecificLayoutProperties,
@@ -823,8 +789,7 @@ export const CONTAINER_TYPES: ReadonlyArray<ComponentType | string > = [
   'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid',
   'TopAppBar', 'BottomNavigationBar', // These are now containers for their items
   'AnimatedContent',
-  'Scaffold', // Scaffold is the root container
-  'BottomNavigationItem' // Nav items can contain an icon and a text
+  'Scaffold' // Scaffold is the root container
 ];
 
 // Checks if a given component type string represents a container.
@@ -933,7 +898,3 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
 );
 
 export const ModalJsonSchema = z.array(ModalComponentNodeSchema);
-
-
-
-    

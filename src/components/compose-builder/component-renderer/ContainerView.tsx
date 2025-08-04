@@ -7,7 +7,6 @@ import { useDesign } from '@/contexts/DesignContext';
 import { getContrastingTextColor, cn } from '@/lib/utils';
 import { TextView } from './TextView'; 
 import { useTheme } from '@/contexts/ThemeContext';
-import * as icons from 'lucide-react';
 
 interface ContainerViewProps {
   component: DesignComponent;
@@ -28,26 +27,6 @@ const isNumericValue = (value: any): boolean => {
   }
   return false;
 };
-
-const toPascalCase = (str: string) => {
-    if (!str) return '';
-    return str
-        .replace(/[-_]/g, ' ')
-        .replace(/\b\w/g, char => char.toUpperCase())
-        .replace(/\s/g, '');
-};
-
-const DynamicLucideIcon = ({ name, ...props }: { name: string } & icons.LucideProps) => {
-    const iconNameInPascalCase = toPascalCase(name);
-    const LucideIcon = (icons as any)[iconNameInPascalCase];
-
-    if (!LucideIcon) {
-        return <icons.HelpCircle {...props} title={`Invalid icon name: ${name}`} />;
-    }
-
-    return <LucideIcon {...props} />;
-};
-
 
 export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, isPreview = false }: ContainerViewProps) {
   const { customComponentTemplates } = useDesign();
@@ -177,7 +156,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   let finalFlexDirection: 'row' | 'column';
   if (effectiveType === 'Row' || effectiveType === 'LazyRow' || effectiveType === 'LazyHorizontalGrid' || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar') {
     finalFlexDirection = 'row';
-  } else if (effectiveType === 'Column' || effectiveType === 'LazyColumn' || effectiveType === 'LazyVerticalGrid' || effectiveType === 'Card' || effectiveType === 'Box' || effectiveType === 'AnimatedContent' || effectiveType === 'BottomNavigationItem') {
+  } else if (effectiveType === 'Column' || effectiveType === 'LazyColumn' || effectiveType === 'LazyVerticalGrid' || effectiveType === 'Card' || effectiveType === 'Box' || effectiveType === 'AnimatedContent') {
     finalFlexDirection = 'column';
   } else {
     finalFlexDirection = isRowPropHint ? 'row' : 'column'; 
@@ -203,7 +182,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     gap: `${itemSpacing}px`,
     boxSizing: 'border-box',
     position: 'relative', 
-    border: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || (effectiveType as string).startsWith('Lazy') || effectiveType === 'Card' || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar' || effectiveType === 'BottomNavigationItem') ? 'none' : '1px dashed hsl(var(--border) / 0.3)',
+    border: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || (effectiveType as string).startsWith('Lazy') || effectiveType === 'Card' || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar') ? 'none' : '1px dashed hsl(var(--border) / 0.3)',
     minWidth: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || effectiveProperties.width === 'match_parent' || fillMaxWidth ) ? '100%' : (effectiveProperties.width === 'wrap_content' || !isNumericValue(effectiveProperties.width) ? 'auto' : '20px'),
     minHeight: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || effectiveProperties.height === 'match_parent' || fillMaxHeight || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar') ? styleHeight : (effectiveProperties.height === 'wrap_content' || !isNumericValue(effectiveProperties.height) ? 'auto' : '20px'),
   };
@@ -346,13 +325,6 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       baseStyle.alignItems = effectiveProperties.verticalAlignment ? (effectiveProperties.verticalAlignment.toLowerCase().includes('center') ? 'center' : effectiveProperties.verticalAlignment.toLowerCase() as any) : 'center';
       baseStyle.justifyContent = effectiveProperties.horizontalArrangement ? effectiveProperties.horizontalArrangement.toLowerCase().replace('space', 'space-') as any : (effectiveType === 'TopAppBar' ? 'flex-start' : 'space-around');
       break;
-    case 'BottomNavigationItem':
-      baseStyle.alignItems = 'center';
-      baseStyle.justifyContent = 'center';
-      baseStyle.gap = '2px';
-      baseStyle.flexGrow = 1;
-      baseStyle.color = 'hsl(var(--muted-foreground))';
-      break;
   }
   
   if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
@@ -368,7 +340,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   const showPlaceholder = (component.id === DEFAULT_TOP_APP_BAR_ID && !title && childrenComponents.length === 0) ||
                         (component.id === DEFAULT_BOTTOM_NAV_BAR_ID && childrenComponents.length === 0) ||
                         (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID && childrenComponents.length === 0) ||
-                        (![DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID].includes(component.id) && childrenComponents.length === 0 && effectiveType !== 'Box' && effectiveType !== 'BottomNavigationItem');
+                        (![DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID].includes(component.id) && childrenComponents.length === 0 && effectiveType !== 'Box');
 
   const placeholderText = `Drop components into this ${getComponentDisplayName(effectiveType as OriginalComponentType)}`;
 
@@ -378,15 +350,6 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       <TextView properties={{ text: title, fontSize: titleFontSize || 20, textColor: baseStyle.color as string }} />
     </div>
   ) : null;
-  
-  const bottomNavItemIcon = effectiveType === 'BottomNavigationItem' && effectiveProperties.iconName ? (
-     <DynamicLucideIcon name={effectiveProperties.iconName} size={effectiveProperties.iconSize || 24} />
-  ) : null;
-
-  const bottomNavItemLabel = effectiveType === 'BottomNavigationItem' && effectiveProperties.text ? (
-     <TextView properties={{ text: effectiveProperties.text, fontSize: effectiveProperties.fontSize || 12 }} />
-  ) : null;
-
 
   const containerClasses = cn(
     "select-none component-container",
@@ -405,8 +368,6 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
         </div>
       )}
       {topAppBarTitleElement}
-      {bottomNavItemIcon}
-      {bottomNavItemLabel}
       {childrenComponents.map(child => (
         <RenderedComponentWrapper key={child.id} component={child} isPreview={isPreview} />
       ))}

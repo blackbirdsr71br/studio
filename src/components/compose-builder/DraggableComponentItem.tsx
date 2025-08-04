@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { ComponentType, CustomComponentTemplate, DesignComponent, SavedLayout, Screen } from "@/types/compose-spec";
+import type { ComponentType, CustomComponentTemplate, DesignComponent, SavedLayout } from "@/types/compose-spec";
 import type { DesignContextType } from "@/contexts/DesignContext";
 import { getComponentDisplayName, ROOT_SCAFFOLD_ID, isContainerType } from "@/types/compose-spec";
 import type { Icon as LucideIcon } from "lucide-react";
@@ -12,12 +12,11 @@ import { cn } from "@/lib/utils";
 import { DesignContext, useDesign } from '@/contexts/DesignContext';
 import { useMemo, FC, ReactNode } from "react";
 import { RenderedComponentWrapper } from './component-renderer/RenderedComponentWrapper';
-import { MobileFrame } from "./MobileFrame";
 
 // A read-only, self-contained provider for rendering previews.
 // This sandboxes the rendering so it doesn't interfere with the main canvas.
 const PreviewDesignProvider: FC<{ components: DesignComponent[], children: ReactNode }> = ({ components, children }) => {
-  const { customComponentTemplates: allTemplates, screens, activeScreenId } = useDesign(); // Get all templates from the main context
+  const { customComponentTemplates: allTemplates } = useDesign(); // Get all templates from the main context
   
   const dummyContextValue = useMemo(() => {
     const contextComponents = components;
@@ -31,8 +30,6 @@ const PreviewDesignProvider: FC<{ components: DesignComponent[], children: React
         nextId: 0,
         editingTemplateInfo: null,
         editingLayoutInfo: null,
-        screens,
-        activeScreenId,
         savedLayouts: [],
         galleryImages: [],
         history: [],
@@ -59,20 +56,13 @@ const PreviewDesignProvider: FC<{ components: DesignComponent[], children: React
         updateSavedLayout: async () => {},
         undo: () => {},
         redo: () => {},
-        copyComponent: () => {},
-        pasteComponent: () => {},
+        copyComponent: () => { return {success: false} },
+        pasteComponent: () => { return {success: false} },
         addImageToGallery: async () => {},
         removeImageFromGallery: async () => {},
-        addScreen: () => '',
-        deleteScreen: () => {},
-        renameScreen: () => {},
-        setActiveScreen: () => {},
-        duplicateScreen: () => {},
-        zoomLevel: 1.0,
-        setZoomLevel: () => {},
     };
     return value;
-  }, [components, allTemplates, screens, activeScreenId]);
+  }, [components, allTemplates]);
 
   return <DesignContext.Provider value={dummyContextValue}>{children}</DesignContext.Provider>
 };
@@ -165,31 +155,6 @@ export const SavedLayoutPreview = ({ layout }: { layout: SavedLayout }) => {
     </div>
   );
 };
-
-
-export const ScreenPreview = ({ screen }: { screen: Screen }) => {
-  const rootComponent = screen.components.find(c => c.id === ROOT_SCAFFOLD_ID && c.parentId === null);
-  if (!rootComponent) {
-    return <div className="text-xs text-destructive flex items-center justify-center h-full">Preview Error: No Scaffold</div>;
-  }
-  
-  const PREVIEW_WIDTH = 50; 
-  const FRAME_WIDTH = 432 + 16;
-  const scale = PREVIEW_WIDTH / FRAME_WIDTH;
-
-  return (
-    <div className="w-14 h-auto bg-muted/20 rounded-sm overflow-hidden border border-sidebar-border/50 pointer-events-none flex items-center justify-center mr-2 shrink-0">
-      <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left' }}>
-        <MobileFrame isPreview>
-          <PreviewDesignProvider components={screen.components}>
-            <RenderedComponentWrapper component={rootComponent} isPreview={true} />
-          </PreviewDesignProvider>
-        </MobileFrame>
-      </div>
-    </div>
-  );
-}
-
 
 interface DraggableComponentItemProps {
   type: ComponentType | string;

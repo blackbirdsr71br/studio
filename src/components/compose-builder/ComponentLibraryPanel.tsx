@@ -2,8 +2,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { DraggableComponentItem, SavedLayoutPreview, ScreenPreview } from "./DraggableComponentItem";
-import type { ComponentType, CustomComponentTemplate, SavedLayout, Screen } from "@/types/compose-spec";
+import { DraggableComponentItem, SavedLayoutPreview } from "./DraggableComponentItem";
+import type { ComponentType, CustomComponentTemplate, SavedLayout } from "@/types/compose-spec";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useDesign } from '@/contexts/DesignContext';
@@ -41,16 +41,11 @@ import {
   PanelBottom, 
   FilePenLine, 
   Film, 
-  AppWindow,
-  Plus,
-  Copy,
-  Eye,
 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 
 // "ScaffoldStructure" removed as the canvas root is now always a Scaffold
-const availableBaseComponents: { type: ComponentType; icon: React.ElementType; displayName?: string }[] = [
+const availableBaseComponents: { type: ComponentType; icon: React.ElementType }[] = [
   { type: "Text", icon: Type },
   { type: "Button", icon: MousePointerSquareDashed },
   { type: "Image", icon: ImageIcon },
@@ -66,26 +61,17 @@ const availableBaseComponents: { type: ComponentType; icon: React.ElementType; d
   { type: "Spacer", icon: Space },
   { type: "TopAppBar", icon: PanelTop }, 
   { type: "BottomNavigationBar", icon: PanelBottom },
-  { type: "BottomNavigationItem", icon: AppWindow, displayName: "Nav Item" },
 ];
 
 export function ComponentLibraryPanel() {
-  const {
-    customComponentTemplates, deleteCustomComponentTemplate, renameCustomComponentTemplate, loadTemplateForEditing,
-    savedLayouts, loadLayoutToCanvas, deleteSavedLayout, renameSavedLayout, loadLayoutForEditing,
-    screens, activeScreenId, setActiveScreen, addScreen, renameScreen, duplicateScreen, deleteScreen
-  } = useDesign();
+  const { customComponentTemplates, deleteCustomComponentTemplate, renameCustomComponentTemplate, loadTemplateForEditing, savedLayouts, loadLayoutToCanvas, deleteSavedLayout, renameSavedLayout, loadLayoutForEditing } = useDesign();
   const { toast } = useToast();
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<CustomComponentTemplate | SavedLayout | Screen | null>(null);
-  const [deleteType, setDeleteType] = useState<'template' | 'layout' | 'screen' | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<CustomComponentTemplate | SavedLayout | null>(null);
+  const [deleteType, setDeleteType] = useState<'template' | 'layout' | null>(null);
 
-  const handleDeleteClick = (item: CustomComponentTemplate | SavedLayout | Screen, type: 'template' | 'layout' | 'screen') => {
-    if (type === 'screen' && screens.length <= 1) {
-      toast({ title: "Cannot Delete", description: "You must have at least one screen.", variant: "destructive"});
-      return;
-    }
+  const handleDeleteClick = (item: CustomComponentTemplate | SavedLayout, type: 'template' | 'layout') => {
     setItemToDelete(item);
     setDeleteType(type);
     setIsDeleteDialogOpen(true);
@@ -97,8 +83,6 @@ export function ComponentLibraryPanel() {
         await deleteCustomComponentTemplate((itemToDelete as CustomComponentTemplate).templateId, (itemToDelete as CustomComponentTemplate).firestoreId);
       } else if (deleteType === 'layout') {
         await deleteSavedLayout((itemToDelete as SavedLayout).layoutId, (itemToDelete as SavedLayout).firestoreId);
-      } else if (deleteType === 'screen') {
-        deleteScreen((itemToDelete as Screen).id);
       }
       setItemToDelete(null);
       setDeleteType(null);
@@ -110,15 +94,13 @@ export function ComponentLibraryPanel() {
     loadTemplateForEditing(template.templateId);
   };
 
-  const handleRenameClick = async (item: CustomComponentTemplate | SavedLayout | Screen, type: 'template' | 'layout' | 'screen') => {
+  const handleRenameClick = async (item: CustomComponentTemplate | SavedLayout, type: 'template' | 'layout') => {
     const newName = window.prompt(`Enter new name for this ${type}:`, item.name);
     if (newName && newName.trim() !== "") {
       if (type === 'template') {
         await renameCustomComponentTemplate((item as CustomComponentTemplate).templateId, newName.trim(), (item as CustomComponentTemplate).firestoreId);
       } else if (type === 'layout') {
         await renameSavedLayout((item as SavedLayout).layoutId, newName.trim(), (item as SavedLayout).firestoreId);
-      } else if (type === 'screen') {
-        renameScreen((item as Screen).id, newName.trim());
       }
     } else if (newName !== null) {
       toast({
@@ -147,7 +129,7 @@ export function ComponentLibraryPanel() {
       <h2 className="text-xl font-semibold mb-2 text-sidebar-foreground font-headline">Components</h2>
       <TooltipProvider delayDuration={200}>
         <Tabs defaultValue="standard" className="flex-grow flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-4 mb-2 h-auto">
+          <TabsList className="grid w-full grid-cols-3 mb-2 h-auto">
             <TabsTrigger value="standard" className="text-xs px-1 py-1.5">Standard</TabsTrigger>
             <TabsTrigger value="custom" disabled={customComponentTemplates.length === 0} className="text-xs px-1 py-1.5">
               Custom
@@ -155,16 +137,13 @@ export function ComponentLibraryPanel() {
             <TabsTrigger value="layouts" disabled={savedLayouts.length === 0} className="text-xs px-1 py-1.5">
               Layouts
             </TabsTrigger>
-            <TabsTrigger value="screens" className="text-xs px-1 py-1.5">
-              Screens
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="standard" className="flex-grow overflow-hidden">
             <ScrollArea className="h-full pr-3">
               <div className="grid grid-cols-2 gap-2">
-                {availableBaseComponents.map(({ type, icon, displayName }) => (
-                  <DraggableComponentItem key={type as string} type={type as string} Icon={icon} displayName={displayName}/>
+                {availableBaseComponents.map(({ type, icon }) => (
+                  <DraggableComponentItem key={type as string} type={type as string} Icon={icon} />
                 ))}
               </div>
             </ScrollArea>
@@ -302,58 +281,6 @@ export function ComponentLibraryPanel() {
               </div>
             )}
           </TabsContent>
-          
-          <TabsContent value="screens" className="flex-grow flex flex-col min-h-0 space-y-2">
-             <div className="flex-grow min-h-0">
-                <ScrollArea className="h-full pr-3">
-                  <div className="space-y-1.5">
-                    {screens.map(screen => (
-                      <div
-                        key={screen.id}
-                        onClick={() => setActiveScreen(screen.id)}
-                        className={cn(
-                          "flex items-center p-1 rounded-md border text-sm cursor-pointer hover:bg-accent/10",
-                           activeScreenId === screen.id ? 'bg-accent/20 border-accent' : 'border-sidebar-border'
-                        )}
-                      >
-                         <ScreenPreview screen={screen} />
-                         <div className='flex flex-col flex-grow items-start'>
-                            <span className="font-medium flex-grow truncate">{screen.name}</span>
-
-                            <div className="flex items-center gap-0.5 mt-1">
-                                <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => {e.stopPropagation(); duplicateScreen(screen.id)}} aria-label={`Duplicate ${screen.name}`}><Copy className="h-3.5 w-3.5"/></Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="top"><p>Duplicate</p></TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => {e.stopPropagation(); handleRenameClick(screen, 'screen')}} aria-label={`Rename ${screen.name}`}><Pencil className="h-3.5 w-3.5"/></Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="top"><p>Rename</p></TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={(e) => {e.stopPropagation(); handleDeleteClick(screen, 'screen')}} aria-label={`Delete ${screen.name}`}><Trash2 className="h-3.5 w-3.5"/></Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="top"><p>Delete</p></TooltipContent>
-                                </Tooltip>
-                            </div>
-                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-             </div>
-             <div className="shrink-0 pt-2 border-t border-sidebar-border/50">
-               <Button variant="outline" size="sm" className="w-full" onClick={() => addScreen()}>
-                  <Plus className="h-4 w-4 mr-2"/>
-                  Add New Screen
-               </Button>
-             </div>
-          </TabsContent>
-
         </Tabs>
       </TooltipProvider>
 
@@ -365,7 +292,6 @@ export function ComponentLibraryPanel() {
               <AlertDialogDescription>
                 This action cannot be undone. This will permanently remove the {deleteType}.
                 {deleteType === 'template' && " Existing instances on the canvas will not be automatically removed but may no longer be addable or editable as this template."}
-                {deleteType === 'screen' && " Any navigation actions pointing to this screen will be broken."}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

@@ -16,11 +16,6 @@ import {
   PanelBottom,
   Film,
   LayoutTemplate, // For Scaffold
-  Home,
-  Store,
-  Ticket,
-  User,
-  AppWindow, // for Screens
 } from "lucide-react";
 import type { ComponentType } from "@/types/compose-spec";
 import type { LucideIcon } from "lucide-react";
@@ -43,12 +38,6 @@ export const getComponentIcon = (type: ComponentType | string): LucideIcon => {
         case 'BottomNavigationBar': return PanelBottom;
         case 'AnimatedContent': return Film;
         case 'Scaffold': return LayoutTemplate;
-        case 'BottomNavigationItem': return AppWindow;
-        // Icons for navigation items, can be customized further
-        case 'Home': return Home;
-        case 'Store': return Store;
-        case 'Benefits': return Ticket;
-        case 'Profile': return User;
         default: return BoxSelect; // Default for custom components
     }
 }

@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { ComponentProperty, ComponentPropertyOption } from '@/types/compose-spec';
 import { Button } from '../ui/button';
 import { Droplet } from 'lucide-react';
-import { useDesign } from '@/contexts/DesignContext';
 
 interface PropertyEditorProps {
   property: Omit<ComponentProperty, 'value'>; // Definition of the property
@@ -18,7 +17,6 @@ interface PropertyEditorProps {
 }
 
 export function PropertyEditor({ property, currentValue, onChange }: PropertyEditorProps) {
-  const { screens } = useDesign();
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (property.type === 'number') {
@@ -154,25 +152,6 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
           </Select>
         </div>
       );
-    case 'screen':
-        return (
-            <div className="space-y-1.5">
-            <Label htmlFor={id} className="text-xs">{property.label}</Label>
-            <Select value={currentValue as string} onValueChange={handleSelectChange}>
-                <SelectTrigger id={id} className="h-8 text-sm">
-                <SelectValue placeholder={property.placeholder || "Select a screen"} />
-                </SelectTrigger>
-                <SelectContent>
-                <SelectItem value="">None</SelectItem>
-                {screens.map(screen => (
-                    <SelectItem key={screen.id} value={screen.id}>
-                    {screen.name}
-                    </SelectItem>
-                ))}
-                </SelectContent>
-            </Select>
-            </div>
-        );
     default:
       return <p className="text-xs text-red-500">Unsupported property type: {property.type}</p>;
   }
