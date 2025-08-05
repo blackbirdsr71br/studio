@@ -21,18 +21,22 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
     return <div className="p-2 text-xs text-destructive">Preview Error: Root component not found.</div>;
   }
   
-  // Calculate a scaling factor to fit the component proportionally
   // The container in the panel is a 16:9 box inside a 224px wide column (minus paddings).
-  const previewWidth = 200; 
-  const previewHeight = (previewWidth * 9) / 16; 
+  // A safe width for the container is around 200px.
+  const previewContainerWidth = 200; 
+  const previewContainerHeight = (previewContainerWidth * 9) / 16; 
   
-  const componentWidth = typeof rootComponent.properties.width === 'number' ? rootComponent.properties.width : previewWidth;
-  const componentHeight = typeof rootComponent.properties.height === 'number' ? rootComponent.properties.height : previewHeight;
+  const componentWidth = typeof rootComponent.properties.width === 'number' ? rootComponent.properties.width : previewContainerWidth;
+  const componentHeight = typeof rootComponent.properties.height === 'number' ? rootComponent.properties.height : previewContainerHeight;
 
   // Calculate the scale needed to fit the component's width and height within the preview area.
   // Take the smaller of the two scales to ensure the whole component fits.
   // Add a max scale of 1 so we don't enlarge small components.
-  const scale = Math.min(previewWidth / componentWidth, previewHeight / componentHeight, 1);
+  const scale = Math.min(
+    componentWidth > 0 ? previewContainerWidth / componentWidth : 1, 
+    componentHeight > 0 ? previewContainerHeight / componentHeight : 1, 
+    1
+  );
 
   return (
     <div 
@@ -41,10 +45,10 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
       <div 
         className="transform origin-center"
         style={{
-            transform: `scale(${scale})`,
             // Set the div size to the component's original size before scaling
             width: `${componentWidth}px`,
             height: `${componentHeight}px`,
+            transform: `scale(${scale})`,
         }}
       >
           <ReadonlyRenderedComponentWrapper
