@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { DraggableComponentItem } from "./DraggableComponentItem";
-import type { ComponentType, CustomComponentTemplate } from "@/types/compose-spec";
+import type { ComponentType, CustomComponentTemplate, SavedLayout } from "@/types/compose-spec";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,10 +27,12 @@ import {
   Pencil,
   Trash2,
   Loader2,
-  Eye
+  Eye,
+  Download
 } from "lucide-react";
 import { Button } from '../ui/button';
 import { TemplatePreview } from './TemplatePreview';
+import { LayoutPreview } from './LayoutPreview';
 import { Badge } from '@/components/ui/badge';
 
 
@@ -113,21 +115,90 @@ function CustomComponentsList() {
 }
 
 
+function LayoutsList() {
+    const { savedLayouts, isLoadingLayouts, loadLayout, deleteLayout, loadLayoutForEditing } = useDesign();
+
+    const handleLoad = (layout: SavedLayout) => {
+        if (window.confirm(`This will replace your current canvas. Are you sure you want to load the layout "${layout.name}"?`)) {
+            loadLayout(layout);
+        }
+    };
+
+    const handleEdit = (layout: SavedLayout) => {
+        loadLayoutForEditing(layout);
+    };
+
+    const handleDelete = (layout: SavedLayout) => {
+        if (window.confirm(`Are you sure you want to delete the layout "${layout.name}"? This cannot be undone.`)) {
+            deleteLayout(layout.firestoreId);
+        }
+    };
+    
+    if (isLoadingLayouts) {
+        return (
+            <div className="flex justify-center items-center h-full">
+                <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+        )
+    }
+
+    if (!savedLayouts || savedLayouts.length === 0) {
+        return <p className="text-xs text-center text-muted-foreground p-2">No layouts saved yet.</p>;
+    }
+
+    return (
+      <div className="space-y-4">
+          {savedLayouts.map((layout) => {
+              return (
+                  <div key={layout.firestoreId} className="relative group/layout-item border border-sidebar-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow p-2 space-y-2">
+                        <div className="flex justify-between items-center">
+                            <p className="text-sm font-medium text-sidebar-foreground truncate pr-1">{layout.name}</p>
+                            <div className="flex items-center gap-1 opacity-0 group-hover/layout-item:opacity-100 transition-opacity duration-200">
+                                <Button variant="ghost" size="icon" className="h-6 w-6" title="Load Layout" onClick={() => handleLoad(layout)}>
+                                    <Download className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-6 w-6" title="Edit Layout" onClick={() => handleEdit(layout)}>
+                                    <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10" title="Delete Layout" onClick={() => handleDelete(layout)}>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="w-full aspect-[16/9] bg-muted/30 rounded-md overflow-hidden relative border">
+                            <LayoutPreview layout={layout} />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
+                        </div>
+                  </div>
+              );
+          })}
+      </div>
+    );
+}
+
 export function ComponentLibraryPanel() {
-  const { customComponentTemplates } = useDesign();
+  const { customComponentTemplates, savedLayouts } = useDesign();
 
   return (
     <aside className="w-64 border-r bg-sidebar p-4 flex flex-col shrink-0">
       <h2 className="text-xl font-semibold mb-2 text-sidebar-foreground font-headline">Components</h2>
       <TooltipProvider delayDuration={200}>
         <Tabs defaultValue="standard" className="flex-grow flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-2 mb-2 h-auto">
+          <TabsList className="grid w-full grid-cols-3 mb-2 h-auto">
             <TabsTrigger value="standard" className="text-xs px-1 py-1.5">Standard</TabsTrigger>
             <TabsTrigger value="custom" className="text-xs px-1 py-1.5 relative">
               Custom
               {customComponentTemplates.length > 0 && (
                 <Badge variant="secondary" className="absolute -top-1 -right-2 h-4 px-1.5 text-xs font-bold">
                   {customComponentTemplates.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+             <TabsTrigger value="layouts" className="text-xs px-1 py-1.5 relative">
+              Layouts
+              {savedLayouts.length > 0 && (
+                <Badge variant="secondary" className="absolute -top-1 -right-2 h-4 px-1.5 text-xs font-bold">
+                  {savedLayouts.length}
                 </Badge>
               )}
             </TabsTrigger>
@@ -145,6 +216,11 @@ export function ComponentLibraryPanel() {
            <TabsContent value="custom" className="flex-grow overflow-hidden">
             <ScrollArea className="h-full pr-3">
               <CustomComponentsList />
+            </ScrollArea>
+          </TabsContent>
+           <TabsContent value="layouts" className="flex-grow overflow-hidden">
+            <ScrollArea className="h-full pr-3">
+              <LayoutsList />
             </ScrollArea>
           </TabsContent>
         </Tabs>

@@ -125,7 +125,7 @@ export interface DesignComponent {
 }
 
 export interface CustomComponentTemplate {
-  firestoreId?: string; // ID of the document in Firestore
+  firestoreId: string; // ID of the document in Firestore
   templateId: string; // The ID used as a reference (e.g., "custom/my-template-123")
   name: string;
   rootComponentId: string; // The local ID of the root component within componentTree
@@ -133,8 +133,7 @@ export interface CustomComponentTemplate {
 }
 
 export interface SavedLayout {
-  firestoreId?: string; // ID of the document in Firestore
-  layoutId: string;
+  firestoreId: string; // ID of the document in Firestore (which is its name)
   name: string;
   components: DesignComponent[];
   nextId: number;
@@ -157,12 +156,11 @@ export interface DesignState {
 
   editingTemplateInfo?: {
     templateId: string;
-    firestoreId?: string;
+    firestoreId: string;
     name: string;
   } | null;
   editingLayoutInfo?: {
-    layoutId: string;
-    firestoreId?: string;
+    firestoreId: string;
     name: string;
   } | null;
   history: { components: DesignComponent[]; nextId: number; selectedComponentId: string | null }[];
@@ -445,7 +443,7 @@ export const getComponentDisplayName = (type: ComponentType | string): string =>
     case 'BottomNavigationBar': return 'Bottom Nav Bar';
     case 'AnimatedContent': return 'Animated Content';
     default: 
-      if (type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
+      if (typeof type === 'string' && type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
         return type.replace(CUSTOM_COMPONENT_TYPE_PREFIX, "").replace(/-\d+$/, "").replace(/-/g, ' ');
       }
       return 'Unknown Component';

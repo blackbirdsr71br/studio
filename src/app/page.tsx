@@ -14,6 +14,7 @@ import { ViewJsonModal, type ViewJsonModalRef } from '@/components/compose-build
 import { ThemeEditorModal, type ThemeEditorModalRef } from '@/components/compose-builder/ThemeEditorModal';
 import { ImageSourceModal, type ImageSourceModalRef } from '@/components/compose-builder/ImageSourceModal';
 import { PublishConfigModal, type PublishConfigModalRef } from '@/components/compose-builder/PublishConfigModal';
+import { SaveLayoutModal, type SaveLayoutModalRef } from '@/components/compose-builder/SaveLayoutModal';
 import { MobileFrame, FRAME_WIDTH, FRAME_HEIGHT } from '@/components/compose-builder/MobileFrame';
 import { ZoomControls } from '@/components/compose-builder/ZoomControls';
 import { useToast } from '@/hooks/use-toast';
@@ -79,6 +80,7 @@ function MainApp() {
   const themeEditorModalRef = useRef<ThemeEditorModalRef>(null);
   const imageSourceModalRef = useRef<ImageSourceModalRef>(null);
   const publishConfigModalRef = useRef<PublishConfigModalRef>(null);
+  const saveLayoutModalRef = useRef<SaveLayoutModalRef>(null);
 
   useEffect(() => {
     const mainElement = document.querySelector('main');
@@ -110,6 +112,7 @@ function MainApp() {
           viewJsonModalRef={viewJsonModalRef}
           themeEditorModalRef={themeEditorModalRef}
           publishConfigModalRef={publishConfigModalRef}
+          saveLayoutModalRef={saveLayoutModalRef}
         />
         <div className="flex flex-row flex-grow overflow-hidden">
           <ComponentLibraryPanel />
@@ -142,6 +145,7 @@ function MainApp() {
       <ThemeEditorModal ref={themeEditorModalRef} />
       <ImageSourceModal ref={imageSourceModalRef} />
       <PublishConfigModal ref={publishConfigModalRef} />
+      <SaveLayoutModal ref={saveLayoutModalRef} />
     </>
   );
 }

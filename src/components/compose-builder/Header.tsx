@@ -4,11 +4,12 @@
 import React, { RefObject } from 'react';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from "@/components/ui/button";
-import { Code, Trash2, FileJson, UploadCloud, Palette, Undo, Redo, Copy, ClipboardPaste, Settings, Save } from "lucide-react";
+import { Code, Trash2, FileJson, UploadCloud, Palette, Undo, Redo, Copy, ClipboardPaste, Settings, Save, Library } from "lucide-react";
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
 import type { ViewJsonModalRef } from "./ViewJsonModal";
 import type { ThemeEditorModalRef } from "./ThemeEditorModal";
 import type { PublishConfigModalRef } from "./PublishConfigModal";
+import type { SaveLayoutModalRef } from "./SaveLayoutModal";
 import { useDesign } from "@/contexts/DesignContext";
 import {
   Tooltip,
@@ -28,6 +29,7 @@ interface HeaderProps {
   viewJsonModalRef: RefObject<ViewJsonModalRef>;
   themeEditorModalRef: RefObject<ThemeEditorModalRef>;
   publishConfigModalRef: RefObject<PublishConfigModalRef>;
+  saveLayoutModalRef: RefObject<SaveLayoutModalRef>;
 }
 
 export function Header({
@@ -35,12 +37,14 @@ export function Header({
   viewJsonModalRef,
   themeEditorModalRef,
   publishConfigModalRef,
+  saveLayoutModalRef,
 }: HeaderProps) {
   const { 
     clearDesign, components,
     undo, redo, copyComponent, pasteComponent,
     history, future, selectedComponentId, clipboard,
-    editingTemplateInfo, updateCustomTemplate
+    editingTemplateInfo, updateCustomTemplate,
+    editingLayoutInfo, updateLayout,
   } = useDesign();
   const { toast } = useToast();
 
@@ -98,6 +102,19 @@ export function Header({
       updateCustomTemplate();
     }
   };
+  
+  const handleUpdateLayout = () => {
+    if (editingLayoutInfo) {
+      updateLayout();
+    }
+  };
+  
+  const handleSaveLayout = () => {
+    if (saveLayoutModalRef.current) {
+        saveLayoutModalRef.current.openModal();
+    }
+  };
+
 
   const hasUserComponents = components.length > 4; // Check for any component beyond the initial 4 scaffold parts
   const canCopy = !!selectedComponentId && !CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponentId);
@@ -119,6 +136,18 @@ export function Header({
                 </p>
                 <Button size="sm" className="bg-yellow-400 text-yellow-900 hover:bg-yellow-500 h-8" onClick={handleUpdateTemplate}>
                     <Save className="mr-2"/> Update Template
+                </Button>
+            </div>
+        </div>
+      )}
+      {editingLayoutInfo && (
+        <div className="flex-grow flex items-center justify-center">
+            <div className="flex items-center gap-4 bg-green-400/20 text-green-200 px-4 py-1.5 rounded-lg border border-green-400/50">
+                <p className="text-sm font-medium">
+                    Editing Layout: <span className="font-bold">{editingLayoutInfo.name}</span>
+                </p>
+                <Button size="sm" className="bg-green-400 text-green-900 hover:bg-green-500 h-8" onClick={handleUpdateLayout}>
+                    <Save className="mr-2"/> Update Layout
                 </Button>
             </div>
         </div>
@@ -193,6 +222,24 @@ export function Header({
             </Tooltip>
 
             <Separator orientation="vertical" className="h-6 mx-1 bg-white/50 dark:bg-sidebar-border" />
+            
+             <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={handleSaveLayout}
+                  disabled={!hasUserComponents || !!editingTemplateInfo || !!editingLayoutInfo}
+                  aria-label={"Save Layout"}
+                  className="text-sidebar-foreground border-sidebar-border bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+                >
+                  <Library />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Save Current Layout</p>
+              </TooltipContent>
+            </Tooltip>
 
             <Tooltip>
               <TooltipTrigger asChild>
