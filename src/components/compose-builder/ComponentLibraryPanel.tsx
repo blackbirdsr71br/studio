@@ -87,28 +87,28 @@ function CustomComponentsList() {
               }
               return (
                   <div key={template.firestoreId} className="relative group/custom-item border border-sidebar-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow">
-                       <DraggableComponentItem
-                            type={template.templateId}
-                            isCustomComponent={true}
-                       >
-                           <div className="p-2 space-y-2">
-                               <div className="flex justify-between items-center">
-                                    <p className="text-sm font-medium text-sidebar-foreground truncate pr-1">{template.name}</p>
-                                    <div className="flex items-center gap-1 opacity-0 group-hover/custom-item:opacity-100 transition-opacity duration-200">
-                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => {e.stopPropagation(); handleEdit(template);}}>
-                                            <Pencil className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={(e) => {e.stopPropagation(); handleDelete(template);}}>
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                        </Button>
-                                    </div>
-                               </div>
+                       <div className="p-2 space-y-2">
+                           <div className="flex justify-between items-center">
+                                <p className="text-sm font-medium text-sidebar-foreground truncate pr-1 flex-1">{template.name}</p>
+                                <div className="flex items-center gap-1 opacity-0 group-hover/custom-item:opacity-100 transition-opacity duration-200 shrink-0">
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => {e.stopPropagation(); handleEdit(template);}}>
+                                        <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={(e) => {e.stopPropagation(); handleDelete(template);}}>
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                </div>
+                           </div>
+                           <DraggableComponentItem
+                                type={template.templateId}
+                                isCustomComponent={true}
+                           >
                                <div className="w-full aspect-[16/9] bg-muted/30 rounded-md overflow-hidden relative border">
                                    <TemplatePreview template={template} />
                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
                                </div>
-                           </div>
-                       </DraggableComponentItem>
+                           </DraggableComponentItem>
+                       </div>
                   </div>
               );
           })}
