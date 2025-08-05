@@ -106,7 +106,7 @@ function CustomComponentsList() {
                             type={template.templateId}
                             isCustomComponent={true}
                        >
-                           <div className="w-full aspect-[3/1] bg-muted/30 overflow-hidden relative border-t">
+                           <div className="w-full h-32 bg-muted/30 overflow-hidden relative border-t">
                                <TemplatePreview template={template} />
                                <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
                            </div>
