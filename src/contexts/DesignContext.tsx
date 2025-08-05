@@ -5,7 +5,7 @@ import type { ReactNode} from 'react';
 import React, { useState, useEffect, useCallback } from 'react';
 import type { DesignComponent, DesignState, ComponentType, BaseComponentProps, CustomComponentTemplate, SavedLayout, GalleryImage } from '@/types/compose-spec';
 import { getDefaultProperties, CUSTOM_COMPONENT_TYPE_PREFIX, isContainerType, getComponentDisplayName, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, CORE_SCAFFOLD_ELEMENT_IDS, CUSTOM_TEMPLATES_COLLECTION, SAVED_LAYOUTS_COLLECTION, GALLERY_IMAGES_COLLECTION, DESIGNS_COLLECTION, MAIN_DESIGN_DOC_ID } from '@/types/compose-spec';
-import { getFirebaseDb } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { collection, doc, setDoc, getDocs, deleteDoc, updateDoc, query, orderBy, getDoc, type Firestore } from "firebase/firestore";
 import { useToast } from '@/hooks/use-toast';
 import { useDebouncedCallback } from 'use-debounce';
@@ -225,17 +225,12 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   
   useEffect(() => {
     setIsClient(true);
-    getFirebaseDb().then(db => {
-      if (db) {
+    if (db) {
         setDbInstance(db);
-      } else {
-         toast({title: "Firebase Error", description: "Could not connect to the database. Please check your configuration.", variant: "destructive"});
-      }
-    }).catch(err => {
-      console.error("Failed to initialize Firebase DB in context:", err);
-      toast({title: "Firebase Error", description: "Could not connect to the database.", variant: "destructive"});
-    });
-  }, [toast]);
+    } else {
+        console.warn("Firestore DB instance not available on initial context mount.");
+    }
+  }, []);
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -885,4 +880,5 @@ export const useDesign = (): DesignContextType => {
 export { DesignContext };
     
     
+
 
