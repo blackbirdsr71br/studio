@@ -17,7 +17,7 @@ import {
   CORE_SCAFFOLD_ELEMENT_IDS
 } from '@/types/compose-spec';
 import { PropertyEditor } from './PropertyEditor';
-import { Trash2, Save, Sparkles, Loader2, Upload, Search } from 'lucide-react';
+import { Trash2, Sparkles, Loader2, Upload, Search } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -40,7 +40,7 @@ interface PropertyPanelProps {
 const PREFERRED_GROUP_ORDER = ['Layout', 'Appearance', 'Content', 'Behavior'];
 
 export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
-  const { selectedComponentId, getComponentById, updateComponent, deleteComponent, saveSelectedAsCustomTemplate, customComponentTemplates, editingTemplateInfo, editingLayoutInfo } = useDesign();
+  const { selectedComponentId, getComponentById, updateComponent, deleteComponent, customComponentTemplates, editingTemplateInfo, editingLayoutInfo } = useDesign();
   const selectedComponent = selectedComponentId ? getComponentById(selectedComponentId) : null;
   const { toast } = useToast();
 
@@ -108,35 +108,6 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
       }
       if (window.confirm(`Are you sure you want to delete "${selectedComponent.name}"?`)) {
         deleteComponent(selectedComponent.id);
-      }
-    };
-
-    const handleSaveAsCustom = () => {
-      if (CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponent.id) && !selectedComponent.templateIdRef) {
-        toast({
-          title: "Cannot Save Root Element",
-          description: "Core scaffold elements cannot be saved as custom components.",
-          variant: "destructive",
-        });
-        return;
-      }
-      if (selectedComponent.templateIdRef) {
-          toast({
-            title: "Action Prevented",
-            description: "Cannot save an instance of a custom component as a new custom component template.",
-            variant: "destructive",
-          });
-          return;
-      }
-      const name = window.prompt("Enter a name for your custom component:", selectedComponent.name);
-      if (name && name.trim() !== "") {
-        saveSelectedAsCustomTemplate(name.trim());
-      } else if (name !== null) {
-        toast({
-          title: "Save Failed",
-          description: "Custom component name cannot be empty.",
-          variant: "destructive",
-        });
       }
     };
 
@@ -338,7 +309,6 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
       componentDisplayName = getComponentDisplayName(selectedComponent.type as ComponentType);
     }
     const isCoreScaffoldElement = CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponent.id) && !selectedComponent.templateIdRef;
-    const isEditingMode = !!editingTemplateInfo || !!editingLayoutInfo;
     
     return (
       <div className="h-full flex flex-col">
@@ -347,11 +317,6 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
             {selectedComponent.name}
           </h2>
           <div className="flex items-center">
-            {!isCoreScaffoldElement && !selectedComponent.templateIdRef && !isEditingMode && (
-              <Button variant="ghost" size="icon" onClick={handleSaveAsCustom} className="text-sidebar-primary hover:bg-primary/10 h-7 w-7" aria-label="Save as custom component">
-                <Save className="h-4 w-4" />
-              </Button>
-            )}
             <Button variant="ghost" size="icon" onClick={handleDelete} className="text-destructive hover:bg-destructive/10 h-7 w-7" aria-label="Delete component" disabled={isCoreScaffoldElement}>
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -426,7 +391,3 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     </aside>
   );
 }
-
-
-
-    

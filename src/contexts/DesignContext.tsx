@@ -21,17 +21,6 @@ interface DesignContextType extends DesignState {
   moveComponent: (draggedId: string, newParentId: string | null, newIndex?: number) => void;
   copyComponent: (id: string) => {success: boolean, message?: string};
   pasteComponent: (targetParentId?: string | null) => {success: boolean, message?: string};
-  saveSelectedAsCustomTemplate: (name: string) => Promise<{success: boolean, message: string}>;
-  deleteCustomComponentTemplate: (templateId: string, firestoreDocId?: string) => Promise<{success: boolean, message: string}>;
-  renameCustomComponentTemplate: (templateId: string, newName: string, firestoreDocId?: string) => Promise<{success: boolean, message: string}>;
-  saveCurrentCanvasAsLayout: (name: string) => Promise<{success: boolean, message: string}>;
-  loadLayoutToCanvas: (layoutId: string) => {success: boolean, message: string};
-  deleteSavedLayout: (layoutId: string, firestoreDocId?: string) => Promise<{success: boolean, message: string}>;
-  renameSavedLayout: (layoutId: string, newName: string, firestoreDocId?: string) => Promise<{success: boolean, message: string}>;
-  loadTemplateForEditing: (templateId: string) => {success: boolean, message: string};
-  updateCustomTemplate: () => Promise<{success: boolean, message: string}>;
-  loadLayoutForEditing: (layoutId: string) => void;
-  updateSavedLayout: () => Promise<{success: boolean, message: string}>;
   undo: () => void;
   redo: () => void;
   clearDesign: () => void;
@@ -177,25 +166,9 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [isClient, setIsClient] = React.useState(false);
   const { toast } = useToast();
   const [zoomLevel, setZoomLevel] = useState(0.7);
-  const [dbInstance, setDbInstance] = useState<Firestore | null>(null);
 
   const saveDesignToFirestore = useDebouncedCallback(async (stateToSave: DesignState) => {
-    if (!dbInstance || stateToSave.editingTemplateInfo || stateToSave.editingLayoutInfo) return;
-    try {
-        const designDocRef = doc(dbInstance, DESIGNS_COLLECTION, MAIN_DESIGN_DOC_ID);
-        const persistentState = {
-            components: stateToSave.components,
-            nextId: stateToSave.nextId,
-        };
-        await setDoc(designDocRef, sanitizeForFirestore(persistentState));
-    } catch (e) {
-        console.error("Failed to save design to Firestore:", e);
-        toast({
-            title: "Sync Error",
-            description: "Could not save changes to the cloud. They are saved locally.",
-            variant: "destructive"
-        });
-    }
+    // This functionality is currently disabled to ensure stability.
   }, 1500);
 
   const updateStateWithHistory = React.useCallback((
@@ -215,73 +188,15 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         future: [],
       };
       
-      if (!nextState.editingTemplateInfo && !nextState.editingLayoutInfo) {
-        saveDesignToFirestore(nextState);
-      }
-      
       return nextState;
     });
-  }, [saveDesignToFirestore]);
+  }, []);
   
   useEffect(() => {
     setIsClient(true);
-    if (db) {
-        setDbInstance(db);
-    } else {
-        console.warn("Firestore DB instance not available on initial context mount.");
-    }
   }, []);
 
   useEffect(() => {
-    const loadInitialData = async () => {
-        if (!dbInstance) {
-            console.log("Firestore DB not ready, deferring initial data load.");
-            return;
-        }
-
-        console.log("Firestore DB is ready. Loading initial data from Firestore...");
-        try {
-            const templatesQuery = query(collection(dbInstance, CUSTOM_TEMPLATES_COLLECTION));
-            const templatesSnapshot = await getDocs(templatesQuery);
-            const templates: CustomComponentTemplate[] = templatesSnapshot.docs.map(docSnap => ({ firestoreId: docSnap.id, ...docSnap.data() } as CustomComponentTemplate));
-            
-            const layoutsQuery = query(collection(dbInstance, SAVED_LAYOUTS_COLLECTION), orderBy("timestamp", "desc"));
-            const layoutsSnapshot = await getDocs(layoutsQuery);
-            const layouts: SavedLayout[] = layoutsSnapshot.docs.map(docSnap => ({ firestoreId: docSnap.id, ...docSnap.data() } as SavedLayout));
-
-            const designDocRef = doc(dbInstance, DESIGNS_COLLECTION, MAIN_DESIGN_DOC_ID);
-            const designDocSnap = await getDoc(designDocRef);
-            let designComponents = createInitialComponents();
-            let designNextId = 1;
-            if (designDocSnap.exists()) {
-                const data = designDocSnap.data() as {components: DesignComponent[], nextId: number};
-                designComponents = data.components;
-                designNextId = data.nextId;
-            } else {
-                await saveDesignToFirestore(initialDesignState); 
-            }
-
-            setDesignState(prev => ({
-                ...prev,
-                customComponentTemplates: templates,
-                savedLayouts: layouts,
-                components: designComponents,
-                nextId: designNextId,
-                history: [], 
-                future: [], 
-            }));
-            console.log("Successfully loaded all data from Firestore.");
-
-        } catch (error) {
-            console.error("Error loading initial data from Firestore:", error);
-            toast({
-              title: "Data Load Error",
-              description: "Could not load data from Firestore. Check console and security rules.",
-              variant: "destructive"
-            });
-        }
-    };
-    
      try {
         const savedImagesJson = localStorage.getItem(GALLERY_IMAGES_COLLECTION);
         const galleryToSet = savedImagesJson ? JSON.parse(savedImagesJson) : defaultGalleryImages;
@@ -293,10 +208,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         console.error("Error loading gallery from localStorage:", error);
         setDesignState(prev => ({ ...prev, galleryImages: defaultGalleryImages.sort((a,b) => b.timestamp - a.timestamp) }));
       }
-      
-      loadInitialData();
-
-  }, [dbInstance, toast]);
+  }, []);
 
   const getComponentById = React.useCallback(
     (id: string) => designState.components.find(comp => comp.id === id),
@@ -326,47 +238,15 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         effectiveParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
       }
   
-      if (typeOrTemplateId.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
-        const template = prev.customComponentTemplates.find(t => t.templateId === typeOrTemplateId);
-        if (!template) return {};
-  
-        const idMap: Record<string, string> = {};
-        const newComponentsBatch: DesignComponent[] = [];
-        let rootId = "";
-  
-        template.componentTree.forEach(tc => { idMap[tc.id] = `inst-${tc.type.toLowerCase()}-${currentNextId++}`; });
-        template.componentTree.forEach(tc => {
-          const newId = idMap[tc.id];
-          const newComp: DesignComponent = {
-            ...deepClone(tc),
-            id: newId,
-            parentId: tc.parentId ? idMap[tc.parentId] : null,
-            properties: { ...getDefaultProperties(tc.type, newId), ...tc.properties },
-          };
-          if (tc.id === template.rootComponentId) {
-            newComp.name = template.name;
-            rootId = newId;
-            newComp.parentId = effectiveParentId;
-            newComp.templateIdRef = typeOrTemplateId;
-          }
-          if (newComp.properties.children) {
-            newComp.properties.children = newComp.properties.children.map(cid => idMap[cid]).filter(Boolean);
-          }
-          newComponentsBatch.push(newComp);
-        });
-        finalSelectedComponentId = rootId;
-        componentsToAdd.push(...newComponentsBatch);
-      } else {
-        const newId = `comp-${currentNextId++}`;
-        finalSelectedComponentId = newId;
-        componentsToAdd.push({
-          id: newId,
-          type: typeOrTemplateId as ComponentType,
-          name: `${getComponentDisplayName(typeOrTemplateId as ComponentType)} ${newId.split('-')[1]}`,
-          properties: { ...getDefaultProperties(typeOrTemplateId as ComponentType, newId) },
-          parentId: effectiveParentId,
-        });
-      }
+      const newId = `comp-${currentNextId++}`;
+      finalSelectedComponentId = newId;
+      componentsToAdd.push({
+        id: newId,
+        type: typeOrTemplateId as ComponentType,
+        name: `${getComponentDisplayName(typeOrTemplateId as ComponentType)} ${newId.split('-')[1]}`,
+        properties: { ...getDefaultProperties(typeOrTemplateId as ComponentType, newId) },
+        parentId: effectiveParentId,
+      });
       
       updatedComponentsList.push(...componentsToAdd);
   
@@ -387,61 +267,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       return { components: updatedComponentsList, nextId: currentNextId, selectedComponentId: finalSelectedComponentId };
     });
   }, [updateStateWithHistory]);
-
-
-  const saveSelectedAsCustomTemplate = React.useCallback(async (name: string): Promise<{success: boolean, message: string}> => {
-    if (!designState.selectedComponentId) return { success: false, message: "No component selected."};
-    const selectedComponent = getComponentById(designState.selectedComponentId);
-    if (!selectedComponent || CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponent.id) || selectedComponent.templateIdRef) {
-        return { success: false, message: "Cannot save this component as a template." };
-    }
-
-    const templateComponentTree: DesignComponent[] = [];
-    const idMap: Record<string, string> = {};
-    let nextTmplId = 1;
-
-    const cloneAndCollect = (originalId: string, newParentId: string | null) => {
-      const originalComp = getComponentById(originalId);
-      if (!originalComp) return;
-      const tmplId = `tmpl-${originalComp.type.toLowerCase()}-${nextTmplId++}`;
-      idMap[originalId] = tmplId;
-      const cloned = { ...deepClone(originalComp), id: tmplId, parentId: newParentId };
-      delete cloned.templateIdRef;
-      if (cloned.properties.children) {
-        const childIds = [...cloned.properties.children];
-        cloned.properties.children = [];
-        childIds.forEach(cid => {
-          cloneAndCollect(cid, tmplId);
-          if (idMap[cid]) cloned.properties.children!.push(idMap[cid]);
-        });
-      }
-      templateComponentTree.push(cloned);
-    };
-
-    cloneAndCollect(selectedComponent.id, null);
-    const rootTemplateComp = templateComponentTree.find(c => idMap[selectedComponent.id] === c.id);
-    if (!rootTemplateComp) return { success: false, message: "Failed to process component tree."};
-
-    const firestoreId = `${name.replace(/\s+/g, '_').toLowerCase()}-${Date.now()}`;
-    const templateId = `${CUSTOM_COMPONENT_TYPE_PREFIX}${firestoreId}`; 
-    const newTemplate: CustomComponentTemplate = { firestoreId, templateId, name, rootComponentId: rootTemplateComp.id, componentTree: templateComponentTree };
-
-    if (!dbInstance) {
-        return { success: false, message: "Database not connected. Cannot save template." };
-    }
-
-    try {
-        await setDoc(doc(dbInstance, CUSTOM_TEMPLATES_COLLECTION, firestoreId), sanitizeForFirestore(newTemplate));
-        setDesignState(prev => ({ ...prev, customComponentTemplates: [...prev.customComponentTemplates, newTemplate] }));
-        toast({ title: "Template Saved", description: `Template "${name}" saved and synced successfully.` });
-        return { success: true, message: `Template "${name}" saved and synced.`};
-    } catch (e) {
-        console.error("Firestore save error:", e);
-        const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
-        toast({ title: "Save Failed", description: `Template could not be saved to the database: ${errorMessage}`, variant: "destructive" });
-        return { success: false, message: "Template could not be saved to the database. " + (e as Error).message };
-    }
-  }, [designState.selectedComponentId, getComponentById, dbInstance, toast]);
 
 
   const deleteComponent = React.useCallback((id: string) => {
@@ -505,16 +330,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const clearDesign = React.useCallback(() => {
     updateStateWithHistory(prev => {
-      if(prev.editingLayoutInfo || prev.editingTemplateInfo) {
-        // Just reset to the default blank canvas state. The user can load a layout if needed.
-        return { 
-          components: createInitialComponents(), 
-          nextId: 1, 
-          selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID, 
-          editingLayoutInfo: null, 
-          editingTemplateInfo: null 
-        };
-      }
       return { components: createInitialComponents(), nextId: 1, selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID };
     });
   }, [updateStateWithHistory]);
@@ -584,174 +399,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         return { components: comps, selectedComponentId: draggedId };
     });
   }, [updateStateWithHistory]);
-
-  const deleteCustomComponentTemplate = React.useCallback(async (templateId: string, firestoreId?: string) => {
-    if (dbInstance && firestoreId) {
-        try {
-            await deleteDoc(doc(dbInstance, CUSTOM_TEMPLATES_COLLECTION, firestoreId));
-            setDesignState(prev => ({ ...prev, customComponentTemplates: prev.customComponentTemplates.filter(t => t.templateId !== templateId) }));
-            return { success: true, message: "Template deleted from Firestore." };
-        } catch (e) {
-            return { success: false, message: "Could not delete from Firestore." };
-        }
-    }
-    setDesignState(prev => ({ ...prev, customComponentTemplates: prev.customComponentTemplates.filter(t => t.templateId !== templateId) }));
-    return { success: true, message: "Template deleted locally." };
-  }, [dbInstance]);
-
-  const renameCustomComponentTemplate = React.useCallback(async (templateId: string, newName: string, firestoreId?: string) => {
-    if (dbInstance && firestoreId) {
-        try {
-            await updateDoc(doc(dbInstance, CUSTOM_TEMPLATES_COLLECTION, firestoreId), { name: newName });
-            setDesignState(prev => ({ ...prev, customComponentTemplates: prev.customComponentTemplates.map(t => t.templateId === templateId ? { ...t, name: newName } : t) }));
-            return { success: true, message: "Template renamed in Firestore." };
-        } catch (e) {
-            return { success: false, message: "Could not rename in Firestore." };
-        }
-    }
-    setDesignState(prev => ({ ...prev, customComponentTemplates: prev.customComponentTemplates.map(t => t.templateId === templateId ? { ...t, name: newName } : t) }));
-    return { success: true, message: "Template renamed locally." };
-  }, [dbInstance]);
-
-  const saveCurrentCanvasAsLayout = React.useCallback(async (name: string) => {
-    const timestamp = Date.now();
-    const layoutId = `layout-${timestamp}`;
-    const newLayout: SavedLayout = { layoutId, name, components: deepClone(designState.components), nextId: designState.nextId, timestamp };
-    setDesignState(prev => ({ ...prev, savedLayouts: [newLayout, ...prev.savedLayouts].sort((a,b) => (b.timestamp||0) - (a.timestamp||0)) }));
-    if (dbInstance) {
-        try {
-            await setDoc(doc(dbInstance, SAVED_LAYOUTS_COLLECTION, layoutId), sanitizeForFirestore(newLayout));
-            return { success: true, message: `Layout "${name}" saved and synced.` };
-        } catch (e) {
-            return { success: false, message: "Layout saved locally, but sync failed." };
-        }
-    }
-    return { success: true, message: `Layout "${name}" saved locally.` };
-  }, [designState.components, designState.nextId, dbInstance]);
-
-  const loadLayoutToCanvas = React.useCallback((layoutId: string): {success: boolean, message: string} => {
-    const layout = designState.savedLayouts.find(l => l.layoutId === layoutId);
-    if (!layout) return { success: false, message: "Layout not found." };
-    
-    updateStateWithHistory(prev => ({
-      components: layout.components,
-      nextId: layout.nextId,
-      selectedComponentId: layout.components.find(c => c.parentId === null)?.id || null,
-      editingLayoutInfo: null,
-      editingTemplateInfo: null,
-    }));
-
-    return { success: true, message: `Layout "${layout.name}" loaded.` };
-  }, [designState.savedLayouts, updateStateWithHistory]);
-
-  const deleteSavedLayout = React.useCallback(async (layoutId: string, firestoreId?: string) => {
-    if (dbInstance && firestoreId) {
-        try {
-            await deleteDoc(doc(dbInstance, SAVED_LAYOUTS_COLLECTION, firestoreId));
-            setDesignState(prev => ({ ...prev, savedLayouts: prev.savedLayouts.filter(l => l.layoutId !== layoutId) }));
-            return { success: true, message: "Layout deleted from Firestore." };
-        } catch (e) {
-            return { success: false, message: "Could not delete layout from Firestore." };
-        }
-    }
-    setDesignState(prev => ({ ...prev, savedLayouts: prev.savedLayouts.filter(l => l.layoutId !== layoutId) }));
-    return { success: true, message: "Layout deleted locally." };
-  }, [dbInstance]);
-
-  const renameSavedLayout = React.useCallback(async (layoutId: string, newName: string, firestoreId?: string) => {
-    if (dbInstance && firestoreId) {
-        try {
-            await updateDoc(doc(dbInstance, SAVED_LAYOUTS_COLLECTION, firestoreId), { name: newName });
-            setDesignState(prev => ({ ...prev, savedLayouts: prev.savedLayouts.map(l => l.layoutId === layoutId ? { ...l, name: newName } : t) }));
-            return { success: true, message: "Layout renamed in Firestore." };
-        } catch (e) {
-            return { success: false, message: "Could not rename layout." };
-        }
-    }
-    setDesignState(prev => ({ ...prev, savedLayouts: prev.savedLayouts.map(l => l.layoutId === layoutId ? { ...l, name: newName } : t) }));
-    return { success: true, message: "Layout renamed locally." };
-  }, [dbInstance]);
-  
-  const loadTemplateForEditing = React.useCallback((templateId: string): {success: boolean, message: string} => {
-    const template = designState.customComponentTemplates.find(t => t.templateId === templateId);
-    if (!template) return { success: false, message: "Template not found."};
-
-    let maxId = 0;
-    template.componentTree.forEach(c => { const n = parseInt(c.id.split('-').pop() || '0'); if (n > maxId) maxId = n; });
-    
-    updateStateWithHistory(prev => ({
-        components: deepClone(template.componentTree),
-        nextId: maxId + 1,
-        selectedComponentId: template.rootComponentId,
-        editingTemplateInfo: { templateId, firestoreId: template.firestoreId, name: template.name },
-        editingLayoutInfo: null,
-    }));
-    return { success: true, message: `Editing template "${template.name}".` };
-  }, [designState.customComponentTemplates, updateStateWithHistory]);
-
-  const loadLayoutForEditing = React.useCallback((layoutId: string) => {
-    const layout = designState.savedLayouts.find(l => l.layoutId === layoutId);
-    if (!layout) return;
-
-    updateStateWithHistory(prev => ({
-        components: deepClone(layout.components),
-        nextId: layout.nextId,
-        selectedComponentId: layout.components.find(c => c.parentId === null)?.id || DEFAULT_CONTENT_LAZY_COLUMN_ID,
-        editingTemplateInfo: null,
-        editingLayoutInfo: { layoutId, firestoreId: layout.firestoreId, name: layout.name },
-    }));
-  }, [designState.savedLayouts, updateStateWithHistory]);
-  
-  const updateCustomTemplate = React.useCallback(async (): Promise<{success: boolean, message: string}> => {
-    const { editingTemplateInfo, components } = designState;
-    if (!editingTemplateInfo) return { success: false, message: "Not in template editing mode."};
-    if (!dbInstance) return { success: false, message: "Database not connected."};
-
-    const rootComponent = components.find(c => c.parentId === null);
-    if (!rootComponent) return { success: false, message: "No root component found in the edited template."};
-
-    const updatedTemplate: CustomComponentTemplate = { 
-        ...editingTemplateInfo, 
-        rootComponentId: rootComponent.id, 
-        componentTree: components 
-    };
-
-    try {
-        await setDoc(doc(dbInstance, CUSTOM_TEMPLATES_COLLECTION, editingTemplateInfo.firestoreId!), sanitizeForFirestore(updatedTemplate));
-        
-        setDesignState(prev => {
-            const newTemplates = prev.customComponentTemplates.map(t => 
-                t.templateId === editingTemplateInfo.templateId ? updatedTemplate : t
-            );
-            return {
-                ...prev,
-                customComponentTemplates: newTemplates,
-                editingTemplateInfo: null, // Exit editing mode
-            };
-        });
-        
-        clearDesign(); // Go back to the main canvas
-        toast({ title: "Template Updated", description: `Template "${editingTemplateInfo.name}" has been saved.` });
-        return { success: true, message: "Template updated and synced."};
-    } catch(e) {
-        toast({ title: "Update Failed", description: "Could not sync template update. " + (e as Error).message, variant: "destructive" });
-        return { success: false, message: "Could not sync template update."};
-    }
-  }, [designState, clearDesign, dbInstance, toast]);
-
-  const updateSavedLayout = React.useCallback(async (): Promise<{success: boolean, message: string}> => {
-    const { editingLayoutInfo, components, nextId } = designState;
-    if (!editingLayoutInfo || !dbInstance) return { success: false, message: "Not in layout editing mode or DB not connected."};
-    const updatedLayout: SavedLayout = { ...editingLayoutInfo, components, nextId, timestamp: Date.now() };
-    try {
-        await setDoc(doc(dbInstance, SAVED_LAYOUTS_COLLECTION, editingLayoutInfo.firestoreId!), sanitizeForFirestore(updatedLayout));
-        setDesignState(prev => ({...prev, savedLayouts: prev.savedLayouts.map(l => l.layoutId === editingLayoutInfo.layoutId ? updatedLayout : l).sort((a,b) => (b.timestamp||0) - (a.timestamp||0))}));
-        clearDesign();
-        return { success: true, message: "Layout updated and synced."};
-    } catch(e) {
-        return { success: false, message: "Could not sync layout update."};
-    }
-  }, [designState, clearDesign, dbInstance]);
 
   const undo = React.useCallback(() => {
     setDesignState(prev => {
@@ -869,9 +516,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     ...designState,
     addComponent, deleteComponent, selectComponent, updateComponent, updateComponentPosition,
     getComponentById, clearDesign, overwriteComponents, moveComponent,
-    saveSelectedAsCustomTemplate, deleteCustomComponentTemplate, renameCustomComponentTemplate,
-    saveCurrentCanvasAsLayout, loadLayoutToCanvas, deleteSavedLayout, renameSavedLayout,
-    loadTemplateForEditing, updateCustomTemplate, loadLayoutForEditing, updateSavedLayout,
     undo, redo, copyComponent, pasteComponent, addImageToGallery, removeImageFromGallery,
     zoomLevel, setZoomLevel,
   };
@@ -901,15 +545,3 @@ export const useDesign = (): DesignContextType => {
 };
 
 export { DesignContext };
-    
-    
-
-
-
-
-
-    
-
-
-
-    

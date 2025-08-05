@@ -1,10 +1,10 @@
 
 'use client';
 
-import React, { useState, RefObject } from 'react';
+import React, { RefObject } from 'react';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from "@/components/ui/button";
-import { Code, Trash2, FileJson, UploadCloud, Loader2, Cog as SettingsIcon, Palette, Save, Undo, Redo, Copy, ClipboardPaste } from "lucide-react";
+import { Code, Trash2, FileJson, UploadCloud, Palette, Undo, Redo, Copy, ClipboardPaste, Settings } from "lucide-react";
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
 import type { ViewJsonModalRef } from "./ViewJsonModal";
 import type { ThemeEditorModalRef } from "./ThemeEditorModal";
@@ -37,14 +37,11 @@ export function Header({
   publishConfigModalRef,
 }: HeaderProps) {
   const { 
-    clearDesign, components, saveCurrentCanvasAsLayout, 
-    editingTemplateInfo, updateCustomTemplate,
-    editingLayoutInfo, updateSavedLayout,
+    clearDesign, components,
     undo, redo, copyComponent, pasteComponent,
     history, future, selectedComponentId, clipboard
   } = useDesign();
   const { toast } = useToast();
-  const [isSaving, setIsSaving] = useState(false);
 
   const handleGenerateCode = () => {
     if (generateModalRef.current) {
@@ -68,12 +65,7 @@ export function Header({
   };
 
   const handleClearCanvas = () => {
-    const message = editingTemplateInfo
-      ? "Are you sure you want to discard changes and exit template editing?"
-      : editingLayoutInfo
-      ? "Are you sure you want to discard changes and exit layout editing?"
-      : "Are you sure you want to clear the canvas? This action cannot be undone.";
-    if (window.confirm(message)) {
+    if (window.confirm("Are you sure you want to clear the canvas? This action cannot be undone.")) {
       clearDesign();
     }
   };
@@ -89,69 +81,6 @@ export function Header({
       });
     }
   };
-
-  const handleSaveLayout = async () => {
-    setIsSaving(true);
-    const name = window.prompt("Enter a name for this layout:", "My Saved Layout");
-    if (name && name.trim() !== "") {
-      try {
-        await saveCurrentCanvasAsLayout(name.trim());
-      } catch (error) {
-        toast({
-          title: "Save Layout Failed",
-          description: error instanceof Error ? error.message : "An unexpected error occurred.",
-          variant: "destructive",
-        });
-      }
-    } else if (name !== null) {
-      toast({
-        title: "Save Failed",
-        description: "Layout name cannot be empty.",
-        variant: "destructive",
-      });
-    }
-    setIsSaving(false);
-  };
-  
-  const handleUpdateTemplate = async () => {
-    setIsSaving(true);
-    try {
-      await updateCustomTemplate();
-    } catch(error) {
-       toast({
-          title: "Update Failed",
-          description: error instanceof Error ? error.message : "An unexpected error occurred while updating template.",
-          variant: "destructive",
-        });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-  
-  const handleUpdateLayout = async () => {
-    setIsSaving(true);
-    try {
-      await updateSavedLayout();
-    } catch (error) {
-      toast({
-        title: "Update Failed",
-        description: error instanceof Error ? error.message : "An unexpected error occurred while updating layout.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleSaveOrUpdate = () => {
-    if (isEditingTemplate) {
-      handleUpdateTemplate();
-    } else if (isEditingLayout) {
-      handleUpdateLayout();
-    } else {
-      handleSaveLayout();
-    }
-  };
   
   const handleCopy = () => {
     if (selectedComponentId) {
@@ -164,8 +93,6 @@ export function Header({
   };
 
   const hasUserComponents = components.length > 4; // Check for any component beyond the initial 4 scaffold parts
-  const isEditingTemplate = !!editingTemplateInfo;
-  const isEditingLayout = !!editingLayoutInfo;
   const canCopy = !!selectedComponentId && !CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponentId);
   const canPaste = !!clipboard;
   const canUndo = history.length > 0;
@@ -252,33 +179,15 @@ export function Header({
                   size="icon"
                   variant="outline"
                   onClick={handleClearCanvas}
-                  disabled={!hasUserComponents && !isEditingTemplate && !isEditingLayout}
-                  aria-label={isEditingTemplate ? "Discard Template Changes" : isEditingLayout ? "Discard Layout Changes" : "Clear Canvas"}
+                  disabled={!hasUserComponents}
+                  aria-label={"Clear Canvas"}
                   className="text-sidebar-foreground border-sidebar-border bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
                 >
                   <Trash2 />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{isEditingTemplate ? "Discard Template Changes" : isEditingLayout ? "Discard Layout Changes" : "Clear Canvas"}</p>
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  onClick={handleSaveOrUpdate}
-                  disabled={isSaving || (isEditingTemplate ? false : !hasUserComponents)}
-                  aria-label={isEditingTemplate ? "Update Custom Component" : isEditingLayout ? "Update Layout" : "Save Current Layout"}
-                  className="text-sidebar-foreground border-sidebar-border bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
-                >
-                  {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{isEditingTemplate ? `Update "${editingTemplateInfo.name}"` : isEditingLayout ? `Update "${editingLayoutInfo.name}"` : "Save Current Layout"}</p>
+                <p>Clear Canvas</p>
               </TooltipContent>
             </Tooltip>
 
@@ -288,7 +197,7 @@ export function Header({
                   size="icon"
                   variant="outline"
                   onClick={handleOpenPublishConfigModal}
-                  disabled={!hasUserComponents || isEditingTemplate || isEditingLayout}
+                  disabled={!hasUserComponents}
                   aria-label="Publish to Remote Config"
                   className="text-sidebar-foreground border-sidebar-border bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
                 >
@@ -327,7 +236,7 @@ export function Header({
                       aria-label="Settings"
                       className="text-sidebar-foreground border-sidebar-border bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
                     >
-                      <SettingsIcon />
+                      <Settings />
                     </Button>
                   </PopoverTrigger>
                 </TooltipTrigger>
@@ -347,7 +256,6 @@ export function Header({
                   variant="outline"
                   onClick={handleViewJson}
                   aria-label="View/Edit Design JSON"
-                  disabled={isEditingTemplate || isEditingLayout}
                   className="text-sidebar-foreground border-sidebar-border bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
                 >
                   <FileJson />
