@@ -239,11 +239,13 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   useEffect(() => {
     const loadInitialData = async () => {
+        // This effect now depends on dbInstance. It will only run when dbInstance is set.
         if (!dbInstance) {
-            console.log("Firestore DB not ready, skipping initial data load.");
+            console.log("Firestore DB not ready, deferring initial data load.");
             return;
         }
-        console.log("Firestore DB is ready. Loading initial data...");
+
+        console.log("Firestore DB is ready. Loading initial data from Firestore...");
         try {
             // Step 1: Load Templates first, as other data may depend on them.
             const templatesQuery = query(collection(dbInstance, CUSTOM_TEMPLATES_COLLECTION));
@@ -260,7 +262,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 designComponents = data.components;
                 designNextId = data.nextId;
             } else {
-                await saveDesignToFirestore(initialDesignState); // Save initial state if no doc exists
+                // If the main design document doesn't exist, save the initial state to create it.
+                await saveDesignToFirestore(initialDesignState); 
             }
 
             // Step 3: Load saved layouts.
@@ -275,14 +278,18 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 components: designComponents,
                 nextId: designNextId,
                 savedLayouts: layouts,
-                history: [],
-                future: [],
+                history: [], // Reset history after loading
+                future: [],  // Reset future after loading
             }));
             console.log("Successfully loaded all data from Firestore.");
 
         } catch (error) {
             console.error("Error loading initial data from Firestore:", error);
-            toast({title: "Data Load Error", description: "Could not load data from the cloud. Please check your Firestore security rules and configuration.", variant: "destructive"});
+            toast({
+              title: "Data Load Error",
+              description: "Could not load data from Firestore. Check console and security rules.",
+              variant: "destructive"
+            });
         }
     };
     
@@ -878,3 +885,4 @@ export const useDesign = (): DesignContextType => {
 export { DesignContext };
     
     
+
