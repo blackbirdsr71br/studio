@@ -27,34 +27,23 @@ export function LayoutPreview({ layout }: LayoutPreviewProps) {
   // Typically, the panel width is 256px, minus padding of 16px on each side = 224px.
   // The scrollbar reduces this slightly more, let's use a safe value.
   const previewContainerWidth = 200; 
-  const previewContainerHeight = (previewContainerWidth * 16) / 9; // Maintain aspect ratio if needed, but we mostly care about width scale
 
   // Calculate the scale factor to fit the entire MobileFrame within the preview container width
   const scale = previewContainerWidth / FRAME_WIDTH;
 
   return (
     <div 
-        className="w-full h-full flex items-center justify-center overflow-hidden bg-background"
+        className="w-full h-full flex items-center justify-center overflow-hidden bg-background relative"
     >
       <div 
-        className="transform-gpu origin-center" // Use transform-gpu for better performance
+        className="transform-gpu" 
         style={{
-            // Scale the entire mobile frame down to fit
-            transform: `scale(${scale})`,
-            // Set the origin to the top-left to avoid weird positioning issues
-            transformOrigin: 'top left',
-            // Define a size for the container of the scaled element
-            // Width should match the frame width to calculate scale against
-            width: FRAME_WIDTH,
-            // Height should match frame height
-            height: FRAME_HEIGHT,
-            // Translate the element to center it within the container after scaling
-            // This is a bit tricky, but ensures it looks centered
             position: 'absolute',
             top: '50%',
             left: '50%',
-            marginLeft: `-${FRAME_WIDTH / 2}px`,
-            marginTop: `-${FRAME_HEIGHT / 2}px`,
+            width: FRAME_WIDTH,
+            height: FRAME_HEIGHT,
+            transform: `translate(-50%, -50%) scale(${scale})`,
         }}
       >
           <MobileFrame isPreview={true}>
