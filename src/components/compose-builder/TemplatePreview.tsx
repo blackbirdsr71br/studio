@@ -22,12 +22,16 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
   }
   
   // Calculate a scaling factor to fit the component proportionally
-  const previewWidth = 200; // The width of the preview container in ComponentLibraryPanel
-  const previewHeight = (previewWidth * 9) / 16; // Maintain 16:9 aspect ratio
+  // The container in the panel is a 16:9 box inside a 224px wide column (minus paddings).
+  const previewWidth = 200; 
+  const previewHeight = (previewWidth * 9) / 16; 
   
   const componentWidth = typeof rootComponent.properties.width === 'number' ? rootComponent.properties.width : previewWidth;
   const componentHeight = typeof rootComponent.properties.height === 'number' ? rootComponent.properties.height : previewHeight;
 
+  // Calculate the scale needed to fit the component's width and height within the preview area.
+  // Take the smaller of the two scales to ensure the whole component fits.
+  // Add a max scale of 1 so we don't enlarge small components.
   const scale = Math.min(previewWidth / componentWidth, previewHeight / componentHeight, 1);
 
   return (
@@ -38,6 +42,7 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
         className="transform origin-center"
         style={{
             transform: `scale(${scale})`,
+            // Set the div size to the component's original size before scaling
             width: `${componentWidth}px`,
             height: `${componentHeight}px`,
         }}
