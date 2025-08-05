@@ -30,9 +30,9 @@ import {
   Download,
 } from "lucide-react";
 import { Button } from '../ui/button';
-import { TemplatePreview } from './TemplatePreview';
 import { LayoutPreview } from './LayoutPreview';
 import { Badge } from '@/components/ui/badge';
+import { getComponentIcon } from './ComponentIconMap';
 
 
 const availableBaseComponents: { type: ComponentType; icon: React.ElementType }[] = [
@@ -87,11 +87,14 @@ function CustomComponentsList() {
 
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
           {validTemplates.map((template) => {
+              const rootOfTemplate = template.componentTree.find(c => c.id === template.rootComponentId);
+              const RootIcon = rootOfTemplate ? getComponentIcon(rootOfTemplate.type) : Box;
+
               return (
                   <div key={template.firestoreId} className="border border-sidebar-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-                       <div className="flex justify-between items-start p-2">
+                       <div className="flex justify-between items-center p-2 border-b">
                            <p className="text-sm font-medium text-sidebar-foreground flex-1 break-words pr-2">{template.name}</p>
                            <div className="flex items-center gap-1 shrink-0 z-10">
                                 <Button variant="ghost" size="icon" className="h-6 w-6" title="Edit Component" onClick={() => handleEdit(template)}>
@@ -106,9 +109,8 @@ function CustomComponentsList() {
                             type={template.templateId}
                             isCustomComponent={true}
                        >
-                           <div className="w-full h-32 bg-muted/30 overflow-hidden relative border-t">
-                               <TemplatePreview template={template} />
-                               <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
+                           <div className="w-full h-20 bg-muted/20 flex items-center justify-center">
+                                <RootIcon className="w-8 h-8 text-sidebar-foreground/50" />
                            </div>
                        </DraggableComponentItem>
                   </div>
@@ -154,7 +156,7 @@ function LayoutsList() {
       <div className="space-y-4">
           {savedLayouts.map((layout) => {
               return (
-                <div key={layout.firestoreId} className="border border-sidebar-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow p-2 space-y-2">
+                <div key={layout.firestoreId} className="border border-sidebar-border rounded-lg bg-card shadow-sm hover:shadow-md p-2 space-y-2">
                     <div className="flex justify-between items-start">
                         <p className="text-sm font-medium text-sidebar-foreground flex-1 break-words pr-2">{layout.name}</p>
                         <div className="flex items-center gap-1 shrink-0 z-10">
