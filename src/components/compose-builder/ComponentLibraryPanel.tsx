@@ -33,6 +33,7 @@ import { Button } from '../ui/button';
 import { LayoutPreview } from './LayoutPreview';
 import { Badge } from '@/components/ui/badge';
 import { getComponentIcon } from './ComponentIconMap';
+import { TemplatePreview } from './TemplatePreview';
 
 
 const availableBaseComponents: { type: ComponentType; icon: React.ElementType }[] = [
@@ -89,9 +90,6 @@ function CustomComponentsList() {
     return (
       <div className="space-y-3">
           {validTemplates.map((template) => {
-              const rootOfTemplate = template.componentTree.find(c => c.id === template.rootComponentId);
-              const RootIcon = rootOfTemplate ? getComponentIcon(rootOfTemplate.type) : Box;
-
               return (
                   <div key={template.firestoreId} className="border border-sidebar-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                        <div className="flex justify-between items-center p-2 border-b">
@@ -109,8 +107,8 @@ function CustomComponentsList() {
                             type={template.templateId}
                             isCustomComponent={true}
                        >
-                           <div className="w-full h-20 bg-muted/20 flex items-center justify-center">
-                                <RootIcon className="w-8 h-8 text-sidebar-foreground/50" />
+                           <div className="w-full h-24 bg-muted/20 flex items-center justify-center overflow-hidden">
+                                <TemplatePreview template={template} />
                            </div>
                        </DraggableComponentItem>
                   </div>
