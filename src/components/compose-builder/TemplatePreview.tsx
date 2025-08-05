@@ -35,8 +35,8 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
             height: `${componentHeight}px`,
             // This complex transform will scale the component down to fit within the container
             // while maintaining its aspect ratio. It calculates the scale factor for both width and height
-            // and uses the smaller of the two, ensuring it never overflows.
-            transform: `scale(min(calc(100% / ${componentWidth}px), calc(100% / ${componentHeight}px)))`,
+            // and uses the smaller of the two, ensuring it never overflows. It will not scale up small components.
+            transform: `scale(min(1, calc(100% / ${componentWidth}px), calc(100% / ${componentHeight}px)))`,
         }}
       >
           <ReadonlyRenderedComponentWrapper
