@@ -181,6 +181,9 @@ function LayoutsList() {
 export function ComponentLibraryPanel() {
   const { customComponentTemplates, savedLayouts } = useDesign();
 
+  const validCustomTemplatesCount = customComponentTemplates.filter(t => t && t.firestoreId).length;
+  const validLayoutsCount = savedLayouts.filter(l => l && l.firestoreId).length;
+
   return (
     <aside className="w-64 border-r bg-sidebar p-4 flex flex-col shrink-0">
       <h2 className="text-xl font-semibold mb-2 text-sidebar-foreground font-headline">Components</h2>
@@ -190,17 +193,17 @@ export function ComponentLibraryPanel() {
             <TabsTrigger value="standard" className="text-xs px-1 py-1.5">Standard</TabsTrigger>
             <TabsTrigger value="custom" className="text-xs px-1 py-1.5 relative">
               Custom
-              {customComponentTemplates.length > 0 && (
+              {validCustomTemplatesCount > 0 && (
                 <Badge variant="secondary" className="absolute -top-1 -right-2 h-4 px-1.5 text-xs font-bold">
-                  {customComponentTemplates.length}
+                  {validCustomTemplatesCount}
                 </Badge>
               )}
             </TabsTrigger>
              <TabsTrigger value="layouts" className="text-xs px-1 py-1.5 relative">
               Layouts
-              {savedLayouts.length > 0 && (
+              {validLayoutsCount > 0 && (
                 <Badge variant="secondary" className="absolute -top-1 -right-2 h-4 px-1.5 text-xs font-bold">
-                  {savedLayouts.length}
+                  {validLayoutsCount}
                 </Badge>
               )}
             </TabsTrigger>
