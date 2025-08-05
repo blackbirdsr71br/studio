@@ -270,7 +270,7 @@ export function Header({
                   size="icon"
                   variant="outline"
                   onClick={handleSaveOrUpdate}
-                  disabled={(!hasUserComponents && !isEditingTemplate && !isEditingLayout) || isSaving}
+                  disabled={isSaving || (isEditingTemplate ? false : !hasUserComponents)}
                   aria-label={isEditingTemplate ? "Update Custom Component" : isEditingLayout ? "Update Layout" : "Save Current Layout"}
                   className="text-sidebar-foreground border-sidebar-border bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
                 >

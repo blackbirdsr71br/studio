@@ -162,33 +162,48 @@ export function ComponentLibraryPanel() {
                         template={template}
                       />
                       <div className="p-1 flex justify-end items-center space-x-1 border-t border-sidebar-border/50 bg-muted/30">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-sidebar-foreground hover:bg-sidebar-accent/20"
-                          onClick={(e) => { e.stopPropagation(); handleEditTemplateClick(template);}}
-                          aria-label={`Edit ${template.name}`}
-                        >
-                          <FilePenLine className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-sidebar-foreground hover:bg-sidebar-accent/20"
-                          onClick={(e) => { e.stopPropagation(); handleRenameClick(template, 'template');}}
-                          aria-label={`Rename ${template.name}`}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-destructive hover:bg-destructive/20"
-                           onClick={(e) => { e.stopPropagation(); handleDeleteClick(template, 'template');}}
-                          aria-label={`Delete ${template.name}`}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-sidebar-foreground hover:bg-sidebar-accent/20"
+                                onClick={(e) => { e.stopPropagation(); handleEditTemplateClick(template);}}
+                                aria-label={`Edit ${template.name}`}
+                                >
+                                <FilePenLine className="h-3.5 w-3.5" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top"><p>Edit Template</p></TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-sidebar-foreground hover:bg-sidebar-accent/20"
+                                onClick={(e) => { e.stopPropagation(); handleRenameClick(template, 'template');}}
+                                aria-label={`Rename ${template.name}`}
+                                >
+                                <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top"><p>Rename Template</p></TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-destructive hover:bg-destructive/20"
+                                onClick={(e) => { e.stopPropagation(); handleDeleteClick(template, 'template');}}
+                                aria-label={`Delete ${template.name}`}
+                                >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top"><p>Delete Template</p></TooltipContent>
+                        </Tooltip>
                       </div>
                     </div>
                   ))}
