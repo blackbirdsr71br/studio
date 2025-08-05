@@ -27,8 +27,7 @@ import {
   Pencil,
   Trash2,
   Loader2,
-  Eye,
-  Download
+  Download,
 } from "lucide-react";
 import { Button } from '../ui/button';
 import { TemplatePreview } from './TemplatePreview';
@@ -83,6 +82,9 @@ function CustomComponentsList() {
     return (
       <div className="space-y-4">
           {customComponentTemplates.map((template) => {
+              if (!template || !template.firestoreId) {
+                return null;
+              }
               return (
                   <div key={template.firestoreId} className="relative group/custom-item border border-sidebar-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow">
                        <DraggableComponentItem
