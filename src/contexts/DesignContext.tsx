@@ -582,8 +582,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         componentTree,
     };
     try {
-        const templatesCollection = collection(db, CUSTOM_TEMPLATES_COLLECTION);
-        await setDoc(doc(templatesCollection), newTemplate);
+        const docRef = doc(db, CUSTOM_TEMPLATES_COLLECTION, templateName);
+        await setDoc(docRef, newTemplate);
         toast({ title: "Success", description: `Component "${templateName}" saved.` });
     } catch (error) {
         console.error("Error saving custom template:", error);
