@@ -86,29 +86,27 @@ function CustomComponentsList() {
                 return null;
               }
               return (
-                  <div key={template.firestoreId} className="relative group/custom-item border border-sidebar-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow">
-                       <div className="p-2 space-y-2">
-                           <div className="flex justify-between items-center">
-                                <p className="text-sm font-medium text-sidebar-foreground truncate pr-1 flex-1">{template.name}</p>
-                                <div className="flex items-center gap-1 opacity-0 group-hover/custom-item:opacity-100 transition-opacity duration-200 shrink-0">
-                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => {e.stopPropagation(); handleEdit(template);}}>
-                                        <Pencil className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={(e) => {e.stopPropagation(); handleDelete(template);}}>
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                </div>
-                           </div>
-                           <DraggableComponentItem
-                                type={template.templateId}
-                                isCustomComponent={true}
-                           >
-                               <div className="w-full aspect-[16/9] bg-muted/30 rounded-md overflow-hidden relative border">
-                                   <TemplatePreview template={template} />
-                                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
-                               </div>
-                           </DraggableComponentItem>
+                  <div key={template.firestoreId} className="border border-sidebar-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow p-2 space-y-2">
+                       <div className="flex justify-between items-start">
+                           <p className="text-sm font-medium text-sidebar-foreground flex-1 break-words pr-2">{template.name}</p>
+                           <div className="flex items-center gap-1 shrink-0 z-10">
+                                <Button variant="ghost" size="icon" className="h-6 w-6" title="Edit Component" onClick={() => handleEdit(template)}>
+                                    <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10" title="Delete Component" onClick={() => handleDelete(template)}>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                            </div>
                        </div>
+                       <DraggableComponentItem
+                            type={template.templateId}
+                            isCustomComponent={true}
+                       >
+                           <div className="w-full aspect-[16/9] bg-muted/30 rounded-md overflow-hidden relative border">
+                               <TemplatePreview template={template} />
+                               <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
+                           </div>
+                       </DraggableComponentItem>
                   </div>
               );
           })}
@@ -152,10 +150,10 @@ function LayoutsList() {
       <div className="space-y-4">
           {savedLayouts.map((layout) => {
               return (
-                <div key={layout.firestoreId} className="relative group/layout-item border border-sidebar-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow p-2 space-y-2">
+                <div key={layout.firestoreId} className="border border-sidebar-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow p-2 space-y-2">
                     <div className="flex justify-between items-start">
                         <p className="text-sm font-medium text-sidebar-foreground flex-1 break-words pr-2">{layout.name}</p>
-                        <div className="flex items-center gap-1 opacity-0 group-hover/layout-item:opacity-100 transition-opacity duration-200 shrink-0 z-10">
+                        <div className="flex items-center gap-1 shrink-0 z-10">
                             <Button variant="ghost" size="icon" className="h-6 w-6" title="Load Layout" onClick={() => handleLoad(layout)}>
                                 <Download className="h-3.5 w-3.5" />
                             </Button>
