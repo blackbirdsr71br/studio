@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { Button } from '../ui/button';
 import { TemplatePreview } from './TemplatePreview';
+import { Badge } from '@/components/ui/badge';
 
 
 const availableBaseComponents: { type: ComponentType; icon: React.ElementType }[] = [
@@ -113,6 +114,8 @@ function CustomComponentsList() {
 
 
 export function ComponentLibraryPanel() {
+  const { customComponentTemplates } = useDesign();
+
   return (
     <aside className="w-64 border-r bg-sidebar p-4 flex flex-col shrink-0">
       <h2 className="text-xl font-semibold mb-2 text-sidebar-foreground font-headline">Components</h2>
@@ -120,7 +123,14 @@ export function ComponentLibraryPanel() {
         <Tabs defaultValue="standard" className="flex-grow flex flex-col min-h-0">
           <TabsList className="grid w-full grid-cols-2 mb-2 h-auto">
             <TabsTrigger value="standard" className="text-xs px-1 py-1.5">Standard</TabsTrigger>
-            <TabsTrigger value="custom" className="text-xs px-1 py-1.5">Custom</TabsTrigger>
+            <TabsTrigger value="custom" className="text-xs px-1 py-1.5 relative">
+              Custom
+              {customComponentTemplates.length > 0 && (
+                <Badge variant="secondary" className="absolute -top-1 -right-2 h-4 px-1.5 text-xs font-bold">
+                  {customComponentTemplates.length}
+                </Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="standard" className="flex-grow overflow-hidden">
