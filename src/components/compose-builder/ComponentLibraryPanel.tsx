@@ -153,7 +153,7 @@ function LayoutsList() {
           {savedLayouts.map((layout) => {
               return (
                   <div key={layout.firestoreId} className="relative group/layout-item border border-sidebar-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow p-2 space-y-2">
-                        <div className="flex justify-between items-center">
+                        <div className="flex justify-between items-center z-10 relative">
                             <p className="text-sm font-medium text-sidebar-foreground truncate pr-1">{layout.name}</p>
                             <div className="flex items-center gap-1 opacity-0 group-hover/layout-item:opacity-100 transition-opacity duration-200">
                                 <Button variant="ghost" size="icon" className="h-6 w-6" title="Load Layout" onClick={() => handleLoad(layout)}>
@@ -167,7 +167,7 @@ function LayoutsList() {
                                 </Button>
                             </div>
                         </div>
-                        <div className="w-full aspect-[16/9] bg-muted/30 rounded-md overflow-hidden relative border">
+                        <div className="w-full aspect-[16/9] bg-muted/30 rounded-md overflow-hidden relative border -mt-9">
                             <LayoutPreview layout={layout} />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
                         </div>
