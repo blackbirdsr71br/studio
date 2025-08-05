@@ -21,7 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { SettingsPanelContent } from "./SettingsPanelContent";
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
-import { CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
+import { CORE_SCAFFOLD_ELEMENT_IDS, DEFAULT_CONTENT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 
 
 interface HeaderProps {
@@ -116,7 +116,8 @@ export function Header({
   };
 
 
-  const hasUserComponents = components.length > 4; // Check for any component beyond the initial 4 scaffold parts
+  const contentArea = components.find(c => c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID);
+  const hasUserComponents = contentArea ? (contentArea.properties.children?.length ?? 0) > 0 : false;
   const canCopy = !!selectedComponentId && !CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponentId);
   const canPaste = !!clipboard;
   const canUndo = history.length > 0;
