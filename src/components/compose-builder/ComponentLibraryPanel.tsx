@@ -79,12 +79,16 @@ function CustomComponentsList() {
         return <p className="text-xs text-center text-muted-foreground p-2">No custom components saved yet.</p>;
     }
 
+    const validTemplates = customComponentTemplates.filter(t => t && t.firestoreId);
+
+    if (validTemplates.length === 0) {
+        return <p className="text-xs text-center text-muted-foreground p-2">No custom components saved yet.</p>;
+    }
+
+
     return (
       <div className="space-y-4">
-          {customComponentTemplates.map((template) => {
-              if (!template || !template.firestoreId) {
-                return null;
-              }
+          {validTemplates.map((template) => {
               return (
                   <div key={template.firestoreId} className="border border-sidebar-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow">
                        <div className="flex justify-between items-start p-2">
@@ -102,7 +106,7 @@ function CustomComponentsList() {
                             type={template.templateId}
                             isCustomComponent={true}
                        >
-                           <div className="w-full aspect-[4/3] bg-muted/30 overflow-hidden relative border-t">
+                           <div className="w-full aspect-[16/9] bg-muted/30 overflow-hidden relative border-t">
                                <TemplatePreview template={template} />
                                <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
                            </div>
