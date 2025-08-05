@@ -24,15 +24,13 @@ export function LayoutPreview({ layout }: LayoutPreviewProps) {
   }
   
   // These are the dimensions of the container this preview will be in
+  // Typically, the panel width is 256px, minus padding of 16px on each side = 224px.
+  // The scrollbar reduces this slightly more, let's use a safe value.
   const previewContainerWidth = 200; 
-  const previewContainerHeight = (previewContainerWidth * 9) / 16; 
+  const previewContainerHeight = (previewContainerWidth * 16) / 9; // Maintain aspect ratio if needed, but we mostly care about width scale
 
-  // Calculate the scale factor to fit the entire MobileFrame within the preview container
-  const scale = Math.min(
-    previewContainerWidth / FRAME_WIDTH, 
-    previewContainerHeight / FRAME_HEIGHT, 
-    1
-  );
+  // Calculate the scale factor to fit the entire MobileFrame within the preview container width
+  const scale = previewContainerWidth / FRAME_WIDTH;
 
   return (
     <div 
@@ -41,12 +39,22 @@ export function LayoutPreview({ layout }: LayoutPreviewProps) {
       <div 
         className="transform-gpu origin-center" // Use transform-gpu for better performance
         style={{
+            // Scale the entire mobile frame down to fit
             transform: `scale(${scale})`,
-            transformOrigin: 'center center',
-            // Define a size for the div that contains the scaled element
-            // This helps the browser with layout calculation.
+            // Set the origin to the top-left to avoid weird positioning issues
+            transformOrigin: 'top left',
+            // Define a size for the container of the scaled element
+            // Width should match the frame width to calculate scale against
             width: FRAME_WIDTH,
+            // Height should match frame height
             height: FRAME_HEIGHT,
+            // Translate the element to center it within the container after scaling
+            // This is a bit tricky, but ensures it looks centered
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            marginLeft: `-${FRAME_WIDTH / 2}px`,
+            marginTop: `-${FRAME_HEIGHT / 2}px`,
         }}
       >
           <MobileFrame isPreview={true}>
