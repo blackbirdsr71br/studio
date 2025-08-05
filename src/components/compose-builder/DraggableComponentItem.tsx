@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { ComponentType, CustomComponentTemplate } from "@/types/compose-spec";
+import type { ComponentType } from "@/types/compose-spec";
 import { getComponentDisplayName } from "@/types/compose-spec";
 import type { Icon as LucideIcon } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -11,11 +11,13 @@ import { cn } from "@/lib/utils";
 
 interface DraggableComponentItemProps {
   type: ComponentType | string;
-  Icon: LucideIcon;
+  Icon?: LucideIcon;
   displayName?: string;
+  isCustomComponent?: boolean;
+  children?: React.ReactNode;
 }
 
-export function DraggableComponentItem({ type, Icon, displayName }: DraggableComponentItemProps) {
+export function DraggableComponentItem({ type, Icon, displayName, isCustomComponent = false, children }: DraggableComponentItemProps) {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.COMPONENT_LIBRARY_ITEM,
     item: { type }, 
@@ -25,6 +27,22 @@ export function DraggableComponentItem({ type, Icon, displayName }: DraggableCom
   }));
 
   const nameForDisplay = displayName || getComponentDisplayName(type);
+
+  if (isCustomComponent) {
+    return (
+      <div
+        ref={drag}
+        className={cn(
+          "cursor-grab active:cursor-grabbing",
+          isDragging && "opacity-50"
+        )}
+        aria-label={`Drag to add ${nameForDisplay} component`}
+      >
+        {children}
+      </div>
+    );
+  }
+
 
   return (
     <Tooltip>
@@ -38,7 +56,7 @@ export function DraggableComponentItem({ type, Icon, displayName }: DraggableCom
           aria-label={`Drag to add ${nameForDisplay} component`}
         >
           <div className="flex flex-col items-center justify-center py-2">
-              <Icon className="h-7 w-7 text-sidebar-primary mb-1" />
+              {Icon && <Icon className="h-7 w-7 text-sidebar-primary mb-1" />}
           </div>
           <p className="text-xs text-sidebar-foreground group-hover:text-sidebar-accent-foreground break-words w-full px-1">
             {nameForDisplay}

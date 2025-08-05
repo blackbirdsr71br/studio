@@ -412,9 +412,11 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     );
   };
 
+  const selectedTab = selectedComponent && !editingTemplateInfo ? "properties" : "structure";
+
   return (
     <aside className="w-80 border-l bg-sidebar p-4 flex flex-col shrink-0">
-        <Tabs defaultValue={selectedComponent && !editingTemplateInfo ? "properties" : "structure"} value={selectedComponent && !editingTemplateInfo ? "properties" : "structure"} className="w-full flex flex-col flex-grow min-h-0">
+        <Tabs defaultValue={selectedTab} value={selectedTab} className="w-full flex flex-col flex-grow min-h-0">
             <TabsList className="grid w-full grid-cols-2 shrink-0">
                 <TabsTrigger value="properties" disabled={!selectedComponent || editingTemplateInfo !== null}>Properties</TabsTrigger>
                 <TabsTrigger value="structure">Structure</TabsTrigger>
