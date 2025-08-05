@@ -296,7 +296,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       
       loadInitialData();
 
-  }, [dbInstance, toast, saveDesignToFirestore]);
+  }, [dbInstance, toast]);
 
   const getComponentById = React.useCallback(
     (id: string) => designState.components.find(comp => comp.id === id),
@@ -433,12 +433,15 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     try {
         await setDoc(doc(dbInstance, CUSTOM_TEMPLATES_COLLECTION, firestoreId), sanitizeForFirestore(newTemplate));
         setDesignState(prev => ({ ...prev, customComponentTemplates: [...prev.customComponentTemplates, newTemplate] }));
+        toast({ title: "Template Saved", description: `Template "${name}" saved and synced successfully.` });
         return { success: true, message: `Template "${name}" saved and synced.`};
     } catch (e) {
         console.error("Firestore save error:", e);
+        const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
+        toast({ title: "Save Failed", description: `Template could not be saved to the database: ${errorMessage}`, variant: "destructive" });
         return { success: false, message: "Template could not be saved to the database. " + (e as Error).message };
     }
-  }, [designState.selectedComponentId, getComponentById, dbInstance]);
+  }, [designState.selectedComponentId, getComponentById, dbInstance, toast]);
 
 
   const deleteComponent = React.useCallback((id: string) => {
@@ -503,10 +506,14 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const clearDesign = React.useCallback(() => {
     updateStateWithHistory(prev => {
       if(prev.editingLayoutInfo || prev.editingTemplateInfo) {
-        // If we were editing, restore the main design after clearing the editing state.
-        // This requires loading the main design again.
-        // For simplicity, we just reset to a blank state. The user can load a layout if needed.
-        return { components: createInitialComponents(), nextId: 1, selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID, editingLayoutInfo: null, editingTemplateInfo: null };
+        // Just reset to the default blank canvas state. The user can load a layout if needed.
+        return { 
+          components: createInitialComponents(), 
+          nextId: 1, 
+          selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID, 
+          editingLayoutInfo: null, 
+          editingTemplateInfo: null 
+        };
       }
       return { components: createInitialComponents(), nextId: 1, selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID };
     });
@@ -899,3 +906,6 @@ export { DesignContext };
 
 
 
+
+
+    
