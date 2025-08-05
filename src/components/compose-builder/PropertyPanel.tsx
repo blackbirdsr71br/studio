@@ -309,7 +309,7 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
           <div key="src-buttons" className="mt-1.5 space-y-1.5">
              <div className="flex gap-1.5">
               <Button size="sm" variant="outline" className="flex-1 text-xs h-7" onClick={() => fileInputRef.current?.click()}>
-                  <Upload className="mr-1.5 h-3.5 w-3.5" /> Subir Local
+                  <Upload className="mr-1.5 h-3.5 w-3.5" /> Upload Local
               </Button>
               <Button size="sm" variant="outline" className="flex-1 text-xs h-7" onClick={openImageSourceModal}>
                   <Search className="mr-1.5 h-3.5 w-3.5" /> Online / URL
@@ -426,3 +426,4 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     </aside>
   );
 }
+

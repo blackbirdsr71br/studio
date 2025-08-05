@@ -662,13 +662,13 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     if (dbInstance && firestoreId) {
         try {
             await updateDoc(doc(dbInstance, SAVED_LAYOUTS_COLLECTION, firestoreId), { name: newName });
-            setDesignState(prev => ({ ...prev, savedLayouts: prev.savedLayouts.map(l => l.layoutId === layoutId ? { ...l, name: newName } : l) }));
+            setDesignState(prev => ({ ...prev, savedLayouts: prev.savedLayouts.map(l => l.layoutId === layoutId ? { ...l, name: newName } : t) }));
             return { success: true, message: "Layout renamed in Firestore." };
         } catch (e) {
             return { success: false, message: "Could not rename layout." };
         }
     }
-    setDesignState(prev => ({ ...prev, savedLayouts: prev.savedLayouts.map(l => l.layoutId === layoutId ? { ...l, name: newName } : l) }));
+    setDesignState(prev => ({ ...prev, savedLayouts: prev.savedLayouts.map(l => l.layoutId === layoutId ? { ...l, name: newName } : t) }));
     return { success: true, message: "Layout renamed locally." };
   }, [dbInstance]);
   
@@ -909,3 +909,4 @@ export { DesignContext };
 
 
     
+
