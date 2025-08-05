@@ -20,13 +20,28 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
   if (!rootComponent) {
     return <div className="p-2 text-xs text-destructive">Preview Error: Root component not found.</div>;
   }
+  
+  // Calculate a scaling factor to fit the component proportionally
+  const previewWidth = 200; // The width of the preview container in ComponentLibraryPanel
+  const previewHeight = (previewWidth * 9) / 16; // Maintain 16:9 aspect ratio
+  
+  const componentWidth = typeof rootComponent.properties.width === 'number' ? rootComponent.properties.width : previewWidth;
+  const componentHeight = typeof rootComponent.properties.height === 'number' ? rootComponent.properties.height : previewHeight;
+
+  const scale = Math.min(previewWidth / componentWidth, previewHeight / componentHeight, 1);
 
   return (
     <div 
-        className="w-full h-full transform scale-[0.2] origin-top-left bg-background"
-        style={{'--zoom-level': 0.2} as React.CSSProperties}
+        className="w-full h-full flex items-center justify-center overflow-hidden bg-background"
     >
-      <div className="w-[500%] h-[500%]">
+      <div 
+        className="transform origin-center"
+        style={{
+            transform: `scale(${scale})`,
+            width: `${componentWidth}px`,
+            height: `${componentHeight}px`,
+        }}
+      >
           <ReadonlyRenderedComponentWrapper
             component={rootComponent}
             getComponentById={getTemplateComponentById}
