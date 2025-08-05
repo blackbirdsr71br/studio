@@ -90,7 +90,7 @@ function CustomComponentsList() {
       <div className="space-y-4">
           {validTemplates.map((template) => {
               return (
-                  <div key={template.firestoreId} className="border border-sidebar-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow">
+                  <div key={template.firestoreId} className="border border-sidebar-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                        <div className="flex justify-between items-start p-2">
                            <p className="text-sm font-medium text-sidebar-foreground flex-1 break-words pr-2">{template.name}</p>
                            <div className="flex items-center gap-1 shrink-0 z-10">
