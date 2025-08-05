@@ -94,7 +94,7 @@ const getDimensionValue = (
   };
   
 export function RenderedComponentWrapper({ component, isPreview = false }: RenderedComponentWrapperProps) {
-  const { selectedComponentId, selectComponent, getComponentById, addComponent, moveComponent, updateComponent, customComponentTemplates, zoomLevel } = useDesign();
+  const { zoomLevel, selectedComponentId, selectComponent, getComponentById, addComponent, moveComponent, updateComponent, customComponentTemplates } = useDesign();
   const ref = useRef<HTMLDivElement>(null);
   const [dropIndicator, setDropIndicator] = useState<DropIndicatorPosition>(null);
   const [isResizing, setIsResizing] = useState(false);
@@ -540,3 +540,4 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
     </div>
   );
 }
+

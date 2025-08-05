@@ -2,6 +2,7 @@
 'use client';
 import type { DesignComponent, ComponentType as OriginalComponentType } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from '../RenderedComponentWrapper';
+import { ReadonlyRenderedComponentWrapper } from './ReadonlyRenderedComponentWrapper';
 import { getComponentDisplayName, DEFAULT_CONTENT_LAZY_COLUMN_ID, isCustomComponentType, ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID } from '@/types/compose-spec';
 import { useDesign } from '@/contexts/DesignContext';
 import { getContrastingTextColor, cn } from '@/lib/utils';
@@ -13,6 +14,7 @@ interface ContainerViewProps {
   childrenComponents: DesignComponent[];
   isRow: boolean;
   isPreview?: boolean;
+  getComponentById?: (id: string) => DesignComponent | undefined; // Make this optional for the main canvas
 }
 
 const isNumericValue = (value: any): boolean => {
@@ -28,7 +30,7 @@ const isNumericValue = (value: any): boolean => {
   return false;
 };
 
-export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, isPreview = false }: ContainerViewProps) {
+export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, isPreview = false, getComponentById }: ContainerViewProps) {
   const { customComponentTemplates } = useDesign();
   const { resolvedTheme } = useTheme();
 
@@ -357,6 +359,8 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       'scrollbar-hidden': (isLazyRowType && baseStyle.overflowX === 'auto') || (isLazyColumnType && baseStyle.overflowY === 'auto' && component.id !== DEFAULT_CONTENT_LAZY_COLUMN_ID)
     }
   );
+  
+  const Wrapper = isPreview ? ReadonlyRenderedComponentWrapper : RenderedComponentWrapper;
 
   return (
     <div style={baseStyle} className={containerClasses} data-container-id={component.id} data-container-type={effectiveType}>
@@ -369,7 +373,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       )}
       {topAppBarTitleElement}
       {childrenComponents.map(child => (
-        <RenderedComponentWrapper key={child.id} component={child} isPreview={isPreview} />
+        <Wrapper key={child.id} component={child} isPreview={isPreview} {...(isPreview ? { getComponentById } : {})} />
       ))}
     </div>
   );
