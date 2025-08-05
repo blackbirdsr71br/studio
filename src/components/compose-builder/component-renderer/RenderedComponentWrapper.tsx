@@ -357,11 +357,13 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
         return <ContainerView component={component} childrenComponents={childrenToRender} isRow={true} isPreview={isPreview} />;
       
       case 'Spacer':
+        const width = component.properties.width ?? 8;
+        const height = component.properties.height ?? 8;
         return (
           <div
             style={{
-              width: `${component.properties.width || 8}px`,
-              height: `${component.properties.height || 8}px`,
+              width: `${width}px`,
+              height: `${height}px`,
               flexShrink: 0,
             }}
             className="select-none"
@@ -538,5 +540,3 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
     </div>
   );
 }
-
-    

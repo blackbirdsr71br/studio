@@ -182,7 +182,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
       return {
         fillMaxSize: true, fillMaxWidth: true, fillMaxHeight: true,
         backgroundColor: 'transparent', // Scaffold itself usually doesn't have its own BG, relies on content
-        children: [DEFAULT_TOP_APP_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_BOTTOM_NAV_BAR_ID]
+        children: [DEFAULT_CONTENT_LAZY_COLUMN_ID],
       };
     case 'Text':
       return {
