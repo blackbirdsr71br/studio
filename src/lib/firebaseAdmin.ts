@@ -1,6 +1,10 @@
 
 import admin from 'firebase-admin';
 
+// Load environment variables from .env file
+require('dotenv').config();
+
+
 let app: admin.app.App | undefined;
 let isInitialized = false;
 
