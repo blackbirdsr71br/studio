@@ -198,7 +198,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     baseStyle.backgroundColor = containerBackgroundColor;
   } else if (['Column', 'Row', 'Box', 'Card', 'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid', 'AnimatedContent'].includes(effectiveType as string)) {
     // If no background color is set, apply theme-dependent default
-    baseStyle.backgroundColor = resolvedTheme === 'dark' ? 'hsl(var(--card))' : '#F0F0F0';
+    baseStyle.backgroundColor = resolvedTheme === 'dark' ? 'hsl(var(--muted))' : '#F0F0F0';
   } else {
     baseStyle.backgroundColor = 'transparent';
   }
