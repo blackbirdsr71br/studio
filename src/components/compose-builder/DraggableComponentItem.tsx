@@ -18,6 +18,11 @@ interface DraggableComponentItemProps {
 }
 
 export function DraggableComponentItem({ type, Icon, displayName, isCustomComponent = false, children }: DraggableComponentItemProps) {
+  // Gracefully handle cases where a template might not have a valid ID yet.
+  if (!type) {
+    return null;
+  }
+  
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.COMPONENT_LIBRARY_ITEM,
     item: { type }, 
