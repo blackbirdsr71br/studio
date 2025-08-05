@@ -1,3 +1,4 @@
+
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getFirestore, type Firestore } from "firebase/firestore";
@@ -13,9 +14,12 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-// Log para depuración MUY IMPORTANTE
+// Log for debugging - VERY IMPORTANT for client-side issues
 if (typeof window !== 'undefined') {
-  console.log("Firebase Client SDK: Initializing with config:", firebaseConfig);
+  console.log("Firebase Client SDK: Initializing with config:", {
+      ...firebaseConfig,
+      apiKey: firebaseConfig.apiKey ? '***' : undefined
+  });
 
   if (!firebaseConfig.projectId || firebaseConfig.projectId.trim() === "") {
     console.error(
@@ -37,12 +41,18 @@ if (typeof window !== 'undefined') {
 let app: FirebaseApp;
 let db: Firestore;
 
-if (typeof window !== "undefined") { // Ensure this only runs on the client-side
-  if (getApps().length === 0) {
-    app = initializeApp(firebaseConfig);
+if (getApps().length === 0) {
+  if (!firebaseConfig.projectId) {
+    console.error("Firebase initialization skipped: projectId is missing.");
+    // Assign dummy objects to prevent crashes if code proceeds
+    app = {} as FirebaseApp;
+    db = {} as Firestore;
   } else {
-    app = getApps()[0];
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
   }
+} else {
+  app = getApps()[0];
   db = getFirestore(app);
 }
 
