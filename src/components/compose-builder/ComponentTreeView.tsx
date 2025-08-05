@@ -201,6 +201,18 @@ const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: T
         style={{ paddingLeft: `${level * 1.0 + 0.375}rem` }}
         title={`${component.name} (${getComponentDisplayName(component.type)})`}
       >
+        {isDeletable ? (
+            <button
+                onClick={handleDelete}
+                className="p-0.5 rounded-sm text-destructive/70 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                aria-label={`Delete ${componentNameForDisplay}`}
+            >
+                <Trash2 className="h-3.5 w-3.5" />
+            </button>
+        ) : (
+          <div className="w-[18px] h-[18px] shrink-0"></div> // Placeholder to keep alignment
+        )}
+
         <button
           onClick={handleToggle}
           className={cn(
@@ -216,15 +228,6 @@ const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: T
         <Icon className={cn("h-4 w-4 shrink-0", isSelected ? 'text-accent-foreground' : 'text-primary')} />
         <span className="text-sm flex-grow min-w-0 whitespace-nowrap overflow-hidden text-ellipsis">{componentNameForDisplay}</span>
         
-        {isDeletable && (
-            <button
-                onClick={handleDelete}
-                className="ml-auto p-0.5 rounded-sm text-destructive/70 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                aria-label={`Delete ${componentNameForDisplay}`}
-            >
-                <Trash2 className="h-3.5 w-3.5" />
-            </button>
-        )}
       </div>
       {showDropBottom && <div className="absolute bottom-0 left-2 right-2 h-[2px] bg-primary z-10 pointer-events-none" />}
       {!isCollapsed && hasChildren && (
