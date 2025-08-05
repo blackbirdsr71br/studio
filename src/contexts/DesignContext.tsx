@@ -28,9 +28,15 @@ interface DesignContextType extends DesignState {
   loadTemplateForEditing: (template: CustomComponentTemplate) => void;
   updateCustomTemplate: () => Promise<void>;
   deleteCustomTemplate: (firestoreId: string) => Promise<void>;
+  saveCurrentCanvasAsLayout: (layoutName: string) => Promise<void>;
+  loadLayout: (layout: SavedLayout) => void;
+  loadLayoutForEditing: (layout: SavedLayout) => void;
+  updateLayout: () => Promise<void>;
+  deleteLayout: (firestoreId: string) => Promise<void>;
   addImageToGallery: (url: string) => Promise<{success: boolean, message: string}>;
   removeImageFromGallery: (id: string) => Promise<{success: boolean, message: string}>;
   isLoadingCustomTemplates: boolean;
+  isLoadingLayouts: boolean;
   
   // Zoom functionality
   zoomLevel: number;
@@ -147,6 +153,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const { toast } = useToast();
   const [zoomLevel, setZoomLevel] = useState(0.7);
   const [isLoadingCustomTemplates, setIsLoadingCustomTemplates] = useState(true);
+  const [isLoadingLayouts, setIsLoadingLayouts] = useState(true);
 
   const mainDesignCanvasStateRef = useRef<DesignComponent[]>(createInitialComponents());
 
@@ -174,37 +181,54 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   useEffect(() => {
     setIsClient(true);
 
-    let unsubscribe: Unsubscribe | undefined;
+    const unsubscribers: Unsubscribe[] = [];
     if (db) {
         setIsLoadingCustomTemplates(true);
+        setIsLoadingLayouts(true);
+        
+        // Subscribe to Custom Templates
         const templatesCollection = collection(db, CUSTOM_TEMPLATES_COLLECTION);
-        const q = query(templatesCollection, orderBy('name'));
-
-        unsubscribe = onSnapshot(q, 
+        const templatesQuery = query(templatesCollection, orderBy('name'));
+        const templatesUnsub = onSnapshot(templatesQuery, 
             (snapshot) => {
-                const templates: CustomComponentTemplate[] = [];
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    templates.push({
-                        firestoreId: doc.id,
-                        ...data,
-                    } as CustomComponentTemplate);
-                });
+                const templates: CustomComponentTemplate[] = snapshot.docs.map(doc => ({
+                    firestoreId: doc.id,
+                    ...doc.data(),
+                } as CustomComponentTemplate));
                 setDesignState(prev => ({...prev, customComponentTemplates: templates}));
                 setIsLoadingCustomTemplates(false);
             },
             (error) => {
                 console.error("Error loading custom component templates:", error);
-                toast({ title: "Data Load Error", description: "Could not load custom components from Firestore.", variant: "destructive" });
+                toast({ title: "Data Load Error", description: "Could not load custom components.", variant: "destructive" });
                 setIsLoadingCustomTemplates(false);
             }
         );
+        unsubscribers.push(templatesUnsub);
+
+        // Subscribe to Saved Layouts
+        const layoutsCollection = collection(db, SAVED_LAYOUTS_COLLECTION);
+        const layoutsQuery = query(layoutsCollection, orderBy('timestamp', 'desc'));
+        const layoutsUnsub = onSnapshot(layoutsQuery,
+            (snapshot) => {
+                const layouts: SavedLayout[] = snapshot.docs.map(doc => ({
+                    firestoreId: doc.id,
+                    ...doc.data(),
+                } as SavedLayout));
+                setDesignState(prev => ({ ...prev, savedLayouts: layouts }));
+                setIsLoadingLayouts(false);
+            },
+            (error) => {
+                console.error("Error loading saved layouts:", error);
+                toast({ title: "Data Load Error", description: "Could not load saved layouts.", variant: "destructive" });
+                setIsLoadingLayouts(false);
+            }
+        );
+        unsubscribers.push(layoutsUnsub);
     }
     
     return () => {
-        if (unsubscribe) {
-            unsubscribe();
-        }
+        unsubscribers.forEach(unsub => unsub());
     };
   }, [toast]);
 
@@ -374,11 +398,12 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const clearDesign = React.useCallback(() => {
     updateStateWithHistory(prev => {
-      // If editing a template, this action should exit editing mode
-      if (prev.editingTemplateInfo) {
+      // If editing a template or layout, this action should exit editing mode
+      if (prev.editingTemplateInfo || prev.editingLayoutInfo) {
           return {
               components: mainDesignCanvasStateRef.current,
               editingTemplateInfo: null,
+              editingLayoutInfo: null,
               selectedComponentId: null,
           }
       }
@@ -648,6 +673,95 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         toast({ title: "Delete Failed", description: "Could not delete the template from Firestore.", variant: "destructive" });
     }
   }, [toast]);
+  
+  const saveCurrentCanvasAsLayout = useCallback(async (layoutName: string) => {
+    const { components, nextId } = designState;
+    const newLayout: Omit<SavedLayout, 'firestoreId'> = {
+        name: layoutName,
+        components: deepClone(components),
+        nextId,
+        timestamp: Date.now(),
+    };
+    try {
+        const docRef = doc(db, SAVED_LAYOUTS_COLLECTION, layoutName);
+        await setDoc(docRef, newLayout);
+        toast({ title: "Success", description: `Layout "${layoutName}" saved.` });
+    } catch (error) {
+        console.error("Error saving layout:", error);
+        toast({ title: "Save Failed", description: "Could not save layout to Firestore.", variant: "destructive" });
+        throw error; // Re-throw to be caught in the modal
+    }
+  }, [designState, toast]);
+
+  const loadLayout = useCallback((layout: SavedLayout) => {
+    updateStateWithHistory(prev => ({
+        components: layout.components,
+        nextId: layout.nextId,
+        selectedComponentId: null,
+        editingLayoutInfo: null,
+        editingTemplateInfo: null,
+    }));
+  }, [updateStateWithHistory]);
+
+  const loadLayoutForEditing = useCallback((layout: SavedLayout) => {
+    mainDesignCanvasStateRef.current = deepClone(designState.components);
+    setDesignState(prev => ({
+        ...prev,
+        components: layout.components,
+        nextId: layout.nextId,
+        editingLayoutInfo: {
+            firestoreId: layout.firestoreId,
+            name: layout.name,
+        },
+        selectedComponentId: null,
+        history: [],
+        future: [],
+    }));
+  }, [designState.components]);
+
+  const updateLayout = useCallback(async () => {
+    const { editingLayoutInfo, components, nextId } = designState;
+    if (!editingLayoutInfo || !editingLayoutInfo.firestoreId) {
+        toast({ title: "Error", description: "No layout is currently being edited.", variant: "destructive" });
+        return;
+    }
+    const updatedLayoutData = {
+        name: editingLayoutInfo.name,
+        components: components,
+        nextId,
+        timestamp: Date.now(),
+    };
+    try {
+        const layoutDocRef = doc(db, SAVED_LAYOUTS_COLLECTION, editingLayoutInfo.firestoreId);
+        await setDoc(layoutDocRef, updatedLayoutData, { merge: true });
+        toast({ title: "Success", description: `Layout "${editingLayoutInfo.name}" updated.` });
+
+        // Exit editing mode
+        setDesignState(prev => ({
+            ...prev,
+            components: mainDesignCanvasStateRef.current,
+            editingLayoutInfo: null,
+            selectedComponentId: null,
+            history: [],
+            future: [],
+        }));
+
+    } catch (error) {
+        console.error("Error updating layout:", error);
+        toast({ title: "Update Failed", description: "Could not update layout in Firestore.", variant: "destructive" });
+    }
+  }, [designState, toast]);
+
+  const deleteLayout = useCallback(async (firestoreId: string) => {
+    try {
+        await deleteDoc(doc(db, SAVED_LAYOUTS_COLLECTION, firestoreId));
+        toast({ title: "Layout Deleted", description: "The layout has been deleted." });
+    } catch (error) {
+        console.error("Error deleting layout:", error);
+        toast({ title: "Delete Failed", description: "Could not delete the layout from Firestore.", variant: "destructive" });
+    }
+  }, [toast]);
+
 
   const addImageToGallery = React.useCallback(async (url: string): Promise<{success: boolean, message: string}> => {
     try { new URL(url); } catch (_) { return { success: false, message: "Invalid URL."}; }
@@ -671,8 +785,10 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     getComponentById, clearDesign, overwriteComponents, moveComponent,
     undo, redo, copyComponent, pasteComponent, 
     saveSelectedAsCustomTemplate, loadTemplateForEditing, updateCustomTemplate, deleteCustomTemplate,
+    saveCurrentCanvasAsLayout, loadLayout, loadLayoutForEditing, updateLayout, deleteLayout,
     addImageToGallery, removeImageFromGallery,
     isLoadingCustomTemplates,
+    isLoadingLayouts,
     zoomLevel, setZoomLevel,
   };
 
