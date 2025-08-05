@@ -45,7 +45,7 @@ export interface ComponentProperty {
   options?: ComponentPropertyOption[];
   label: string;
   placeholder?: string;
-  group: 'Layout' | 'Appearance' | 'Content' | 'Behavior' | 'Slots';
+  group: 'Layout' | 'Appearance' | 'Content' | 'Behavior' | 'Slots' | 'Save';
 }
 
 export interface BaseComponentProps {
@@ -898,5 +898,3 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
 );
 
 export const ModalJsonSchema = z.array(ModalComponentNodeSchema);
-
-    

@@ -17,7 +17,7 @@ import {
   CORE_SCAFFOLD_ELEMENT_IDS
 } from '@/types/compose-spec';
 import { PropertyEditor } from './PropertyEditor';
-import { Trash2, Sparkles, Loader2, Upload, Search } from 'lucide-react';
+import { Trash2, Sparkles, Loader2, Upload, Search, Save } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -40,13 +40,33 @@ interface PropertyPanelProps {
 const PREFERRED_GROUP_ORDER = ['Layout', 'Appearance', 'Content', 'Behavior'];
 
 export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
-  const { selectedComponentId, getComponentById, updateComponent, deleteComponent, customComponentTemplates, editingTemplateInfo, editingLayoutInfo } = useDesign();
+  const { selectedComponentId, getComponentById, updateComponent, deleteComponent, customComponentTemplates, editingTemplateInfo, saveSelectedAsCustomTemplate } = useDesign();
   const selectedComponent = selectedComponentId ? getComponentById(selectedComponentId) : null;
   const { toast } = useToast();
 
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [newTemplateName, setNewTemplateName] = useState("");
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+
+
+  const handleSaveAsTemplate = async () => {
+    if (!selectedComponentId) {
+        toast({ title: "Error", description: "No component selected to save.", variant: "destructive"});
+        return;
+    }
+    if (!newTemplateName.trim()) {
+        toast({ title: "Name Required", description: "Please provide a name for the custom component.", variant: "destructive"});
+        return;
+    }
+    setIsSavingTemplate(true);
+    await saveSelectedAsCustomTemplate(newTemplateName.trim());
+    setIsSavingTemplate(false);
+    setNewTemplateName("");
+  };
+
 
   const getDefaultPropertyValue = (propDef: Omit<ComponentProperty, 'value'>) => {
     if (!selectedComponent) return '';
@@ -329,13 +349,13 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
           <Input id="componentName" type="text" value={selectedComponent.name} onChange={handleNameChange} className="h-8 text-sm mt-1.5" disabled={isCoreScaffoldElement} />
         </div>
 
-        {componentPropsDef.length === 0 ? (
+        {componentPropsDef.length === 0 && !editingTemplateInfo ? (
           <div className="flex-grow flex items-center justify-center min-h-0">
             <p className="text-sm text-muted-foreground">No editable properties for this component type.</p>
           </div>
         ) : (
           <div className="flex-grow flex flex-col min-h-0">
-            <Tabs defaultValue={propertyGroups[0]} className="flex flex-col flex-grow min-h-0">
+            <Tabs defaultValue={propertyGroups[0] || 'save'} className="flex flex-col flex-grow min-h-0">
               <div className="overflow-x-auto bg-muted/50 p-1 rounded-md shrink-0">
                 <TabsList className="inline-flex h-auto bg-transparent p-0">
                   {propertyGroups.map((group) => (
@@ -343,6 +363,11 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
                       {group}
                     </TabsTrigger>
                   ))}
+                   {!editingTemplateInfo && !isCoreScaffoldElement && (
+                        <TabsTrigger value="save" className="text-xs px-2 py-1.5 h-auto whitespace-nowrap">
+                          Save
+                        </TabsTrigger>
+                    )}
                 </TabsList>
               </div>
               <ScrollArea className="flex-grow min-h-0 mt-3 -mx-4">
@@ -361,6 +386,23 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
                       )}
                     </TabsContent>
                   ))}
+                   <TabsContent value="save" className="mt-0">
+                        <div className="space-y-2 pt-2">
+                            <Label htmlFor="templateName" className="text-xs">Custom Component Name</Label>
+                            <Input
+                                id="templateName"
+                                placeholder="e.g., User Profile Card"
+                                value={newTemplateName}
+                                onChange={(e) => setNewTemplateName(e.target.value)}
+                                disabled={isSavingTemplate}
+                                className="h-8 text-sm"
+                            />
+                            <Button onClick={handleSaveAsTemplate} disabled={isSavingTemplate || !newTemplateName.trim()} className="w-full h-8 text-xs">
+                                {isSavingTemplate ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
+                                Save Selected as Component
+                            </Button>
+                        </div>
+                    </TabsContent>
                 </div>
               </ScrollArea>
             </Tabs>
@@ -372,15 +414,15 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
 
   return (
     <aside className="w-80 border-l bg-sidebar p-4 flex flex-col shrink-0">
-        <Tabs defaultValue={selectedComponent ? "properties" : "structure"} value={selectedComponent ? undefined : "structure"} className="w-full flex flex-col flex-grow min-h-0">
+        <Tabs defaultValue={selectedComponent && !editingTemplateInfo ? "properties" : "structure"} value={selectedComponent && !editingTemplateInfo ? "properties" : "structure"} className="w-full flex flex-col flex-grow min-h-0">
             <TabsList className="grid w-full grid-cols-2 shrink-0">
-                <TabsTrigger value="properties" disabled={!selectedComponent}>Properties</TabsTrigger>
+                <TabsTrigger value="properties" disabled={!selectedComponent || editingTemplateInfo !== null}>Properties</TabsTrigger>
                 <TabsTrigger value="structure">Structure</TabsTrigger>
             </TabsList>
             <TabsContent value="properties" className="flex-grow min-h-0 mt-4 focus-visible:ring-0 focus-visible:ring-offset-0">
-                {selectedComponent ? renderProperties() : (
+                {selectedComponent && !editingTemplateInfo ? renderProperties() : (
                     <div className="flex-grow flex items-center justify-center h-full">
-                      <p className="text-sm text-muted-foreground text-center p-4">Select a component on the canvas or from the 'Structure' tab to see its properties.</p>
+                      <p className="text-sm text-muted-foreground text-center p-4">Select a component on the canvas to see its properties, or switch to the 'Structure' tab.</p>
                     </div>
                 )}
             </TabsContent>

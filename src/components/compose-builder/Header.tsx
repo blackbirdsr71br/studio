@@ -4,7 +4,7 @@
 import React, { RefObject } from 'react';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from "@/components/ui/button";
-import { Code, Trash2, FileJson, UploadCloud, Palette, Undo, Redo, Copy, ClipboardPaste, Settings } from "lucide-react";
+import { Code, Trash2, FileJson, UploadCloud, Palette, Undo, Redo, Copy, ClipboardPaste, Settings, Save } from "lucide-react";
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
 import type { ViewJsonModalRef } from "./ViewJsonModal";
 import type { ThemeEditorModalRef } from "./ThemeEditorModal";
@@ -39,7 +39,8 @@ export function Header({
   const { 
     clearDesign, components,
     undo, redo, copyComponent, pasteComponent,
-    history, future, selectedComponentId, clipboard
+    history, future, selectedComponentId, clipboard,
+    editingTemplateInfo, updateCustomTemplate
   } = useDesign();
   const { toast } = useToast();
 
@@ -91,6 +92,12 @@ export function Header({
   const handlePaste = () => {
     pasteComponent();
   };
+  
+  const handleUpdateTemplate = () => {
+    if (editingTemplateInfo) {
+      updateCustomTemplate();
+    }
+  };
 
   const hasUserComponents = components.length > 4; // Check for any component beyond the initial 4 scaffold parts
   const canCopy = !!selectedComponentId && !CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponentId);
@@ -103,6 +110,20 @@ export function Header({
       <div className="h-full bg-white flex items-center px-4">
           <Logo />
       </div>
+
+       {editingTemplateInfo && (
+        <div className="flex-grow flex items-center justify-center">
+            <div className="flex items-center gap-4 bg-yellow-400/20 text-yellow-200 px-4 py-1.5 rounded-lg border border-yellow-400/50">
+                <p className="text-sm font-medium">
+                    Editing Template: <span className="font-bold">{editingTemplateInfo.name}</span>
+                </p>
+                <Button size="sm" className="bg-yellow-400 text-yellow-900 hover:bg-yellow-500 h-8" onClick={handleUpdateTemplate}>
+                    <Save className="mr-2"/> Update Template
+                </Button>
+            </div>
+        </div>
+      )}
+      
       <div className="flex items-center gap-2 px-6">
         <TooltipProvider delayDuration={200}>
           <Tooltip>

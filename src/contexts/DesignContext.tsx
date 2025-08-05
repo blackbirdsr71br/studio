@@ -2,11 +2,11 @@
 'use client';
 
 import type { ReactNode} from 'react';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { DesignComponent, DesignState, ComponentType, BaseComponentProps, CustomComponentTemplate, SavedLayout, GalleryImage } from '@/types/compose-spec';
 import { getDefaultProperties, CUSTOM_COMPONENT_TYPE_PREFIX, isContainerType, getComponentDisplayName, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, CORE_SCAFFOLD_ELEMENT_IDS, CUSTOM_TEMPLATES_COLLECTION, SAVED_LAYOUTS_COLLECTION, GALLERY_IMAGES_COLLECTION, DESIGNS_COLLECTION, MAIN_DESIGN_DOC_ID } from '@/types/compose-spec';
 import { db } from '@/lib/firebase';
-import { collection, doc, setDoc, getDocs, deleteDoc, updateDoc, query, orderBy, getDoc, type Firestore } from "firebase/firestore";
+import { collection, doc, setDoc, getDocs, deleteDoc, query, orderBy, onSnapshot, Unsubscribe } from "firebase/firestore";
 import { useToast } from '@/hooks/use-toast';
 import { useDebouncedCallback } from 'use-debounce';
 
@@ -24,8 +24,13 @@ interface DesignContextType extends DesignState {
   undo: () => void;
   redo: () => void;
   clearDesign: () => void;
+  saveSelectedAsCustomTemplate: (templateName: string) => Promise<void>;
+  loadTemplateForEditing: (template: CustomComponentTemplate) => void;
+  updateCustomTemplate: () => Promise<void>;
+  deleteCustomTemplate: (firestoreId: string) => Promise<void>;
   addImageToGallery: (url: string) => Promise<{success: boolean, message: string}>;
   removeImageFromGallery: (id: string) => Promise<{success: boolean, message: string}>;
+  isLoadingCustomTemplates: boolean;
   
   // Zoom functionality
   zoomLevel: number;
@@ -37,31 +42,6 @@ const DesignContext = React.createContext<DesignContextType | undefined>(undefin
 
 const deepClone = <T>(obj: T): T => {
   return JSON.parse(JSON.stringify(obj));
-};
-
-const sanitizeForFirestore = (obj: any): any => {
-  if (obj === null || typeof obj !== 'object') {
-    return obj;
-  }
-
-  if (Array.isArray(obj)) {
-    return obj.map(item => sanitizeForFirestore(item)).filter(item => item !== undefined);
-  }
-
-  const sanitizedObj: { [key: string]: any } = {};
-  for (const key in obj) {
-    if (Object.prototype.hasOwnProperty.call(obj, key)) {
-      const value = obj[key];
-      if (value === undefined) {
-        continue;
-      }
-      const sanitizedValue = sanitizeForFirestore(value);
-      if (sanitizedValue !== undefined) {
-        sanitizedObj[key] = sanitizedValue;
-      }
-    }
-  }
-  return sanitizedObj;
 };
 
 const createInitialComponents = (): DesignComponent[] => {
@@ -166,10 +146,9 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [isClient, setIsClient] = React.useState(false);
   const { toast } = useToast();
   const [zoomLevel, setZoomLevel] = useState(0.7);
+  const [isLoadingCustomTemplates, setIsLoadingCustomTemplates] = useState(true);
 
-  const saveDesignToFirestore = useDebouncedCallback(async (stateToSave: DesignState) => {
-    // This functionality is currently disabled to ensure stability.
-  }, 1500);
+  const mainDesignCanvasStateRef = useRef<DesignComponent[]>(createInitialComponents());
 
   const updateStateWithHistory = React.useCallback((
     updater: (prevState: DesignState) => Partial<DesignState>,
@@ -194,7 +173,40 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   
   useEffect(() => {
     setIsClient(true);
-  }, []);
+
+    let unsubscribe: Unsubscribe | undefined;
+    if (db) {
+        setIsLoadingCustomTemplates(true);
+        const templatesCollection = collection(db, CUSTOM_TEMPLATES_COLLECTION);
+        const q = query(templatesCollection, orderBy('name'));
+
+        unsubscribe = onSnapshot(q, 
+            (snapshot) => {
+                const templates: CustomComponentTemplate[] = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    templates.push({
+                        firestoreId: doc.id,
+                        ...data,
+                    } as CustomComponentTemplate);
+                });
+                setDesignState(prev => ({...prev, customComponentTemplates: templates}));
+                setIsLoadingCustomTemplates(false);
+            },
+            (error) => {
+                console.error("Error loading custom component templates:", error);
+                toast({ title: "Data Load Error", description: "Could not load custom components from Firestore.", variant: "destructive" });
+                setIsLoadingCustomTemplates(false);
+            }
+        );
+    }
+    
+    return () => {
+        if (unsubscribe) {
+            unsubscribe();
+        }
+    };
+  }, [toast]);
 
   useEffect(() => {
      try {
@@ -237,16 +249,48 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       if (!parentComponent || !isContainerType(parentComponent.type, prev.customComponentTemplates)) {
         effectiveParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
       }
-  
-      const newId = `comp-${currentNextId++}`;
-      finalSelectedComponentId = newId;
-      componentsToAdd.push({
-        id: newId,
-        type: typeOrTemplateId as ComponentType,
-        name: `${getComponentDisplayName(typeOrTemplateId as ComponentType)} ${newId.split('-')[1]}`,
-        properties: { ...getDefaultProperties(typeOrTemplateId as ComponentType, newId) },
-        parentId: effectiveParentId,
-      });
+
+      if (typeOrTemplateId.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
+        const template = prev.customComponentTemplates.find(t => t.templateId === typeOrTemplateId);
+        if (template) {
+          const idMap: Record<string, string> = {};
+          const newTemplateComponents: DesignComponent[] = deepClone(template.componentTree).map((c: DesignComponent) => {
+              const newId = `comp-${currentNextId++}`;
+              idMap[c.id] = newId;
+              return { ...c, id: newId };
+          });
+
+          newTemplateComponents.forEach(c => {
+              c.parentId = c.parentId ? idMap[c.parentId] : null;
+              if (c.properties.children) {
+                  c.properties.children = c.properties.children.map(childId => idMap[childId]);
+              }
+          });
+          
+          const rootOfPasted = newTemplateComponents.find(c => c.parentId === null)!;
+          rootOfPasted.parentId = effectiveParentId;
+          rootOfPasted.templateIdRef = template.templateId; // Add the reference
+          rootOfPasted.name = template.name;
+          
+          finalSelectedComponentId = rootOfPasted.id;
+          componentsToAdd.push(...newTemplateComponents);
+
+        } else {
+            console.error(`Template with ID ${typeOrTemplateId} not found!`);
+            return {};
+        }
+
+      } else { // Standard component
+          const newId = `comp-${currentNextId++}`;
+          finalSelectedComponentId = newId;
+          componentsToAdd.push({
+            id: newId,
+            type: typeOrTemplateId as ComponentType,
+            name: `${getComponentDisplayName(typeOrTemplateId as ComponentType)} ${newId.split('-')[1]}`,
+            properties: { ...getDefaultProperties(typeOrTemplateId as ComponentType, newId) },
+            parentId: effectiveParentId,
+          });
+      }
       
       updatedComponentsList.push(...componentsToAdd);
   
@@ -330,6 +374,14 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const clearDesign = React.useCallback(() => {
     updateStateWithHistory(prev => {
+      // If editing a template, this action should exit editing mode
+      if (prev.editingTemplateInfo) {
+          return {
+              components: mainDesignCanvasStateRef.current,
+              editingTemplateInfo: null,
+              selectedComponentId: null,
+          }
+      }
       return { components: createInitialComponents(), nextId: 1, selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID };
     });
   }, [updateStateWithHistory]);
@@ -495,6 +547,107 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     return { success, message };
   }, [designState, updateStateWithHistory]);
+  
+  const saveSelectedAsCustomTemplate = useCallback(async (templateName: string) => {
+    const { selectedComponentId, components } = designState;
+    if (!selectedComponentId) {
+        toast({ title: "Error", description: "No component selected.", variant: "destructive" });
+        return;
+    }
+    const collectDescendants = (compId: string): DesignComponent[] => {
+        const comp = components.find(c => c.id === compId);
+        if (!comp) return [];
+        let descendants = [deepClone(comp)];
+        if (comp.properties.children) {
+            comp.properties.children.forEach(childId => {
+                descendants.push(...collectDescendants(childId));
+            });
+        }
+        return descendants;
+    };
+    const componentTree = collectDescendants(selectedComponentId);
+    if (componentTree.length === 0) {
+        toast({ title: "Error", description: "Cannot save an empty component.", variant: "destructive" });
+        return;
+    }
+
+    const rootComponentIdInTemplate = componentTree[0].id;
+    componentTree[0].parentId = null; // Root of template has no parent
+
+    const templateId = `${CUSTOM_COMPONENT_TYPE_PREFIX}${templateName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+    const newTemplate: Omit<CustomComponentTemplate, 'firestoreId'> = {
+        templateId,
+        name: templateName,
+        rootComponentId: rootComponentIdInTemplate,
+        componentTree,
+    };
+    try {
+        const templatesCollection = collection(db, CUSTOM_TEMPLATES_COLLECTION);
+        await setDoc(doc(templatesCollection), newTemplate);
+        toast({ title: "Success", description: `Component "${templateName}" saved.` });
+    } catch (error) {
+        console.error("Error saving custom template:", error);
+        toast({ title: "Save Failed", description: "Could not save component to Firestore.", variant: "destructive" });
+    }
+  }, [designState, toast]);
+
+  const loadTemplateForEditing = useCallback((template: CustomComponentTemplate) => {
+    mainDesignCanvasStateRef.current = deepClone(designState.components);
+    setDesignState(prev => ({
+        ...prev,
+        components: template.componentTree,
+        editingTemplateInfo: {
+            templateId: template.templateId,
+            firestoreId: template.firestoreId,
+            name: template.name,
+        },
+        selectedComponentId: template.rootComponentId,
+        history: [],
+        future: [],
+    }));
+  }, [designState.components]);
+
+  const updateCustomTemplate = useCallback(async () => {
+    const { editingTemplateInfo, components } = designState;
+    if (!editingTemplateInfo || !editingTemplateInfo.firestoreId) {
+        toast({ title: "Error", description: "No template is currently being edited.", variant: "destructive" });
+        return;
+    }
+    const updatedTemplateData = {
+        name: editingTemplateInfo.name,
+        componentTree: components,
+        // rootComponentId and templateId should not change
+    };
+    try {
+        const templateDocRef = doc(db, CUSTOM_TEMPLATES_COLLECTION, editingTemplateInfo.firestoreId);
+        await setDoc(templateDocRef, updatedTemplateData, { merge: true });
+        toast({ title: "Success", description: `Template "${editingTemplateInfo.name}" updated.` });
+
+        // Exit editing mode
+        setDesignState(prev => ({
+            ...prev,
+            components: mainDesignCanvasStateRef.current,
+            editingTemplateInfo: null,
+            selectedComponentId: null,
+            history: [],
+            future: [],
+        }));
+
+    } catch (error) {
+        console.error("Error updating custom template:", error);
+        toast({ title: "Update Failed", description: "Could not update template in Firestore.", variant: "destructive" });
+    }
+  }, [designState, toast]);
+
+  const deleteCustomTemplate = useCallback(async (firestoreId: string) => {
+    try {
+        await deleteDoc(doc(db, CUSTOM_TEMPLATES_COLLECTION, firestoreId));
+        toast({ title: "Template Deleted", description: "The custom component has been deleted." });
+    } catch (error) {
+        console.error("Error deleting custom template:", error);
+        toast({ title: "Delete Failed", description: "Could not delete the template from Firestore.", variant: "destructive" });
+    }
+  }, [toast]);
 
   const addImageToGallery = React.useCallback(async (url: string): Promise<{success: boolean, message: string}> => {
     try { new URL(url); } catch (_) { return { success: false, message: "Invalid URL."}; }
@@ -516,7 +669,10 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     ...designState,
     addComponent, deleteComponent, selectComponent, updateComponent, updateComponentPosition,
     getComponentById, clearDesign, overwriteComponents, moveComponent,
-    undo, redo, copyComponent, pasteComponent, addImageToGallery, removeImageFromGallery,
+    undo, redo, copyComponent, pasteComponent, 
+    saveSelectedAsCustomTemplate, loadTemplateForEditing, updateCustomTemplate, deleteCustomTemplate,
+    addImageToGallery, removeImageFromGallery,
+    isLoadingCustomTemplates,
     zoomLevel, setZoomLevel,
   };
 
