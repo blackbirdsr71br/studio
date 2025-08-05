@@ -81,7 +81,7 @@ function CustomComponentsList() {
       <div className="space-y-4">
           {customComponentTemplates.map((template) => {
               return (
-                  <div key={template.templateId} className="relative group/custom-item border border-sidebar-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow">
+                  <div key={template.firestoreId} className="relative group/custom-item border border-sidebar-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow">
                        <DraggableComponentItem
                             type={template.templateId}
                             isCustomComponent={true}
