@@ -94,7 +94,7 @@ const getDimensionValue = (
   };
   
 export function RenderedComponentWrapper({ component, isPreview = false }: RenderedComponentWrapperProps) {
-  const { zoomLevel, activeScreenId, setActiveScreen, selectedComponentId, selectComponent, getComponentById, addComponent, moveComponent, updateComponent, customComponentTemplates } = useDesign();
+  const { zoomLevel, selectedComponentId, selectComponent, getComponentById, addComponent, moveComponent, updateComponent, customComponentTemplates } = useDesign();
   const ref = useRef<HTMLDivElement>(null);
   const [dropIndicator, setDropIndicator] = useState<DropIndicatorPosition>(null);
   const [isResizing, setIsResizing] = useState(false);
@@ -218,10 +218,6 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isPreview) {
-      if (component.type === 'BottomNavigationItem' && component.properties.navigateTo) {
-          setActiveScreen(component.properties.navigateTo);
-          return;
-      }
       selectComponent(component.id);
     }
   };
@@ -360,16 +356,13 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
       case 'BottomNavigationBar':
         return <ContainerView component={component} childrenComponents={childrenToRender} isRow={true} isPreview={isPreview} />;
       
-      case 'BottomNavigationItem':
-        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={false} isPreview={isPreview} />;
-      
       case 'Spacer':
         return (
           <div
             style={{
               width: `${component.properties.width || 8}px`,
               height: `${component.properties.height || 8}px`,
-              flexShrink: 0, 
+              flexShrink: 0,
             }}
             className="select-none"
           />
@@ -501,11 +494,6 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
   
   const isReorderTarget = isOverCurrent && canDropCurrent && dropIndicator !== null;
 
-  const isDraggable = !isResizing && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && component.type !== 'Spacer' && !isPreview;
-  const isClickable = !isPreview && (component.properties.clickable || component.type === 'BottomNavigationItem');
-  
-  const isNavItemSelected = component.type === 'BottomNavigationItem' && component.properties.navigateTo === activeScreenId;
-
   return (
     <div
       ref={ref}
@@ -517,12 +505,9 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
           'ring-2 ring-accent ring-offset-2 ring-offset-background': isSelected && CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && component.id !== ROOT_SCAFFOLD_ID,
           'opacity-50': isDragging,
           'cursor-grabbing': isDragging,
-          'cursor-pointer': !isDragging && isClickable,
-          'cursor-grab': !isDragging && !isClickable && isDraggable,
-          'cursor-default': !isDraggable,
+          'cursor-pointer': !isDragging && component.properties.clickable,
+          'cursor-grab': !isDragging && !component.properties.clickable && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !isPreview,
           'relative': true,
-          '[&>div]:text-accent': isNavItemSelected, // Apply accent color to children if selected
-          '[&>div>svg]:text-accent': isNavItemSelected,
         },
         containerDropTargetStyle,
       )}
