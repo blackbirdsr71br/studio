@@ -155,7 +155,7 @@ function LayoutsList() {
                 <div key={layout.firestoreId} className="relative group/layout-item border border-sidebar-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow p-2 space-y-2">
                     <div className="flex justify-between items-start">
                         <p className="text-sm font-medium text-sidebar-foreground flex-1 break-words pr-2">{layout.name}</p>
-                        <div className="flex items-center gap-1 opacity-0 group-hover/layout-item:opacity-100 transition-opacity duration-200 shrink-0">
+                        <div className="flex items-center gap-1 opacity-0 group-hover/layout-item:opacity-100 transition-opacity duration-200 shrink-0 z-10">
                             <Button variant="ghost" size="icon" className="h-6 w-6" title="Load Layout" onClick={() => handleLoad(layout)}>
                                 <Download className="h-3.5 w-3.5" />
                             </Button>
@@ -167,7 +167,7 @@ function LayoutsList() {
                             </Button>
                         </div>
                     </div>
-                    <div className="w-full aspect-[16/9] bg-muted/30 rounded-md overflow-hidden relative border">
+                    <div className="w-full aspect-[9/16] bg-muted/30 rounded-md overflow-hidden relative border">
                         <LayoutPreview layout={layout} />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
                     </div>
