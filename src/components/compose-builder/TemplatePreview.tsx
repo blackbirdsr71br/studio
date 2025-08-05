@@ -21,23 +21,9 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
     return <div className="p-2 text-xs text-destructive">Preview Error: Root component not found.</div>;
   }
   
-  // The container in the panel is a 16:9 box inside a 224px wide column (minus paddings).
-  // A safe width for the container is around 200px.
-  const previewContainerWidth = 200; 
-  const previewContainerHeight = (previewContainerWidth * 9) / 16; 
+  const componentWidth = typeof rootComponent.properties.width === 'number' ? rootComponent.properties.width : 200;
+  const componentHeight = typeof rootComponent.properties.height === 'number' ? rootComponent.properties.height : 150;
   
-  const componentWidth = typeof rootComponent.properties.width === 'number' ? rootComponent.properties.width : previewContainerWidth;
-  const componentHeight = typeof rootComponent.properties.height === 'number' ? rootComponent.properties.height : previewContainerHeight;
-
-  // Calculate the scale needed to fit the component's width and height within the preview area.
-  // Take the smaller of the two scales to ensure the whole component fits.
-  // Add a max scale of 1 so we don't enlarge small components.
-  const scale = Math.min(
-    componentWidth > 0 ? previewContainerWidth / componentWidth : 1, 
-    componentHeight > 0 ? previewContainerHeight / componentHeight : 1, 
-    1
-  );
-
   return (
     <div 
         className="w-full h-full flex items-center justify-center overflow-hidden bg-background"
@@ -45,10 +31,12 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
       <div 
         className="transform origin-center"
         style={{
-            // Set the div size to the component's original size before scaling
             width: `${componentWidth}px`,
             height: `${componentHeight}px`,
-            transform: `scale(${scale})`,
+            // This complex transform will scale the component down to fit within the container
+            // while maintaining its aspect ratio. It calculates the scale factor for both width and height
+            // and uses the smaller of the two, ensuring it never overflows.
+            transform: `scale(min(calc(100% / ${componentWidth}px), calc(100% / ${componentHeight}px)))`,
         }}
       >
           <ReadonlyRenderedComponentWrapper
