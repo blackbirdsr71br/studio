@@ -11,6 +11,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { generateImageFromHintAction, searchWebForImagesAction } from '@/app/actions';
 import { useDesign } from '@/contexts/DesignContext';
+import { cn } from '@/lib/utils';
 
 export interface ImageSourceModalRef {
   openModal: (callback: (imageUrl: string) => void, currentSrc?: string) => void;
@@ -208,11 +209,19 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
             <button
               onClick={() => handleImageClick(url)}
               onDoubleClick={() => handleImageDoubleClick(url)}
-              className={`relative aspect-square w-full rounded-md overflow-hidden border-2 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1
-                          ${imageUrl === url && !isEditingGallery ? 'border-primary ring-2 ring-primary ring-offset-1' : 'border-transparent'}`}
+              className={cn(
+                'relative aspect-square w-full rounded-md overflow-hidden border-2 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1',
+                 imageUrl === url && !isEditingGallery ? 'border-primary ring-2 ring-primary ring-offset-1' : 'border-transparent'
+              )}
               aria-label={`Select image ${index + 1}`}
             >
-              <img src={url} alt={`Image result ${index + 1}`} className="absolute inset-0 h-full w-full object-contain p-1" loading="lazy" />
+              <img 
+                src={url} 
+                alt={`Image result ${index + 1}`} 
+                className="absolute inset-0 h-full w-full object-contain p-1" 
+                loading="lazy" 
+                onError={(e) => { e.currentTarget.src = 'https://placehold.co/100x100.png'; }}
+              />
             </button>
             {isEditingGallery && type === 'gallery' && (
               <Button
