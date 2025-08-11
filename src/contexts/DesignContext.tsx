@@ -336,17 +336,27 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, [toast]);
 
   useEffect(() => {
-     try {
-        const savedImagesJson = localStorage.getItem(GALLERY_IMAGES_COLLECTION);
-        const galleryToSet = savedImagesJson ? JSON.parse(savedImagesJson) : defaultGalleryImages;
-        if (!savedImagesJson) {
-            localStorage.setItem(GALLERY_IMAGES_COLLECTION, JSON.stringify(galleryToSet));
-        }
-        setDesignState(prev => ({ ...prev, galleryImages: galleryToSet.sort((a:GalleryImage,b:GalleryImage) => b.timestamp - a.timestamp) }));
-      } catch (error) {
-        console.error("Error loading gallery from localStorage:", error);
-        setDesignState(prev => ({ ...prev, galleryImages: defaultGalleryImages.sort((a,b) => b.timestamp - a.timestamp) }));
-      }
+    try {
+      const savedImagesJson = localStorage.getItem(GALLERY_IMAGES_COLLECTION);
+      const userAddedImages = savedImagesJson ? (JSON.parse(savedImagesJson) as GalleryImage[]).filter(img => !uniqueDefaultUrls.includes(img.url)) : [];
+      
+      const finalGallery = [...defaultGalleryImages, ...userAddedImages];
+      
+      // Use a Map to ensure uniqueness based on URL, keeping the most recent entry if there are duplicates.
+      const uniqueGalleryMap = new Map<string, GalleryImage>();
+      finalGallery.sort((a,b) => a.timestamp - b.timestamp).forEach(img => {
+          uniqueGalleryMap.set(img.url, img);
+      });
+      
+      const galleryToSet = Array.from(uniqueGalleryMap.values()).sort((a, b) => b.timestamp - a.timestamp);
+
+      localStorage.setItem(GALLERY_IMAGES_COLLECTION, JSON.stringify(galleryToSet));
+      setDesignState(prev => ({ ...prev, galleryImages: galleryToSet }));
+
+    } catch (error) {
+      console.error("Error loading gallery from localStorage:", error);
+      setDesignState(prev => ({ ...prev, galleryImages: defaultGalleryImages.sort((a,b) => b.timestamp - a.timestamp) }));
+    }
   }, []);
 
   const getComponentById = React.useCallback(
