@@ -25,7 +25,7 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
   const componentHeight = typeof rootComponent.properties.height === 'number' ? rootComponent.properties.height : 150;
   
   // This wrapper ensures the content scales down to fit, but doesn't scale up.
-  // The outer div in ComponentLibraryPanel provides the fixed height and width context.
+  // The outer div in ComponentLibraryPanel provides the fixed height and width context (e.g., w-full, h-[60px]).
   return (
     <div 
         className="w-full h-full flex items-center justify-center bg-background"
@@ -35,9 +35,10 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
         style={{
             width: `${componentWidth}px`,
             height: `${componentHeight}px`,
-            // Scale the component down to fit within the container, but don't scale up
-            // The max(0.1, ...) prevents it from becoming too small to see
-            transform: `scale(${Math.max(0.1, Math.min(1, 248 / componentWidth, 60 / componentHeight))})`,
+            // This is the robust scaling logic. It finds the smaller of the two possible scales (width-based or height-based)
+            // to ensure the entire component fits without being cropped or overflowing.
+            // Container width is typically ~220px, height is 60px.
+            transform: `scale(${Math.min(220 / componentWidth, 60 / componentHeight)})`,
             transformOrigin: 'center center'
         }}
       >
