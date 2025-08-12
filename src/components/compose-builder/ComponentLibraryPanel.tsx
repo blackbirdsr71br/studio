@@ -92,27 +92,25 @@ function CustomComponentsList() {
           {validTemplates.map((template) => {
               return (
                   <div key={template.firestoreId} className="border border-sidebar-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-                       <div className="flex justify-between items-center p-2 border-b">
-                           <p className="text-sm font-medium text-sidebar-foreground flex-1 break-words pr-2">{template.name}</p>
-                           <div className="flex items-center gap-1 shrink-0 z-10">
-                                <Button variant="ghost" size="icon" className="h-6 w-6" title="Edit Component" onClick={() => handleEdit(template)}>
-                                    <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10" title="Delete Component" onClick={() => handleDelete(template)}>
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                            </div>
+                       <div className="p-2 border-b border-sidebar-border">
+                           <p className="text-sm font-medium text-sidebar-foreground truncate" title={template.name}>{template.name}</p>
                        </div>
                        <DraggableComponentItem
                             type={template.templateId}
                             isCustomComponent={true}
                        >
-                           <div className="flex justify-center items-center h-[60px] bg-muted/20 overflow-hidden">
-                               <div style={{ width: '200px' }}>
-                                   <TemplatePreview template={template} />
-                               </div>
+                           <div className="flex justify-center items-center h-[60px] bg-muted/20 w-full">
+                               <TemplatePreview template={template} />
                            </div>
                        </DraggableComponentItem>
+                       <div className="p-1 border-t border-sidebar-border flex justify-end items-center gap-1">
+                            <Button variant="ghost" size="icon" className="h-6 w-6" title="Edit Component" onClick={() => handleEdit(template)}>
+                                <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10" title="Delete Component" onClick={() => handleDelete(template)}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                        </div>
                   </div>
               );
           })}
