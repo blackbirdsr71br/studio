@@ -70,7 +70,11 @@ export function Header({
   };
 
   const handleClearCanvas = () => {
-    if (window.confirm("Are you sure you want to clear the canvas? This action cannot be undone.")) {
+    if (editingTemplateInfo) {
+       if (window.confirm("Are you sure you want to exit template editing? Any unsaved changes will be lost.")) {
+          clearDesign(); // This will exit template editing mode
+       }
+    } else if (window.confirm("Are you sure you want to clear the canvas? This action cannot be undone.")) {
       clearDesign();
     }
   };
@@ -248,15 +252,15 @@ export function Header({
                   size="icon"
                   variant="outline"
                   onClick={handleClearCanvas}
-                  disabled={!hasUserComponents}
-                  aria-label={"Clear Canvas"}
+                  disabled={!hasUserComponents && !editingTemplateInfo}
+                  aria-label={editingTemplateInfo ? "Exit Template Editing" : "Clear Canvas"}
                   className="text-sidebar-foreground border-sidebar-border bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
                 >
                   <Trash2 />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Clear Canvas</p>
+                <p>{editingTemplateInfo ? "Exit Template Editing" : "Clear Canvas"}</p>
               </TooltipContent>
             </Tooltip>
 
@@ -266,7 +270,7 @@ export function Header({
                   size="icon"
                   variant="outline"
                   onClick={handleOpenPublishConfigModal}
-                  disabled={!hasUserComponents}
+                  disabled={!hasUserComponents || !!editingTemplateInfo}
                   aria-label="Publish to Remote Config"
                   className="text-sidebar-foreground border-sidebar-border bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
                 >
@@ -341,7 +345,7 @@ export function Header({
                   size="icon"
                   onClick={handleGenerateCode}
                   className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                  disabled={!hasUserComponents}
+                  disabled={!hasUserComponents || !!editingTemplateInfo}
                   aria-label="Generate Jetpack Compose Code"
                 >
                   <Code />

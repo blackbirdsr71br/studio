@@ -4,7 +4,7 @@
 import React, { useRef } from 'react';
 import { useDesign } from '@/contexts/DesignContext';
 import type { DesignComponent } from '@/types/compose-spec';
-import { RenderedComponentWrapper } from './RenderedComponentWrapper';
+import { RenderedComponentWrapper } from './component-renderer/RenderedComponentWrapper';
 import { cn } from '@/lib/utils';
 import { ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 
@@ -14,7 +14,7 @@ export function DesignSurface() {
 
   const handleSurfaceClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === surfaceRef.current) {
-       selectComponent(DEFAULT_CONTENT_LAZY_COLUMN_ID);
+       selectComponent(editingTemplateInfo ? editingTemplateInfo.rootComponentId : DEFAULT_CONTENT_LAZY_COLUMN_ID);
     }
   };
   
