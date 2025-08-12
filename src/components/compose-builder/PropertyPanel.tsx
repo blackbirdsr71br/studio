@@ -412,19 +412,17 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     );
   };
   
-  const defaultTab = selectedComponent && !editingTemplateInfo ? "properties" : "structure";
-
   return (
     <aside className="w-80 border-l bg-sidebar p-4 flex flex-col shrink-0">
-        <Tabs defaultValue={defaultTab} value={editingTemplateInfo ? 'structure' : defaultTab} className="w-full flex flex-col flex-grow min-h-0">
+        <Tabs defaultValue="structure" className="w-full flex flex-col flex-grow min-h-0">
             <TabsList className="grid w-full grid-cols-2 shrink-0">
-                <TabsTrigger value="properties" disabled={!selectedComponent || editingTemplateInfo !== null}>Properties</TabsTrigger>
+                <TabsTrigger value="properties" disabled={!selectedComponent}>Properties</TabsTrigger>
                 <TabsTrigger value="structure">Structure</TabsTrigger>
             </TabsList>
             <TabsContent value="properties" className="flex-grow min-h-0 mt-4 focus-visible:ring-0 focus-visible:ring-offset-0">
-                {selectedComponent && !editingTemplateInfo ? renderProperties() : (
+                {selectedComponent ? renderProperties() : (
                     <div className="flex-grow flex items-center justify-center h-full">
-                      <p className="text-sm text-muted-foreground text-center p-4">Select a component on the canvas to see its properties, or switch to the 'Structure' tab.</p>
+                      <p className="text-sm text-muted-foreground text-center p-4">Select a component on the canvas to see its properties.</p>
                     </div>
                 )}
             </TabsContent>
