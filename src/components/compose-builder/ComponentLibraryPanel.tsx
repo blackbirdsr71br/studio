@@ -99,8 +99,10 @@ function CustomComponentsList() {
                             type={template.templateId}
                             isCustomComponent={true}
                        >
-                           <div className="flex justify-center items-center h-[60px] bg-muted/20 w-full">
-                               <TemplatePreview template={template} />
+                           <div className="flex justify-center items-center h-[60px] bg-muted/20 w-full overflow-hidden">
+                               <div style={{width: '200px'}}>
+                                   <TemplatePreview template={template} />
+                               </div>
                            </div>
                        </DraggableComponentItem>
                        <div className="p-1 border-t border-sidebar-border flex justify-end items-center gap-1">
