@@ -240,6 +240,27 @@ const defaultGalleryUrls = [
   "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/swissbrand.png",
   "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/quiksilver.png",
   "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/bet365.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/cvdirecto.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/hkpro.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/honor.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/lenovo.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/princo.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/redlemon.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/roomi.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Tiendas/directorio/lista/bet365.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Categorias/electronica.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Categorias/moneyfreeflex.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Categorias/telefonia.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Categorias/lineablanca.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Categorias/zapatos.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Categorias/computo.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Categorias/muebles.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Categorias/videojuegos.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Categorias/bellezaycuidadopersonal.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Categorias/hogar.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Categorias/deportes.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Categorias/colchonesyboxes.png",
+  "https://gestor-contenido.baz.app/Centro-Comercial/logos-Categorias/todas.png",
 ];
 
 const uniqueDefaultUrls = [...new Set(defaultGalleryUrls)];
@@ -930,3 +951,5 @@ export const useDesign = (): DesignContextType => {
 };
 
 export { DesignContext };
+
+    
