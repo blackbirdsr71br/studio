@@ -107,7 +107,7 @@ function CustomComponentsList() {
                             type={template.templateId}
                             isCustomComponent={true}
                        >
-                           <div className="w-full h-24 bg-muted/20 overflow-hidden">
+                           <div className="w-full h-[60px] bg-muted/20 overflow-hidden">
                                 <TemplatePreview template={template} />
                            </div>
                        </DraggableComponentItem>
