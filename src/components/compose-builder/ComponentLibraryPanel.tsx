@@ -107,8 +107,10 @@ function CustomComponentsList() {
                             type={template.templateId}
                             isCustomComponent={true}
                        >
-                           <div className="w-full h-[60px] bg-muted/20 overflow-hidden">
-                                <TemplatePreview template={template} />
+                           <div className="flex justify-center items-center h-[60px] bg-muted/20 overflow-hidden">
+                               <div style={{ width: '200px' }}>
+                                   <TemplatePreview template={template} />
+                               </div>
                            </div>
                        </DraggableComponentItem>
                   </div>
