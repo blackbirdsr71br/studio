@@ -25,7 +25,7 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
 
     const containerWidth = containerRef.current.clientWidth;
     const containerHeight = containerRef.current.clientHeight;
-
+    
     // Use defined properties, but fallback to something reasonable if not set
     const contentWidth = typeof rootComponent.properties.width === 'number' ? rootComponent.properties.width : 200;
     const contentHeight = typeof rootComponent.properties.height === 'number' ? rootComponent.properties.height : 150;
@@ -33,7 +33,7 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
     if (contentWidth > 0 && contentHeight > 0) {
         const scaleX = containerWidth / contentWidth;
         const scaleY = containerHeight / contentHeight;
-        setScale(Math.min(scaleX, scaleY, 1)); // Use the smaller scale factor, don't scale up
+        setScale(Math.min(scaleX, scaleY)); 
     }
 
   }, [rootComponent]);
