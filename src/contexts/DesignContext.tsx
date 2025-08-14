@@ -275,36 +275,31 @@ const defaultGalleryImages: GalleryImage[] = uniqueDefaultUrls.map((url, index) 
  * Recursively sanitizes an object or array for Firestore compatibility.
  * It ensures the returned object is a plain JavaScript object and that no 'undefined'
  * values are present, converting them to 'null'.
+ * This version avoids JSON.stringify/parse to handle complex objects more reliably.
  * @param data The object or array to sanitize.
  * @returns A new, sanitized object or array.
  */
 function sanitizeForFirebase(data: any): any {
-  // Step 1: Use JSON.stringify/parse to convert any class instances to plain objects
-  // and remove functions, undefined, etc. This is a robust first pass.
-  const plainObject = JSON.parse(JSON.stringify(data));
-
-  // Step 2: Recursively ensure any remaining `undefined` values that might have been
-  // missed (less likely but possible in complex structures) are converted to `null`.
-  const recursivelySanitize = (obj: any): any => {
-    if (Array.isArray(obj)) {
-      return obj.map(item => recursivelySanitize(item));
+  if (data === undefined) {
+    return null;
+  }
+  if (data === null || typeof data !== 'object') {
+    return data;
+  }
+  if (Array.isArray(data)) {
+    return data.map(item => sanitizeForFirebase(item));
+  }
+  // This handles plain objects
+  const newObj: { [key: string]: any } = {};
+  for (const key in data) {
+    if (Object.prototype.hasOwnProperty.call(data, key)) {
+      const value = data[key];
+      // Recursively sanitize the value and only add it if it's not undefined.
+      // Firestore cannot store 'undefined'. We convert it to 'null'.
+      newObj[key] = sanitizeForFirebase(value);
     }
-    if (obj !== null && typeof obj === 'object') {
-      const newObj: { [key: string]: any } = {};
-      for (const key in obj) {
-        const value = obj[key];
-        if (value === undefined) {
-          newObj[key] = null;
-        } else {
-          newObj[key] = recursivelySanitize(value);
-        }
-      }
-      return newObj;
-    }
-    return obj;
-  };
-
-  return recursivelySanitize(plainObject);
+  }
+  return newObj;
 }
 
 
