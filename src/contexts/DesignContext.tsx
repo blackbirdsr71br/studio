@@ -746,16 +746,34 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         toast({ title: "Error", description: "No component selected.", variant: "destructive" });
         return;
     }
-    const collectDescendants = (compId: string): DesignComponent[] => {
-        const comp = components.find(c => c.id === compId);
-        if (!comp) return [];
-        let descendants = [deepClone(comp)];
-        if (comp.properties.children) {
-            descendants.push(...comp.properties.children.flatMap(collectDescendants));
+    
+    // THIS IS THE CORRECTED LOGIC
+    const collectDescendants = (startId: string, allComps: DesignComponent[]): DesignComponent[] => {
+      const visited = new Set<string>();
+      const result: DesignComponent[] = [];
+      const queue: string[] = [startId];
+      visited.add(startId);
+
+      while (queue.length > 0) {
+        const currentId = queue.shift()!;
+        const component = allComps.find(c => c.id === currentId);
+        if (component) {
+          result.push(deepClone(component));
+          if (component.properties.children) {
+            for (const childId of component.properties.children) {
+              if (!visited.has(childId)) {
+                visited.add(childId);
+                queue.push(childId);
+              }
+            }
+          }
         }
-        return descendants;
+      }
+      return result;
     };
-    const componentTree = collectDescendants(selectedComponentId);
+    
+    const componentTree = collectDescendants(selectedComponentId, components);
+
     if (componentTree.length === 0) {
         toast({ title: "Error", description: "Cannot save an empty component.", variant: "destructive" });
         return;
