@@ -277,27 +277,25 @@ const defaultGalleryImages: GalleryImage[] = uniqueDefaultUrls.map((url, index) 
  * @param data The object or array to sanitize.
  * @returns A new object or array with all `undefined` values removed.
  */
-function sanitizeForFirebase<T>(data: T): T {
+function sanitizeForFirebase<T>(data: T): any {
+    if (data === undefined) {
+        return null; // Or you could choose to return null or another placeholder
+    }
     if (Array.isArray(data)) {
-        // If it's an array, map over its elements and sanitize each one.
-        return data.map(item => sanitizeForFirebase(item)) as any;
+        return data.map(item => sanitizeForFirebase(item));
     }
     if (data !== null && typeof data === 'object') {
+        // This handles class instances by converting them to plain objects
+        const plainObject = JSON.parse(JSON.stringify(data));
         const sanitizedObject: { [key: string]: any } = {};
-        for (const key in data) {
-            // Check if the key belongs to the object itself, not its prototype.
-            if (Object.prototype.hasOwnProperty.call(data, key)) {
-                const value = (data as any)[key];
-                // If the value is not undefined, process it further.
-                if (value !== undefined) {
-                    // Recursively sanitize nested objects.
-                    sanitizedObject[key] = sanitizeForFirebase(value);
-                }
+        for (const key in plainObject) {
+            const value = plainObject[key];
+             if (value !== undefined) {
+                sanitizedObject[key] = sanitizeForFirebase(value);
             }
         }
-        return sanitizedObject as T;
+        return sanitizedObject;
     }
-    // Return primitives and null as they are.
     return data;
 }
 
@@ -777,7 +775,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         toast({ title: "Success", description: `Component "${templateName}" saved.` });
     } catch (error) {
         console.error("Error saving custom template:", error);
-        toast({ title: "Save Failed", description: `Could not save component to Firestore: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive" });
+        toast({ title: "Save Failed", description: `Could not save component to firestore: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive" });
     }
   }, [designState, toast]);
 
