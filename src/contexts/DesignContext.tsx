@@ -361,6 +361,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const savedImagesJson = localStorage.getItem(GALLERY_IMAGES_COLLECTION);
       const userAddedImages = savedImagesJson ? (JSON.parse(savedImagesJson) as GalleryImage[]).filter(img => !uniqueDefaultUrls.includes(img.url)) : [];
       
+      // Start with the full, up-to-date default list
       const finalGallery = [...defaultGalleryImages, ...userAddedImages];
       
       // Use a Map to ensure uniqueness based on URL, keeping the most recent entry if there are duplicates.
@@ -733,12 +734,15 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const rootComponentIdInTemplate = componentTree[0].id;
     componentTree[0].parentId = null; // Root of template has no parent
 
+    // Sanitize the component tree for Firestore
+    const firestoreSafeComponentTree = JSON.parse(JSON.stringify(componentTree));
+
     const templateId = `${CUSTOM_COMPONENT_TYPE_PREFIX}${templateName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
     const newTemplate: Omit<CustomComponentTemplate, 'firestoreId'> = {
         templateId,
         name: templateName,
         rootComponentId: rootComponentIdInTemplate,
-        componentTree,
+        componentTree: firestoreSafeComponentTree,
     };
     try {
         const docRef = doc(db, CUSTOM_TEMPLATES_COLLECTION, templateName);
@@ -746,7 +750,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         toast({ title: "Success", description: `Component "${templateName}" saved.` });
     } catch (error) {
         console.error("Error saving custom template:", error);
-        toast({ title: "Save Failed", description: "Could not save component to Firestore.", variant: "destructive" });
+        toast({ title: "Save Failed", description: error instanceof Error ? error.message : "Could not save component to Firestore.", variant: "destructive" });
     }
   }, [designState, toast]);
 
