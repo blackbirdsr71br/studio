@@ -833,7 +833,7 @@ const BaseModalPropertiesSchema = z.object({
   paddingStart: z.number().min(0).optional(),
   paddingEnd: z.number().min(0).optional(),
   contentDescription: z.string().optional(),
-  src: z.string().url("Must be a valid URL for Image src").or(z.string().startsWith("data:image/")).optional(),
+  src: z.string().url("Must be a valid HTTP/S URL").or(z.string().startsWith("data:image/")).optional(),
   "data-ai-hint": z.string().optional(),
   elevation: z.number().min(0).optional(),
   cornerRadius: z.number().min(0).optional(),
@@ -870,6 +870,7 @@ const BaseModalPropertiesSchema = z.object({
   iconSpacing: z.number().min(0).optional(),
   animationType: z.enum(['Fade', 'Scale', 'SlideFromTop', 'SlideFromBottom', 'SlideFromStart', 'SlideFromEnd']).optional(),
   animationDuration: z.number().int().min(0).optional(),
+  shape: z.enum(['Rectangle', 'RoundedCorner', 'Circle']).optional(),
 }).catchall(z.any()); 
 
 
@@ -896,3 +897,5 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
 );
 
 export const ModalJsonSchema = z.array(ModalComponentNodeSchema);
+
+    
