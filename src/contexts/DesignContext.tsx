@@ -272,32 +272,41 @@ const defaultGalleryImages: GalleryImage[] = uniqueDefaultUrls.map((url, index) 
 }));
 
 /**
- * Recursively removes `undefined` values from an object or array.
- * This is crucial for Firestore compatibility, as it does not support `undefined`.
+ * Recursively sanitizes an object or array for Firestore compatibility.
+ * It ensures the returned object is a plain JavaScript object and that no 'undefined'
+ * values are present, converting them to 'null'.
  * @param data The object or array to sanitize.
- * @returns A new object or array with all `undefined` values removed.
+ * @returns A new, sanitized object or array.
  */
-function sanitizeForFirebase<T>(data: T): any {
-    if (data === undefined) {
-        return null; // Or you could choose to return null or another placeholder
+function sanitizeForFirebase(data: any): any {
+  // Step 1: Use JSON.stringify/parse to convert any class instances to plain objects
+  // and remove functions, undefined, etc. This is a robust first pass.
+  const plainObject = JSON.parse(JSON.stringify(data));
+
+  // Step 2: Recursively ensure any remaining `undefined` values that might have been
+  // missed (less likely but possible in complex structures) are converted to `null`.
+  const recursivelySanitize = (obj: any): any => {
+    if (Array.isArray(obj)) {
+      return obj.map(item => recursivelySanitize(item));
     }
-    if (Array.isArray(data)) {
-        return data.map(item => sanitizeForFirebase(item));
-    }
-    if (data !== null && typeof data === 'object') {
-        // This handles class instances by converting them to plain objects
-        const plainObject = JSON.parse(JSON.stringify(data));
-        const sanitizedObject: { [key: string]: any } = {};
-        for (const key in plainObject) {
-            const value = plainObject[key];
-             if (value !== undefined) {
-                sanitizedObject[key] = sanitizeForFirebase(value);
-            }
+    if (obj !== null && typeof obj === 'object') {
+      const newObj: { [key: string]: any } = {};
+      for (const key in obj) {
+        const value = obj[key];
+        if (value === undefined) {
+          newObj[key] = null;
+        } else {
+          newObj[key] = recursivelySanitize(value);
         }
-        return sanitizedObject;
+      }
+      return newObj;
     }
-    return data;
+    return obj;
+  };
+
+  return recursivelySanitize(plainObject);
 }
+
 
 export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [designState, setDesignState] = React.useState<DesignState>(initialDesignState);
