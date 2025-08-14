@@ -769,6 +769,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const rootComponentIdInTemplate = componentTree[0].id;
     componentTree[0].parentId = null; 
 
+    // This is the critical fix: sanitize the component tree directly
     const firestoreSafeComponentTree = sanitizeForFirebase(componentTree);
 
     const templateId = `${CUSTOM_COMPONENT_TYPE_PREFIX}${templateName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
@@ -988,5 +989,3 @@ export const useDesign = (): DesignContextType => {
 };
 
 export { DesignContext };
-
-    
