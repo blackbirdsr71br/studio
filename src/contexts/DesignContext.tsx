@@ -271,6 +271,36 @@ const defaultGalleryImages: GalleryImage[] = uniqueDefaultUrls.map((url, index) 
     timestamp: Date.now() - index,
 }));
 
+/**
+ * Recursively removes `undefined` values from an object or array.
+ * This is crucial for Firestore compatibility, as it does not support `undefined`.
+ * @param data The object or array to sanitize.
+ * @returns A new object or array with all `undefined` values removed.
+ */
+function sanitizeForFirebase<T>(data: T): T {
+    if (Array.isArray(data)) {
+        // If it's an array, map over its elements and sanitize each one.
+        return data.map(item => sanitizeForFirebase(item)) as any;
+    }
+    if (data !== null && typeof data === 'object') {
+        const sanitizedObject: { [key: string]: any } = {};
+        for (const key in data) {
+            // Check if the key belongs to the object itself, not its prototype.
+            if (Object.prototype.hasOwnProperty.call(data, key)) {
+                const value = (data as any)[key];
+                // If the value is not undefined, process it further.
+                if (value !== undefined) {
+                    // Recursively sanitize nested objects.
+                    sanitizedObject[key] = sanitizeForFirebase(value);
+                }
+            }
+        }
+        return sanitizedObject as T;
+    }
+    // Return primitives and null as they are.
+    return data;
+}
+
 export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [designState, setDesignState] = React.useState<DesignState>(initialDesignState);
   const [isClient, setIsClient] = React.useState(false);
@@ -719,9 +749,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         if (!comp) return [];
         let descendants = [deepClone(comp)];
         if (comp.properties.children) {
-            comp.properties.children.forEach(childId => {
-                descendants.push(...collectDescendants(childId));
-            });
+            descendants.push(...comp.properties.children.flatMap(collectDescendants));
         }
         return descendants;
     };
@@ -732,10 +760,9 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
 
     const rootComponentIdInTemplate = componentTree[0].id;
-    componentTree[0].parentId = null; // Root of template has no parent
+    componentTree[0].parentId = null; 
 
-    // Sanitize the component tree for Firestore
-    const firestoreSafeComponentTree = JSON.parse(JSON.stringify(componentTree));
+    const firestoreSafeComponentTree = sanitizeForFirebase(componentTree);
 
     const templateId = `${CUSTOM_COMPONENT_TYPE_PREFIX}${templateName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
     const newTemplate: Omit<CustomComponentTemplate, 'firestoreId'> = {
@@ -750,7 +777,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         toast({ title: "Success", description: `Component "${templateName}" saved.` });
     } catch (error) {
         console.error("Error saving custom template:", error);
-        toast({ title: "Save Failed", description: error instanceof Error ? error.message : "Could not save component to Firestore.", variant: "destructive" });
+        toast({ title: "Save Failed", description: `Could not save component to Firestore: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive" });
     }
   }, [designState, toast]);
 
@@ -778,8 +805,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
     const updatedTemplateData = {
         name: editingTemplateInfo.name,
-        componentTree: components,
-        // rootComponentId and templateId should not change
+        componentTree: sanitizeForFirebase(components),
     };
     try {
         const templateDocRef = doc(db, CUSTOM_TEMPLATES_COLLECTION, editingTemplateInfo.firestoreId);
@@ -822,7 +848,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     };
     try {
         const docRef = doc(db, SAVED_LAYOUTS_COLLECTION, layoutName);
-        await setDoc(docRef, newLayout);
+        await setDoc(docRef, sanitizeForFirebase(newLayout));
         toast({ title: "Success", description: `Layout "${layoutName}" saved.` });
     } catch (error) {
         console.error("Error saving layout:", error);
@@ -871,7 +897,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     };
     try {
         const layoutDocRef = doc(db, SAVED_LAYOUTS_COLLECTION, editingLayoutInfo.firestoreId);
-        await setDoc(layoutDocRef, updatedLayoutData, { merge: true });
+        await setDoc(layoutDocRef, sanitizeForFirebase(updatedLayoutData), { merge: true });
         toast({ title: "Success", description: `Layout "${editingLayoutInfo.name}" updated.` });
 
         // Exit editing mode
