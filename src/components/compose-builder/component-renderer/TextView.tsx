@@ -46,7 +46,7 @@ export function TextView({ properties }: TextViewProps) {
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
     lineHeight: lineHeight,
-    fontFamily: `var(--font-${fontFamily.toLowerCase().replace(/ /g, '-')})`,
+    fontFamily: `var(--font-${(fontFamily || 'Inter').toLowerCase().replace(/ /g, '-')})`,
     fontWeight: getFontWeightValue(fontWeight),
     fontStyle: fontStyle.toLowerCase() as 'normal' | 'italic',
     textAlign: textAlign.toLowerCase() as 'left' | 'center' | 'right' | 'justify' | 'start' | 'end',
