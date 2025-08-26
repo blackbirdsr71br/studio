@@ -17,6 +17,7 @@ export type ComponentType =
   | 'TopAppBar' // Added
   | 'BottomNavigationBar' // Added
   | 'AnimatedContent' // Added
+  | 'Group' // Added for grouping functionality
   | 'Scaffold'; // Explicitly a root type
 
 export const CUSTOM_COMPONENT_TYPE_PREFIX = "custom/";
@@ -45,12 +46,13 @@ export interface ComponentProperty {
   options?: ComponentPropertyOption[];
   label: string;
   placeholder?: string;
-  group: 'Layout' | 'Appearance' | 'Content' | 'Behavior' | 'Slots' | 'Save';
+  group: 'Layout' | 'Appearance' | 'Content' | 'Behavior' | 'Slots' | 'Save' | 'Group';
 }
 
 export interface BaseComponentProps {
   [key: string]: any;
   text?: string;
+  fontFamily?: string;
   fontSize?: number;
   titleFontSize?: number;
   textColor?: string;
@@ -146,10 +148,21 @@ export interface GalleryImage {
   timestamp: number;
 }
 
-export interface DesignState {
+export interface SingleDesign {
+  id: string; // e.g., 'design-1'
+  name: string; // e.g., 'Main Screen'
   components: DesignComponent[];
-  selectedComponentId: string | null;
+  selectedComponentIds: string[];
   nextId: number;
+  history: { components: DesignComponent[]; nextId: number; selectedComponentIds: string[] }[];
+  future: { components: DesignComponent[]; nextId: number; selectedComponentIds: string[] }[];
+  clipboard: DesignComponent[] | null;
+}
+
+
+export interface DesignState {
+  designs: SingleDesign[];
+  activeDesignId: string;
   customComponentTemplates: CustomComponentTemplate[];
   savedLayouts: SavedLayout[];
   galleryImages: GalleryImage[];
@@ -163,9 +176,6 @@ export interface DesignState {
     firestoreId: string;
     name: string;
   } | null;
-  history: { components: DesignComponent[]; nextId: number; selectedComponentId: string | null }[];
-  future: { components: DesignComponent[]; nextId: number; selectedComponentId: string | null }[];
-  clipboard: DesignComponent[] | null;
 }
 
 export const getDefaultProperties = (type: ComponentType | string, componentId?: string): BaseComponentProps => {
@@ -187,6 +197,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         ...commonLayout,
         text: 'Sample Text',
         fontSize: 16,
+        fontFamily: 'Inter',
         textColor: undefined,
         backgroundColor: undefined,
         padding: 0,
@@ -268,6 +279,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         clickId: 'row_clicked',
       };
     case 'Box':
+    case 'Group':
       return {
         ...commonLayout,
         children: [],
@@ -277,7 +289,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         cornerRadiusTopLeft: 4, cornerRadiusTopRight: 4, cornerRadiusBottomRight: 4, cornerRadiusBottomLeft: 4,
         selfAlign: 'Inherit',
         clickable: false,
-        clickId: 'box_clicked',
+        clickId: type === 'Group' ? 'group_clicked' : 'box_clicked',
       };
     case 'Card':
       return {
@@ -434,6 +446,7 @@ export const getComponentDisplayName = (type: ComponentType | string): string =>
     case 'Image': return 'Image';
     case 'Box': return 'Box (Container)';
     case 'Card': return 'Card (Container)';
+    case 'Group': return 'Group (Container)';
     case 'LazyColumn': return 'Lazy Column';
     case 'LazyRow': return 'Lazy Row';
     case 'LazyVerticalGrid': return 'Lazy Vertical Grid';
@@ -529,6 +542,71 @@ const borderProperties: (Omit<ComponentProperty, 'value'>)[] = [
     { name: 'borderColor', type: 'color', label: 'Border Color', group: 'Appearance' },
 ];
 
+const fontProperties: (Omit<ComponentProperty, 'value'>)[] = [
+  { name: 'fontSize', type: 'number', label: 'Font Size (sp)', placeholder: '16', group: 'Appearance' },
+  {
+      name: 'fontFamily',
+      type: 'enum',
+      label: 'Font Family',
+      group: 'Appearance',
+      options: [
+          { label: 'Inter', value: 'Inter' },
+          { label: 'Roboto', value: 'Roboto' },
+          { label: 'Lato', value: 'Lato' },
+          { label: 'Oswald', value: 'Oswald' },
+          { label: 'Merriweather', value: 'Merriweather' },
+          { label: 'Playfair Display', value: 'Playfair Display' },
+          { label: 'Source Code Pro', value: 'Source Code Pro' },
+      ]
+  },
+  {
+    name: 'fontWeight',
+    type: 'enum',
+    label: 'Font Weight',
+    group: 'Appearance',
+    options: [
+      { label: 'Normal', value: 'Normal' },
+      { label: 'Semibold', value: 'Semibold' },
+      { label: 'Bold', value: 'Bold' },
+    ]
+  },
+  {
+    name: 'fontStyle',
+    type: 'enum',
+    label: 'Font Style',
+    group: 'Appearance',
+    options: [
+      { label: 'Normal', value: 'Normal' },
+      { label: 'Italic', value: 'Italic' },
+    ]
+  },
+  {
+    name: 'textAlign',
+    type: 'enum',
+    label: 'Text Align',
+    group: 'Appearance',
+    options: [
+      { label: 'Start', value: 'Start' },
+      { label: 'End', value: 'End' },
+      { label: 'Left', value: 'Left' },
+      { label: 'Right', value: 'Right' },
+      { label: 'Center', value: 'Center' },
+      { label: 'Justify', value: 'Justify' },
+    ]
+  },
+  {
+    name: 'textDecoration',
+    type: 'enum',
+    label: 'Text Decoration',
+    group: 'Appearance',
+    options: [
+      { label: 'None', value: 'None' },
+      { label: 'Underline', value: 'Underline' },
+      { label: 'LineThrough', value: 'LineThrough' },
+    ]
+  },
+];
+
 
 export const propertyDefinitions: Record<ComponentType | string, (Omit<ComponentProperty, 'value'>)[]> = {
   Scaffold: [
@@ -538,7 +616,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     ...commonLayoutProperties,
     selfAlignProperty,
     { name: 'text', type: 'string', label: 'Text Content', placeholder: 'Enter text', group: 'Content' },
-    { name: 'fontSize', type: 'number', label: 'Font Size (sp)', placeholder: '16', group: 'Appearance' },
+    ...fontProperties,
     { name: 'textColor', type: 'color', label: 'Text Color', group: 'Appearance' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     { name: 'lineHeight', type: 'number', label: 'Line Height (multiplier)', placeholder: '1', group: 'Appearance' },
@@ -552,52 +630,6 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
         { label: 'Clip', value: 'Clip' },
         { label: 'Ellipsis', value: 'Ellipsis' },
         { label: 'Visible', value: 'Visible' },
-      ]
-    },
-    {
-      name: 'fontWeight',
-      type: 'enum',
-      label: 'Font Weight',
-      group: 'Appearance',
-      options: [
-        { label: 'Normal', value: 'Normal' },
-        { label: 'Semibold', value: 'Semibold' },
-        { label: 'Bold', value: 'Bold' },
-      ]
-    },
-    {
-      name: 'fontStyle',
-      type: 'enum',
-      label: 'Font Style',
-      group: 'Appearance',
-      options: [
-        { label: 'Normal', value: 'Normal' },
-        { label: 'Italic', value: 'Italic' },
-      ]
-    },
-    {
-      name: 'textAlign',
-      type: 'enum',
-      label: 'Text Align',
-      group: 'Appearance',
-      options: [
-        { label: 'Start', value: 'Start' },
-        { label: 'End', value: 'End' },
-        { label: 'Left', value: 'Left' },
-        { label: 'Right', value: 'Right' },
-        { label: 'Center', value: 'Center' },
-        { label: 'Justify', value: 'Justify' },
-      ]
-    },
-    {
-      name: 'textDecoration',
-      type: 'enum',
-      label: 'Text Decoration',
-      group: 'Appearance',
-      options: [
-        { label: 'None', value: 'None' },
-        { label: 'Underline', value: 'Underline' },
-        { label: 'LineThrough', value: 'LineThrough' },
       ]
     },
     ...clickableProperties,
@@ -678,6 +710,14 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
   ],
   Box: [
     ...commonLayoutProperties,
+    selfAlignProperty,
+    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    ...cornerRadiusProperties,
+    ...clickableProperties,
+  ],
+  Group: [
+    ...commonLayoutProperties,
+    ...columnSpecificLayoutProperties,
     selfAlignProperty,
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
     ...cornerRadiusProperties,
@@ -783,7 +823,7 @@ export const isCustomComponentType = (type: string): boolean => {
 };
 
 export const CONTAINER_TYPES: ReadonlyArray<ComponentType | string > = [
-  'Column', 'Row', 'Box', 'Card',
+  'Column', 'Row', 'Box', 'Card', 'Group',
   'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid',
   'TopAppBar', 'BottomNavigationBar', // These are now containers for their items
   'AnimatedContent',
@@ -816,6 +856,7 @@ const ColorStringSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid
 
 const BaseModalPropertiesSchema = z.object({
   text: z.string().optional(),
+  fontFamily: z.string().optional(),
   fontSize: z.number().min(0, "Font size must be non-negative").optional(),
   titleFontSize: z.number().min(0, "Font size must be non-negative").optional(),
   textColor: ColorStringSchema.optional().or(z.literal(undefined)),
@@ -897,5 +938,3 @@ const ModalComponentNodeSchema: z.ZodType<ModalComponentNodePlain> = z.lazy(() =
 );
 
 export const ModalJsonSchema = z.array(ModalComponentNodeSchema);
-
-    
