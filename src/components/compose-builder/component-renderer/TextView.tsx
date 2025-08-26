@@ -38,6 +38,11 @@ export function TextView({ properties }: TextViewProps) {
     }
   };
 
+  // Convert the friendly name (e.g., "Playfair Display") to its CSS variable name (e.g., "--font-playfair-display")
+  const getFontFamilyVariable = (fontName: string) => {
+    return `var(--font-${fontName.toLowerCase().replace(/ /g, '-')})`;
+  }
+
   const style: React.CSSProperties = {
     fontSize: `${fontSize}px`,
     paddingTop: `${paddingTop ?? padding ?? 0}px`,
@@ -51,6 +56,7 @@ export function TextView({ properties }: TextViewProps) {
     fontStyle: fontStyle.toLowerCase() as 'normal' | 'italic',
     textAlign: textAlign.toLowerCase() as 'left' | 'center' | 'right' | 'justify' | 'start' | 'end',
     textDecorationLine: textDecoration === 'LineThrough' ? 'line-through' : textDecoration.toLowerCase(),
+    fontFamily: getFontFamilyVariable(fontFamily || 'Inter'), // Apply the font family via CSS variable
   };
 
   if (backgroundColor) {
@@ -83,10 +89,8 @@ export function TextView({ properties }: TextViewProps) {
     style.height = '100%';
   }
   
-  const fontClassName = `font-${(fontFamily || 'Inter').toLowerCase().replace(/ /g, '-')}`;
-
   return (
-    <div style={style} className={cn("select-none", fontClassName)}>
+    <div style={style} className="select-none">
       {text}
     </div>
   );
