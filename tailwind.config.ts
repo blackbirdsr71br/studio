@@ -21,6 +21,13 @@ export default {
         merriweather: ['var(--font-merriweather)', 'serif'],
         'playfair-display': ['var(--font-playfair-display)', 'serif'],
         'source-code-pro': ['var(--font-source-code-pro)', 'monospace'],
+        poppins: ['var(--font-poppins)', 'sans-serif'],
+        montserrat: ['var(--font-montserrat)', 'sans-serif'],
+        raleway: ['var(--font-raleway)', 'sans-serif'],
+        nunito: ['var(--font-nunito)', 'sans-serif'],
+        'open-sans': ['var(--font-open-sans)', 'sans-serif'],
+        'eb-garamond': ['var(--font-eb-garamond)', 'serif'],
+        'dm-sans': ['var(--font-dm-sans)', 'sans-serif'],
       },
       colors: {
         background: 'hsl(var(--background))',

@@ -152,17 +152,18 @@ export interface SingleDesign {
   id: string; // e.g., 'design-1'
   name: string; // e.g., 'Main Screen'
   components: DesignComponent[];
-  selectedComponentIds: string[];
+  selectedComponentId: string | null;
   nextId: number;
-  history: { components: DesignComponent[]; nextId: number; selectedComponentIds: string[] }[];
-  future: { components: DesignComponent[]; nextId: number; selectedComponentIds: string[] }[];
+  history: { components: DesignComponent[]; nextId: number; selectedComponentId: string | null }[];
+  future: { components: DesignComponent[]; nextId: number; selectedComponentId: string | null }[];
   clipboard: DesignComponent[] | null;
 }
 
 
 export interface DesignState {
-  designs: SingleDesign[];
-  activeDesignId: string;
+  components: DesignComponent[];
+  selectedComponentId: string | null;
+  nextId: number;
   customComponentTemplates: CustomComponentTemplate[];
   savedLayouts: SavedLayout[];
   galleryImages: GalleryImage[];
@@ -176,6 +177,10 @@ export interface DesignState {
     firestoreId: string;
     name: string;
   } | null;
+  
+  history: { components: DesignComponent[], nextId: number, selectedComponentId: string | null }[];
+  future: { components: DesignComponent[], nextId: number, selectedComponentId: string | null }[];
+  clipboard: DesignComponent[] | null;
 }
 
 export const getDefaultProperties = (type: ComponentType | string, componentId?: string): BaseComponentProps => {
@@ -557,6 +562,13 @@ const fontProperties: (Omit<ComponentProperty, 'value'>)[] = [
           { label: 'Merriweather', value: 'Merriweather' },
           { label: 'Playfair Display', value: 'Playfair Display' },
           { label: 'Source Code Pro', value: 'Source Code Pro' },
+          { label: 'Poppins', value: 'Poppins' },
+          { label: 'Montserrat', value: 'Montserrat' },
+          { label: 'Raleway', value: 'Raleway' },
+          { label: 'Nunito', value: 'Nunito' },
+          { label: 'Open Sans', value: 'Open Sans' },
+          { label: 'EB Garamond', value: 'EB Garamond' },
+          { label: 'DM Sans', value: 'DM Sans' },
       ]
   },
   {
