@@ -272,7 +272,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         children: [],
         padding: 8,
         backgroundColor: undefined,
-        width: 200, height: 100, itemSpacing: 8,
+        width: 412, height: 100, itemSpacing: 8,
         horizontalArrangement: 'Start', verticalAlignment: 'Top',
         selfAlign: 'Inherit',
         clickable: false,
@@ -329,11 +329,11 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
     case 'LazyRow':
       return {
         ...commonLayout,
-        fillMaxWidth: true,
+        fillMaxWidth: false,
         children: [],
         padding: 8,
         backgroundColor: undefined,
-        width: undefined, height: 120, itemSpacing: 8,
+        width: 412, height: 120, itemSpacing: 8,
         userScrollEnabled: true, reverseLayout: false,
         horizontalArrangement: 'Start', verticalAlignment: 'Top',
         selfAlign: 'Inherit',
@@ -343,11 +343,11 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
     case 'LazyVerticalGrid':
       return {
         ...commonLayout,
-        fillMaxWidth: true,
+        fillMaxWidth: false,
         children: [],
         padding: 8,
         backgroundColor: undefined,
-        width: undefined, height: 300, columns: 2, itemSpacing: 8,
+        width: 412, height: 300, columns: 2, itemSpacing: 8,
         verticalArrangement: 'Top', horizontalAlignment: 'Start',
         selfAlign: 'Inherit',
         clickable: false,
@@ -445,8 +445,8 @@ export const getComponentDisplayName = (type: ComponentType | string): string =>
     case 'Row': return 'Row (Layout)';
     case 'Image': return 'Image';
     case 'Box': return 'Box (Container)';
-    case 'Card': return 'Card (Container)';
     case 'Group': return 'Group (Container)';
+    case 'Card': return 'Card (Container)';
     case 'LazyColumn': return 'Lazy Column';
     case 'LazyRow': return 'Lazy Row';
     case 'LazyVerticalGrid': return 'Lazy Vertical Grid';
