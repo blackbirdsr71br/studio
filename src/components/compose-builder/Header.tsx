@@ -22,6 +22,7 @@ import { SettingsPanelContent } from "./SettingsPanelContent";
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
 import { CORE_SCAFFOLD_ELEMENT_IDS, DEFAULT_CONTENT_LAZY_COLUMN_ID } from '@/types/compose-spec';
+import { ZoomControls } from './ZoomControls';
 
 
 interface HeaderProps {
@@ -133,30 +134,29 @@ export function Header({
           <Logo />
       </div>
 
-       {editingTemplateInfo && (
-        <div className="flex-grow flex items-center justify-center">
-            <div className="flex items-center gap-4 bg-yellow-400/20 text-yellow-200 px-4 py-1.5 rounded-lg border border-yellow-400/50">
-                <p className="text-sm font-medium">
-                    Editing Template: <span className="font-bold">{editingTemplateInfo.name}</span>
-                </p>
-                <Button size="sm" className="bg-yellow-400 text-yellow-900 hover:bg-yellow-500 h-8" onClick={handleUpdateTemplate}>
-                    <Save className="mr-2"/> Update Template
-                </Button>
-            </div>
+       <div className="flex-grow flex items-center justify-center">
+            {editingTemplateInfo && (
+                <div className="flex items-center gap-4 bg-yellow-400/20 text-yellow-200 px-4 py-1.5 rounded-lg border border-yellow-400/50">
+                    <p className="text-sm font-medium">
+                        Editing Template: <span className="font-bold">{editingTemplateInfo.name}</span>
+                    </p>
+                    <Button size="sm" className="bg-yellow-400 text-yellow-900 hover:bg-yellow-500 h-8" onClick={handleUpdateTemplate}>
+                        <Save className="mr-2"/> Update Template
+                    </Button>
+                </div>
+            )}
+            {editingLayoutInfo && (
+                <div className="flex items-center gap-4 bg-green-400/20 text-green-200 px-4 py-1.5 rounded-lg border border-green-400/50">
+                    <p className="text-sm font-medium">
+                        Editing Layout: <span className="font-bold">{editingLayoutInfo.name}</span>
+                    </p>
+                    <Button size="sm" className="bg-green-400 text-green-900 hover:bg-green-500 h-8" onClick={handleUpdateLayout}>
+                        <Save className="mr-2"/> Update Layout
+                    </Button>
+                </div>
+            )}
+             {!editingTemplateInfo && !editingLayoutInfo && <ZoomControls />}
         </div>
-      )}
-      {editingLayoutInfo && (
-        <div className="flex-grow flex items-center justify-center">
-            <div className="flex items-center gap-4 bg-green-400/20 text-green-200 px-4 py-1.5 rounded-lg border border-green-400/50">
-                <p className="text-sm font-medium">
-                    Editing Layout: <span className="font-bold">{editingLayoutInfo.name}</span>
-                </p>
-                <Button size="sm" className="bg-green-400 text-green-900 hover:bg-green-500 h-8" onClick={handleUpdateLayout}>
-                    <Save className="mr-2"/> Update Layout
-                </Button>
-            </div>
-        </div>
-      )}
       
       <div className="flex items-center gap-2 px-6">
         <TooltipProvider delayDuration={200}>

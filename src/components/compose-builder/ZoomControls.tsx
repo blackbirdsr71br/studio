@@ -27,36 +27,36 @@ export function ZoomControls() {
 
     return (
         <TooltipProvider delayDuration={200}>
-            <div className="absolute bottom-4 right-4 z-10 flex items-center gap-1 rounded-lg bg-background/80 p-1 shadow-lg border backdrop-blur-sm">
+            <div className="flex items-center gap-1 rounded-md bg-white/10 p-0.5 border border-white/30 text-white">
                 <Tooltip>
                     <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={handleZoomOut} disabled={zoomLevel <= MIN_ZOOM} className="h-8 w-8">
+                        <Button variant="ghost" size="icon" onClick={handleZoomOut} disabled={zoomLevel <= MIN_ZOOM} className="h-8 w-8 hover:bg-white/20">
                             <ZoomOut className="h-4 w-4" />
                         </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="top">
+                    <TooltipContent side="bottom">
                         <p>Zoom Out</p>
                     </TooltipContent>
                 </Tooltip>
                 
                 <Tooltip>
                     <TooltipTrigger asChild>
-                        <Button variant="ghost" onClick={handleResetZoom} disabled={zoomLevel === 1} className="h-8 w-14 text-xs font-semibold">
+                        <Button variant="ghost" onClick={handleResetZoom} disabled={zoomLevel === 1} className="h-8 w-14 text-xs font-semibold hover:bg-white/20">
                             {Math.round(zoomLevel * 100)}%
                         </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="top">
+                    <TooltipContent side="bottom">
                         <p>Reset Zoom (100%)</p>
                     </TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
                     <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={handleZoomIn} disabled={zoomLevel >= MAX_ZOOM} className="h-8 w-8">
+                        <Button variant="ghost" size="icon" onClick={handleZoomIn} disabled={zoomLevel >= MAX_ZOOM} className="h-8 w-8 hover:bg-white/20">
                             <ZoomIn className="h-4 w-4" />
                         </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="top">
+                    <TooltipContent side="bottom">
                         <p>Zoom In</p>
                     </TooltipContent>
                 </Tooltip>

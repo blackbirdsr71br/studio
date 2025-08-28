@@ -16,7 +16,6 @@ import { ImageSourceModal, type ImageSourceModalRef } from '@/components/compose
 import { PublishConfigModal, type PublishConfigModalRef } from '@/components/compose-builder/PublishConfigModal';
 import { SaveLayoutModal, type SaveLayoutModalRef } from '@/components/compose-builder/SaveLayoutModal';
 import { MobileFrame, FRAME_WIDTH, FRAME_HEIGHT } from '@/components/compose-builder/MobileFrame';
-import { ZoomControls } from '@/components/compose-builder/ZoomControls';
 import { useToast } from '@/hooks/use-toast';
 
 const MIN_ZOOM = 0.25;
@@ -74,7 +73,9 @@ function KeyboardShortcuts() {
 }
 
 function MainApp() {
-  const { zoomLevel, setZoomLevel } = useDesign();
+  const { designs = [], activeDesignId, zoomLevel, setZoomLevel } = useDesign();
+  const activeDesign = designs.find(d => d.id === activeDesignId);
+  
   const generateModalRef = useRef<GenerateCodeModalRef>(null);
   const viewJsonModalRef = useRef<ViewJsonModalRef>(null);
   const themeEditorModalRef = useRef<ThemeEditorModalRef>(null);
@@ -114,7 +115,7 @@ function MainApp() {
           publishConfigModalRef={publishConfigModalRef}
           saveLayoutModalRef={saveLayoutModalRef}
         />
-        <div className="flex flex-row flex-grow overflow-hidden">
+        <div className="relative flex-grow flex flex-row overflow-hidden">
           <ComponentLibraryPanel />
           <main className="flex-grow relative grid place-items-center overflow-auto bg-muted/20 p-8">
             <div
@@ -135,7 +136,6 @@ function MainApp() {
                 </MobileFrame>
               </div>
             </div>
-            <ZoomControls />
           </main>
           <PropertyPanel imageSourceModalRef={imageSourceModalRef} />
         </div>
