@@ -4,7 +4,7 @@
 import React, { RefObject } from 'react';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from "@/components/ui/button";
-import { Code, Trash2, FileJson, UploadCloud, Palette, Undo, Redo, Copy, ClipboardPaste, Settings, Save, Library } from "lucide-react";
+import { Code, Trash2, FileJson, UploadCloud, Palette, Undo, Redo, Copy, ClipboardPaste, Settings, Save, Library, Edit } from "lucide-react";
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
 import type { ViewJsonModalRef } from "./ViewJsonModal";
 import type { ThemeEditorModalRef } from "./ThemeEditorModal";
@@ -71,9 +71,9 @@ export function Header({
   };
 
   const handleClearCanvas = () => {
-    if (editingTemplateInfo) {
-       if (window.confirm("Are you sure you want to exit template editing? Any unsaved changes will be lost.")) {
-          clearDesign(); // This will exit template editing mode
+    if (editingTemplateInfo || editingLayoutInfo) {
+       if (window.confirm("Are you sure you want to exit editing mode? Any unsaved changes will be lost.")) {
+          clearDesign(); // This will exit template/layout editing mode
        }
     } else if (window.confirm("Are you sure you want to clear the canvas? This action cannot be undone.")) {
       clearDesign();
@@ -102,14 +102,10 @@ export function Header({
     pasteComponent();
   };
   
-  const handleUpdateTemplate = () => {
+  const handleUpdate = () => {
     if (editingTemplateInfo) {
       updateCustomTemplate();
-    }
-  };
-  
-  const handleUpdateLayout = () => {
-    if (editingLayoutInfo) {
+    } else if (editingLayoutInfo) {
       updateLayout();
     }
   };
@@ -123,6 +119,8 @@ export function Header({
 
   const contentArea = components.find(c => c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID);
   const hasUserComponents = contentArea ? (contentArea.properties.children?.length ?? 0) > 0 : false;
+  const isEditing = !!editingTemplateInfo || !!editingLayoutInfo;
+
   const canCopy = !!selectedComponentId && !CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponentId);
   const canPaste = !!clipboard;
   const canUndo = history.length > 0;
@@ -135,31 +133,18 @@ export function Header({
       </div>
 
        <div className="flex-grow flex items-center justify-center">
-            {editingTemplateInfo && (
-                <div className="flex items-center gap-4 bg-yellow-400/20 text-yellow-200 px-4 py-1.5 rounded-lg border border-yellow-400/50">
-                    <p className="text-sm font-medium">
-                        Editing Template: <span className="font-bold">{editingTemplateInfo.name}</span>
-                    </p>
-                    <Button size="sm" className="bg-yellow-400 text-yellow-900 hover:bg-yellow-500 h-8" onClick={handleUpdateTemplate}>
-                        <Save className="mr-2"/> Update Template
-                    </Button>
-                </div>
-            )}
-            {editingLayoutInfo && (
-                <div className="flex items-center gap-4 bg-green-400/20 text-green-200 px-4 py-1.5 rounded-lg border border-green-400/50">
-                    <p className="text-sm font-medium">
-                        Editing Layout: <span className="font-bold">{editingLayoutInfo.name}</span>
-                    </p>
-                    <Button size="sm" className="bg-green-400 text-green-900 hover:bg-green-500 h-8" onClick={handleUpdateLayout}>
-                        <Save className="mr-2"/> Update Layout
-                    </Button>
-                </div>
-            )}
-             {!editingTemplateInfo && !editingLayoutInfo && <ZoomControls />}
-        </div>
+            <ZoomControls />
+       </div>
       
       <div className="flex items-center gap-2 px-6">
         <TooltipProvider delayDuration={200}>
+          {isEditing && (
+             <Button size="sm" className="bg-green-500 text-white hover:bg-green-600 h-9" onClick={handleUpdate}>
+                  <Save className="mr-2 h-4 w-4"/> 
+                  {editingLayoutInfo ? 'Update Layout' : 'Update Template'}
+              </Button>
+          )}
+
           <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -234,7 +219,7 @@ export function Header({
                   size="icon"
                   variant="outline"
                   onClick={handleSaveLayout}
-                  disabled={!hasUserComponents || !!editingTemplateInfo || !!editingLayoutInfo}
+                  disabled={!hasUserComponents || isEditing}
                   aria-label={"Save Layout"}
                   className="text-sidebar-foreground border-sidebar-border bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
                 >
@@ -252,15 +237,15 @@ export function Header({
                   size="icon"
                   variant="outline"
                   onClick={handleClearCanvas}
-                  disabled={!hasUserComponents && !editingTemplateInfo}
-                  aria-label={editingTemplateInfo ? "Exit Template Editing" : "Clear Canvas"}
+                  disabled={!hasUserComponents && !isEditing}
+                  aria-label={isEditing ? "Exit Editing Mode" : "Clear Canvas"}
                   className="text-sidebar-foreground border-sidebar-border bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
                 >
                   <Trash2 />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{editingTemplateInfo ? "Exit Template Editing" : "Clear Canvas"}</p>
+                <p>{isEditing ? "Exit Editing Mode" : "Clear Canvas"}</p>
               </TooltipContent>
             </Tooltip>
 
@@ -270,7 +255,7 @@ export function Header({
                   size="icon"
                   variant="outline"
                   onClick={handleOpenPublishConfigModal}
-                  disabled={!hasUserComponents || !!editingTemplateInfo}
+                  disabled={!hasUserComponents || isEditing}
                   aria-label="Publish to Remote Config"
                   className="text-sidebar-foreground border-sidebar-border bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
                 >
@@ -345,7 +330,7 @@ export function Header({
                   size="icon"
                   onClick={handleGenerateCode}
                   className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                  disabled={!hasUserComponents || !!editingTemplateInfo}
+                  disabled={!hasUserComponents || isEditing}
                   aria-label="Generate Jetpack Compose Code"
                 >
                   <Code />
@@ -360,3 +345,5 @@ export function Header({
     </header>
   );
 }
+
+    
