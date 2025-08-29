@@ -81,7 +81,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
   const [parserError, setParserError] = useState<string | null>(null);
 
 
-  const { components, customComponentTemplates, overwriteComponents } = useDesign();
+  const { components = [], customComponentTemplates, overwriteComponents } = useDesign();
   const { toast } = useToast();
   const { resolvedTheme } = useTheme();
 

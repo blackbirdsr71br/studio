@@ -9,18 +9,18 @@ import { cn } from '@/lib/utils';
 import { ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 
 export function DesignSurface() {
-  const { components, selectComponent, editingTemplateInfo } = useDesign();
+  const { activeDesign, selectComponent } = useDesign();
   const surfaceRef = useRef<HTMLDivElement>(null);
 
   const handleSurfaceClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === surfaceRef.current) {
-       selectComponent(editingTemplateInfo ? editingTemplateInfo.rootComponentId : DEFAULT_CONTENT_LAZY_COLUMN_ID);
+       selectComponent(activeDesign?.editingTemplateInfo ? activeDesign.editingTemplateInfo.rootComponentId : DEFAULT_CONTENT_LAZY_COLUMN_ID);
     }
   };
   
-  const rootComponent = editingTemplateInfo
-    ? components.find(c => c.parentId === null)
-    : components.find(c => c.id === ROOT_SCAFFOLD_ID && c.parentId === null);
+  const rootComponent = activeDesign?.editingTemplateInfo
+    ? activeDesign.components.find(c => c.parentId === null)
+    : activeDesign?.components.find(c => c.id === ROOT_SCAFFOLD_ID && c.parentId === null);
 
   return (
     <div
@@ -61,7 +61,7 @@ export function DesignSurface() {
         <RenderedComponentWrapper component={rootComponent} />
       ) : (
          <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground pointer-events-none p-4 text-center">
-            <p className="text-lg">{editingTemplateInfo ? `Loading template "${editingTemplateInfo.name}"...` : 'Initializing canvas...'}</p>
+            <p className="text-lg">{activeDesign?.editingTemplateInfo ? `Loading template "${activeDesign.editingTemplateInfo.name}"...` : 'Initializing canvas...'}</p>
         </div>
       )}
 

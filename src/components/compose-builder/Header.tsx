@@ -41,13 +41,29 @@ export function Header({
   saveLayoutModalRef,
 }: HeaderProps) {
   const { 
-    clearDesign, components,
+    activeDesign,
+    clearDesign,
     undo, redo, copyComponent, pasteComponent,
-    history, future, selectedComponentId, clipboard,
-    editingTemplateInfo, updateCustomTemplate,
-    editingLayoutInfo, updateLayout,
+    updateCustomTemplate,
+    updateLayout,
   } = useDesign();
   const { toast } = useToast();
+
+  // Guard against undefined activeDesign on initial server render
+  if (!activeDesign) {
+      return (
+        <header className="h-16 border-b bg-black dark:bg-sidebar flex items-center justify-between shrink-0">
+          <div className="h-full bg-white flex items-center px-4">
+              <Logo />
+          </div>
+          <div className="flex items-center gap-2 px-6">
+              {/* Render a simplified header or placeholders if needed */}
+          </div>
+        </header>
+      );
+  }
+
+  const { components, history, future, selectedComponentId, clipboard, editingTemplateInfo, editingLayoutInfo } = activeDesign;
 
   const handleGenerateCode = () => {
     if (generateModalRef.current) {
@@ -345,5 +361,3 @@ export function Header({
     </header>
   );
 }
-
-    

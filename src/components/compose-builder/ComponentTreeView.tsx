@@ -26,12 +26,11 @@ interface TreeItemProps {
 }
 
 const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: TreeItemProps) => {
-  const { components, getComponentById, selectComponent, selectedComponentId, customComponentTemplates, moveComponent, deleteComponent } = useDesign();
+  const { activeDesign, getComponentById, selectComponent, customComponentTemplates, moveComponent, deleteComponent } = useDesign();
   const component = getComponentById(componentId);
   const ref = useRef<HTMLDivElement>(null);
   const dropIndicatorRef = useRef<'top' | 'bottom' | 'inside' | null>(null);
 
-  // This state is just to trigger re-renders for visual feedback
   const [visualDropIndicator, setVisualDropIndicator] = useState<'top' | 'bottom' | 'inside' | null>(null);
 
   const [{ isDragging }, drag] = useDrag({
@@ -71,7 +70,7 @@ const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: T
       
       let indicator: 'top' | 'bottom' | 'inside' | null = null;
       
-      if (isContainerType(component.type, customComponentTemplates)) {
+      if (component && isContainerType(component.type, customComponentTemplates)) {
           const topThird = hoverBoundingRect.height / 3;
           const bottomThird = hoverBoundingRect.height * (2/3);
 
@@ -90,6 +89,7 @@ const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: T
       }
     },
     canDrop: (item) => {
+      if (!component) return false;
       if (item.id === componentId) return false;
       
       let p = component.parentId;
@@ -136,8 +136,9 @@ const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: T
 
   drop(drag(ref));
 
-  if (!component) return null;
+  if (!component || !activeDesign) return null;
 
+  const { selectedComponentId } = activeDesign;
   const isSelected = selectedComponentId === component.id;
   const isEffectivelyContainer = isContainerType(component.type, customComponentTemplates);
   const hasChildren = component.properties.children && component.properties.children.length > 0;
@@ -182,7 +183,7 @@ const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: T
     }
   };
   
-  const rootComponentOnCanvas = components.find(c => c.parentId === null);
+  const rootComponentOnCanvas = activeDesign.components.find(c => c.parentId === null);
   const isRootOfCanvas = component.id === rootComponentOnCanvas?.id;
   const isDeletable = !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !isRootOfCanvas;
 
@@ -242,9 +243,8 @@ const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: T
 };
 
 export const ComponentTreeView = () => {
-  const { components } = useDesign();
-  // Find the root component by looking for the one with no parent. This works for both the main canvas and template editing.
-  const rootComponent = components.find(c => c.parentId === null);
+  const { activeDesign } = useDesign();
+  const rootComponent = activeDesign?.components.find(c => c.parentId === null);
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set());
 
   const toggleNode = (nodeId: string) => {
@@ -258,6 +258,10 @@ export const ComponentTreeView = () => {
       return newSet;
     });
   };
+
+  if (!activeDesign) {
+    return <p className="text-sm text-muted-foreground p-2">No active design.</p>;
+  }
 
   return (
     <ScrollArea className="h-full -mx-4">

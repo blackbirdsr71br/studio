@@ -17,16 +17,19 @@ import { PublishConfigModal, type PublishConfigModalRef } from '@/components/com
 import { SaveLayoutModal, type SaveLayoutModalRef } from '@/components/compose-builder/SaveLayoutModal';
 import { MobileFrame, FRAME_WIDTH, FRAME_HEIGHT } from '@/components/compose-builder/MobileFrame';
 import { useToast } from '@/hooks/use-toast';
+import { DesignTabs } from '@/components/compose-builder/DesignTabs';
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 2.0;
 
 function KeyboardShortcuts() {
-  const { undo, redo, copyComponent, pasteComponent, selectedComponentId } = useDesign();
+  const { activeDesign, undo, redo, copyComponent, pasteComponent } = useDesign();
   const { toast } = useToast();
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (!activeDesign) return;
+
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
       const ctrlKey = isMac ? event.metaKey : event.ctrlKey;
       const targetElement = event.target as HTMLElement;
@@ -46,8 +49,8 @@ function KeyboardShortcuts() {
         redo();
       } else if (ctrlKey && event.key.toLowerCase() === 'c') {
         event.preventDefault();
-        if (selectedComponentId) {
-          const result = copyComponent(selectedComponentId);
+        if (activeDesign.selectedComponentId) {
+          const result = copyComponent(activeDesign.selectedComponentId);
           if (result.success && result.message) {
             toast({ title: "Component Copied", description: result.message });
           }
@@ -67,14 +70,13 @@ function KeyboardShortcuts() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [undo, redo, copyComponent, pasteComponent, selectedComponentId, toast]);
+  }, [activeDesign, undo, redo, copyComponent, pasteComponent, toast]);
 
   return null;
 }
 
 function MainApp() {
-  const { designs = [], activeDesignId, zoomLevel, setZoomLevel } = useDesign();
-  const activeDesign = designs.find(d => d.id === activeDesignId);
+  const { zoomLevel = 1, setZoomLevel } = useDesign();
   
   const generateModalRef = useRef<GenerateCodeModalRef>(null);
   const viewJsonModalRef = useRef<ViewJsonModalRef>(null);
@@ -115,6 +117,7 @@ function MainApp() {
           publishConfigModalRef={publishConfigModalRef}
           saveLayoutModalRef={saveLayoutModalRef}
         />
+        <DesignTabs />
         <div className="relative flex-grow flex flex-row overflow-hidden">
           <ComponentLibraryPanel />
           <main className="flex-grow relative grid place-items-center overflow-auto bg-muted/20 p-8">

@@ -40,8 +40,8 @@ interface PropertyPanelProps {
 const PREFERRED_GROUP_ORDER = ['Layout', 'Appearance', 'Content', 'Behavior'];
 
 export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
-  const { selectedComponentId, getComponentById, updateComponent, deleteComponent, customComponentTemplates, editingTemplateInfo, saveSelectedAsCustomTemplate } = useDesign();
-  const selectedComponent = selectedComponentId ? getComponentById(selectedComponentId) : null;
+  const { activeDesign, getComponentById, updateComponent, deleteComponent, customComponentTemplates, saveSelectedAsCustomTemplate } = useDesign();
+  const selectedComponent = activeDesign?.selectedComponentId ? getComponentById(activeDesign.selectedComponentId) : null;
   const { toast } = useToast();
 
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
@@ -53,7 +53,7 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
 
 
   const handleSaveAsTemplate = async () => {
-    if (!selectedComponentId) {
+    if (!activeDesign?.selectedComponentId) {
         toast({ title: "Error", description: "No component selected to save.", variant: "destructive"});
         return;
     }
@@ -80,7 +80,7 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
   };
 
   const renderProperties = () => {
-    if (!selectedComponent) return null;
+    if (!selectedComponent || !activeDesign) return null;
 
     let componentPropsDefSourceType = selectedComponent.type;
     if (selectedComponent.templateIdRef) {
@@ -132,7 +132,7 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     };
 
     const handleGenerateImage = async () => {
-      if (!selectedComponent || selectedComponent.type !== 'Image' || !selectedComponent.properties['data-ai-hint']) {
+      if (selectedComponent.type !== 'Image' || !selectedComponent.properties['data-ai-hint']) {
         toast({ title: "Cannot Generate Image", description: "Please select an Image component and provide an AI hint.", variant: "destructive" });
         return;
       }
@@ -159,11 +159,11 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
 
     const handleLocalImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
-      if (file && selectedComponentId) {
+      if (file && activeDesign?.selectedComponentId) {
         const reader = new FileReader();
         reader.onload = (e) => {
           const dataUri = e.target?.result as string;
-          updateComponent(selectedComponentId, { properties: { src: dataUri } });
+          updateComponent(activeDesign.selectedComponentId!, { properties: { src: dataUri } });
           toast({ title: "Image Uploaded", description: "Local image set as source." });
         };
         reader.readAsDataURL(file);
@@ -172,8 +172,8 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     };
 
     const handleImageFromModal = (imageUrl: string) => {
-      if (selectedComponentId && imageUrl) {
-          updateComponent(selectedComponentId, { properties: { src: imageUrl } });
+      if (activeDesign?.selectedComponentId && imageUrl) {
+          updateComponent(activeDesign.selectedComponentId, { properties: { src: imageUrl } });
           toast({ title: "Image Source Updated", description: "Image source set from modal." });
       }
     };
@@ -349,7 +349,7 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
           <Input id="componentName" type="text" value={selectedComponent.name} onChange={handleNameChange} className="h-8 text-sm mt-1.5" disabled={isCoreScaffoldElement} />
         </div>
 
-        {componentPropsDef.length === 0 && !editingTemplateInfo ? (
+        {componentPropsDef.length === 0 && !activeDesign.editingTemplateInfo ? (
           <div className="flex-grow flex items-center justify-center min-h-0">
             <p className="text-sm text-muted-foreground">No editable properties for this component type.</p>
           </div>
@@ -363,7 +363,7 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
                       {group}
                     </TabsTrigger>
                   ))}
-                   {!editingTemplateInfo && !isCoreScaffoldElement && (
+                   {!activeDesign.editingTemplateInfo && !isCoreScaffoldElement && (
                         <TabsTrigger value="save" className="text-xs px-2 py-1.5 h-auto whitespace-nowrap">
                           Save
                         </TabsTrigger>

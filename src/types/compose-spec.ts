@@ -149,25 +149,14 @@ export interface GalleryImage {
 }
 
 export interface SingleDesign {
-  id: string; // e.g., 'design-1'
-  name: string; // e.g., 'Main Screen'
+  id: string;
+  name: string;
   components: DesignComponent[];
   selectedComponentId: string | null;
   nextId: number;
   history: { components: DesignComponent[]; nextId: number; selectedComponentId: string | null }[];
   future: { components: DesignComponent[]; nextId: number; selectedComponentId: string | null }[];
   clipboard: DesignComponent[] | null;
-}
-
-
-export interface DesignState {
-  components: DesignComponent[];
-  selectedComponentId: string | null;
-  nextId: number;
-  customComponentTemplates: CustomComponentTemplate[];
-  savedLayouts: SavedLayout[];
-  galleryImages: GalleryImage[];
-
   editingTemplateInfo?: {
     templateId: string;
     firestoreId: string;
@@ -177,10 +166,15 @@ export interface DesignState {
     firestoreId: string;
     name: string;
   } | null;
-  
-  history: { components: DesignComponent[], nextId: number, selectedComponentId: string | null }[];
-  future: { components: DesignComponent[], nextId: number, selectedComponentId: string | null }[];
-  clipboard: DesignComponent[] | null;
+}
+
+
+export interface DesignState {
+  designs: SingleDesign[];
+  activeDesignId: string;
+  customComponentTemplates: CustomComponentTemplate[];
+  savedLayouts: SavedLayout[];
+  galleryImages: GalleryImage[];
 }
 
 export const getDefaultProperties = (type: ComponentType | string, componentId?: string): BaseComponentProps => {

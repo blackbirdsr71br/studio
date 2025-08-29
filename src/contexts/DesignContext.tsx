@@ -3,7 +3,7 @@
 
 import type { ReactNode} from 'react';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import type { DesignComponent, DesignState, ComponentType, BaseComponentProps, CustomComponentTemplate, SavedLayout, GalleryImage } from '@/types/compose-spec';
+import type { DesignComponent, DesignState, ComponentType, BaseComponentProps, CustomComponentTemplate, SavedLayout, GalleryImage, SingleDesign } from '@/types/compose-spec';
 import { getDefaultProperties, CUSTOM_COMPONENT_TYPE_PREFIX, isContainerType, getComponentDisplayName, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, CORE_SCAFFOLD_ELEMENT_IDS, CUSTOM_TEMPLATES_COLLECTION, SAVED_LAYOUTS_COLLECTION, GALLERY_IMAGES_COLLECTION, DESIGNS_COLLECTION, MAIN_DESIGN_DOC_ID } from '@/types/compose-spec';
 import { db } from '@/lib/firebase';
 import { collection, doc, setDoc, getDocs, deleteDoc, query, orderBy, onSnapshot, Unsubscribe } from "firebase/firestore";
@@ -11,6 +11,14 @@ import { useToast } from '@/hooks/use-toast';
 import { useDebouncedCallback } from 'use-debounce';
 
 interface DesignContextType extends DesignState {
+  // New tab management functions
+  addNewDesign: () => void;
+  closeDesign: (designId: string) => void;
+  setActiveDesign: (designId: string) => void;
+  updateDesignName: (designId: string, newName: string) => void;
+  activeDesign: SingleDesign | undefined;
+
+  // Existing functions, now adapted for multi-tab
   addComponent: (typeOrTemplateId: ComponentType | string, parentId?: string | null, dropPosition?: { x: number; y: number }, index?: number) => void;
   deleteComponent: (id: string) => void;
   selectComponent: (id: string | null) => void;
@@ -74,18 +82,27 @@ const createInitialComponents = (): DesignComponent[] => {
   return [rootScaffold, contentLazyColumn];
 };
 
+
+const createNewDesign = (id: string, name: string, components?: DesignComponent[], nextId?: number): SingleDesign => ({
+    id,
+    name,
+    components: components || createInitialComponents(),
+    selectedComponentId: components ? null : DEFAULT_CONTENT_LAZY_COLUMN_ID,
+    nextId: nextId || 1,
+    history: [],
+    future: [],
+    clipboard: null,
+    editingTemplateInfo: null,
+    editingLayoutInfo: null,
+});
+
+
 const initialDesignState: DesignState = {
-  components: createInitialComponents(),
-  selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID,
-  nextId: 1,
+  designs: [createNewDesign('design-1', 'Untitled-1')],
+  activeDesignId: 'design-1',
   customComponentTemplates: [],
   savedLayouts: [],
   galleryImages: [],
-  editingTemplateInfo: null,
-  editingLayoutInfo: null,
-  history: [],
-  future: [],
-  clipboard: null,
 };
 
 
@@ -271,14 +288,6 @@ const defaultGalleryImages: GalleryImage[] = uniqueDefaultUrls.map((url, index) 
     timestamp: Date.now() - index,
 }));
 
-/**
- * Recursively sanitizes an object or array for Firestore compatibility.
- * It ensures the returned object is a plain JavaScript object and that no 'undefined'
- * values are present, converting them to 'null'.
- * This version avoids JSON.stringify/parse to handle complex objects more reliably.
- * @param data The object or array to sanitize.
- * @returns A new, sanitized object or array.
- */
 function sanitizeForFirebase(data: any): any {
   if (data === undefined) {
     return null;
@@ -289,13 +298,10 @@ function sanitizeForFirebase(data: any): any {
   if (Array.isArray(data)) {
     return data.map(item => sanitizeForFirebase(item));
   }
-  // This handles plain objects
   const newObj: { [key: string]: any } = {};
   for (const key in data) {
     if (Object.prototype.hasOwnProperty.call(data, key)) {
       const value = data[key];
-      // Recursively sanitize the value and only add it if it's not undefined.
-      // Firestore cannot store 'undefined'. We convert it to 'null'.
       newObj[key] = sanitizeForFirebase(value);
     }
   }
@@ -311,38 +317,103 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [isLoadingCustomTemplates, setIsLoadingCustomTemplates] = useState(true);
   const [isLoadingLayouts, setIsLoadingLayouts] = useState(true);
 
-  const mainDesignCanvasStateRef = useRef<DesignComponent[]>(createInitialComponents());
+  // This ref now stores the state of the *non-editing* designs when entering an editing mode.
+  const mainDesignTabsStateRef = useRef<SingleDesign[]>([]);
 
-  const updateStateWithHistory = React.useCallback((
-    updater: (prevState: DesignState) => Partial<DesignState>,
+  // Find the active design
+  const activeDesign = designState.designs.find(d => d.id === designState.activeDesignId);
+
+  // Wrapper for state updates to manage history for the active design
+  const updateActiveDesignWithHistory = useCallback((
+    updater: (activeDesign: SingleDesign) => Partial<Omit<SingleDesign, 'id' | 'name'>> | null
   ) => {
     setDesignState(prev => {
-      const updates = updater(prev);
-      if (Object.keys(updates).length === 0) return prev;
-  
-      const newHistory = [...prev.history, { components: prev.components, nextId: prev.nextId, selectedComponentId: prev.selectedComponentId }];
+      const activeDesignIndex = prev.designs.findIndex(d => d.id === prev.activeDesignId);
+      if (activeDesignIndex === -1) return prev;
+
+      const currentActiveDesign = prev.designs[activeDesignIndex];
+      const updates = updater(currentActiveDesign);
+
+      if (updates === null) return prev; // No change
+
+      const newHistory = [...currentActiveDesign.history, { 
+          components: currentActiveDesign.components, 
+          nextId: currentActiveDesign.nextId, 
+          selectedComponentId: currentActiveDesign.selectedComponentId 
+      }];
       if (newHistory.length > 50) newHistory.shift();
       
-      const nextState: DesignState = {
-        ...prev,
+      const newActiveDesign: SingleDesign = {
+        ...currentActiveDesign,
         ...updates,
         history: newHistory,
         future: [],
       };
+
+      const newDesigns = [...prev.designs];
+      newDesigns[activeDesignIndex] = newActiveDesign;
       
-      return nextState;
+      return { ...prev, designs: newDesigns };
+    });
+  }, []);
+
+  const addNewDesign = useCallback(() => {
+    setDesignState(prev => {
+      const newId = `design-${Date.now()}`;
+      const newName = `Untitled-${prev.designs.length + 1}`;
+      const newDesign = createNewDesign(newId, newName);
+      return {
+        ...prev,
+        designs: [...prev.designs, newDesign],
+        activeDesignId: newId,
+      }
+    });
+  }, []);
+
+  const closeDesign = useCallback((designId: string) => {
+    setDesignState(prev => {
+      // If we are closing an editing tab, just go back to the main designs.
+      const designToClose = prev.designs.find(d => d.id === designId);
+      if (designToClose && (designToClose.editingLayoutInfo || designToClose.editingTemplateInfo)) {
+          return {
+              ...prev,
+              designs: mainDesignTabsStateRef.current.length > 0 ? mainDesignTabsStateRef.current : [createNewDesign('design-1', 'Untitled-1')],
+              activeDesignId: mainDesignTabsStateRef.current[0]?.id || 'design-1',
+          }
+      }
+
+      if (prev.designs.length <= 1) return prev;
+
+      const newDesigns = prev.designs.filter(d => d.id !== designId);
+      let newActiveId = prev.activeDesignId;
+
+      if (newActiveId === designId) {
+        const closingIndex = prev.designs.findIndex(d => d.id === designId);
+        newActiveId = (newDesigns[closingIndex] || newDesigns[closingIndex - 1] || newDesigns[0]).id;
+      }
+      return { ...prev, designs: newDesigns, activeDesignId: newActiveId };
+    });
+  }, []);
+
+  const setActiveDesign = useCallback((designId: string) => {
+    setDesignState(prev => ({ ...prev, activeDesignId: designId }));
+  }, []);
+
+  const updateDesignName = useCallback((designId: string, newName: string) => {
+    setDesignState(prev => {
+      const newDesigns = prev.designs.map(d => d.id === designId ? {...d, name: newName} : d);
+      return { ...prev, designs: newDesigns };
     });
   }, []);
   
   useEffect(() => {
     setIsClient(true);
-
+    // Firestore subscriptions
     const unsubscribers: Unsubscribe[] = [];
     if (db) {
         setIsLoadingCustomTemplates(true);
         setIsLoadingLayouts(true);
         
-        // Subscribe to Custom Templates
         const templatesCollection = collection(db, CUSTOM_TEMPLATES_COLLECTION);
         const templatesQuery = query(templatesCollection, orderBy('name'));
         const templatesUnsub = onSnapshot(templatesQuery, 
@@ -362,7 +433,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         );
         unsubscribers.push(templatesUnsub);
 
-        // Subscribe to Saved Layouts
         const layoutsCollection = collection(db, SAVED_LAYOUTS_COLLECTION);
         const layoutsQuery = query(layoutsCollection, orderBy('timestamp', 'desc'));
         const layoutsUnsub = onSnapshot(layoutsQuery,
@@ -393,10 +463,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const savedImagesJson = localStorage.getItem(GALLERY_IMAGES_COLLECTION);
       const userAddedImages = savedImagesJson ? (JSON.parse(savedImagesJson) as GalleryImage[]).filter(img => !uniqueDefaultUrls.includes(img.url)) : [];
       
-      // Start with the full, up-to-date default list
       const finalGallery = [...defaultGalleryImages, ...userAddedImages];
       
-      // Use a Map to ensure uniqueness based on URL, keeping the most recent entry if there are duplicates.
       const uniqueGalleryMap = new Map<string, GalleryImage>();
       finalGallery.sort((a,b) => a.timestamp - b.timestamp).forEach(img => {
           uniqueGalleryMap.set(img.url, img);
@@ -414,8 +482,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, []);
 
   const getComponentById = React.useCallback(
-    (id: string) => designState.components.find(comp => comp.id === id),
-    [designState.components]
+    (id: string) => activeDesign?.components.find(comp => comp.id === id),
+    [activeDesign]
   );
   
   const addComponent = React.useCallback((
@@ -424,8 +492,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     _dropPosition?: { x: number; y: number },
     index?: number
   ) => {
-    updateStateWithHistory(prev => {
-      let { components: updatedComponentsList, nextId: currentNextId } = deepClone(prev);
+    updateActiveDesignWithHistory(activeDesign => {
+      let { components: updatedComponentsList, nextId: currentNextId } = deepClone(activeDesign);
 
       let finalSelectedComponentId = '';
       let componentsToAdd: DesignComponent[] = [];
@@ -437,12 +505,12 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       else if (!parentIdOrNull) effectiveParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
   
       let parentComponent = updatedComponentsList.find(c => c.id === effectiveParentId);
-      if (!parentComponent || !isContainerType(parentComponent.type, prev.customComponentTemplates)) {
+      if (!parentComponent || !isContainerType(parentComponent.type, designState.customComponentTemplates)) {
         effectiveParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
       }
 
       if (typeOrTemplateId.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
-        const template = prev.customComponentTemplates.find(t => t.templateId === typeOrTemplateId);
+        const template = designState.customComponentTemplates.find(t => t.templateId === typeOrTemplateId);
         if (template) {
           const idMap: Record<string, string> = {};
           const newTemplateComponents: DesignComponent[] = deepClone(template.componentTree).map((c: DesignComponent) => {
@@ -468,7 +536,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         } else {
             console.error(`Template with ID ${typeOrTemplateId} not found!`);
-            return {};
+            return null;
         }
 
       } else { // Standard component
@@ -489,7 +557,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const parentIdx = updatedComponentsList.findIndex(c => c.id === effectiveParentId);
         if (parentIdx !== -1) {
             const parent = updatedComponentsList[parentIdx];
-            if (isContainerType(parent.type, prev.customComponentTemplates) || parent.templateIdRef) {
+            if (isContainerType(parent.type, designState.customComponentTemplates) || parent.templateIdRef) {
                 const childIdsToAdd = componentsToAdd.filter(c => c.parentId === effectiveParentId).map(c => c.id);
                 let children = [...(parent.properties.children || [])];
                 if (index !== undefined && index >= 0) children.splice(index, 0, ...childIdsToAdd);
@@ -501,14 +569,14 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       
       return { components: updatedComponentsList, nextId: currentNextId, selectedComponentId: finalSelectedComponentId };
     });
-  }, [updateStateWithHistory]);
+  }, [updateActiveDesignWithHistory, designState.customComponentTemplates]);
 
 
   const deleteComponent = React.useCallback((id: string) => {
-    updateStateWithHistory(prev => {
-      if (CORE_SCAFFOLD_ELEMENT_IDS.includes(id)) return {};
+    updateActiveDesignWithHistory(activeDesign => {
+      if (CORE_SCAFFOLD_ELEMENT_IDS.includes(id)) return null;
       
-      const { components: currentComponents } = deepClone(prev);
+      const { components: currentComponents } = deepClone(activeDesign);
 
       const idsToDelete = new Set<string>();
       const queue: string[] = [id];
@@ -528,20 +596,20 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           parent.properties.children = parent.properties.children.filter(cid => cid !== id);
         }
       }
-      const newSelectedId = idsToDelete.has(prev.selectedComponentId || "") ? (parentId || DEFAULT_CONTENT_LAZY_COLUMN_ID) : prev.selectedComponentId;
+      const newSelectedId = idsToDelete.has(activeDesign.selectedComponentId || "") ? (parentId || DEFAULT_CONTENT_LAZY_COLUMN_ID) : activeDesign.selectedComponentId;
       
       return { components: newComps, selectedComponentId: newSelectedId };
     });
-  }, [updateStateWithHistory]);
+  }, [updateActiveDesignWithHistory]);
 
 
   const selectComponent = React.useCallback((id: string | null) => {
-    setDesignState(prev => ({ ...prev, selectedComponentId: id }));
-  }, []);
+    updateActiveDesignWithHistory(activeDesign => ({ selectedComponentId: id }));
+  }, [updateActiveDesignWithHistory]);
 
   const updateComponent = React.useCallback((id: string, updates: { name?: string; properties?: Partial<BaseComponentProps>; templateIdRef?: string }) => {
-    updateStateWithHistory(prev => {
-        const newComponents = prev.components.map(comp => {
+    updateActiveDesignWithHistory(activeDesign => {
+        const newComponents = activeDesign.components.map(comp => {
             if (comp.id === id) {
                 const newComp = { ...comp, properties: { ...comp.properties} };
                 if (updates.name !== undefined && !(CORE_SCAFFOLD_ELEMENT_IDS.includes(id) && !comp.templateIdRef)) newComp.name = updates.name;
@@ -557,26 +625,26 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         });
         return { components: newComponents };
     });
-  }, [updateStateWithHistory]);
+  }, [updateActiveDesignWithHistory]);
 
   const updateComponentPosition = React.useCallback((_id: string, _position: { x: number; y: number }) => {
      console.warn("updateComponentPosition is deprecated.");
   }, []);
 
   const clearDesign = React.useCallback(() => {
-    updateStateWithHistory(prev => {
-      // If editing a template or layout, this action should exit editing mode
-      if (prev.editingTemplateInfo || prev.editingLayoutInfo) {
-          return {
-              components: mainDesignCanvasStateRef.current,
-              editingTemplateInfo: null,
-              editingLayoutInfo: null,
-              selectedComponentId: null,
-          }
-      }
-      return { components: createInitialComponents(), nextId: 1, selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID };
-    });
-  }, [updateStateWithHistory]);
+    if (activeDesign?.editingTemplateInfo || activeDesign?.editingLayoutInfo) {
+      // If editing, this is the "close" action.
+      closeDesign(designState.activeDesignId);
+    } else {
+      updateActiveDesignWithHistory(activeDesign => ({
+        components: createInitialComponents(),
+        nextId: 1,
+        selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID,
+        history: [], // Clear history for this tab
+        future: [],
+      }));
+    }
+  }, [activeDesign, updateActiveDesignWithHistory, closeDesign, designState.activeDesignId]);
 
   const overwriteComponents = React.useCallback((hierarchicalUserComponentsJson: any[]): { success: boolean, error?: string } => {
     if (!Array.isArray(hierarchicalUserComponentsJson)) return { success: false, error: "Data must be an array." };
@@ -584,7 +652,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     let success = false;
     let error: string | undefined;
 
-    updateStateWithHistory(prev => {
+    updateActiveDesignWithHistory(activeDesign => {
         try {
             const flatList = flattenComponentsFromModalJson(hierarchicalUserComponentsJson, DEFAULT_CONTENT_LAZY_COLUMN_ID);
             const newBaseComponents = createInitialComponents();
@@ -604,19 +672,19 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             return { components: finalComponents, nextId: maxIdNum + 1, selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID };
         } catch(e) {
             error = e instanceof Error ? e.message : "An unknown error occurred during component overwrite.";
-            return {}; // Return empty object to indicate no state change
+            return null; // Return null to indicate no state change
         }
     });
     
     if (error) return { success: false, error };
     return { success: true };
-  }, [updateStateWithHistory]);
+  }, [updateActiveDesignWithHistory]);
 
   const moveComponent = React.useCallback((draggedId: string, newParentId: string | null, newIndex?: number) => {
-    updateStateWithHistory(prev => {
-        const comps = deepClone(prev.components);
+    updateActiveDesignWithHistory(activeDesign => {
+        const comps = deepClone(activeDesign.components);
         const draggedIdx = comps.findIndex(c => c.id === draggedId);
-        if (draggedIdx === -1) return {};
+        if (draggedIdx === -1) return null;
         
         const oldParentId = comps[draggedIdx].parentId;
         if (oldParentId) {
@@ -642,61 +710,98 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         
         return { components: comps, selectedComponentId: draggedId };
     });
-  }, [updateStateWithHistory]);
+  }, [updateActiveDesignWithHistory]);
 
   const undo = React.useCallback(() => {
     setDesignState(prev => {
-        if (prev.history.length === 0) return prev;
-        const lastState = prev.history[prev.history.length - 1];
-        const newFuture = [{components: prev.components, nextId: prev.nextId, selectedComponentId: prev.selectedComponentId}, ...prev.future];
-        return { ...prev, ...lastState, future: newFuture, history: prev.history.slice(0, prev.history.length-1) };
+      const activeDesignIndex = prev.designs.findIndex(d => d.id === prev.activeDesignId);
+      if (activeDesignIndex === -1) return prev;
+      
+      const activeDesign = prev.designs[activeDesignIndex];
+      if (activeDesign.history.length === 0) return prev;
+
+      const lastState = activeDesign.history[activeDesign.history.length - 1];
+      const newFuture = [{components: activeDesign.components, nextId: activeDesign.nextId, selectedComponentId: activeDesign.selectedComponentId}, ...activeDesign.future];
+      
+      const updatedActiveDesign: SingleDesign = {
+          ...activeDesign,
+          ...lastState,
+          history: activeDesign.history.slice(0, activeDesign.history.length - 1),
+          future: newFuture,
+      };
+
+      const newDesigns = [...prev.designs];
+      newDesigns[activeDesignIndex] = updatedActiveDesign;
+      return { ...prev, designs: newDesigns };
     });
   }, []);
 
   const redo = React.useCallback(() => {
     setDesignState(prev => {
-        if (prev.future.length === 0) return prev;
-        const nextState = prev.future[0];
-        const newHistory = [...prev.history, {components: prev.components, nextId: prev.nextId, selectedComponentId: prev.selectedComponentId}];
-        return { ...prev, ...nextState, future: prev.future.slice(1), history: newHistory };
+        const activeDesignIndex = prev.designs.findIndex(d => d.id === prev.activeDesignId);
+        if (activeDesignIndex === -1) return prev;
+        
+        const activeDesign = prev.designs[activeDesignIndex];
+        if (activeDesign.future.length === 0) return prev;
+
+        const nextState = activeDesign.future[0];
+        const newHistory = [...activeDesign.history, {components: activeDesign.components, nextId: activeDesign.nextId, selectedComponentId: activeDesign.selectedComponentId}];
+        
+        const updatedActiveDesign: SingleDesign = {
+          ...activeDesign,
+          ...nextState,
+          history: newHistory,
+          future: activeDesign.future.slice(1),
+        };
+
+        const newDesigns = [...prev.designs];
+        newDesigns[activeDesignIndex] = updatedActiveDesign;
+        return { ...prev, designs: newDesigns };
     });
   }, []);
 
   const copyComponent = React.useCallback((id: string): {success: boolean, message?: string} => {
-    const compToCopy = getComponentById(id);
+    if (!activeDesign) return { success: false, message: "No active design." };
+    const compToCopy = activeDesign.components.find(c => c.id === id);
+    
     if (!compToCopy || CORE_SCAFFOLD_ELEMENT_IDS.includes(id)) {
         return { success: false, message: "Cannot copy this component." };
     }
-    const collectDescendants = (compId: string): DesignComponent[] => {
-        const comp = getComponentById(compId);
+
+    const collectDescendants = (startId: string, allComps: DesignComponent[]): DesignComponent[] => {
+        const comp = allComps.find(c => c.id === startId);
         if (!comp) return [];
         let descendants = [deepClone(comp)];
         if (comp.properties.children) {
             comp.properties.children.forEach(cid => {
-                descendants = [...descendants, ...collectDescendants(cid)];
+                descendants = [...descendants, ...collectDescendants(cid, allComps)];
             });
         }
         return descendants;
     };
-    const copiedTree = collectDescendants(id);
+
+    const copiedTree = collectDescendants(id, activeDesign.components);
     if (copiedTree.length > 0) copiedTree[0].parentId = null;
-    setDesignState(prev => ({ ...prev, clipboard: copiedTree }));
+
+    updateActiveDesignWithHistory(ad => ({ clipboard: copiedTree }));
+
     return { success: true, message: `"${compToCopy.name}" copied.` };
-  }, [getComponentById]);
+  }, [activeDesign, updateActiveDesignWithHistory]);
 
   const pasteComponent = React.useCallback((targetParentId?: string | null): {success: boolean, message?: string} => {
-    const { clipboard } = designState;
-    if (!clipboard) {
+    if (!activeDesign?.clipboard) {
         return { success: false, message: "Clipboard is empty." };
     }
   
     let success = false;
     let message = "";
 
-    updateStateWithHistory(prev => {
-        const { components, nextId, selectedComponentId, customComponentTemplates } = prev;
-        const newComponents = deepClone(components);
-        let newNextId = nextId;
+    updateActiveDesignWithHistory(activeDesign => {
+        const { clipboard } = activeDesign;
+        if (!clipboard) return null;
+
+        const newComponents = deepClone(activeDesign.components);
+        let newNextId = activeDesign.nextId;
 
         const idMap: Record<string, string> = {};
         const pastedComps: DesignComponent[] = clipboard.map(c => {
@@ -714,8 +819,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         
         let parentId = targetParentId;
         if(parentId === undefined) {
-            const selected = newComponents.find(c => c.id === selectedComponentId);
-            parentId = selected ? (isContainerType(selected.type, customComponentTemplates) ? selected.id : selected.parentId) : DEFAULT_CONTENT_LAZY_COLUMN_ID;
+            const selected = newComponents.find(c => c.id === activeDesign.selectedComponentId);
+            parentId = selected ? (isContainerType(selected.type, designState.customComponentTemplates) ? selected.id : selected.parentId) : DEFAULT_CONTENT_LAZY_COLUMN_ID;
         }
         if (!parentId) parentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
         rootPasted.parentId = parentId;
@@ -724,7 +829,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         if (parentIdx === -1) {
             success = false;
             message = "Target parent not found.";
-            return {};
+            return null;
         }
 
         newComponents.push(...pastedComps);
@@ -737,17 +842,22 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         return { components: newComponents, nextId: newNextId, selectedComponentId: rootPasted.id };
     });
 
+    if (success) {
+        toast({ title: "Component Pasted", description: message });
+    } else if (message) {
+        toast({ title: "Paste Failed", description: message, variant: "destructive" });
+    }
+
     return { success, message };
-  }, [designState, updateStateWithHistory]);
+  }, [activeDesign, updateActiveDesignWithHistory, designState.customComponentTemplates, toast]);
   
   const saveSelectedAsCustomTemplate = useCallback(async (templateName: string) => {
-    const { selectedComponentId, components } = designState;
-    if (!selectedComponentId) {
-        toast({ title: "Error", description: "No component selected.", variant: "destructive" });
+    if (!activeDesign || !activeDesign.selectedComponentId) {
+        toast({ title: "Error", description: "No active design or component selected.", variant: "destructive" });
         return;
     }
+    const { selectedComponentId, components } = activeDesign;
     
-    // THIS IS THE CORRECTED LOGIC
     const collectDescendants = (startId: string, allComps: DesignComponent[]): DesignComponent[] => {
       const visited = new Set<string>();
       const result: DesignComponent[] = [];
@@ -782,7 +892,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const rootComponentIdInTemplate = componentTree[0].id;
     componentTree[0].parentId = null; 
 
-    // This is the critical fix: sanitize the component tree directly
     const firestoreSafeComponentTree = sanitizeForFirebase(componentTree);
 
     const templateId = `${CUSTOM_COMPONENT_TYPE_PREFIX}${templateName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
@@ -800,30 +909,14 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         console.error("Error saving custom template:", error);
         toast({ title: "Save Failed", description: `Could not save component to firestore: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive" });
     }
-  }, [designState, toast]);
-
-  const loadTemplateForEditing = useCallback((template: CustomComponentTemplate) => {
-    mainDesignCanvasStateRef.current = deepClone(designState.components);
-    setDesignState(prev => ({
-        ...prev,
-        components: template.componentTree,
-        editingTemplateInfo: {
-            templateId: template.templateId,
-            firestoreId: template.firestoreId,
-            name: template.name,
-        },
-        selectedComponentId: template.rootComponentId,
-        history: [],
-        future: [],
-    }));
-  }, [designState.components]);
+  }, [activeDesign, toast]);
 
   const updateCustomTemplate = useCallback(async () => {
-    const { editingTemplateInfo, components } = designState;
-    if (!editingTemplateInfo || !editingTemplateInfo.firestoreId) {
+    if (!activeDesign?.editingTemplateInfo || !activeDesign.editingTemplateInfo.firestoreId) {
         toast({ title: "Error", description: "No template is currently being edited.", variant: "destructive" });
         return;
     }
+    const { editingTemplateInfo, components } = activeDesign;
     const updatedTemplateData = {
         name: editingTemplateInfo.name,
         componentTree: sanitizeForFirebase(components),
@@ -832,22 +925,40 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const templateDocRef = doc(db, CUSTOM_TEMPLATES_COLLECTION, editingTemplateInfo.firestoreId);
         await setDoc(templateDocRef, updatedTemplateData, { merge: true });
         toast({ title: "Success", description: `Template "${editingTemplateInfo.name}" updated.` });
-
-        // Exit editing mode
-        setDesignState(prev => ({
-            ...prev,
-            components: mainDesignCanvasStateRef.current,
-            editingTemplateInfo: null,
-            selectedComponentId: null,
-            history: [],
-            future: [],
-        }));
-
+        closeDesign(designState.activeDesignId);
     } catch (error) {
         console.error("Error updating custom template:", error);
         toast({ title: "Update Failed", description: "Could not update template in Firestore.", variant: "destructive" });
     }
-  }, [designState, toast]);
+  }, [activeDesign, designState.activeDesignId, toast, closeDesign]);
+  
+  const loadTemplateForEditing = useCallback((template: CustomComponentTemplate) => {
+    setDesignState(prev => {
+      mainDesignTabsStateRef.current = deepClone(prev.designs);
+      const newId = `edit-template-${template.firestoreId}`;
+      const editDesign: SingleDesign = {
+        id: newId,
+        name: `Editing: ${template.name}`,
+        components: template.componentTree,
+        selectedComponentId: template.rootComponentId,
+        nextId: 1000, // Arbitrary high number for temp IDs
+        history: [],
+        future: [],
+        clipboard: null,
+        editingTemplateInfo: {
+          templateId: template.templateId,
+          firestoreId: template.firestoreId,
+          name: template.name,
+        },
+        editingLayoutInfo: null,
+      };
+      return {
+        ...prev,
+        designs: [editDesign],
+        activeDesignId: newId,
+      }
+    });
+  }, []);
 
   const deleteCustomTemplate = useCallback(async (firestoreId: string) => {
     try {
@@ -860,7 +971,11 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, [toast]);
   
   const saveCurrentCanvasAsLayout = useCallback(async (layoutName: string) => {
-    const { components, nextId } = designState;
+    if (!activeDesign) {
+        toast({ title: "Error", description: "No active design to save.", variant: "destructive" });
+        throw new Error("No active design to save.");
+    }
+    const { components, nextId } = activeDesign;
     const newLayout: Omit<SavedLayout, 'firestoreId'> = {
         name: layoutName,
         components: deepClone(components),
@@ -874,42 +989,55 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     } catch (error) {
         console.error("Error saving layout:", error);
         toast({ title: "Save Failed", description: "Could not save layout to Firestore.", variant: "destructive" });
-        throw error; // Re-throw to be caught in the modal
+        throw error;
     }
-  }, [designState, toast]);
+  }, [activeDesign, toast]);
 
   const loadLayout = useCallback((layout: SavedLayout) => {
-    updateStateWithHistory(prev => ({
+     setDesignState(prev => {
+        const newId = `layout-${layout.firestoreId}-${Date.now()}`;
+        const newDesign = createNewDesign(newId, layout.name, layout.components, layout.nextId);
+        return {
+          ...prev,
+          designs: [...prev.designs, newDesign],
+          activeDesignId: newId,
+        }
+     });
+  }, []);
+
+  const loadLayoutForEditing = useCallback((layout: SavedLayout) => {
+    setDesignState(prev => {
+      mainDesignTabsStateRef.current = deepClone(prev.designs);
+      const newId = `edit-layout-${layout.firestoreId}`;
+      const editDesign: SingleDesign = {
+        id: newId,
+        name: `Editing: ${layout.name}`,
         components: layout.components,
         nextId: layout.nextId,
         selectedComponentId: null,
-        editingLayoutInfo: null,
-        editingTemplateInfo: null,
-    }));
-  }, [updateStateWithHistory]);
-
-  const loadLayoutForEditing = useCallback((layout: SavedLayout) => {
-    mainDesignCanvasStateRef.current = deepClone(designState.components);
-    setDesignState(prev => ({
-        ...prev,
-        components: layout.components,
-        nextId: layout.nextId,
+        history: [],
+        future: [],
+        clipboard: null,
         editingLayoutInfo: {
             firestoreId: layout.firestoreId,
             name: layout.name,
         },
-        selectedComponentId: null,
-        history: [],
-        future: [],
-    }));
-  }, [designState.components]);
+        editingTemplateInfo: null,
+      };
+      return {
+        ...prev,
+        designs: [editDesign],
+        activeDesignId: newId,
+      }
+    });
+  }, []);
 
   const updateLayout = useCallback(async () => {
-    const { editingLayoutInfo, components, nextId } = designState;
-    if (!editingLayoutInfo || !editingLayoutInfo.firestoreId) {
+    if (!activeDesign?.editingLayoutInfo || !activeDesign.editingLayoutInfo.firestoreId) {
         toast({ title: "Error", description: "No layout is currently being edited.", variant: "destructive" });
         return;
     }
+    const { editingLayoutInfo, components, nextId } = activeDesign;
     const updatedLayoutData = {
         name: editingLayoutInfo.name,
         components: components,
@@ -920,22 +1048,12 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const layoutDocRef = doc(db, SAVED_LAYOUTS_COLLECTION, editingLayoutInfo.firestoreId);
         await setDoc(layoutDocRef, sanitizeForFirebase(updatedLayoutData), { merge: true });
         toast({ title: "Success", description: `Layout "${editingLayoutInfo.name}" updated.` });
-
-        // Exit editing mode
-        setDesignState(prev => ({
-            ...prev,
-            components: mainDesignCanvasStateRef.current,
-            editingLayoutInfo: null,
-            selectedComponentId: null,
-            history: [],
-            future: [],
-        }));
-
+        closeDesign(designState.activeDesignId);
     } catch (error) {
         console.error("Error updating layout:", error);
         toast({ title: "Update Failed", description: "Could not update layout in Firestore.", variant: "destructive" });
     }
-  }, [designState, toast]);
+  }, [activeDesign, designState.activeDesignId, toast, closeDesign]);
 
   const deleteLayout = useCallback(async (firestoreId: string) => {
     try {
@@ -966,6 +1084,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const contextValue: DesignContextType = {
     ...designState,
+    activeDesign,
+    addNewDesign, closeDesign, setActiveDesign, updateDesignName,
     addComponent, deleteComponent, selectComponent, updateComponent, updateComponentPosition,
     getComponentById, clearDesign, overwriteComponents, moveComponent,
     undo, redo, copyComponent, pasteComponent, 
@@ -978,9 +1098,13 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   if (!isClient) {
-    const dummyContext = initialDesignState;
+    const dummyContext = {
+      ...initialDesignState,
+      activeDesign: initialDesignState.designs[0],
+      getComponentById: (id: string) => initialDesignState.designs[0].components.find(c => c.id === id)
+    };
     return (
-      <DesignContext.Provider value={{...dummyContext, getComponentById: (id: string) => dummyContext.components.find(c => c.id === id)} as any}>
+      <DesignContext.Provider value={dummyContext as any}>
         {children}
       </DesignContext.Provider>
     );
