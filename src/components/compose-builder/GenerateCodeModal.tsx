@@ -25,16 +25,20 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
   const [generatedProjectFiles, setGeneratedProjectFiles] = useState<Record<string, string> | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { components, customComponentTemplates } = useDesign();
+  const { activeDesign, customComponentTemplates } = useDesign();
   const { toast } = useToast();
   const { resolvedTheme } = useTheme();
 
   const handleGenerateCode = useCallback(async () => {
+    if (!activeDesign) {
+        setError("No active design to generate code from.");
+        return;
+    }
     setIsLoading(true);
     setError(null);
     setGeneratedProjectFiles(null);
     try {
-      const result = await generateProjectFromTemplatesAction(components, customComponentTemplates);
+      const result = await generateProjectFromTemplatesAction(activeDesign.components, customComponentTemplates);
       if (result.error) {
         setError(result.error);
         setGeneratedProjectFiles(null);
@@ -52,7 +56,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
     } finally {
       setIsLoading(false);
     }
-  }, [components, customComponentTemplates]);
+  }, [activeDesign, customComponentTemplates]);
 
   useImperativeHandle(ref, () => ({
     openModal: () => {

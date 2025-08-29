@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useImperativeHandle, forwardRef, useCallback } from 'react';
@@ -18,6 +19,7 @@ import { useDesign } from '@/contexts/DesignContext';
 import { publishToRemoteConfigAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from "@/components/ui/switch";
+import { DEFAULT_CONTENT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 
 
 export interface PublishConfigModalRef {
@@ -33,7 +35,7 @@ export const PublishConfigModal = forwardRef<PublishConfigModalRef, PublishConfi
   const [parameterKey, setParameterKey] = useState<string>("COMPOSE_DESIGN_JSON_V2");
   const [includeDefaultValues, setIncludeDefaultValues] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
-  const { components, customComponentTemplates } = useDesign();
+  const { activeDesign, customComponentTemplates } = useDesign();
   const { toast } = useToast();
 
   useImperativeHandle(ref, () => ({
@@ -55,8 +57,16 @@ export const PublishConfigModal = forwardRef<PublishConfigModalRef, PublishConfi
       });
       return;
     }
+    
+    if (!activeDesign) {
+        toast({ title: "Error", description: "No active design to publish.", variant: "destructive" });
+        return;
+    }
 
-    if (components.length === 0 || (components.length === 1 && components[0].id === 'default-root-lazy-column' && (!components[0].properties.children || components[0].properties.children.length === 0))) {
+    const { components } = activeDesign;
+    const contentAreaHasChildren = components.find(c => c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID)?.properties.children?.length ?? 0 > 0;
+
+    if (components.length <= 2 && !contentAreaHasChildren) { // Only scaffold and empty content area
       toast({
         title: "Cannot Publish",
         description: "There are no user-added components on the canvas to publish.",

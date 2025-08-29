@@ -81,7 +81,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
   const [parserError, setParserError] = useState<string | null>(null);
 
 
-  const { components = [], customComponentTemplates, overwriteComponents } = useDesign();
+  const { activeDesign, customComponentTemplates, overwriteComponents } = useDesign();
   const { toast } = useToast();
   const { resolvedTheme } = useTheme();
 
@@ -105,14 +105,14 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
 
 
   const handleFetchDesignJson = useCallback(async () => {
-    if (activeTab !== "canvasJson") return;
+    if (activeTab !== "canvasJson" || !activeDesign) return;
 
     setIsCanvasJsonLoading(true);
     setCanvasJsonError(null);
     setSyntaxError(null);
     setValidationErrors([]);
     try {
-      const jsonStr = await getDesignComponentsAsJsonAction(components, customComponentTemplates, includeDefaultValues);
+      const jsonStr = await getDesignComponentsAsJsonAction(activeDesign.components, customComponentTemplates, includeDefaultValues);
       if (jsonStr.startsWith("Error:")) {
         setCanvasJsonError(jsonStr);
         setCanvasJsonString("");
@@ -126,14 +126,15 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     } finally {
       setIsCanvasJsonLoading(false);
     }
-  }, [activeTab, components, customComponentTemplates, includeDefaultValues]);
+  }, [activeTab, activeDesign, customComponentTemplates, includeDefaultValues]);
 
   const handleGenerateCustomJsonFromCanvas = useCallback(async () => {
+    if (!activeDesign) return;
     setIsCustomJsonFromCanvasLoading(true);
     setCustomJsonFromCanvasError(null);
     setCustomJsonFromCanvasString("");
     try {
-      const result = await convertCanvasToCustomJsonAction(components, customComponentTemplates, includeCustomJsonDefaults);
+      const result = await convertCanvasToCustomJsonAction(activeDesign.components, customComponentTemplates, includeCustomJsonDefaults);
       if (result.customJsonString) {
         // Format the single-line JSON string to be pretty-printed
         const parsed = JSON.parse(result.customJsonString);
@@ -148,16 +149,17 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     } finally {
       setIsCustomJsonFromCanvasLoading(false);
     }
-  }, [components, customComponentTemplates, includeCustomJsonDefaults]);
+  }, [activeDesign, customComponentTemplates, includeCustomJsonDefaults]);
 
   const handleGenerateJsonParserCode = useCallback(async () => {
+    if (!activeDesign) return;
     setIsParserLoading(true);
     setParserError(null);
     setParserProjectFiles(null);
     setConcatenatedParserCode('');
     
     try {
-      const result = await generateProjectFromTemplatesAction(components, customComponentTemplates);
+      const result = await generateProjectFromTemplatesAction(activeDesign.components, customComponentTemplates);
       if (result.files && Object.keys(result.files).length > 0) {
         setParserProjectFiles(result.files);
         
@@ -175,7 +177,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     } finally {
       setIsParserLoading(false);
     }
-  }, [components, customComponentTemplates]);
+  }, [activeDesign, customComponentTemplates]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -415,7 +417,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
 
   // Publish Canvas JSON (content area) from "Canvas JSON" tab
   const handleOpenPublishCanvasJsonDialog = () => {
-    const contentAreaComponentsExist = components.some(c => c.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || (c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID && (c.properties.children?.length || 0) > 0));
+    const contentAreaComponentsExist = activeDesign?.components.some(c => c.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || (c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID && (c.properties.children?.length || 0) > 0));
     if (!isCanvasJsonLoading && !canvasJsonError && contentAreaComponentsExist) {
         setShowPublishCanvasJsonDialog(true);
     } else {
@@ -436,10 +438,14 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
         });
         return;
     }
+    if (!activeDesign) {
+       toast({ title: "Error", description: "No active design to publish.", variant: "destructive" });
+       return;
+    }
 
     setIsPublishingCanvasJson(true);
     try {
-      const result = await publishToRemoteConfigAction(components, customComponentTemplates, publishCanvasJsonParameterKey.trim(), includeDefaultValues);
+      const result = await publishToRemoteConfigAction(activeDesign.components, customComponentTemplates, publishCanvasJsonParameterKey.trim(), includeDefaultValues);
       if (result.success) {
         toast({
           title: "Publish Successful",
@@ -472,7 +478,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
   const canSaveChangesValue = activeTab === 'canvasJson' && !isCanvasJsonLoading && !!canvasJsonString && !syntaxError && validationErrors.length === 0 && !canvasJsonError;
   
   const canPublishCustomJsonValue = activeTab === 'generateCustomJsonFromCanvas' && !!customJsonFromCanvasString && !customJsonFromCanvasError && !isCustomJsonFromCanvasLoading && !isPublishingCustomJson;
-  const contentComponentsExist = components.some(c => c.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || (c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID && (c.properties.children?.length || 0) > 0));
+  const contentComponentsExist = activeDesign?.components.some(c => c.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID || (c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID && (c.properties.children?.length || 0) > 0));
   const canPublishCanvasJsonValue = activeTab === 'canvasJson' && !isCanvasJsonLoading && !canvasJsonError && !isPublishingCanvasJson && contentComponentsExist;
 
 
