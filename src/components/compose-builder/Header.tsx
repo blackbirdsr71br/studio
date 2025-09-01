@@ -63,7 +63,7 @@ export function Header({
       );
   }
 
-  const { components, history, future, selectedComponentId, clipboard, editingTemplateInfo, editingLayoutInfo } = activeDesign;
+  const { components = [], history = [], future = [], selectedComponentId, clipboard, editingTemplateInfo, editingLayoutInfo } = activeDesign;
 
   const handleGenerateCode = () => {
     if (generateModalRef.current) {
@@ -155,10 +155,16 @@ export function Header({
       <div className="flex items-center gap-2 px-6">
         <TooltipProvider delayDuration={200}>
           {isEditing && (
-             <Button size="sm" className="bg-green-500 text-white hover:bg-green-600 h-9" onClick={handleUpdate}>
-                  <Save className="mr-2 h-4 w-4"/> 
-                  {editingLayoutInfo ? 'Update Layout' : 'Update Template'}
-              </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="icon" className="bg-green-500 text-white hover:bg-green-600 h-9 w-9" onClick={handleUpdate}>
+                    <Save className="h-4 w-4"/> 
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{editingLayoutInfo ? 'Update Layout' : 'Update Template'}</p>
+              </TooltipContent>
+            </Tooltip>
           )}
 
           <Tooltip>
