@@ -29,6 +29,8 @@ import type { ImageSourceModalRef } from './ImageSourceModal';
 import type { BaseComponentProps, ClickAction } from '@/types/compose-spec';
 import { ComponentTreeView } from './ComponentTreeView';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '../ui/select';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+
 
 interface GroupedProperties {
   [groupName: string]: ReactNode[];
@@ -384,50 +386,54 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
         </div>
 
         {isLazyContainer && (
-            <div className='mb-4 shrink-0 border border-sidebar-border rounded-md p-3 space-y-2 bg-muted/20'>
-                <h3 className='text-sm font-medium text-sidebar-foreground'>Generate Children</h3>
-                <div className='flex gap-2'>
-                    <div className='flex-1 space-y-1'>
-                        <Label htmlFor='child-count' className='text-xs'>Count</Label>
-                        <Input
-                            id='child-count'
-                            type='number'
-                            value={childGenerationCount}
-                            onChange={(e) => setChildGenerationCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                            min={1}
-                            className='h-8 text-sm'
-                        />
-                    </div>
-                    <div className='flex-1 space-y-1'>
-                        <Label htmlFor='child-type' className='text-xs'>Component Type</Label>
-                        <Select value={childGenerationType} onValueChange={setChildGenerationType}>
-                             <SelectTrigger id="child-type" className="h-8 text-sm">
-                                <SelectValue placeholder="Select type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectGroup>
-                                    <SelectLabel>Standard</SelectLabel>
-                                    {availableChildTypes.map(type => (
-                                        <SelectItem key={type} value={type}>{getComponentDisplayName(type)}</SelectItem>
-                                    ))}
-                                </SelectGroup>
-                                {customComponentTemplates.length > 0 && (
-                                    <SelectGroup>
-                                        <SelectLabel>Custom</SelectLabel>
-                                        {customComponentTemplates.map(template => (
-                                            <SelectItem key={template.templateId} value={template.templateId}>{template.name}</SelectItem>
-                                        ))}
-                                    </SelectGroup>
-                                )}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-                <Button size="sm" className='w-full h-8' onClick={handlePopulateLazyContainer}>
-                    <CopyPlus className='w-4 h-4 mr-2' />
-                    Generate
-                </Button>
-            </div>
+           <Accordion type="single" collapsible className="w-full mb-4 shrink-0">
+             <AccordionItem value="item-1" className="border border-sidebar-border rounded-md px-3 bg-muted/20">
+               <AccordionTrigger className="text-sm font-medium text-sidebar-foreground py-2.5">Generate Children</AccordionTrigger>
+               <AccordionContent className="pt-1 pb-3 space-y-3">
+                 <div className='flex gap-2'>
+                     <div className='flex-1 space-y-1'>
+                         <Label htmlFor='child-count' className='text-xs'>Count</Label>
+                         <Input
+                             id='child-count'
+                             type='number'
+                             value={childGenerationCount}
+                             onChange={(e) => setChildGenerationCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                             min={1}
+                             className='h-8 text-sm'
+                         />
+                     </div>
+                     <div className='flex-1 space-y-1'>
+                         <Label htmlFor='child-type' className='text-xs'>Component Type</Label>
+                         <Select value={childGenerationType} onValueChange={setChildGenerationType}>
+                              <SelectTrigger id="child-type" className="h-8 text-sm">
+                                 <SelectValue placeholder="Select type" />
+                             </SelectTrigger>
+                             <SelectContent>
+                                 <SelectGroup>
+                                     <SelectLabel>Standard</SelectLabel>
+                                     {availableChildTypes.map(type => (
+                                         <SelectItem key={type} value={type}>{getComponentDisplayName(type)}</SelectItem>
+                                     ))}
+                                 </SelectGroup>
+                                 {customComponentTemplates.length > 0 && (
+                                     <SelectGroup>
+                                         <SelectLabel>Custom</SelectLabel>
+                                         {customComponentTemplates.map(template => (
+                                             <SelectItem key={template.templateId} value={template.templateId}>{template.name}</SelectItem>
+                                         ))}
+                                     </SelectGroup>
+                                 )}
+                             </SelectContent>
+                         </Select>
+                     </div>
+                 </div>
+                 <Button size="sm" className='w-full h-8' onClick={handlePopulateLazyContainer}>
+                     <CopyPlus className='w-4 h-4 mr-2' />
+                     Generate
+                 </Button>
+               </AccordionContent>
+             </AccordionItem>
+           </Accordion>
         )}
 
         {componentPropsDef.length === 0 && !activeDesign.editingTemplateInfo ? (
