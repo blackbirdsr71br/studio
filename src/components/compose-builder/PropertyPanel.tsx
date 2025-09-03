@@ -18,7 +18,7 @@ import {
   CORE_SCAFFOLD_ELEMENT_IDS
 } from '@/types/compose-spec';
 import { PropertyEditor } from './PropertyEditor';
-import { Trash2, Sparkles, Loader2, Upload, Search, Save } from 'lucide-react';
+import { Trash2, Sparkles, Loader2, Upload, Search, Save, CopyPlus } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -29,6 +29,7 @@ import { Separator } from '../ui/separator';
 import type { ImageSourceModalRef } from './ImageSourceModal';
 import type { BaseComponentProps, ClickAction } from '@/types/compose-spec';
 import { ComponentTreeView } from './ComponentTreeView';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 interface GroupedProperties {
   [groupName: string]: ReactNode[];
@@ -41,8 +42,11 @@ interface PropertyPanelProps {
 const PREFERRED_GROUP_ORDER = ['Layout', 'Appearance', 'Content', 'Behavior'];
 
 export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
-  const { activeDesign, getComponentById, updateComponent, deleteComponent, customComponentTemplates, saveSelectedAsCustomTemplate } = useDesign();
-  const selectedComponent = activeDesign?.selectedComponentId ? getComponentById(activeDesign.selectedComponentId) : null;
+  const { activeDesign, getComponentById, updateComponent, deleteComponent, customComponentTemplates, saveSelectedAsCustomTemplate, populateLazyContainer } = useDesign();
+  
+  const selectedComponentId = activeDesign?.selectedComponentId;
+  const selectedComponent = selectedComponentId ? getComponentById(selectedComponentId) : null;
+  
   const { toast } = useToast();
 
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
@@ -51,10 +55,14 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
   
   const [newTemplateName, setNewTemplateName] = useState("");
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+  
+  // State for lazy container population
+  const [childGenerationCount, setChildGenerationCount] = useState<number>(5);
+  const [childGenerationType, setChildGenerationType] = useState<string>('Text');
 
 
   const handleSaveAsTemplate = async () => {
-    if (!activeDesign?.selectedComponentId) {
+    if (!selectedComponentId) {
         toast({ title: "Error", description: "No component selected to save.", variant: "destructive"});
         return;
     }
@@ -68,6 +76,23 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     setNewTemplateName("");
   };
 
+  const handlePopulateLazyContainer = () => {
+    if (selectedComponent && (selectedComponent.type === 'LazyColumn' || selectedComponent.type === 'LazyRow')) {
+        if (childGenerationCount > 0 && childGenerationType) {
+            populateLazyContainer(selectedComponent.id, childGenerationType, childGenerationCount);
+            toast({
+                title: 'Components Generated',
+                description: `${childGenerationCount} ${getComponentDisplayName(childGenerationType)} components were added.`,
+            });
+        } else {
+            toast({
+                title: 'Invalid Input',
+                description: 'Please specify a count greater than 0 and select a component type.',
+                variant: 'destructive',
+            });
+        }
+    }
+  };
 
   const getDefaultPropertyValue = (propDef: Omit<ComponentProperty, 'value'>) => {
     if (!selectedComponent) return '';
@@ -161,11 +186,11 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
 
     const handleLocalImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
-      if (file && activeDesign?.selectedComponentId) {
+      if (file && selectedComponentId) {
         const reader = new FileReader();
         reader.onload = (e) => {
           const dataUri = e.target?.result as string;
-          updateComponent(activeDesign.selectedComponentId!, { properties: { src: dataUri } });
+          updateComponent(selectedComponentId, { properties: { src: dataUri } });
           toast({ title: "Image Uploaded", description: "Local image set as source." });
         };
         reader.readAsDataURL(file);
@@ -174,8 +199,8 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     };
 
     const handleImageFromModal = (imageUrl: string) => {
-      if (activeDesign?.selectedComponentId && imageUrl) {
-          updateComponent(activeDesign.selectedComponentId, { properties: { src: imageUrl } });
+      if (selectedComponentId && imageUrl) {
+          updateComponent(selectedComponentId, { properties: { src: imageUrl } });
           toast({ title: "Image Source Updated", description: "Image source set from modal." });
       }
     };
@@ -332,6 +357,9 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     }
     const isCoreScaffoldElement = CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponent.id) && !selectedComponent.templateIdRef;
     
+    const isLazyContainer = ['LazyColumn', 'LazyRow'].includes(selectedComponent.type);
+    const availableChildTypes = Object.keys(propertyDefinitions).filter(type => !['Scaffold', 'TopAppBar', 'BottomNavigationBar'].includes(type));
+    
     return (
       <div className="h-full flex flex-col">
         <div className="flex items-center justify-between mb-1 shrink-0">
@@ -350,6 +378,49 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
           <Label htmlFor="componentName" className="text-xs">Instance Name</Label>
           <Input id="componentName" type="text" value={selectedComponent.name} onChange={handleNameChange} className="h-8 text-sm mt-1.5" disabled={isCoreScaffoldElement} />
         </div>
+
+        {isLazyContainer && (
+            <div className='mb-4 shrink-0 border border-sidebar-border rounded-md p-3 space-y-2 bg-muted/20'>
+                <h3 className='text-sm font-medium text-sidebar-foreground'>Generate Children</h3>
+                <div className='flex gap-2'>
+                    <div className='flex-1 space-y-1'>
+                        <Label htmlFor='child-count' className='text-xs'>Count</Label>
+                        <Input
+                            id='child-count'
+                            type='number'
+                            value={childGenerationCount}
+                            onChange={(e) => setChildGenerationCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                            min={1}
+                            className='h-8 text-sm'
+                        />
+                    </div>
+                    <div className='flex-1 space-y-1'>
+                        <Label htmlFor='child-type' className='text-xs'>Component Type</Label>
+                        <Select value={childGenerationType} onValueChange={setChildGenerationType}>
+                             <SelectTrigger id="child-type" className="h-8 text-sm">
+                                <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <optgroup label="Standard">
+                                    {availableChildTypes.map(type => (
+                                        <SelectItem key={type} value={type}>{getComponentDisplayName(type)}</SelectItem>
+                                    ))}
+                                </optgroup>
+                                <optgroup label="Custom">
+                                     {customComponentTemplates.map(template => (
+                                        <SelectItem key={template.templateId} value={template.templateId}>{template.name}</SelectItem>
+                                     ))}
+                                </optgroup>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <Button size="sm" className='w-full h-8' onClick={handlePopulateLazyContainer}>
+                    <CopyPlus className='w-4 h-4 mr-2' />
+                    Generate
+                </Button>
+            </div>
+        )}
 
         {componentPropsDef.length === 0 && !activeDesign.editingTemplateInfo ? (
           <div className="flex-grow flex items-center justify-center min-h-0">

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { ReactNode} from 'react';
@@ -43,6 +44,7 @@ interface DesignContextType extends DesignState {
   deleteLayout: (firestoreId: string) => Promise<void>;
   addImageToGallery: (url: string) => Promise<{success: boolean, message: string}>;
   removeImageFromGallery: (id: string) => Promise<{success: boolean, message: string}>;
+  populateLazyContainer: (parentId: string, componentTypeOrTemplateId: string, count: number) => void;
   isLoadingCustomTemplates: boolean;
   isLoadingLayouts: boolean;
   
@@ -571,6 +573,74 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     });
   }, [updateActiveDesignWithHistory, designState.customComponentTemplates]);
 
+  const populateLazyContainer = useCallback((
+    parentId: string,
+    componentTypeOrTemplateId: string,
+    count: number
+  ) => {
+    updateActiveDesignWithHistory(activeDesign => {
+      let { components: updatedComponentsList, nextId: currentNextId } = deepClone(activeDesign);
+      
+      const parentIdx = updatedComponentsList.findIndex(c => c.id === parentId);
+      if (parentIdx === -1) return null;
+      
+      const parent = updatedComponentsList[parentIdx];
+      if (!isContainerType(parent.type, designState.customComponentTemplates)) return null;
+
+      let allNewComponents: DesignComponent[] = [];
+      let newChildIds: string[] = [];
+      let lastSelectedId: string | null = null;
+
+      for (let i = 0; i < count; i++) {
+        if (componentTypeOrTemplateId.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
+          const template = designState.customComponentTemplates.find(t => t.templateId === componentTypeOrTemplateId);
+          if (template) {
+            const idMap: Record<string, string> = {};
+            const newTemplateComponents: DesignComponent[] = deepClone(template.componentTree).map((c: DesignComponent) => {
+                const newId = `comp-${currentNextId++}`;
+                idMap[c.id] = newId;
+                return { ...c, id: newId };
+            });
+
+            newTemplateComponents.forEach(c => {
+                c.parentId = c.parentId ? idMap[c.parentId] : null;
+                if (c.properties.children) {
+                    c.properties.children = c.properties.children.map(childId => idMap[childId]);
+                }
+            });
+            
+            const rootOfPasted = newTemplateComponents.find(c => c.parentId === null)!;
+            rootOfPasted.parentId = parentId;
+            rootOfPasted.templateIdRef = template.templateId;
+            rootOfPasted.name = `${template.name} ${i + 1}`;
+            
+            allNewComponents.push(...newTemplateComponents);
+            newChildIds.push(rootOfPasted.id);
+            lastSelectedId = rootOfPasted.id;
+          }
+        } else {
+          const newId = `comp-${currentNextId++}`;
+          const newComp: DesignComponent = {
+            id: newId,
+            type: componentTypeOrTemplateId as ComponentType,
+            name: `${getComponentDisplayName(componentTypeOrTemplateId as ComponentType)} ${newId.split('-')[1]}`,
+            properties: { ...getDefaultProperties(componentTypeOrTemplateId as ComponentType, newId) },
+            parentId: parentId,
+          };
+          allNewComponents.push(newComp);
+          newChildIds.push(newId);
+          lastSelectedId = newId;
+        }
+      }
+      
+      updatedComponentsList.push(...allNewComponents);
+      parent.properties.children = [...(parent.properties.children || []), ...newChildIds];
+      updatedComponentsList[parentIdx] = parent;
+      
+      return { components: updatedComponentsList, nextId: currentNextId, selectedComponentId: lastSelectedId };
+    });
+  }, [updateActiveDesignWithHistory, designState.customComponentTemplates]);
+
 
   const deleteComponent = React.useCallback((id: string) => {
     updateActiveDesignWithHistory(activeDesign => {
@@ -1092,6 +1162,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     saveSelectedAsCustomTemplate, loadTemplateForEditing, updateCustomTemplate, deleteCustomTemplate,
     saveCurrentCanvasAsLayout, loadLayout, loadLayoutForEditing, updateLayout, deleteLayout,
     addImageToGallery, removeImageFromGallery,
+    populateLazyContainer,
     isLoadingCustomTemplates,
     isLoadingLayouts,
     zoomLevel, setZoomLevel,
