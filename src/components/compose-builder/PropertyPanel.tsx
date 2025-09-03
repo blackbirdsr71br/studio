@@ -282,7 +282,12 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
 
 
       const group = propDef.group || 'General';
-      if (!groupedProperties[group]) { groupedProperties[group] = []; if (!propertyGroups.includes(group)) { propertyGroups.push('group'); } }
+      if (!groupedProperties[group]) { 
+          groupedProperties[group] = []; 
+          if (!propertyGroups.includes(group)) { 
+              propertyGroups.push(group);
+          } 
+      }
 
       let currentValue = selectedComponent.properties[propDef.name];
       if (['paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd'].includes(propDef.name) && currentValue === undefined) {
