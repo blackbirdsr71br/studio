@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useRef, ChangeEvent } from 'react';
@@ -29,7 +28,7 @@ import { Separator } from '../ui/separator';
 import type { ImageSourceModalRef } from './ImageSourceModal';
 import type { BaseComponentProps, ClickAction } from '@/types/compose-spec';
 import { ComponentTreeView } from './ComponentTreeView';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '../ui/select';
 
 interface GroupedProperties {
   [groupName: string]: ReactNode[];
@@ -283,7 +282,7 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
 
 
       const group = propDef.group || 'General';
-      if (!groupedProperties[group]) { groupedProperties[group] = []; if (!propertyGroups.includes(group)) { propertyGroups.push(group); } }
+      if (!groupedProperties[group]) { groupedProperties[group] = []; if (!propertyGroups.includes(group)) { propertyGroups.push('group'); } }
 
       let currentValue = selectedComponent.properties[propDef.name];
       if (['paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd'].includes(propDef.name) && currentValue === undefined) {
@@ -401,16 +400,20 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
                                 <SelectValue placeholder="Select type" />
                             </SelectTrigger>
                             <SelectContent>
-                                <optgroup label="Standard">
+                                <SelectGroup>
+                                    <SelectLabel>Standard</SelectLabel>
                                     {availableChildTypes.map(type => (
                                         <SelectItem key={type} value={type}>{getComponentDisplayName(type)}</SelectItem>
                                     ))}
-                                </optgroup>
-                                <optgroup label="Custom">
-                                     {customComponentTemplates.map(template => (
-                                        <SelectItem key={template.templateId} value={template.templateId}>{template.name}</SelectItem>
-                                     ))}
-                                </optgroup>
+                                </SelectGroup>
+                                {customComponentTemplates.length > 0 && (
+                                    <SelectGroup>
+                                        <SelectLabel>Custom</SelectLabel>
+                                        {customComponentTemplates.map(template => (
+                                            <SelectItem key={template.templateId} value={template.templateId}>{template.name}</SelectItem>
+                                        ))}
+                                    </SelectGroup>
+                                )}
                             </SelectContent>
                         </Select>
                     </div>
