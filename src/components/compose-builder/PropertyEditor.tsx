@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { ChangeEvent } from 'react';
@@ -6,14 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { ComponentProperty, ComponentPropertyOption } from '@/types/compose-spec';
+import type { ComponentProperty, ComponentPropertyOption, ClickAction } from '@/types/compose-spec';
 import { Button } from '../ui/button';
 import { Droplet } from 'lucide-react';
 
 interface PropertyEditorProps {
   property: Omit<ComponentProperty, 'value'>; // Definition of the property
-  currentValue: string | number | boolean; // Actual current value from the component
-  onChange: (value: string | number | boolean) => void;
+  currentValue: string | number | boolean | ClickAction; // Actual current value from the component
+  onChange: (value: string | number | boolean | ClickAction) => void;
 }
 
 export function PropertyEditor({ property, currentValue, onChange }: PropertyEditorProps) {
@@ -46,6 +47,14 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
     onChange(value);
   };
 
+  const handleActionChange = (field: 'type' | 'value', value: string) => {
+    const newAction: ClickAction = {
+      ...(currentValue as ClickAction),
+      [field]: value
+    };
+    onChange(newAction);
+  };
+
   const handleTransparentClick = () => {
     if (currentValue === 'transparent') {
       onChange('#FFFFFF');
@@ -58,6 +67,36 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
   const isTransparent = currentValue === 'transparent';
 
   switch (property.type) {
+    case 'action':
+      const action = currentValue as ClickAction || { type: 'SHOW_TOAST', value: 'Clicked' };
+      return (
+        <div className="space-y-3 p-2 my-2 border rounded-md border-sidebar-border">
+          <div>
+            <Label htmlFor={`${id}-type`} className="text-xs">Action Type</Label>
+            <Select value={action.type} onValueChange={(v) => handleActionChange('type', v)}>
+              <SelectTrigger id={`${id}-type`} className="h-8 text-sm mt-1">
+                <SelectValue placeholder="Select an action type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="SHOW_TOAST">Show Toast</SelectItem>
+                <SelectItem value="NAVIGATE">Navigate</SelectItem>
+                <SelectItem value="CUSTOM_EVENT">Custom Event</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+             <Label htmlFor={`${id}-value`} className="text-xs">Action Value</Label>
+             <Input
+                id={`${id}-value`}
+                type="text"
+                value={action.value}
+                onChange={(e) => handleActionChange('value', e.target.value)}
+                placeholder="e.g., /profile, Item clicked, etc."
+                className="h-8 text-sm mt-1"
+             />
+          </div>
+        </div>
+      )
     case 'string':
       return (
         <div className="space-y-1.5">

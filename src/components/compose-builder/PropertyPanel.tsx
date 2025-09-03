@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useRef, ChangeEvent } from 'react';
@@ -26,7 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 import { generateImageFromHintAction } from '@/app/actions';
 import { Separator } from '../ui/separator';
 import type { ImageSourceModalRef } from './ImageSourceModal';
-import type { BaseComponentProps } from '@/types/compose-spec';
+import type { BaseComponentProps, ClickAction } from '@/types/compose-spec';
 import { ComponentTreeView } from './ComponentTreeView';
 
 interface GroupedProperties {
@@ -76,6 +77,7 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     if (propDef.type === 'number') return 0;
     if (propDef.type === 'boolean') return false;
     if (propDef.type === 'enum' && propDef.options && propDef.options.length > 0) return propDef.options[0].value;
+    if (propDef.type === 'action') return { type: 'SHOW_TOAST', value: 'Clicked' };
     return '';
   };
 
@@ -94,11 +96,11 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     }
     const componentPropsDef = (propertyDefinitions[componentPropsDefSourceType as ComponentType] || []) as (Omit<ComponentProperty, 'value'> & { group: string })[];
 
-    const handlePropertyChange = (propName: string, value: string | number | boolean) => {
-      let actualValue = value;
+    const handlePropertyChange = (propName: string, value: string | number | boolean | ClickAction) => {
+      let actualValue: any = value;
       const propDefinition = componentPropsDef.find(p => p.name === propName);
       if (propDefinition?.type === 'number' && value === '') {
-        actualValue = undefined as any;
+        actualValue = undefined;
       }
 
       const updates: Partial<BaseComponentProps> = { [propName]: actualValue };
@@ -241,8 +243,8 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     }
 
     componentPropsDef.forEach((propDef) => {
-      if (propDef.name === 'clickId' && !selectedComponent.properties.clickable) {
-        return; // Don't render clickId if component is not clickable
+      if (propDef.name === 'onClickAction' && !selectedComponent.properties.clickable) {
+        return; 
       }
       
       const isButtonShape = selectedComponent.type === 'Button' && selectedComponent.properties.shape === 'RoundedCorner';

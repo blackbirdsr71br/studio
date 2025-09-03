@@ -1,4 +1,5 @@
 
+
 import { z } from 'zod';
 
 export type ComponentType =
@@ -41,12 +42,17 @@ export interface ComponentPropertyOption {
 }
 export interface ComponentProperty {
   name:string;
-  type: 'string' | 'number' | 'color' | 'boolean' | 'enum';
+  type: 'string' | 'number' | 'color' | 'boolean' | 'enum' | 'action';
   value: string | number | boolean;
   options?: ComponentPropertyOption[];
   label: string;
   placeholder?: string;
   group: 'Layout' | 'Appearance' | 'Content' | 'Behavior' | 'Slots' | 'Save' | 'Group';
+}
+
+export interface ClickAction {
+  type: 'NAVIGATE' | 'SHOW_TOAST' | 'CUSTOM_EVENT';
+  value: string;
 }
 
 export interface BaseComponentProps {
@@ -102,7 +108,7 @@ export interface BaseComponentProps {
   title?: string;
   selfAlign?: 'Inherit' | 'Start' | 'Center' | 'End';
   clickable?: boolean;
-  clickId?: string;
+  onClickAction?: ClickAction; // Replaces clickId
   iconName?: string;
   iconPosition?: 'Start' | 'End';
   iconSize?: number;
@@ -184,6 +190,11 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
     fillMaxSize: false, fillMaxWidth: false, fillMaxHeight: false,
     selfAlign: 'Inherit' as 'Inherit' | 'Start' | 'Center' | 'End',
   };
+   const defaultClickableBehavior = {
+    clickable: false,
+    onClickAction: { type: 'SHOW_TOAST', value: 'Component clicked!' } as ClickAction,
+  };
+
   switch (type) {
     case 'Scaffold':
       return {
@@ -210,8 +221,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         textDecoration: 'None',
         lineHeight: 1,
         selfAlign: 'Inherit',
-        clickable: false,
-        clickId: 'text_clicked',
+        ...defaultClickableBehavior,
       };
     case 'Button':
       return {
@@ -224,8 +234,6 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         width: 120,
         height: 50,
         selfAlign: 'Inherit',
-        clickable: false,
-        clickId: 'button_clicked',
         shape: 'RoundedCorner',
         cornerRadius: 4,
         cornerRadiusTopLeft: 4,
@@ -236,6 +244,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         iconPosition: 'Start',
         iconSize: 16,
         iconSpacing: 8,
+        ...defaultClickableBehavior,
+        onClickAction: { type: 'SHOW_TOAST', value: 'Button tapped!' } as ClickAction,
       };
     case 'Image':
       return {
@@ -250,8 +260,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         cornerRadiusTopLeft: 0, cornerRadiusTopRight: 0, cornerRadiusBottomRight: 0, cornerRadiusBottomLeft: 0,
         padding: 0,
         selfAlign: 'Inherit',
-        clickable: false,
-        clickId: 'image_clicked',
+        ...defaultClickableBehavior,
       };
     case 'Column':
       return {
@@ -262,8 +271,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         width: 200, height: 200, itemSpacing: 8,
         verticalArrangement: 'Top', horizontalAlignment: 'Start',
         selfAlign: 'Inherit',
-        clickable: false,
-        clickId: 'column_clicked',
+        ...defaultClickableBehavior,
       };
     case 'Row':
       return {
@@ -274,8 +282,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         width: 412, height: 100, itemSpacing: 8,
         horizontalArrangement: 'Start', verticalAlignment: 'Top',
         selfAlign: 'Inherit',
-        clickable: false,
-        clickId: 'row_clicked',
+        ...defaultClickableBehavior,
       };
     case 'Box':
     case 'Group':
@@ -287,8 +294,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         width: 100, height: 100,
         cornerRadiusTopLeft: 4, cornerRadiusTopRight: 4, cornerRadiusBottomRight: 4, cornerRadiusBottomLeft: 4,
         selfAlign: 'Inherit',
-        clickable: false,
-        clickId: type === 'Group' ? 'group_clicked' : 'box_clicked',
+        ...defaultClickableBehavior,
       };
     case 'Card':
       return {
@@ -303,8 +309,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         cornerRadiusTopLeft: 8, cornerRadiusTopRight: 8, cornerRadiusBottomRight: 8, cornerRadiusBottomLeft: 8,
         borderWidth: 0, borderColor: '#000000',
         selfAlign: 'Inherit',
-        clickable: false,
-        clickId: 'card_clicked',
+        ...defaultClickableBehavior,
       };
     case 'LazyColumn':
       const isContentArea = componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID;
@@ -322,8 +327,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         verticalArrangement: 'Top', horizontalAlignment: 'Start',
         paddingBottom: isContentArea ? (8) : 8, // Add some bottom padding for scroll room
         selfAlign: 'Inherit',
-        clickable: false,
-        clickId: 'lazy_column_clicked',
+        ...defaultClickableBehavior,
       };
     case 'LazyRow':
       return {
@@ -336,8 +340,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         userScrollEnabled: true, reverseLayout: false,
         horizontalArrangement: 'Start', verticalAlignment: 'Top',
         selfAlign: 'Inherit',
-        clickable: false,
-        clickId: 'lazy_row_clicked',
+        ...defaultClickableBehavior,
       };
     case 'LazyVerticalGrid':
       return {
@@ -349,8 +352,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         width: 412, height: 300, columns: 2, itemSpacing: 8,
         verticalArrangement: 'Top', horizontalAlignment: 'Start',
         selfAlign: 'Inherit',
-        clickable: false,
-        clickId: 'lazy_vertical_grid_clicked',
+        ...defaultClickableBehavior,
       };
     case 'LazyHorizontalGrid':
       return {
@@ -362,8 +364,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         width: undefined, height: 200, rows: 2, itemSpacing: 8,
         horizontalArrangement: 'Start', verticalAlignment: 'Top',
         selfAlign: 'Inherit',
-        clickable: false,
-        clickId: 'lazy_horizontal_grid_clicked',
+        ...defaultClickableBehavior,
       };
     case 'Spacer':
       return {
@@ -374,7 +375,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         height: 8,
         selfAlign: undefined,
         clickable: false,
-        clickId: 'spacer_clicked',
+        onClickAction: undefined,
       };
     case 'TopAppBar': // New default for TopAppBar
       return {
@@ -392,8 +393,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         itemSpacing: 8,
         horizontalArrangement: 'Start', // For title and actions
         verticalAlignment: 'CenterVertically',
-        clickable: false,
-        clickId: 'top_app_bar_clicked',
+        ...defaultClickableBehavior,
       };
     case 'BottomNavigationBar': // New default for BottomNavigationBar
       return {
@@ -409,8 +409,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         itemSpacing: 0, // Items usually have their own padding
         horizontalArrangement: 'SpaceAround', // Common for nav items
         verticalAlignment: 'CenterVertically',
-        clickable: false,
-        clickId: 'bottom_nav_bar_clicked',
+        ...defaultClickableBehavior,
       };
     case 'AnimatedContent':
       return {
@@ -423,8 +422,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         animationType: 'Fade',
         animationDuration: 300,
         selfAlign: 'Inherit',
-        clickable: false,
-        clickId: 'animated_content_clicked',
+        ...defaultClickableBehavior,
       };
     default:
       if (type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
@@ -526,7 +524,7 @@ const columnSpecificLayoutProperties: (Omit<ComponentProperty, 'value'>)[] = [
 
 const clickableProperties: (Omit<ComponentProperty, 'value'>)[] = [
     { name: 'clickable', type: 'boolean', label: 'Is Clickable', group: 'Behavior' },
-    { name: 'clickId', type: 'string', label: 'Click ID', placeholder: 'e.g., action_name', group: 'Behavior' },
+    { name: 'onClickAction', type: 'action', label: 'On-Click Action', group: 'Behavior' },
 ];
 
 const cornerRadiusProperties: (Omit<ComponentProperty, 'value'>)[] = [
@@ -777,7 +775,8 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '8', group: 'Layout' },
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '8', group: 'Layout' },
     { name: 'layoutWeight', type: 'number', label: 'Layout Weight', placeholder: '0 (no weight)', group: 'Layout' },
-    ...clickableProperties,
+    { name: 'clickable', type: 'boolean', label: 'Is Clickable', group: 'Behavior' },
+    { name: 'onClickAction', type: 'action', label: 'On-Click Action', group: 'Behavior' },
   ],
   TopAppBar: [ // Properties specific to TopAppBar slot component
     ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd', 'layoutWeight', 'fillMaxHeight', 'height'].includes(p.name) ), // Basic layout, but height is fixed/managed
@@ -860,6 +859,11 @@ export function isContainerType(type: ComponentType | string, customTemplates?: 
 
 const ColorStringSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").or(z.literal('transparent'));
 
+const ClickActionSchema = z.object({
+  type: z.enum(['NAVIGATE', 'SHOW_TOAST', 'CUSTOM_EVENT']),
+  value: z.string(),
+});
+
 const BaseModalPropertiesSchema = z.object({
   text: z.string().optional(),
   fontFamily: z.string().optional(),
@@ -910,7 +914,7 @@ const BaseModalPropertiesSchema = z.object({
   title: z.string().optional(),
   selfAlign: z.enum(['Inherit', 'Start', 'Center', 'End']).optional(),
   clickable: z.boolean().optional(),
-  clickId: z.string().optional(),
+  onClickAction: ClickActionSchema.optional(), // Replaces clickId
   iconName: z.string().optional(),
   iconPosition: z.enum(['Start', 'End']).optional(),
   iconSize: z.number().min(0).optional(),
