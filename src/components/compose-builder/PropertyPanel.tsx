@@ -78,7 +78,7 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
   };
 
   const handlePopulateLazyContainer = () => {
-    if (selectedComponent && (selectedComponent.type === 'LazyColumn' || selectedComponent.type === 'LazyRow')) {
+    if (selectedComponent && ['LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid'].includes(selectedComponent.type)) {
         if (childGenerationCount > 0 && childGenerationType) {
             populateLazyContainer(selectedComponent.id, childGenerationType, childGenerationCount);
             toast({
@@ -363,7 +363,7 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     }
     const isCoreScaffoldElement = CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponent.id) && !selectedComponent.templateIdRef;
     
-    const isLazyContainer = ['LazyColumn', 'LazyRow'].includes(selectedComponent.type);
+    const isLazyContainer = ['LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid'].includes(selectedComponent.type);
     const availableChildTypes = Object.keys(propertyDefinitions).filter(type => !['Scaffold', 'TopAppBar', 'BottomNavigationBar'].includes(type));
     
     return (
