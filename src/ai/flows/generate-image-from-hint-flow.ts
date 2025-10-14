@@ -26,7 +26,7 @@ const generateImageFromHintFlow = ai.defineFlow(
         imageGenerationPromises.push(
             ai.generate({
             // IMPORTANT: Use the specified model for image generation
-            model: 'googleai/gemini-2.0-flash-preview-image-generation', 
+            model: 'googleai/gemini-1.5-flash-latest', 
             prompt: [{ text: `Generate a high-quality, visually appealing image suitable for an application UI, based on the following hint: "${input.hint}". Avoid text in the image unless explicitly requested. Focus on clear subjects and good composition. Style variation ${i + 1}.`}],
             config: {
               responseModalities: ['TEXT', 'IMAGE'], // Must provide both
