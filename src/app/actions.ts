@@ -14,7 +14,7 @@ import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { hexToHslCssString } from '@/lib/utils';
-import { ai } from '@/ai/genkit';
+import { listModels } from 'genkit';
 
 // Helper function to remove properties with empty string or null values
 const cleanEmptyOrNullProperties = (properties: Record<string, any>): Record<string, any> => {
@@ -670,7 +670,7 @@ export async function searchWebForImagesAction(query: string): Promise<{ imageUr
 
 export async function listModelsAction(): Promise<{models: string[], error?: string}> {
     try {
-        const allModels = await ai.listModels();
+        const allModels = await listModels();
         const textModels = allModels
             .filter(m => m.supportsGenerate)
             .map(m => m.name)
