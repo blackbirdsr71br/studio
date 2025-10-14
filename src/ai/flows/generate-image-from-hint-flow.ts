@@ -25,11 +25,11 @@ const generateImageFromHintFlow = ai.defineFlow(
       for (let i = 0; i < NUM_IMAGES_TO_GENERATE; i++) {
         imageGenerationPromises.push(
             ai.generate({
-            // IMPORTANT: Use the specified model for image generation
+            // CORRECTED: Use a model and config appropriate for image generation
             model: 'googleai/gemini-1.5-flash-latest', 
-            prompt: [{ text: `Generate a high-quality, visually appealing image suitable for an application UI, based on the following hint: "${input.hint}". Avoid text in the image unless explicitly requested. Focus on clear subjects and good composition. Style variation ${i + 1}.`}],
+            prompt: `Generate a high-quality, visually appealing image suitable for an application UI, based on the following hint: "${input.hint}". Avoid text in the image unless explicitly requested. Focus on clear subjects and good composition. Style variation ${i + 1}.`,
             config: {
-              responseModalities: ['TEXT', 'IMAGE'], // Must provide both
+              responseModalities: ['TEXT', 'IMAGE'], // CRITICAL: This enables image generation
             },
           })
         );
@@ -39,7 +39,7 @@ const generateImageFromHintFlow = ai.defineFlow(
 
       const imageUrls = results.map(result => {
         if (!result.media || !result.media.url) {
-          console.error('Image generation returned no media or URL for hint:', input.hint, 'Full response:', result.media);
+          console.error('Image generation returned no media or URL for hint:', input.hint, 'Full response:', result);
           return null;
         }
         return result.media.url;
@@ -62,5 +62,3 @@ const generateImageFromHintFlow = ai.defineFlow(
     }
   }
 );
-
-    
