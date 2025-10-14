@@ -10,6 +10,7 @@
 
 import {ai} from '@/ai/genkit';
 import { GenerateDynamicUiComponentInputSchema, GenerateDynamicUiComponentOutputSchema, type GenerateDynamicUiComponentInput, type GenerateDynamicUiComponentOutput } from '@/types/ai-spec';
+import { googleAI } from '@genkit-ai/googleai';
 
 export async function generateDynamicUiComponent(input: GenerateDynamicUiComponentInput): Promise<GenerateDynamicUiComponentOutput> {
   return generateDynamicUiComponentFlow(input);
@@ -40,6 +41,7 @@ You MUST ONLY generate the content for these two files. The rest of the project 
      - Annotate every data class with \`@Serializable\`.
      - The DTOs must account for all properties seen in the input \`canvasJson\`, including \`id\`, \`type\`, \`name\`, \`parentId\`, \`properties\`, and any nested children.
      - The \`children\` property within \`PropertiesDto\` should be of type \`List<ComponentDto>? = null\`.
+     - The \`onClickAction\` property should be represented by a serializable data class, e.g., \`ClickActionDto\`.
 
 **2. \`DynamicUiComponent.kt\` File Content:**
    - **Package:** \`com.example.myapplication.presentation.components\`
@@ -65,7 +67,7 @@ You MUST ONLY generate the content for these two files. The rest of the project 
      - Apply modifiers correctly based on the properties in the DTOs. Use \`.dp\` and \`.sp\` for dimensions and provide safe defaults (e.g., \`properties?.width?.toIntOrNull()?.dp ?: 100.dp\`, \`properties?.padding?.dp ?: 0.dp\`).
      - Use \`io.coil.compose.AsyncImage\` for rendering images from URLs.
      - It MUST handle all component types and properties present in the \`canvasJson\`.
-     - Ensure the generated code is clean, idiomatic, and functional using Material 3 components.
+     - It MUST correctly handle the \`onClickAction\` property, adding a \`Modifier.clickable {}\` block to the relevant components.
 
 **Final Output:**
 Provide a single JSON object with two keys: \`dtoFileContent\` and \`rendererFileContent\`. The values should be the complete, raw string content for each respective Kotlin file.
@@ -79,7 +81,14 @@ const generateDynamicUiComponentFlow = ai.defineFlow(
     outputSchema: GenerateDynamicUiComponentOutputSchema,
   },
   async (input) => {
-    const { output } = await prompt(input);
+    // Dynamically select the model based on the input
+    const model = googleAI.model(input.modelName);
+
+    const { output } = await ai.generate({
+        prompt,
+        model,
+        promptArgs: { canvasJson: input.canvasJson }
+    });
 
     if (!output || !output.dtoFileContent || !output.rendererFileContent) {
       console.error("AI generation failed or returned invalid structure. Output:", output);

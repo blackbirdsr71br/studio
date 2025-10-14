@@ -1,11 +1,11 @@
 
 'use client';
 
-import React, { useState, useImperativeHandle, forwardRef, useCallback } from 'react';
+import React, { useState, useImperativeHandle, forwardRef, useCallback, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useDesign } from '@/contexts/DesignContext';
-import { generateProjectFromTemplatesAction } from '@/app/actions';
+import { generateProjectFromTemplatesAction, listModelsAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Copy, Download, Wand2 } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
@@ -14,6 +14,8 @@ import { githubLight, githubDark } from '@uiw/codemirror-theme-github';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import JSZip from 'jszip';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Label } from '../ui/label';
 
 
 export interface GenerateCodeModalRef {
@@ -29,16 +31,48 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
   const { toast } = useToast();
   const { resolvedTheme } = useTheme();
 
+  // New state for AI models
+  const [models, setModels] = useState<string[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string>('');
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [modelError, setModelError] = useState<string | null>(null);
+
+  const fetchModels = useCallback(async () => {
+    setIsLoadingModels(true);
+    setModelError(null);
+    try {
+      const result = await listModelsAction();
+      if (result.error) {
+        setModelError(result.error);
+        setModels([]);
+      } else {
+        setModels(result.models);
+        // Set a sensible default, prioritizing 'pro' models
+        const proModel = result.models.find(m => m.includes('pro'));
+        setSelectedModel(proModel || result.models[0] || '');
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Failed to fetch AI models.";
+      setModelError(message);
+    } finally {
+      setIsLoadingModels(false);
+    }
+  }, []);
+
   const handleGenerateCode = useCallback(async () => {
     if (!activeDesign) {
         setError("No active design to generate code from.");
+        return;
+    }
+    if (!selectedModel) {
+        setError("Please select an AI model to use for generation.");
         return;
     }
     setIsLoading(true);
     setError(null);
     setGeneratedProjectFiles(null);
     try {
-      const result = await generateProjectFromTemplatesAction(activeDesign.components, customComponentTemplates);
+      const result = await generateProjectFromTemplatesAction(activeDesign.components, customComponentTemplates, selectedModel);
       if (result.error) {
         setError(result.error);
         setGeneratedProjectFiles(null);
@@ -56,17 +90,23 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
     } finally {
       setIsLoading(false);
     }
-  }, [activeDesign, customComponentTemplates]);
+  }, [activeDesign, customComponentTemplates, selectedModel]);
 
   useImperativeHandle(ref, () => ({
     openModal: () => {
       setIsOpen(true);
-      // Reset states on open
       setGeneratedProjectFiles(null);
       setError(null);
-      handleGenerateCode();
+      fetchModels(); // Fetch models when modal opens
     }
   }));
+
+  useEffect(() => {
+    if (isOpen && models.length > 0 && !isLoadingModels && !modelError) {
+        handleGenerateCode();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, models, isLoadingModels, modelError]); // Rerun generation if models are fetched after open
   
   const handleCopyToClipboard = async () => {
     const codeToCopy = generatedProjectFiles?.['app/src/main/java/com/example/myapplication/presentation/components/DynamicUiComponent.kt'] || '';
@@ -123,6 +163,30 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
           </DialogDescription>
         </DialogHeader>
 
+        <div className="space-y-1.5">
+            <Label htmlFor="model-select">AI Model</Label>
+            {isLoadingModels ? (
+                <div className="flex items-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Fetching available models...</div>
+            ) : modelError ? (
+                 <Alert variant="destructive" className="py-2">
+                    <AlertTitle className="text-sm">Could not load models</AlertTitle>
+                    <AlertDescription className="text-xs">{modelError}</AlertDescription>
+                </Alert>
+            ): (
+                 <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isLoading}>
+                    <SelectTrigger id="model-select" className="h-9">
+                        <SelectValue placeholder="Select an AI model..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {models.map(model => (
+                            <SelectItem key={model} value={model}>{model}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            )}
+        </div>
+
+
         <div className="flex-grow my-2 rounded-md border bg-muted/30 overflow-y-auto relative min-h-[400px]">
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
@@ -147,7 +211,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
         </div>
         
         <DialogFooter className="sm:justify-between flex-wrap gap-2 pt-4 border-t shrink-0">
-           <Button variant="outline" onClick={handleGenerateCode} disabled={isLoading}>
+           <Button variant="outline" onClick={handleGenerateCode} disabled={isLoading || isLoadingModels || !selectedModel}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
             Regenerate
           </Button>
@@ -166,5 +230,3 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
 });
 
 GenerateCodeModal.displayName = 'GenerateCodeModal';
-
-    

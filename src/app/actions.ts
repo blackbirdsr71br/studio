@@ -14,6 +14,7 @@ import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { hexToHslCssString } from '@/lib/utils';
+import { listModels } from 'genkit';
 
 // Helper function to remove properties with empty string or null values
 const cleanEmptyOrNullProperties = (properties: Record<string, any>): Record<string, any> => {
@@ -148,7 +149,7 @@ const PREFERRED_PROPERTY_ORDER = [
   'shape', 'cornerRadius', 'borderWidth', 'borderColor',
   'iconName', 'iconPosition', 'iconSize', 'iconSpacing',
   'animationType', 'animationDuration',
-  'clickable', 'clickId', 'userScrollEnabled', 'reverseLayout',
+  'clickable', 'onClickAction', 'userScrollEnabled', 'reverseLayout',
   'columns', 'rows',
 ];
 
@@ -588,6 +589,7 @@ export async function updateGlobalStylesheetAction(
 export async function generateProjectFromTemplatesAction(
   allComponents: DesignComponent[],
   customComponentTemplates: CustomComponentTemplate[],
+  modelName: string,
 ): Promise<{ files?: Record<string, string>; error?: string }> {
   try {
     const canvasJsonForParser = await getDesignComponentsAsJsonAction(allComponents, customComponentTemplates, true);
@@ -606,7 +608,10 @@ export async function generateProjectFromTemplatesAction(
 
     const projectFiles = getAndroidProjectTemplates();
     
-    const input: GenerateDynamicUiComponentInput = { canvasJson: canvasJsonForParser };
+    const input: GenerateDynamicUiComponentInput = { 
+      canvasJson: canvasJsonForParser,
+      modelName,
+    };
     const dynamicCodeResult = await generateDynamicUiComponent(input);
 
     if (dynamicCodeResult.error) {
@@ -661,4 +666,18 @@ export async function searchWebForImagesAction(query: string): Promise<{ imageUr
     const message = error instanceof Error ? error.message : "An unknown error occurred during web image search.";
     return { imageUrls: null, error: message };
   }
+}
+
+export async function listModelsAction(): Promise<{models: string[], error?: string}> {
+    try {
+        const allModels = await listModels();
+        const textModels = allModels
+            .filter(m => m.supportsGenerate)
+            .map(m => m.name)
+            .filter(name => !name.includes('vision') && !name.includes('embedding') && !name.includes('image'));
+        return { models: textModels };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "An unknown error occurred while fetching AI models.";
+        return { models: [], error: message };
+    }
 }
