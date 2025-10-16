@@ -219,7 +219,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         fontStyle: 'Normal',
         textAlign: 'Start',
         textDecoration: 'None',
-        lineHeight: 1,
+        lineHeight: 1.5,
         selfAlign: 'Inherit',
         ...defaultClickableBehavior,
       };
@@ -623,7 +623,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     ...fontProperties,
     { name: 'textColor', type: 'color', label: 'Text Color', group: 'Appearance' },
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
-    { name: 'lineHeight', type: 'number', label: 'Line Height (multiplier)', placeholder: '1', group: 'Appearance' },
+    { name: 'lineHeight', type: 'number', label: 'Line Height (multiplier)', placeholder: '1.5', group: 'Appearance' },
     { name: 'maxLines', type: 'number', label: 'Max Lines', placeholder: 'e.g., 2', group: 'Content' },
     {
       name: 'textOverflow',

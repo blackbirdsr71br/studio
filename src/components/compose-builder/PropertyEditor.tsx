@@ -27,7 +27,7 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
       } else {
         const numValue = parseFloat(strValue);
         if (!isNaN(numValue)) {
-          if (property.name === 'layoutWeight') {
+          if (property.name === 'layoutWeight' || property.name === 'lineHeight') {
             onChange(numValue);
           } else {
             onChange(Math.round(numValue));
@@ -123,7 +123,7 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
             placeholder={property.placeholder}
             className="h-8 text-sm"
             min={0}
-            step={property.name === 'layoutWeight' ? '0.1' : '1'}
+            step={property.name === 'layoutWeight' || property.name === 'lineHeight' ? '0.1' : '1'}
           />
         </div>
       );
