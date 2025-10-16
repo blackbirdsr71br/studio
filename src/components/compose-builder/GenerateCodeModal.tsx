@@ -39,6 +39,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
     setGeneratedProjectFiles(null);
     setHasGeneratedOnce(true);
     try {
+      // The action no longer needs a model name.
       const result = await generateProjectFromTemplatesAction(activeDesign.components, customComponentTemplates);
       if (result.error) {
         setError(result.error);
