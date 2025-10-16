@@ -679,5 +679,3 @@ export async function listModelsAction(): Promise<{models: string[], error?: str
         return { models: [], error: message };
     }
 }
-
-    
