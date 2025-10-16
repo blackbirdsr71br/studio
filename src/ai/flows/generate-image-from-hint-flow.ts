@@ -6,25 +6,11 @@
 
 import {ai} from '@/ai/genkit';
 import { GenerateImageFromHintInputSchema, GenerateImageFromHintOutputSchema, type GenerateImageFromHintInput, type GenerateImageFromHintOutput } from '@/types/ai-spec';
-import { googleAI } from '@genkit-ai/googleai';
 import { z } from 'genkit';
 
 export async function generateImageFromHint(input: GenerateImageFromHintInput): Promise<GenerateImageFromHintOutput> {
   return generateImageFromHintFlow(input);
 }
-
-const imageGenerationPrompt = ai.definePrompt(
-  {
-    name: 'imageGenerationPrompt',
-    input: { schema: GenerateImageFromHintInputSchema },
-    output: { schema: z.void() }, // Output is handled by media
-    model: googleAI('gemini-1.5-flash-latest'),
-    prompt: `Generate a high-quality, visually appealing image suitable for an application UI, based on the following hint: "{{hint}}". Avoid text in the image unless explicitly requested. Focus on clear subjects and good composition.`,
-    config: {
-      responseModalities: ['IMAGE'],
-    },
-  }
-)
 
 const generateImageFromHintFlow = ai.defineFlow(
   {
@@ -40,11 +26,10 @@ const generateImageFromHintFlow = ai.defineFlow(
       for (let i = 0; i < NUM_IMAGES_TO_GENERATE; i++) {
         imageGenerationPromises.push(
             ai.generate({
-            // CORRECTED: Use a model and config appropriate for image generation
             model: 'googleai/gemini-1.5-flash-latest', 
             prompt: `Generate a high-quality, visually appealing image suitable for an application UI, based on the following hint: "${input.hint}". Avoid text in the image unless explicitly requested. Focus on clear subjects and good composition. Style variation ${i + 1}.`,
             config: {
-              responseModalities: ['TEXT', 'IMAGE'], // CRITICAL: This enables image generation
+              responseModalities: ['TEXT', 'IMAGE'],
             },
           })
         );
@@ -53,11 +38,12 @@ const generateImageFromHintFlow = ai.defineFlow(
       const results = await Promise.all(imageGenerationPromises);
 
       const imageUrls = results.map(result => {
-        if (!result.media || !result.media.url) {
-          console.error('Image generation returned no media or URL for hint:', input.hint, 'Full response:', result);
-          return null;
+        const mediaPart = result.output?.message.content.find(p => p.media);
+        if (!mediaPart || !mediaPart.media?.url) {
+           console.error('Image generation returned no media or URL for hint:', input.hint, 'Full response:', result);
+           return null;
         }
-        return result.media.url;
+        return mediaPart.media.url;
       }).filter((url): url is string => url !== null);
 
 

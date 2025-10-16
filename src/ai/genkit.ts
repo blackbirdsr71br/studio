@@ -1,11 +1,11 @@
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
 
+// By leaving the googleAI() plugin configuration empty, we allow Genkit to use
+// its default, stable settings for API version and endpoint resolution.
+// Model selection will be handled explicitly in each flow to avoid ambiguity.
 export const ai = genkit({
   plugins: [
-    googleAI({
-      apiVersion: 'v1', // Force stable v1 API
-    }),
+    googleAI(),
   ],
-  model: 'googleai/gemini-1.5-flash', // Set a stable, known-good model
 });
