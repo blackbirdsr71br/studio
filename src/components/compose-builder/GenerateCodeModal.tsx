@@ -122,7 +122,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-grow my-4 rounded-md border bg-muted/30 overflow-y-auto relative min-h-[250px]">
+        <div className="flex-grow my-4 rounded-md border bg-muted/30 overflow-y-auto relative min-h-[300px]">
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />

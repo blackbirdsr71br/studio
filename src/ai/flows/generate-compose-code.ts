@@ -115,4 +115,3 @@ ${input.designJson}
     return { files: finalProjectFiles };
   }
 );
-
