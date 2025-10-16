@@ -19,7 +19,7 @@ const prompt = ai.definePrompt({
   name: 'generateDynamicUiComponentPrompt',
   input: {schema: GenerateDynamicUiComponentInputSchema},
   output: {schema: GenerateDynamicUiComponentOutputSchema},
-  model: 'gemini-1.5-pro-latest', // Hardcode a reliable model here
+  model: 'googleai/gemini-1.5-pro-latest', // CORRECTED: Added 'googleai/' prefix
   prompt: `You are an expert Kotlin and Jetpack Compose developer. Your task is to generate the content for two specific Kotlin files based on an input JSON representing a UI design.
 You MUST ONLY generate the content for these two files. The rest of the project is handled by static templates.
 

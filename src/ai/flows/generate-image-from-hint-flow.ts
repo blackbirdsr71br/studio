@@ -6,10 +6,25 @@
 
 import {ai} from '@/ai/genkit';
 import { GenerateImageFromHintInputSchema, GenerateImageFromHintOutputSchema, type GenerateImageFromHintInput, type GenerateImageFromHintOutput } from '@/types/ai-spec';
+import { googleAI } from '@genkit-ai/googleai';
+import { z } from 'genkit';
 
 export async function generateImageFromHint(input: GenerateImageFromHintInput): Promise<GenerateImageFromHintOutput> {
   return generateImageFromHintFlow(input);
 }
+
+const imageGenerationPrompt = ai.definePrompt(
+  {
+    name: 'imageGenerationPrompt',
+    input: { schema: GenerateImageFromHintInputSchema },
+    output: { schema: z.void() }, // Output is handled by media
+    model: googleAI('gemini-1.5-flash-latest'),
+    prompt: `Generate a high-quality, visually appealing image suitable for an application UI, based on the following hint: "{{hint}}". Avoid text in the image unless explicitly requested. Focus on clear subjects and good composition.`,
+    config: {
+      responseModalities: ['IMAGE'],
+    },
+  }
+)
 
 const generateImageFromHintFlow = ai.defineFlow(
   {
