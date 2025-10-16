@@ -4,7 +4,7 @@
  * @fileOverview A specialized AI flow that generates only the dynamic parts of an Android project:
  * the data transfer objects (DTOs) and the Composable UI renderer.
  *
- * This flow is designed to be called by a server-side action that already has the static
+ * This flow is designed to be called by a server-side action that already has the
  * project template files.
  */
 

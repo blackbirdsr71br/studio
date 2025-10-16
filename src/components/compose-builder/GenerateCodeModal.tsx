@@ -30,6 +30,8 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
   const { activeDesign, customComponentTemplates } = useDesign();
   const { toast } = useToast();
   const { resolvedTheme } = useTheme();
+  
+  const [hasGeneratedOnce, setHasGeneratedOnce] = useState(false);
 
   // New state for AI models
   const [models, setModels] = useState<string[]>([]);
@@ -71,6 +73,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
     setIsLoading(true);
     setError(null);
     setGeneratedProjectFiles(null);
+    setHasGeneratedOnce(true);
     try {
       const result = await generateProjectFromTemplatesAction(activeDesign.components, customComponentTemplates, selectedModel);
       if (result.error) {
@@ -97,16 +100,10 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
       setIsOpen(true);
       setGeneratedProjectFiles(null);
       setError(null);
+      setHasGeneratedOnce(false);
       fetchModels(); // Fetch models when modal opens
     }
   }));
-
-  useEffect(() => {
-    if (isOpen && models.length > 0 && !isLoadingModels && !modelError) {
-        handleGenerateCode();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, models, isLoadingModels, modelError]); // Rerun generation if models are fetched after open
   
   const handleCopyToClipboard = async () => {
     const codeToCopy = generatedProjectFiles?.['app/src/main/java/com/example/myapplication/presentation/components/DynamicUiComponent.kt'] || '';
@@ -197,6 +194,10 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
               <div className="p-4">
                 <Alert variant="destructive"><AlertTitle>Error Generating Project</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>
               </div>
+          ) : !hasGeneratedOnce ? (
+             <div className="flex items-center justify-center h-full">
+                <p className="text-muted-foreground">Click "Generate" to create the project files.</p>
+            </div>
           ) : (
             <CodeMirror
               value={mainFileToDisplay}
@@ -213,7 +214,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
         <DialogFooter className="sm:justify-between flex-wrap gap-2 pt-4 border-t shrink-0">
            <Button variant="outline" onClick={handleGenerateCode} disabled={isLoading || isLoadingModels || !selectedModel}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-            Regenerate
+            {hasGeneratedOnce ? 'Regenerate' : 'Generate'}
           </Button>
           <div className="flex gap-2">
             <Button onClick={handleCopyToClipboard} disabled={!canCopyCode}>
