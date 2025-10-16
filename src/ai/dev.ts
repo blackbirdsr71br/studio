@@ -1,3 +1,4 @@
+
 // IMPORTANT: This line MUST be the first thing executed to ensure env vars are loaded for the server.
 import { config } from 'dotenv';
 config();
