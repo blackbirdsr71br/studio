@@ -72,6 +72,7 @@ You MUST ONLY generate the content for these two files. The rest of the project 
 **Final Output:**
 Provide a single JSON object with two keys: \`dtoFileContent\` and \`rendererFileContent\`. The values should be the complete, raw string content for each respective Kotlin file.
 `,
+  model: googleAI.model('gemini-1.5-pro-latest'),
 });
 
 const generateDynamicUiComponentFlow = ai.defineFlow(
@@ -81,14 +82,8 @@ const generateDynamicUiComponentFlow = ai.defineFlow(
     outputSchema: GenerateDynamicUiComponentOutputSchema,
   },
   async (input) => {
-    // Use a fixed, reliable model for code generation.
-    const model = googleAI.model('gemini-1.5-pro-latest');
-
-    const { output } = await ai.generate({
-        prompt,
-        model,
-        promptArgs: { canvasJson: input.canvasJson }
-    });
+    
+    const { output } = await prompt(input);
 
     if (!output || !output.dtoFileContent || !output.rendererFileContent) {
       console.error("AI generation failed or returned invalid structure. Output:", output);
