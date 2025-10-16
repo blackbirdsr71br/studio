@@ -81,8 +81,8 @@ const generateDynamicUiComponentFlow = ai.defineFlow(
     outputSchema: GenerateDynamicUiComponentOutputSchema,
   },
   async (input) => {
-    // Dynamically select the model based on the input
-    const model = googleAI.model(input.modelName);
+    // Use a fixed, reliable model for code generation.
+    const model = googleAI.model('gemini-1.5-pro-latest');
 
     const { output } = await ai.generate({
         prompt,

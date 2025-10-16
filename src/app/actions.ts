@@ -6,7 +6,6 @@ import { generateJsonFromComposeCommands } from '@/ai/flows/generate-json-from-c
 import { convertCanvasToCustomJson } from '@/ai/flows/convert-canvas-to-custom-json-flow';
 import { generateDynamicUiComponent } from '@/ai/flows/generate-dynamic-ui-component';
 import { getAndroidProjectTemplates } from '@/lib/android-project-templates';
-import { listModelsFlow } from '@/ai/flows/list-models-flow'; // Import the new flow
 import type { GenerateComposeCodeInput, GenerateImageFromHintInput, GenerateJsonFromComposeCommandsInput, ConvertCanvasToCustomJsonInput, GenerateDynamicUiComponentInput } from '@/types/ai-spec';
 
 import type { DesignComponent, CustomComponentTemplate, BaseComponentProps, ComponentType } from '@/types/compose-spec';
@@ -588,8 +587,7 @@ export async function updateGlobalStylesheetAction(
 
 export async function generateProjectFromTemplatesAction(
   allComponents: DesignComponent[],
-  customComponentTemplates: CustomComponentTemplate[],
-  modelName: string,
+  customComponentTemplates: CustomComponentTemplate[]
 ): Promise<{ files?: Record<string, string>; error?: string }> {
   try {
     const canvasJsonForParser = await getDesignComponentsAsJsonAction(allComponents, customComponentTemplates, true);
@@ -610,7 +608,6 @@ export async function generateProjectFromTemplatesAction(
     
     const input: GenerateDynamicUiComponentInput = { 
       canvasJson: canvasJsonForParser,
-      modelName,
     };
     const dynamicCodeResult = await generateDynamicUiComponent(input);
 
@@ -666,16 +663,4 @@ export async function searchWebForImagesAction(query: string): Promise<{ imageUr
     const message = error instanceof Error ? error.message : "An unknown error occurred during web image search.";
     return { imageUrls: null, error: message };
   }
-}
-
-export async function listModelsAction(): Promise<{models: string[], error?: string}> {
-    try {
-        const result = await listModelsFlow();
-        const textModels = result.models
-            .filter(name => !name.includes('vision') && !name.includes('embedding') && !name.includes('image'));
-        return { models: textModels };
-    } catch (error) {
-        const message = error instanceof Error ? error.message : "An unknown error occurred while fetching AI models.";
-        return { models: [], error: message };
-    }
 }

@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview This file contains all the Zod schema definitions and TypeScript types
  * for the inputs and outputs of the AI flows. Centralizing them here resolves
@@ -95,7 +96,6 @@ export const GenerateDynamicUiComponentInputSchema = z.object({
     .describe(
       'A JSON string representing the UI design from the canvas content area. This is an array of component objects. The AI must create DTOs that exactly match this structure.'
     ),
-  modelName: z.string().describe('The name of the AI model to use for generation (e.g., "googleai/gemini-1.5-pro-latest").'),
 });
 export type GenerateDynamicUiComponentInput = z.infer<typeof GenerateDynamicUiComponentInputSchema>;
 

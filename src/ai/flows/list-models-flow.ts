@@ -1,29 +1,4 @@
-
-'use server';
-
-/**
- * @fileOverview A simple flow to list available AI models. This avoids direct
- * Genkit imports in server actions, which can cause bundling issues with Next.js.
- */
-import { ai } from '@/ai/genkit';
-import { listModels } from 'genkit';
-import { z } from 'zod';
-
-const ListModelsOutputSchema = z.object({
-  models: z.array(z.string()),
-});
-
-export const listModelsFlow = ai.defineFlow(
-  {
-    name: 'listModelsFlow',
-    inputSchema: z.void(),
-    outputSchema: ListModelsOutputSchema,
-  },
-  async () => {
-    const allModels = await listModels();
-    const modelNames = allModels
-      .filter(m => m.supportsGenerate)
-      .map(m => m.name);
-    return { models: modelNames };
-  }
-);
+// This file is no longer needed and can be deleted.
+// The dynamic model selection feature has been removed to fix a core functionality bug.
+// Keeping the file empty ensures no build errors if it's still referenced somewhere temporarily.
+export {};
