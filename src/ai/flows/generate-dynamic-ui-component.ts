@@ -25,7 +25,7 @@ const generateDynamicUiComponentFlow = ai.defineFlow(
   async (input) => {
     
     const { output } = await ai.generate({
-        model: 'googleai/gemini-1.5-pro-latest',
+        model: 'googleai/gemini-1.5-flash-latest',
         prompt: `You are an expert Kotlin and Jetpack Compose developer. Your task is to generate the content for two specific Kotlin files based on an input JSON representing a UI design.
 You MUST ONLY generate the content for these two files. The rest of the project is handled by static templates.
 
@@ -91,3 +91,5 @@ Provide a single JSON object with two keys: \`dtoFileContent\` and \`rendererFil
     return output;
   }
 );
+
+    
