@@ -12,6 +12,7 @@ import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { hexToHslCssString } from '@/lib/utils';
+import { getAndroidProjectTemplates } from '@/lib/android-project-templates';
 
 // Helper function to remove properties with empty string or null values
 const cleanEmptyOrNullProperties = (properties: Record<string, any>): Record<string, any> => {
@@ -23,6 +24,33 @@ const cleanEmptyOrNullProperties = (properties: Record<string, any>): Record<str
   }
   return cleanedProperties;
 };
+
+
+export async function generateJetpackComposeCodeAction(
+  components: DesignComponent[],
+  customComponentTemplates: CustomComponentTemplate[]
+): Promise<{ files?: Record<string, string>; error?: string }> {
+    try {
+      const projectFiles = getAndroidProjectTemplates();
+      const contentJson = await getDesignComponentsAsJsonAction(components, customComponentTemplates, true);
+       const scaffoldStructureForAi = buildComponentTreeForAi(components, customComponentTemplates, ROOT_SCAFFOLD_ID, true);
+       const designJson = JSON.stringify(scaffoldStructureForAi, null, 2);
+
+
+      const input: GenerateComposeCodeInput = { 
+          designJson: designJson,
+          contentJson: contentJson,
+      };
+      const result = await generateComposeCode(input);
+      
+      return { files: result.files };
+    } catch (error) {
+      console.error("Error generating Jetpack Compose code:", error);
+      const message = error instanceof Error ? error.message : "An unknown error occurred while generating code.";
+      return { error: message };
+    }
+}
+
 
 // Interface for the nodes in the AI-specific tree (for Jetpack Compose generation)
 interface AiComponentTreeNode {
@@ -101,38 +129,6 @@ const buildComponentTreeForAi = (
   }
   return node;
 };
-
-export async function generateJetpackComposeCodeAction(
-  components: DesignComponent[],
-  customComponentTemplates: CustomComponentTemplate[]
-): Promise<{ files?: Record<string, string>; error?: string }> {
-  try {
-    const scaffoldStructureForAi = buildComponentTreeForAi(components, customComponentTemplates, ROOT_SCAFFOLD_ID, true);
-
-    if (!scaffoldStructureForAi || (Array.isArray(scaffoldStructureForAi) && scaffoldStructureForAi.length === 0) || Object.keys(scaffoldStructureForAi).length === 0) {
-      return { error: "No valid Scaffold structure found to generate code from." };
-    }
-    
-    // The canvas JSON now needs to be sent to the single, robust generator flow.
-    // The designJson for the input should now be the full scaffold structure.
-    const designJsonForAi = JSON.stringify(scaffoldStructureForAi, null, 2);
-    
-    // We also need the content-area-only JSON for the DTO generation part of the prompt.
-    const contentAreaJsonForAi = await getDesignComponentsAsJsonAction(components, customComponentTemplates, true);
-
-    const input: GenerateComposeCodeInput = { 
-        designJson: designJsonForAi,
-        contentJson: contentAreaJsonForAi,
-    };
-    const result = await generateComposeCode(input);
-    
-    return { files: result.files };
-  } catch (error) {
-    console.error("Error generating Jetpack Compose code:", error);
-    const message = error instanceof Error ? error.message : "An unknown error occurred while generating code.";
-    return { error: message };
-  }
-}
 
 // Interface for nodes in the JSON for the "View JSON" modal and Remote Config (content part)
 interface ModalJsonNode {

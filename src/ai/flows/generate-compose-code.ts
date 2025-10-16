@@ -3,38 +3,29 @@
 
 /**
  * @fileOverview Generates a complete, structured Android project with Jetpack Compose code from a JSON representation of a UI design.
- * This flow is designed to be robust and can generate either a static project or a dynamic, MVI-based project.
+ * This flow is designed to be robust and can generate a dynamic, MVI-based project.
  */
 
 import {ai} from '@/ai/genkit';
 import { GenerateComposeCodeInputSchema, GenerateComposeCodeOutputSchema, type GenerateComposeCodeInput, type GenerateComposeCodeOutput } from '@/types/ai-spec';
-import { z } from 'zod';
 import { getAndroidProjectTemplates } from '@/lib/android-project-templates';
+import { z } from 'zod';
 
-export async function generateComposeCode(input: GenerateComposeCodeInput): Promise<GenerateComposeCodeOutput> {
-  return generateComposeCodeFlow(input);
-}
-
-// Define the schema for the AI's direct response (just the file content)
 const DynamicFilesOutputSchema = z.object({
   dtoFileContent: z.string().describe("The full Kotlin code for the ComponentDto.kt file."),
   rendererFileContent: z.string().describe("The full Kotlin code for the DynamicUiComponent.kt file.")
 });
 
 
-const generateComposeCodeFlow = ai.defineFlow(
-  {
-    name: 'generateComposeCodeFlow',
-    inputSchema: GenerateComposeCodeInputSchema,
-    outputSchema: GenerateComposeCodeOutputSchema,
-  },
-  async (input) => {
-    // Start with the static template files.
-    const projectFiles = getAndroidProjectTemplates();
+export async function generateComposeCode(input: GenerateComposeCodeInput): Promise<GenerateComposeCodeOutput> {
+  
+  // Start with the static template files.
+  const projectFiles = getAndroidProjectTemplates();
 
-    const { text } = await ai.generate({
-        model: 'googleai/gemini-1.5-flash-latest',
-        prompt: `You are an expert Kotlin and Jetpack Compose developer. Your primary task is to generate the content for two specific Kotlin files for an MVI Android project.
+  // The AI call is now more specific and asks for just the two dynamic files.
+  const { text, usage } = await ai.generate({
+      model: 'googleai/gemini-1.5-flash-latest',
+      prompt: `You are an expert Kotlin and Jetpack Compose developer. Your primary task is to generate the content for two specific Kotlin files for an MVI Android project.
 
 **YOUR TASK:**
 Based on the JSON provided, generate the full, raw Kotlin code for \`ComponentDto.kt\` and \`DynamicUiComponent.kt\`.
@@ -83,30 +74,38 @@ ${input.designJson}
 }
 \`\`\`
 `,
-    });
+  });
 
-    if (!text()) {
-        throw new Error("AI generation failed to return any text.");
-    }
-    
-    // Clean up the response to get only the JSON
-    let responseJson = text()!;
-    const jsonMatch = responseJson.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("AI did not return a valid JSON object string.");
-    }
-    responseJson = jsonMatch[0];
-
-    // Parse and validate the response
-    const parsedOutput = DynamicFilesOutputSchema.parse(JSON.parse(responseJson));
-
-    // Combine static templates with dynamically generated files
-    const finalProjectFiles = {
-      ...projectFiles,
-      'app/src/main/java/com/example/myapplication/data/model/ComponentDto.kt': parsedOutput.dtoFileContent,
-      'app/src/main/java/com/example/myapplication/presentation/components/DynamicUiComponent.kt': parsedOutput.rendererFileContent,
-    };
-    
-    return { files: finalProjectFiles };
+  if (!text()) {
+      throw new Error("AI generation failed to return any text.");
   }
-);
+  
+  // Clean up the response to get only the JSON
+  let responseJson = text()!;
+  const jsonMatch = responseJson.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error("AI did not return a valid JSON object string.");
+  }
+  responseJson = jsonMatch[0];
+
+  try {
+      // Parse and validate the response against the schema
+      const parsedOutput = DynamicFilesOutputSchema.parse(JSON.parse(responseJson));
+
+      // Combine static templates with dynamically generated files
+      const finalProjectFiles = {
+        ...projectFiles,
+        'app/src/main/java/com/example/myapplication/data/model/ComponentDto.kt': parsedOutput.dtoFileContent,
+        'app/src/main/java/com/example/myapplication/presentation/components/DynamicUiComponent.kt': parsedOutput.rendererFileContent,
+      };
+      
+      return { files: finalProjectFiles };
+
+  } catch (e) {
+      console.error("Error parsing AI response:", e);
+      if (e instanceof z.ZodError) {
+          throw new Error(`AI response validation failed: ${e.errors.map(err => `${err.path.join('.')} - ${err.message}`).join(', ')}`);
+      }
+      throw new Error("Failed to parse the JSON response from the AI.");
+  }
+}

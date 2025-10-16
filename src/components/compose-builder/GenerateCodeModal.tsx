@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useImperativeHandle, forwardRef, useCallback } from 'react';
@@ -13,6 +14,7 @@ import { githubLight, githubDark } from '@uiw/codemirror-theme-github';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import JSZip from 'jszip';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export interface GenerateCodeModalRef {
   openModal: () => void;
@@ -20,13 +22,14 @@ export interface GenerateCodeModalRef {
 
 export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [generatedProjectFiles, setGeneratedProjectFiles] = useState<Record<string, string> | null>(null);
+  const [generatedFiles, setGeneratedFiles] = useState<Record<string, string> | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { activeDesign, customComponentTemplates } = useDesign();
   const { toast } = useToast();
   const { resolvedTheme } = useTheme();
   const [hasGeneratedOnce, setHasGeneratedOnce] = useState(false);
+  const [activeTab, setActiveTab] = useState('renderer');
 
   const handleGenerateCode = useCallback(async () => {
     if (!activeDesign) {
@@ -35,24 +38,26 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
     }
     setIsLoading(true);
     setError(null);
-    setGeneratedProjectFiles(null);
+    setGeneratedFiles(null);
     setHasGeneratedOnce(true);
     try {
+      // This now calls the non-AI generator
       const result = await generateJetpackComposeCodeAction(activeDesign.components, customComponentTemplates);
       if (result.error) {
         setError(result.error);
-        setGeneratedProjectFiles(null);
+        setGeneratedFiles(null);
       } else if (result.files && Object.keys(result.files).length > 0) {
-        setGeneratedProjectFiles(result.files);
+        setGeneratedFiles(result.files);
+        setActiveTab('renderer'); // Default to showing the renderer first
       } else {
-        setError("AI returned an empty or invalid project structure.");
-        setGeneratedProjectFiles(null);
+        setError("Code generation returned an empty or invalid structure.");
+        setGeneratedFiles(null);
       }
     } catch (e) {
       console.error("Error generating screen code:", e);
       const errorMessage = e instanceof Error ? e.message : "Failed to generate screen code.";
       setError(errorMessage);
-      setGeneratedProjectFiles(null);
+      setGeneratedFiles(null);
     } finally {
       setIsLoading(false);
     }
@@ -61,105 +66,131 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
   useImperativeHandle(ref, () => ({
     openModal: () => {
       setIsOpen(true);
-      setGeneratedProjectFiles(null);
+      setGeneratedFiles(null);
       setError(null);
       setHasGeneratedOnce(false);
+      setActiveTab('renderer');
     }
   }));
   
-  const handleCopyToClipboard = async () => {
-    const codeToCopy = generatedProjectFiles?.['app/src/main/java/com/example/myapplication/presentation/components/DynamicUiComponent.kt'] || '';
+  const handleCopyToClipboard = async (fileKey: string) => {
+    const codeToCopy = generatedFiles?.[fileKey] || '';
     if (codeToCopy) {
       try {
         await navigator.clipboard.writeText(codeToCopy);
-        toast({ title: "Code Copied!", description: "DynamicUiComponent.kt copied to clipboard." });
+        const fileName = fileKey.split('/').pop();
+        toast({ title: "Code Copied!", description: `${fileName} copied to clipboard.` });
       } catch (err) {
         toast({ title: "Copy Failed", description: "Could not copy code to clipboard.", variant: "destructive" });
       }
     }
   };
 
-  const handleDownloadProject = async () => {
-    if (!generatedProjectFiles) {
-      toast({ title: "Download Failed", description: "No project files to download.", variant: "destructive" });
+  const handleDownloadZip = async () => {
+    if (!generatedFiles) {
+      toast({ title: "Download Failed", description: "No files to download.", variant: "destructive" });
       return;
     }
 
     try {
         const zip = new JSZip();
-        for (const filePath in generatedProjectFiles) {
-            zip.file(filePath, generatedProjectFiles[filePath]);
+        // Add only the two dynamic files to the zip
+        const rendererFile = 'app/src/main/java/com/example/myapplication/presentation/components/DynamicUiComponent.kt';
+        const dtoFile = 'app/src/main/java/com/example/myapplication/data/model/ComponentDto.kt';
+
+        if(generatedFiles[rendererFile]) {
+            zip.file(rendererFile, generatedFiles[rendererFile]);
         }
+        if(generatedFiles[dtoFile]) {
+            zip.file(dtoFile, generatedFiles[dtoFile]);
+        }
+
         const blob = await zip.generateAsync({ type: "blob" });
         
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = 'MVI_Dynamic_UI_Project.zip';
+        link.download = 'ComposeUISource.zip';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(link.href);
         
-        toast({ title: "Project Downloaded", description: "Your project is being downloaded." });
+        toast({ title: "Source Code Downloaded", description: "Your ZIP file is being downloaded." });
 
     } catch (error) {
-        console.error("Error creating project zip:", error);
-        toast({ title: "Download Failed", description: "Could not create the project ZIP file.", variant: "destructive" });
+        console.error("Error creating source zip:", error);
+        toast({ title: "Download Failed", description: "Could not create the ZIP file.", variant: "destructive" });
     }
   };
 
-  const canCopyCode = !isLoading && generatedProjectFiles && Object.keys(generatedProjectFiles).length > 0;
-  const canDownloadProject = !isLoading && !error && generatedProjectFiles && Object.keys(generatedProjectFiles).length > 0;
-  const mainFileToDisplay = generatedProjectFiles?.['app/src/main/java/com/example/myapplication/presentation/components/DynamicUiComponent.kt'] || '';
+  const rendererFileKey = 'app/src/main/java/com/example/myapplication/presentation/components/DynamicUiComponent.kt';
+  const dtoFileKey = 'app/src/main/java/com/example/myapplication/data/model/ComponentDto.kt';
+  const rendererCode = generatedFiles?.[rendererFileKey] || '';
+  const dtoCode = generatedFiles?.[dtoFileKey] || '';
 
+  const canCopyOrDownload = !isLoading && generatedFiles && Object.keys(generatedFiles).length > 0;
+  
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-4xl max-h-[95vh] flex flex-col">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="font-headline">Generated Jetpack Compose Project</DialogTitle>
+          <DialogTitle className="font-headline">Generated Jetpack Compose Code</DialogTitle>
           <DialogDescription>
-             Below is the dynamic UI rendering component. You can copy the code or download the complete, runnable Android MVI project.
+             Below is the generated Kotlin code for your design. You can copy individual files or download a ZIP with both.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-grow my-4 rounded-md border bg-muted/30 overflow-y-auto relative min-h-[300px]">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-2">Generating project files...</span>
-            </div>
-          ) : error ? (
-              <div className="p-4">
-                <Alert variant="destructive"><AlertTitle>Error Generating Project</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
+          <TabsList className="grid w-full grid-cols-2 mb-2">
+            <TabsTrigger value="renderer">DynamicUiComponent.kt</TabsTrigger>
+            <TabsTrigger value="dto">ComponentDto.kt</TabsTrigger>
+          </TabsList>
+            
+          <div className="flex-grow my-2 rounded-md border bg-muted/30 overflow-y-auto relative min-h-[250px]">
+            {isLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span className="ml-2">Generating code...</span>
               </div>
-          ) : !hasGeneratedOnce ? (
-             <div className="flex items-center justify-center h-full">
-                <p className="text-muted-foreground">Click "Generate" to create the project files.</p>
-            </div>
-          ) : (
-            <CodeMirror
-              value={mainFileToDisplay}
-              height="100%"
-              extensions={[javaLang()]}
-              theme={resolvedTheme === 'dark' ? githubDark : githubLight}
-              readOnly
-              className="text-sm h-full"
-              basicSetup={{ lineNumbers: true, foldGutter: true, autocompletion: true, highlightActiveLine: true, highlightActiveLineGutter: true, bracketMatching: true, closeBrackets: true }}
-            />
-          )}
-        </div>
+            ) : error ? (
+                <div className="p-4">
+                  <Alert variant="destructive"><AlertTitle>Error Generating Code</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>
+                </div>
+            ) : !hasGeneratedOnce ? (
+              <div className="flex items-center justify-center h-full">
+                  <p className="text-muted-foreground">Click "Generate Code" to create the Kotlin source files.</p>
+              </div>
+            ) : (
+              <>
+                <TabsContent value="renderer" className="m-0 h-full">
+                    <CodeMirror value={rendererCode} height="100%" extensions={[javaLang()]} theme={resolvedTheme === 'dark' ? githubDark : githubLight} readOnly className="text-sm h-full" basicSetup={{ lineNumbers: true, foldGutter: true }}/>
+                </TabsContent>
+                <TabsContent value="dto" className="m-0 h-full">
+                    <CodeMirror value={dtoCode} height="100%" extensions={[javaLang()]} theme={resolvedTheme === 'dark' ? githubDark : githubLight} readOnly className="text-sm h-full" basicSetup={{ lineNumbers: true, foldGutter: true }}/>
+                </TabsContent>
+              </>
+            )}
+          </div>
+        </Tabs>
         
         <DialogFooter className="sm:justify-between flex-wrap gap-2 pt-4 border-t shrink-0">
            <Button variant="outline" onClick={handleGenerateCode} disabled={isLoading}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-            {hasGeneratedOnce ? 'Regenerate' : 'Generate'}
+            {hasGeneratedOnce ? 'Regenerate Code' : 'Generate Code'}
           </Button>
           <div className="flex gap-2">
-            <Button onClick={handleCopyToClipboard} disabled={!canCopyCode}>
-              <Copy className="mr-2 h-4 w-4" /> Copy Code
-            </Button>
-            <Button onClick={handleDownloadProject} disabled={!canDownloadProject}>
-              <Download className="mr-2 h-4 w-4" /> Download Project.zip
+            {activeTab === 'renderer' && (
+              <Button onClick={() => handleCopyToClipboard(rendererFileKey)} disabled={!canCopyOrDownload}>
+                <Copy className="mr-2 h-4 w-4" /> Copy Renderer
+              </Button>
+            )}
+             {activeTab === 'dto' && (
+              <Button onClick={() => handleCopyToClipboard(dtoFileKey)} disabled={!canCopyOrDownload}>
+                <Copy className="mr-2 h-4 w-4" /> Copy DTO
+              </Button>
+            )}
+            <Button onClick={handleDownloadZip} disabled={!canCopyOrDownload}>
+              <Download className="mr-2 h-4 w-4" /> Download .zip
             </Button>
           </div>
         </DialogFooter>
