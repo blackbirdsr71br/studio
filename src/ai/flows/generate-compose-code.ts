@@ -9,6 +9,7 @@
 import {ai} from '@/ai/genkit';
 import { GenerateComposeCodeInputSchema, GenerateComposeCodeOutputSchema, type GenerateComposeCodeInput, type GenerateComposeCodeOutput } from '@/types/ai-spec';
 import { z } from 'zod';
+import { getAndroidProjectTemplates } from '@/lib/android-project-templates';
 
 export async function generateComposeCode(input: GenerateComposeCodeInput): Promise<GenerateComposeCodeOutput> {
   return generateComposeCodeFlow(input);
@@ -29,10 +30,10 @@ const generateComposeCodeFlow = ai.defineFlow(
   },
   async (input) => {
     // Start with the static template files.
-    const projectFiles = (await import('@/lib/android-project-templates')).getAndroidProjectTemplates();
+    const projectFiles = getAndroidProjectTemplates();
 
     const { text } = await ai.generate({
-        model: 'googleai/gemini-1.5-flash-latest', // Use a reliable, known-good model for content generation
+        model: 'googleai/gemini-1.5-flash-latest',
         prompt: `You are an expert Kotlin and Jetpack Compose developer. Your primary task is to generate the content for two specific Kotlin files for an MVI Android project.
 
 **YOUR TASK:**

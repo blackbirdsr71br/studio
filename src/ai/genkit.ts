@@ -1,5 +1,5 @@
 import {genkit} from 'genkit';
-import {googleAI} from '@genkit-ai/googleai';
+import {googleAI} from '@genkit-ai/google-genai';
 
 // By leaving the googleAI() plugin configuration empty, we allow Genkit to use
 // its default, stable settings for API version and endpoint resolution.
