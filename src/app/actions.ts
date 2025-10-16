@@ -6,6 +6,7 @@ import { generateJsonFromComposeCommands } from '@/ai/flows/generate-json-from-c
 import { convertCanvasToCustomJson } from '@/ai/flows/convert-canvas-to-custom-json-flow';
 import { generateDynamicUiComponent } from '@/ai/flows/generate-dynamic-ui-component';
 import { getAndroidProjectTemplates } from '@/lib/android-project-templates';
+import { listModelsFlow } from '@/ai/flows/list-models-flow'; // Import the new flow
 import type { GenerateComposeCodeInput, GenerateImageFromHintInput, GenerateJsonFromComposeCommandsInput, ConvertCanvasToCustomJsonInput, GenerateDynamicUiComponentInput } from '@/types/ai-spec';
 
 import type { DesignComponent, CustomComponentTemplate, BaseComponentProps, ComponentType } from '@/types/compose-spec';
@@ -14,7 +15,6 @@ import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { hexToHslCssString } from '@/lib/utils';
-import { listModels } from 'genkit';
 
 // Helper function to remove properties with empty string or null values
 const cleanEmptyOrNullProperties = (properties: Record<string, any>): Record<string, any> => {
@@ -670,10 +670,8 @@ export async function searchWebForImagesAction(query: string): Promise<{ imageUr
 
 export async function listModelsAction(): Promise<{models: string[], error?: string}> {
     try {
-        const allModels = await listModels();
-        const textModels = allModels
-            .filter(m => m.supportsGenerate)
-            .map(m => m.name)
+        const result = await listModelsFlow();
+        const textModels = result.models
             .filter(name => !name.includes('vision') && !name.includes('embedding') && !name.includes('image'));
         return { models: textModels };
     } catch (error) {
@@ -681,3 +679,5 @@ export async function listModelsAction(): Promise<{models: string[], error?: str
         return { models: [], error: message };
     }
 }
+
+    

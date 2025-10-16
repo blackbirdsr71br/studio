@@ -1,3 +1,4 @@
+
 // IMPORTANT: This line MUST be the first thing executed to ensure env vars are loaded for the server.
 import { config } from 'dotenv';
 config();
@@ -7,3 +8,6 @@ import '@/ai/flows/generate-compose-code.ts';
 import '@/ai/flows/generate-image-from-hint-flow.ts';
 import '@/ai/flows/convert-canvas-to-custom-json-flow.ts'; 
 import '@/ai/flows/generate-dynamic-ui-component.ts';
+import '@/ai/flows/list-models-flow.ts';
+
+    
