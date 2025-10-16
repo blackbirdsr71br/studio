@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { useDesign } from '@/contexts/DesignContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -188,7 +188,7 @@ const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: T
   const isDeletable = !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !isRootOfCanvas;
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative" data-tree-id={component.id}>
       {showDropTop && <div className="absolute top-0 left-2 right-2 h-[2px] bg-primary z-10 pointer-events-none" />}
       <div
         onClick={handleSelect}
@@ -246,6 +246,17 @@ export const ComponentTreeView = () => {
   const { activeDesign } = useDesign();
   const rootComponent = activeDesign?.components.find(c => c.parentId === null);
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set());
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (activeDesign?.selectedComponentId && scrollAreaRef.current) {
+        const selectedElement = scrollAreaRef.current.querySelector(`[data-tree-id="${activeDesign.selectedComponentId}"]`);
+        if (selectedElement) {
+            selectedElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+  }, [activeDesign?.selectedComponentId]);
+
 
   const toggleNode = (nodeId: string) => {
     setCollapsedNodes(prev => {
@@ -264,7 +275,7 @@ export const ComponentTreeView = () => {
   }
 
   return (
-    <ScrollArea className="h-full -mx-4">
+    <ScrollArea className="h-full -mx-4" ref={scrollAreaRef}>
       <div className="p-2 space-y-0.5 min-w-max">
         {rootComponent ? (
           <RecursiveTreeItem 
