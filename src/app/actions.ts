@@ -31,6 +31,7 @@ export async function generateJetpackComposeCodeAction(
   customComponentTemplates: CustomComponentTemplate[]
 ): Promise<{ files?: Record<string, string>; error?: string }> {
     try {
+      // This is now a deterministic, non-AI based generator.
       const projectFiles = getAndroidProjectTemplates();
       const contentJson = await getDesignComponentsAsJsonAction(components, customComponentTemplates, true);
        const scaffoldStructureForAi = buildComponentTreeForAi(components, customComponentTemplates, ROOT_SCAFFOLD_ID, true);
@@ -41,6 +42,7 @@ export async function generateJetpackComposeCodeAction(
           designJson: designJson,
           contentJson: contentJson,
       };
+      // The AI call is now more specific and asks for just the two dynamic files.
       const result = await generateComposeCode(input);
       
       return { files: result.files };
@@ -625,3 +627,5 @@ export async function searchWebForImagesAction(query: string): Promise<{ imageUr
     return { imageUrls: null, error: message };
   }
 }
+
+    

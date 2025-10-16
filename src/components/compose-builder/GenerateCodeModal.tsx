@@ -48,7 +48,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
         setGeneratedFiles(null);
       } else if (result.files && Object.keys(result.files).length > 0) {
         setGeneratedFiles(result.files);
-        setActiveTab('renderer'); // Default to showing the renderer first
+        setActiveTab('app/src/main/java/com/example/myapplication/presentation/components/DynamicUiComponent.kt'); // Default to showing the renderer first
       } else {
         setError("Code generation returned an empty or invalid structure.");
         setGeneratedFiles(null);
@@ -69,7 +69,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
       setGeneratedFiles(null);
       setError(null);
       setHasGeneratedOnce(false);
-      setActiveTab('renderer');
+      setActiveTab('app/src/main/java/com/example/myapplication/presentation/components/DynamicUiComponent.kt');
     }
   }));
   
@@ -94,15 +94,8 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
 
     try {
         const zip = new JSZip();
-        // Add only the two dynamic files to the zip
-        const rendererFile = 'app/src/main/java/com/example/myapplication/presentation/components/DynamicUiComponent.kt';
-        const dtoFile = 'app/src/main/java/com/example/myapplication/data/model/ComponentDto.kt';
-
-        if(generatedFiles[rendererFile]) {
-            zip.file(rendererFile, generatedFiles[rendererFile]);
-        }
-        if(generatedFiles[dtoFile]) {
-            zip.file(dtoFile, generatedFiles[dtoFile]);
+        for (const filePath in generatedFiles) {
+          zip.file(filePath, generatedFiles[filePath]);
         }
 
         const blob = await zip.generateAsync({ type: "blob" });
@@ -125,8 +118,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
 
   const rendererFileKey = 'app/src/main/java/com/example/myapplication/presentation/components/DynamicUiComponent.kt';
   const dtoFileKey = 'app/src/main/java/com/example/myapplication/data/model/ComponentDto.kt';
-  const rendererCode = generatedFiles?.[rendererFileKey] || '';
-  const dtoCode = generatedFiles?.[dtoFileKey] || '';
+  const fileKeys = generatedFiles ? Object.keys(generatedFiles).filter(k => k.endsWith('.kt')).sort((a, b) => a.localeCompare(b)) : [rendererFileKey, dtoFileKey];
 
   const canCopyOrDownload = !isLoading && generatedFiles && Object.keys(generatedFiles).length > 0;
   
@@ -136,17 +128,18 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
         <DialogHeader>
           <DialogTitle className="font-headline">Generated Jetpack Compose Code</DialogTitle>
           <DialogDescription>
-             Below is the generated Kotlin code for your design. You can copy individual files or download a ZIP with both.
+             Below is the generated Kotlin code for your design. You can copy individual files or download a ZIP with the full project.
           </DialogDescription>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
           <TabsList className="grid w-full grid-cols-2 mb-2">
-            <TabsTrigger value="renderer">DynamicUiComponent.kt</TabsTrigger>
-            <TabsTrigger value="dto">ComponentDto.kt</TabsTrigger>
+             {fileKeys.map(key => (
+              <TabsTrigger key={key} value={key}>{key.split('/').pop()}</TabsTrigger>
+            ))}
           </TabsList>
             
-          <div className="flex-grow my-2 rounded-md border bg-muted/30 overflow-y-auto relative min-h-[250px]">
+          <div className="flex-grow my-2 rounded-md border bg-muted/30 overflow-y-auto relative min-h-[300px]">
             {isLoading ? (
               <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -158,16 +151,15 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
                 </div>
             ) : !hasGeneratedOnce ? (
               <div className="flex items-center justify-center h-full">
-                  <p className="text-muted-foreground">Click "Generate Code" to create the Kotlin source files.</p>
+                  <p className="text-muted-foreground">Click "Generate" to create the Kotlin source files.</p>
               </div>
             ) : (
               <>
-                <TabsContent value="renderer" className="m-0 h-full">
-                    <CodeMirror value={rendererCode} height="100%" extensions={[javaLang()]} theme={resolvedTheme === 'dark' ? githubDark : githubLight} readOnly className="text-sm h-full" basicSetup={{ lineNumbers: true, foldGutter: true }}/>
-                </TabsContent>
-                <TabsContent value="dto" className="m-0 h-full">
-                    <CodeMirror value={dtoCode} height="100%" extensions={[javaLang()]} theme={resolvedTheme === 'dark' ? githubDark : githubLight} readOnly className="text-sm h-full" basicSetup={{ lineNumbers: true, foldGutter: true }}/>
-                </TabsContent>
+                {fileKeys.map(key => (
+                  <TabsContent key={key} value={key} className="m-0 h-full">
+                      <CodeMirror value={generatedFiles?.[key] || ''} height="100%" extensions={[javaLang()]} theme={resolvedTheme === 'dark' ? githubDark : githubLight} readOnly className="text-sm h-full" basicSetup={{ lineNumbers: true, foldGutter: true }}/>
+                  </TabsContent>
+                ))}
               </>
             )}
           </div>
@@ -176,21 +168,14 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
         <DialogFooter className="sm:justify-between flex-wrap gap-2 pt-4 border-t shrink-0">
            <Button variant="outline" onClick={handleGenerateCode} disabled={isLoading}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-            {hasGeneratedOnce ? 'Regenerate Code' : 'Generate Code'}
+            {hasGeneratedOnce ? 'Regenerate' : 'Generate'}
           </Button>
           <div className="flex gap-2">
-            {activeTab === 'renderer' && (
-              <Button onClick={() => handleCopyToClipboard(rendererFileKey)} disabled={!canCopyOrDownload}>
-                <Copy className="mr-2 h-4 w-4" /> Copy Renderer
-              </Button>
-            )}
-             {activeTab === 'dto' && (
-              <Button onClick={() => handleCopyToClipboard(dtoFileKey)} disabled={!canCopyOrDownload}>
-                <Copy className="mr-2 h-4 w-4" /> Copy DTO
-              </Button>
-            )}
+            <Button onClick={() => handleCopyToClipboard(activeTab)} disabled={!canCopyOrDownload}>
+              <Copy className="mr-2 h-4 w-4" /> Copy {activeTab.split('/').pop()}
+            </Button>
             <Button onClick={handleDownloadZip} disabled={!canCopyOrDownload}>
-              <Download className="mr-2 h-4 w-4" /> Download .zip
+              <Download className="mr-2 h-4 w-4" /> Download Project.zip
             </Button>
           </div>
         </DialogFooter>
@@ -200,3 +185,5 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
 });
 
 GenerateCodeModal.displayName = 'GenerateCodeModal';
+
+    
