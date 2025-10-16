@@ -4,9 +4,7 @@ import { generateComposeCode } from '@/ai/flows/generate-compose-code';
 import { generateImageFromHint } from '@/ai/flows/generate-image-from-hint-flow';
 import { generateJsonFromComposeCommands } from '@/ai/flows/generate-json-from-compose-commands';
 import { convertCanvasToCustomJson } from '@/ai/flows/convert-canvas-to-custom-json-flow';
-import { generateDynamicUiComponent } from '@/ai/flows/generate-dynamic-ui-component';
-import { getAndroidProjectTemplates } from '@/lib/android-project-templates';
-import type { GenerateComposeCodeInput, GenerateImageFromHintInput, GenerateJsonFromComposeCommandsInput, ConvertCanvasToCustomJsonInput, GenerateDynamicUiComponentInput } from '@/types/ai-spec';
+import type { GenerateComposeCodeInput, GenerateImageFromHintInput, GenerateJsonFromComposeCommandsInput, ConvertCanvasToCustomJsonInput } from '@/types/ai-spec';
 
 import type { DesignComponent, CustomComponentTemplate, BaseComponentProps, ComponentType } from '@/types/compose-spec';
 import { isContainerType, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, CORE_SCAFFOLD_ELEMENT_IDS, propertyDefinitions, getDefaultProperties } from '@/types/compose-spec';
@@ -114,10 +112,20 @@ export async function generateJetpackComposeCodeAction(
     if (!scaffoldStructureForAi || (Array.isArray(scaffoldStructureForAi) && scaffoldStructureForAi.length === 0) || Object.keys(scaffoldStructureForAi).length === 0) {
       return { error: "No valid Scaffold structure found to generate code from." };
     }
+    
+    // The canvas JSON now needs to be sent to the single, robust generator flow.
+    // The designJson for the input should now be the full scaffold structure.
+    const designJsonForAi = JSON.stringify(scaffoldStructureForAi, null, 2);
+    
+    // We also need the content-area-only JSON for the DTO generation part of the prompt.
+    const contentAreaJsonForAi = await getDesignComponentsAsJsonAction(components, customComponentTemplates, true);
 
-    const designJson = JSON.stringify(scaffoldStructureForAi, null, 2);
-    const input: GenerateComposeCodeInput = { designJson };
+    const input: GenerateComposeCodeInput = { 
+        designJson: designJsonForAi,
+        contentJson: contentAreaJsonForAi,
+    };
     const result = await generateComposeCode(input);
+    
     return { files: result.files };
   } catch (error) {
     console.error("Error generating Jetpack Compose code:", error);
@@ -584,49 +592,6 @@ export async function updateGlobalStylesheetAction(
     return { success: false, error: `Failed to update stylesheet: ${message}` };
   }
 }
-
-export async function generateProjectFromTemplatesAction(
-  allComponents: DesignComponent[],
-  customComponentTemplates: CustomComponentTemplate[]
-): Promise<{ files?: Record<string, string>; error?: string }> {
-  try {
-    const canvasJsonForParser = await getDesignComponentsAsJsonAction(allComponents, customComponentTemplates, true);
-    
-    if (canvasJsonForParser.startsWith("Error:")) {
-        return { error: `Failed to generate canvas JSON for parser: ${canvasJsonForParser}` };
-    }
-    
-    const contentComponentsExist = allComponents.some(c => c.parentId === DEFAULT_CONTENT_LAZY_COLUMN_ID);
-    if (!contentComponentsExist) {
-        const rootContentChildren = allComponents.find(c => c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID)?.properties.children;
-        if (!rootContentChildren || rootContentChildren.length === 0) {
-            return { error: "Cannot generate a project from an empty canvas content area." };
-        }
-    }
-
-    const projectFiles = getAndroidProjectTemplates();
-    
-    const input: GenerateDynamicUiComponentInput = { 
-      canvasJson: canvasJsonForParser,
-    };
-    const dynamicCodeResult = await generateDynamicUiComponent(input);
-
-    if (dynamicCodeResult.error) {
-      return { error: `AI failed to generate dynamic UI code: ${dynamicCodeResult.error}` };
-    }
-
-    projectFiles['app/src/main/java/com/example/myapplication/data/model/ComponentDto.kt'] = dynamicCodeResult.dtoFileContent;
-    projectFiles['app/src/main/java/com/example/myapplication/presentation/components/DynamicUiComponent.kt'] = dynamicCodeResult.rendererFileContent;
-    
-    return { files: projectFiles };
-
-  } catch (error) {
-    console.error("Error in generateProjectFromTemplatesAction:", error);
-    const message = error instanceof Error ? error.message : "An unknown error occurred during Kotlin project generation.";
-    return { error: message };
-  }
-}
-
 
 export async function searchWebForImagesAction(query: string): Promise<{ imageUrls: string[] | null; error?: string }> {
   const apiKey = process.env.PEXELS_API_KEY;

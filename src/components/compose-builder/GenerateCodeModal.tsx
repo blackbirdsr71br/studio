@@ -1,11 +1,10 @@
-
 'use client';
 
 import React, { useState, useImperativeHandle, forwardRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useDesign } from '@/contexts/DesignContext';
-import { generateProjectFromTemplatesAction } from '@/app/actions';
+import { generateJetpackComposeCodeAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Copy, Download, Wand2 } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
@@ -39,8 +38,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
     setGeneratedProjectFiles(null);
     setHasGeneratedOnce(true);
     try {
-      // The action no longer needs a model name.
-      const result = await generateProjectFromTemplatesAction(activeDesign.components, customComponentTemplates);
+      const result = await generateJetpackComposeCodeAction(activeDesign.components, customComponentTemplates);
       if (result.error) {
         setError(result.error);
         setGeneratedProjectFiles(null);
@@ -124,7 +122,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-grow my-4 rounded-md border bg-muted/30 overflow-y-auto relative min-h-[400px]">
+        <div className="flex-grow my-4 rounded-md border bg-muted/30 overflow-y-auto relative min-h-[250px]">
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />

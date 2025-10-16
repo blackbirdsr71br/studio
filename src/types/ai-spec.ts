@@ -67,44 +67,26 @@ export type ConvertCanvasToCustomJsonOutput = z.infer<typeof ConvertCanvasToCust
 export const GenerateComposeCodeInputSchema = z.object({
   designJson: z
     .string()
-    .describe('A JSON string representing the UI design. Expects a root "Scaffold" component with "topBar", "content", and "bottomBar" properties containing their respective component trees.')
+    .describe('A JSON string representing the entire UI design, rooted with a "Scaffold" component. Used for generating a static project.')
     .refine(
       (data) => {
         try {
           const parsed = JSON.parse(data);
-          return typeof parsed === 'object' && parsed !== null && parsed.type === 'Scaffold';
+          return typeof parsed === 'object' && parsed !== null; // Simplified check
         } catch (e) {
           return false;
         }
       },
-      { message: 'The design data is not in a valid JSON format or is not a root Scaffold object.' }
+      { message: 'The design data is not in a valid JSON format.' }
     ),
+    contentJson: z.string().describe("A JSON string of only the content-area components. Used for generating DTOs in an MVI project.")
 });
 export type GenerateComposeCodeInput = z.infer<typeof GenerateComposeCodeInputSchema>;
 
 export const GenerateComposeCodeOutputSchema = z.object({
-  files: z.any().describe('An object where keys are the full file paths (e.g., "app/build.gradle.kts") and values are the raw string content of the files for a complete Android project. This is NOT a stringified JSON, but a direct JSON object.'),
+  files: z.record(z.string()).describe('An object where keys are the full file paths (e.g., "app/build.gradle.kts") and values are the raw string content of the files for a complete Android project.'),
 });
 export type GenerateComposeCodeOutput = z.infer<typeof GenerateComposeCodeOutputSchema>;
-
-
-// === generate-dynamic-ui-component ===
-
-export const GenerateDynamicUiComponentInputSchema = z.object({
-  canvasJson: z
-    .string()
-    .describe(
-      'A JSON string representing the UI design from the canvas content area. This is an array of component objects. The AI must create DTOs that exactly match this structure.'
-    ),
-});
-export type GenerateDynamicUiComponentInput = z.infer<typeof GenerateDynamicUiComponentInputSchema>;
-
-export const GenerateDynamicUiComponentOutputSchema = z.object({
-  dtoFileContent: z.string().describe("The complete, raw string content for the `ComponentDto.kt` file. This file must contain all necessary data classes to parse the input `canvasJson` using kotlinx.serialization."),
-  rendererFileContent: z.string().describe("The complete, raw string content for the `DynamicUiComponent.kt` file. This file must contain the Composable function that recursively renders the UI based on the DTOs."),
-  error: z.string().optional().describe("If generation fails, this field should contain the error message."),
-});
-export type GenerateDynamicUiComponentOutput = z.infer<typeof GenerateDynamicUiComponentOutputSchema>;
 
 
 // === generate-image-from-hint-flow ===
