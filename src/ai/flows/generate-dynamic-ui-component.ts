@@ -10,22 +10,28 @@
 
 import {ai} from '@/ai/genkit';
 import { GenerateDynamicUiComponentInputSchema, GenerateDynamicUiComponentOutputSchema, type GenerateDynamicUiComponentInput, type GenerateDynamicUiComponentOutput } from '@/types/ai-spec';
+import { googleAI } from '@genkit-ai/googleai';
 
 export async function generateDynamicUiComponent(input: GenerateDynamicUiComponentInput): Promise<GenerateDynamicUiComponentOutput> {
   return generateDynamicUiComponentFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'generateDynamicUiComponentPrompt',
-  input: {schema: GenerateDynamicUiComponentInputSchema},
-  output: {schema: GenerateDynamicUiComponentOutputSchema},
-  model: 'googleai/gemini-1.5-pro-latest', // CORRECTED: Added 'googleai/' prefix
-  prompt: `You are an expert Kotlin and Jetpack Compose developer. Your task is to generate the content for two specific Kotlin files based on an input JSON representing a UI design.
+const generateDynamicUiComponentFlow = ai.defineFlow(
+  {
+    name: 'generateDynamicUiComponentFlow',
+    inputSchema: GenerateDynamicUiComponentInputSchema,
+    outputSchema: GenerateDynamicUiComponentOutputSchema,
+  },
+  async (input) => {
+    
+    const { output } = await ai.generate({
+        model: 'googleai/gemini-1.5-pro-latest',
+        prompt: `You are an expert Kotlin and Jetpack Compose developer. Your task is to generate the content for two specific Kotlin files based on an input JSON representing a UI design.
 You MUST ONLY generate the content for these two files. The rest of the project is handled by static templates.
 
 **Input JSON to Analyze:**
 \`\`\`json
-{{{canvasJson}}}
+${input.canvasJson}
 \`\`\`
 
 **Instructions for Generation:**
@@ -72,18 +78,11 @@ You MUST ONLY generate the content for these two files. The rest of the project 
 **Final Output:**
 Provide a single JSON object with two keys: \`dtoFileContent\` and \`rendererFileContent\`. The values should be the complete, raw string content for each respective Kotlin file.
 `,
-});
-
-const generateDynamicUiComponentFlow = ai.defineFlow(
-  {
-    name: 'generateDynamicUiComponentFlow',
-    inputSchema: GenerateDynamicUiComponentInputSchema,
-    outputSchema: GenerateDynamicUiComponentOutputSchema,
-  },
-  async (input) => {
-    
-    // Correctly call the prompt with the input.
-    const { output } = await prompt(input);
+        output: {
+            format: 'json',
+            schema: GenerateDynamicUiComponentOutputSchema,
+        }
+    });
 
     if (!output || !output.dtoFileContent || !output.rendererFileContent) {
       console.error("AI generation failed or returned invalid structure. Output:", output);
