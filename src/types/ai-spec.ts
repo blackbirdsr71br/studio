@@ -62,33 +62,6 @@ export const ConvertCanvasToCustomJsonOutputSchema = z.object({
 export type ConvertCanvasToCustomJsonOutput = z.infer<typeof ConvertCanvasToCustomJsonOutputSchema>;
 
 
-// === generate-compose-code ===
-
-export const GenerateComposeCodeInputSchema = z.object({
-  designJson: z
-    .string()
-    .describe('A JSON string representing the entire UI design, rooted with a "Scaffold" component. Used for generating a static project.')
-    .refine(
-      (data) => {
-        try {
-          const parsed = JSON.parse(data);
-          return typeof parsed === 'object' && parsed !== null; // Simplified check
-        } catch (e) {
-          return false;
-        }
-      },
-      { message: 'The design data is not in a valid JSON format.' }
-    ),
-    contentJson: z.string().describe("A JSON string of only the content-area components. Used for generating DTOs in an MVI project.")
-});
-export type GenerateComposeCodeInput = z.infer<typeof GenerateComposeCodeInputSchema>;
-
-export const GenerateComposeCodeOutputSchema = z.object({
-  files: z.record(z.string()).describe('An object where keys are the full file paths (e.g., "app/build.gradle.kts") and values are the raw string content of the files for a complete Android project.'),
-});
-export type GenerateComposeCodeOutput = z.infer<typeof GenerateComposeCodeOutputSchema>;
-
-
 // === generate-image-from-hint-flow ===
 
 export const GenerateImageFromHintInputSchema = z.object({

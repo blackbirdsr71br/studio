@@ -1,10 +1,9 @@
 
 'use server';
-import { generateComposeCode } from '@/ai/flows/generate-compose-code';
 import { generateImageFromHint } from '@/ai/flows/generate-image-from-hint-flow';
 import { generateJsonFromComposeCommands } from '@/ai/flows/generate-json-from-compose-commands';
 import { convertCanvasToCustomJson } from '@/ai/flows/convert-canvas-to-custom-json-flow';
-import type { GenerateComposeCodeInput, GenerateImageFromHintInput, GenerateJsonFromComposeCommandsInput, ConvertCanvasToCustomJsonInput } from '@/types/ai-spec';
+import type { GenerateImageFromHintInput, GenerateJsonFromComposeCommandsInput, ConvertCanvasToCustomJsonInput } from '@/types/ai-spec';
 
 import type { DesignComponent, CustomComponentTemplate, BaseComponentProps, ComponentType } from '@/types/compose-spec';
 import { isContainerType, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, CORE_SCAFFOLD_ELEMENT_IDS, propertyDefinitions, getDefaultProperties } from '@/types/compose-spec';
@@ -13,6 +12,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { hexToHslCssString } from '@/lib/utils';
 import { getAndroidProjectTemplates } from '@/lib/android-project-templates';
+import { generateDynamicUiComponentKt, generateComponentDtoKt } from '@/lib/jetpack-compose-generator';
 
 // Helper function to remove properties with empty string or null values
 const cleanEmptyOrNullProperties = (properties: Record<string, any>): Record<string, any> => {
@@ -31,21 +31,21 @@ export async function generateJetpackComposeCodeAction(
   customComponentTemplates: CustomComponentTemplate[]
 ): Promise<{ files?: Record<string, string>; error?: string }> {
     try {
-      // This is now a deterministic, non-AI based generator.
       const projectFiles = getAndroidProjectTemplates();
       const contentJson = await getDesignComponentsAsJsonAction(components, customComponentTemplates, true);
-       const scaffoldStructureForAi = buildComponentTreeForAi(components, customComponentTemplates, ROOT_SCAFFOLD_ID, true);
-       const designJson = JSON.stringify(scaffoldStructureForAi, null, 2);
+      const componentTree = buildComponentTreeForAi(components, customComponentTemplates, ROOT_SCAFFOLD_ID, true);
 
+      // Generate the two dynamic files deterministically
+      const componentDtoContent = generateComponentDtoKt(componentTree);
+      const dynamicUiComponentContent = generateDynamicUiComponentKt(componentTree);
 
-      const input: GenerateComposeCodeInput = { 
-          designJson: designJson,
-          contentJson: contentJson,
+      const finalProjectFiles = {
+        ...projectFiles,
+        'app/src/main/java/com/example/myapplication/data/model/ComponentDto.kt': componentDtoContent,
+        'app/src/main/java/com/example/myapplication/presentation/components/DynamicUiComponent.kt': dynamicUiComponentContent,
       };
-      // The AI call is now more specific and asks for just the two dynamic files.
-      const result = await generateComposeCode(input);
-      
-      return { files: result.files };
+
+      return { files: finalProjectFiles };
     } catch (error) {
       console.error("Error generating Jetpack Compose code:", error);
       const message = error instanceof Error ? error.message : "An unknown error occurred while generating code.";
