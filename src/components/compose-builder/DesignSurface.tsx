@@ -5,6 +5,7 @@ import React, { useRef } from 'react';
 import { useDesign } from '@/contexts/DesignContext';
 import type { DesignComponent } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from './component-renderer/RenderedComponentWrapper';
+import { EditableComponentWrapper } from './component-renderer/EditableComponentWrapper';
 import { cn } from '@/lib/utils';
 import { ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 
@@ -18,9 +19,12 @@ export function DesignSurface() {
     }
   };
   
-  const rootComponent = activeDesign?.editingTemplateInfo
+  const isEditingTemplate = !!activeDesign?.editingTemplateInfo;
+  const rootComponent = isEditingTemplate
     ? activeDesign.components.find(c => c.parentId === null)
     : activeDesign?.components.find(c => c.id === ROOT_SCAFFOLD_ID && c.parentId === null);
+
+  const WrapperComponent = isEditingTemplate ? EditableComponentWrapper : RenderedComponentWrapper;
 
   return (
     <div
@@ -58,7 +62,7 @@ export function DesignSurface() {
       `}</style>
       
       {rootComponent ? (
-        <RenderedComponentWrapper component={rootComponent} />
+        <WrapperComponent component={rootComponent} />
       ) : (
          <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground pointer-events-none p-4 text-center">
             <p className="text-lg">{activeDesign?.editingTemplateInfo ? `Loading template "${activeDesign.editingTemplateInfo.name}"...` : 'Initializing canvas...'}</p>
