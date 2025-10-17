@@ -495,6 +495,7 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
   const canResize = canResizeHorizontally || canResizeVertically;
   
   const isReorderTarget = isOverCurrent && canDropCurrent && dropIndicator !== null;
+  const isScaffoldElement = CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id);
 
   return (
     <div
@@ -503,8 +504,9 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
       className={cn(
         'border border-transparent',
         { 
-          'ring-2 ring-primary/80 ring-offset-2 ring-offset-background shadow-lg': isSelected && ![ROOT_SCAFFOLD_ID, ...CORE_SCAFFOLD_ELEMENT_IDS].includes(component.id),
-          'ring-2 ring-accent ring-offset-2 ring-offset-background': isSelected && CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && component.id !== ROOT_SCAFFOLD_ID,
+          'ring-2 ring-offset-2 ring-offset-background shadow-lg': isSelected,
+          'ring-primary/80': isSelected && !isScaffoldElement,
+          'ring-accent': isSelected && isScaffoldElement && component.id !== ROOT_SCAFFOLD_ID,
           'opacity-50': isDragging,
           'cursor-grabbing': isDragging,
           'cursor-pointer': !isDragging && component.properties.clickable,
