@@ -3,7 +3,7 @@
 import type { DesignComponent, CustomComponentTemplate } from '@/types/compose-spec';
 import { useDesign } from '@/contexts/DesignContext';
 import { cn } from '@/lib/utils';
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { ROOT_SCAFFOLD_ID, CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
 import { EditableContainerView } from './EditableContainerView';
 import { TextView } from './TextView';
@@ -61,11 +61,16 @@ const getDimensionValue = (
     return 'auto';
   };
   
-export function EditableComponentWrapper({ component }: EditableComponentWrapperProps) {
+export function EditableComponentWrapper({ component, ...props }: EditableComponentWrapperProps) {
   const { selectedComponentId, selectComponent, getComponentById, customComponentTemplates } = useDesign();
   const ref = useRef<HTMLDivElement>(null);
+  const [isSelected, setIsSelected] = useState(component.id === selectedComponentId);
 
-  const isSelected = component.id === selectedComponentId;
+  useEffect(() => {
+    setIsSelected(component.id === selectedComponentId);
+  }, [component.id, selectedComponentId]);
+
+
   const isScaffoldElement = CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id);
 
   const handleClick = (e: React.MouseEvent) => {
@@ -74,11 +79,8 @@ export function EditableComponentWrapper({ component }: EditableComponentWrapper
   };
   
   useEffect(() => {
-    // This effect ensures that clicking outside any component within the editable
-    // canvas selects the root of the template.
     const handleOutsideClick = (event: MouseEvent) => {
         if (ref.current && !ref.current.contains(event.target as Node)) {
-             // Click was outside this component, logic handled by parent container
         }
     };
     document.addEventListener('mousedown', handleOutsideClick);
@@ -227,6 +229,7 @@ export function EditableComponentWrapper({ component }: EditableComponentWrapper
       onClick={handleClick}
       data-component-id={component.id}
       data-component-type={component.type}
+      {...props}
     >
       {renderSpecificComponent()}
     </div>
