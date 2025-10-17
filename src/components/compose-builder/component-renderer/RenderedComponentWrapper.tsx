@@ -106,6 +106,12 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
     initialHeight: number;
   } | null>(null);
 
+  const [isSelected, setIsSelected] = useState(false);
+
+  useEffect(() => {
+    setIsSelected(!isPreview && activeDesign?.selectedComponentId === component.id);
+  }, [activeDesign?.selectedComponentId, component.id, isPreview]);
+
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.CANVAS_COMPONENT_ITEM,
     item: { id: component.id, type: ItemTypes.CANVAS_COMPONENT_ITEM },
@@ -212,8 +218,7 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
   }), [component.id, component.type, component.parentId, addComponent, moveComponent, getComponentById, customComponentTemplates, dropIndicator, isPreview]);
 
   drag(drop(ref));
-
-  const isSelected = !isPreview && activeDesign?.selectedComponentId === component.id;
+  
   const isScaffoldElement = CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id);
 
   const handleClick = (e: React.MouseEvent) => {
@@ -509,7 +514,7 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
           'ring-accent': isSelected && isScaffoldElement && component.id !== ROOT_SCAFFOLD_ID,
           'opacity-50': isDragging,
           'cursor-grabbing': isDragging,
-          'cursor-pointer': !isDragging && component.properties.clickable,
+          'cursor-pointer': !isDragging && (component.properties.clickable || !isPreview),
           'cursor-grab': !isDragging && !component.properties.clickable && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !isPreview,
           'relative': true,
         },
