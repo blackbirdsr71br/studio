@@ -674,8 +674,19 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
 
   const selectComponent = React.useCallback((id: string | null) => {
-    updateActiveDesignWithHistory(activeDesign => ({ selectedComponentId: id }));
-  }, [updateActiveDesignWithHistory]);
+    setDesignState(prev => {
+        const activeDesignIndex = prev.designs.findIndex(d => d.id === prev.activeDesignId);
+        if (activeDesignIndex === -1) return prev;
+        
+        const newDesigns = [...prev.designs];
+        newDesigns[activeDesignIndex] = {
+            ...newDesigns[activeDesignIndex],
+            selectedComponentId: id,
+        };
+
+        return { ...prev, designs: newDesigns };
+    });
+  }, []);
 
   const updateComponent = React.useCallback((id: string, updates: { name?: string; properties?: Partial<BaseComponentProps>; templateIdRef?: string }) => {
     updateActiveDesignWithHistory(activeDesign => {
@@ -1010,7 +1021,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         id: newId,
         name: `Editing: ${template.name}`,
         components: template.componentTree,
-        selectedComponentId: template.rootComponentId,
+        selectedComponentId: null, // Don't select anything by default
         nextId: 1000, // Arbitrary high number for temp IDs
         history: [],
         future: [],
@@ -1019,6 +1030,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           templateId: template.templateId,
           firestoreId: template.firestoreId,
           name: template.name,
+          rootComponentId: template.rootComponentId,
         },
         editingLayoutInfo: null,
       };
