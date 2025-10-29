@@ -296,7 +296,7 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
   }
 
   const wrapperStyle: React.CSSProperties = {
-    transition: isDragging ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
+    transition: 'none',
     width: getDimensionValue('width', component.properties, component.type, component.id),
     height: getDimensionValue('height', component.properties, component.type, component.id),
     position: 'relative',
@@ -372,7 +372,7 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
       ref={ref}
       style={wrapperStyle}
       className={cn(
-        'border border-transparent', // REMOVED ALL SELECTION STYLES (ring, shadow, etc.)
+        'border border-transparent',
         { 
           'opacity-50': isDragging,
           'cursor-grabbing': isDragging,
@@ -396,3 +396,5 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
     </div>
   );
 }
+
+    

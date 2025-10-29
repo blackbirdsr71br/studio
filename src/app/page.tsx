@@ -23,7 +23,7 @@ import { DEFAULT_CONTENT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 2.0;
-const SELECTION_OFFSET = 8; // Increased for better aesthetics
+const SELECTION_OFFSET = 8; 
 
 interface SelectionRect {
   top: number;
@@ -121,7 +121,6 @@ function MainApp() {
         height: componentRect.height + SELECTION_OFFSET * 2,
       };
       
-      // Only update state if the rect has actually changed to avoid re-renders
       if (
         !selectionRect ||
         selectionRect.top !== newRect.top ||
@@ -132,7 +131,6 @@ function MainApp() {
         setSelectionRect(newRect);
       }
     } else if (selectionRect) {
-      // Component not found or rendered yet, hide the overlay
       setSelectionRect(null);
     }
     
@@ -207,7 +205,7 @@ function MainApp() {
                   <DesignSurface />
                 </MobileFrame>
               </div>
-              <SelectionOverlay selectionRect={selectionRect} />
+              <SelectionOverlay selectionRect={selectionRect} zoomLevel={zoomLevel} componentId={activeDesign?.selectedComponentId || null}/>
             </div>
           </main>
           <PropertyPanel imageSourceModalRef={imageSourceModalRef} />
@@ -232,3 +230,5 @@ export default function ComposeBuilderPage() {
     </DndProvider>
   );
 }
+
+    

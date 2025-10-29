@@ -34,26 +34,6 @@ export function DesignSurface() {
       onClick={handleSurfaceClick}
       id="design-surface"
     >
-      <style jsx global>{`
-        .resize-handle {
-          position: absolute;
-          width: 12px;
-          height: 12px;
-          background-color: hsl(var(--primary));
-          border: 1px solid hsl(var(--primary-foreground));
-          border-radius: 2px;
-          z-index: 10; 
-        }
-        .resize-handle.nw { cursor: nwse-resize; top: -6px; left: -6px; }
-        .resize-handle.ne { cursor: nesw-resize; top: -6px; right: -6px; }
-        .resize-handle.sw { cursor: nesw-resize; bottom: -6px; left: -6px; }
-        .resize-handle.se { cursor: nwse-resize; bottom: -6px; right: -6px; }
-        .resize-handle.n { cursor: ns-resize; top: -6px; left: 50%; transform: translateX(-50%); }
-        .resize-handle.s { cursor: ns-resize; bottom: -6px; left: 50%; transform: translateX(-50%); }
-        .resize-handle.w { cursor: ew-resize; top: 50%; left: -6px; transform: translateY(-50%); }
-        .resize-handle.e { cursor: ew-resize; top: 50%; right: -6px; transform: translateY(-50%); }
-      `}</style>
-      
       {rootComponent ? (
         <RenderedComponentWrapper component={rootComponent} />
       ) : (
@@ -65,5 +45,7 @@ export function DesignSurface() {
     </div>
   );
 }
+
+    
 
     
