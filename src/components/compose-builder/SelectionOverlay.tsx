@@ -2,7 +2,6 @@
 'use client';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDesign } from '@/contexts/DesignContext';
-import { CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
 
 interface SelectionOverlayProps {
   selectionRect: {
@@ -11,15 +10,16 @@ interface SelectionOverlayProps {
     width: number;
     height: number;
   } | null;
-  zoomLevel: number;
-  componentId: string | null;
+  canResizeHorizontally: boolean;
+  canResizeVertically: boolean;
 }
 
 type HandleType = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 const MIN_DIMENSION = 20;
 
-export function SelectionOverlay({ selectionRect, zoomLevel, componentId }: SelectionOverlayProps) {
-  const { getComponentById, updateComponent } = useDesign();
+export function SelectionOverlay({ selectionRect, canResizeHorizontally, canResizeVertically }: SelectionOverlayProps) {
+  const { activeDesign, updateComponent, zoomLevel } = useDesign();
+  const componentId = activeDesign?.selectedComponentId;
 
   const [isResizing, setIsResizing] = useState(false);
   const [resizeDetails, setResizeDetails] = useState<{
@@ -51,9 +51,6 @@ export function SelectionOverlay({ selectionRect, zoomLevel, componentId }: Sele
 
         const dx = (event.clientX - resizeDetails.startX);
         const dy = (event.clientY - resizeDetails.startY);
-
-        const currentComponent = getComponentById(componentId);
-        if (!currentComponent) return;
 
         const updatedProps: Record<string, any> = {};
 
@@ -104,18 +101,13 @@ export function SelectionOverlay({ selectionRect, zoomLevel, componentId }: Sele
         window.removeEventListener('mousemove', handleMouseMove);
         window.removeEventListener('mouseup', handleMouseUp);
     };
-}, [isResizing, resizeDetails, componentId, updateComponent, zoomLevel, getComponentById]);
+}, [isResizing, resizeDetails, componentId, updateComponent, zoomLevel]);
 
 
-  if (!selectionRect || !componentId) {
+  if (!selectionRect) {
     return null;
   }
 
-  const component = getComponentById(componentId);
-  if (!component) return null;
-
-  const canResizeHorizontally = !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxWidth && !component.properties.fillMaxSize;
-  const canResizeVertically = !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxHeight && !component.properties.fillMaxSize;
   const canResize = canResizeHorizontally || canResizeVertically;
 
   return (
@@ -164,5 +156,3 @@ export function SelectionOverlay({ selectionRect, zoomLevel, componentId }: Sele
     </div>
   );
 }
-
-    

@@ -19,7 +19,7 @@ import { MobileFrame, FRAME_WIDTH, FRAME_HEIGHT } from '@/components/compose-bui
 import { SelectionOverlay } from '@/components/compose-builder/SelectionOverlay';
 import { useToast } from '@/hooks/use-toast';
 import { DesignTabs } from '@/components/compose-builder/DesignTabs';
-import { DEFAULT_CONTENT_LAZY_COLUMN_ID } from '@/types/compose-spec';
+import { DEFAULT_CONTENT_LAZY_COLUMN_ID, CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 2.0;
@@ -87,7 +87,7 @@ function KeyboardShortcuts() {
 }
 
 function MainApp() {
-  const { activeDesign, zoomLevel = 1, setZoomLevel } = useDesign();
+  const { activeDesign, getComponentById, zoomLevel = 1, setZoomLevel } = useDesign();
   const generateModalRef = useRef<GenerateCodeModalRef>(null);
   const viewJsonModalRef = useRef<ViewJsonModalRef>(null);
   const themeEditorModalRef = useRef<ThemeEditorModalRef>(null);
@@ -113,6 +113,34 @@ function MainApp() {
     if (componentElement && frameWrapper) {
       const componentRect = componentElement.getBoundingClientRect();
       const frameWrapperRect = frameWrapper.getBoundingClientRect();
+
+      // Check if component is visible within all scrolling parents
+      let isVisible = true;
+      let parent = componentElement.parentElement;
+      while (parent && parent !== frameWrapper) {
+          const parentStyle = window.getComputedStyle(parent);
+          if (parentStyle.overflow === 'auto' || parentStyle.overflowX === 'auto' || parentStyle.overflowY === 'auto' ||
+              parentStyle.overflow === 'scroll' || parentStyle.overflowX === 'scroll' || parentStyle.overflowY === 'scroll') {
+              
+              const parentRect = parent.getBoundingClientRect();
+              
+              const isHorizontallyVisible = componentRect.left < parentRect.right && componentRect.right > parentRect.left;
+              const isVerticallyVisible = componentRect.top < parentRect.bottom && componentRect.bottom > parentRect.top;
+
+              if (!isHorizontallyVisible || !isVerticallyVisible) {
+                  isVisible = false;
+                  break;
+              }
+          }
+          parent = parent.parentElement;
+      }
+      
+      if (!isVisible) {
+          if (selectionRect) setSelectionRect(null);
+          animationFrameId.current = requestAnimationFrame(updateSelectionOverlay);
+          return;
+      }
+
 
       const newRect = {
         top: componentRect.top - frameWrapperRect.top - SELECTION_OFFSET,
@@ -169,6 +197,10 @@ function MainApp() {
     };
   }, [setZoomLevel]);
 
+  const selectedComponent = activeDesign?.selectedComponentId ? getComponentById(activeDesign.selectedComponentId) : null;
+  const canResizeHorizontally = selectedComponent ? !CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponent.id) && !selectedComponent.properties.fillMaxWidth && !selectedComponent.properties.fillMaxSize : false;
+  const canResizeVertically = selectedComponent ? !CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponent.id) && !selectedComponent.properties.fillMaxHeight && !selectedComponent.properties.fillMaxSize : false;
+
   return (
     <>
       <KeyboardShortcuts />
@@ -205,7 +237,11 @@ function MainApp() {
                   <DesignSurface />
                 </MobileFrame>
               </div>
-              <SelectionOverlay selectionRect={selectionRect} zoomLevel={zoomLevel} componentId={activeDesign?.selectedComponentId || null}/>
+              <SelectionOverlay 
+                selectionRect={selectionRect} 
+                canResizeHorizontally={canResizeHorizontally}
+                canResizeVertically={canResizeVertically}
+              />
             </div>
           </main>
           <PropertyPanel imageSourceModalRef={imageSourceModalRef} />
@@ -230,5 +266,3 @@ export default function ComposeBuilderPage() {
     </DndProvider>
   );
 }
-
-    
