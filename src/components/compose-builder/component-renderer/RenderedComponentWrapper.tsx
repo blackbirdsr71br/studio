@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { DesignComponent, CustomComponentTemplate } from '@/types/compose-spec';
+import type { DesignComponent, CustomComponentTemplate, BaseComponentProps } from '@/types/compose-spec';
 import { useDesign } from '@/contexts/DesignContext';
 import { cn } from '@/lib/utils';
 import { TextView } from './TextView';
@@ -52,6 +52,8 @@ const getDimensionValue = (
     componentId: string,
   ): string => {
     
+    if (properties.fillMaxSize) return '100%';
+
     const fillValue = propName === 'width' ? properties.fillMaxWidth : properties.fillMaxHeight;
     const propValue = properties[propName];
 
@@ -67,7 +69,7 @@ const getDimensionValue = (
       return '100%';
     }
   
-    if (fillValue || properties.fillMaxSize) {
+    if (fillValue) {
         return '100%';
     }
 
@@ -400,10 +402,10 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
   };
   
   let effectiveLayoutWeight = component.properties.layoutWeight || 0;
-  if (parentIsRowLike && component.properties.fillMaxWidth) {
+  if (parentIsRowLike && (component.properties.fillMaxWidth || component.properties.fillMaxSize)) {
     effectiveLayoutWeight = Math.max(effectiveLayoutWeight, 1);
   }
-  if (parentIsColumnLike && component.properties.fillMaxHeight) {
+  if (parentIsColumnLike && (component.properties.fillMaxHeight || component.properties.fillMaxSize)) {
     effectiveLayoutWeight = Math.max(effectiveLayoutWeight, 1);
   }
 
@@ -432,7 +434,7 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
     } else { 
       if (parentIsRowLike && component.properties.fillMaxHeight) {
         wrapperStyle.alignSelf = 'stretch';
-      } else if (!parentIsRowLike && component.properties.fillMaxWidth) {
+      } else if (!parentIsRowLike && (component.properties.fillMaxWidth || component.properties.fillMaxSize)) {
         wrapperStyle.alignSelf = 'stretch';
       }
     }
