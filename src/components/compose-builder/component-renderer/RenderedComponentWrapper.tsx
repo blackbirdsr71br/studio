@@ -493,10 +493,10 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
           {canResizeHorizontally && canResizeVertically && (['nw', 'ne', 'sw', 'se'] as HandleType[]).map(handle => (
             <div key={handle} className={`resize-handle ${handle}`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle)} />
           ))}
-          {canResizeVertically && (['n', 's'] as HandleType[]).map(handle => (
+          {canResizeVertically && !canResizeHorizontally && (['n', 's'] as HandleType[]).map(handle => (
             <div key={handle} className={`resize-handle ${handle}`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle)} />
           ))}
-          {canResizeHorizontally && (['e', 'w'] as HandleType[]).map(handle => (
+          {canResizeHorizontally && !canResizeVertically && (['e', 'w'] as HandleType[]).map(handle => (
             <div key={handle} className={`resize-handle ${handle}`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle)} />
           ))}
         </>
