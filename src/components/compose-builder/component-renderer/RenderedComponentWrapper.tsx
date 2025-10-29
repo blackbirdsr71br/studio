@@ -409,7 +409,7 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
   }
 
   const wrapperStyle: React.CSSProperties = {
-    transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
+    transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out, outline-color 0.2s ease-in-out',
     width: getDimensionValue('width', component.properties.width, component.properties.fillMaxWidth, component.type, component.id, component.parentId, getComponentById, customComponentTemplates),
     height: getDimensionValue('height', component.properties.height, component.properties.fillMaxHeight, component.type, component.id, component.parentId, getComponentById, customComponentTemplates),
     position: 'relative',
@@ -509,9 +509,9 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
       className={cn(
         'border border-transparent',
         { 
-          'ring-2 ring-offset-2 ring-offset-background shadow-lg': isSelected,
-          'ring-primary/80': isSelected && !isScaffoldElement,
-          'ring-accent': isSelected && isScaffoldElement && component.id !== ROOT_SCAFFOLD_ID,
+          'outline-2 outline-offset-2 shadow-lg': isSelected,
+          'outline-primary/80': isSelected && !isScaffoldElement,
+          'outline-accent': isSelected && isScaffoldElement && component.id !== ROOT_SCAFFOLD_ID,
           'opacity-50': isDragging,
           'cursor-grabbing': isDragging,
           'cursor-pointer': !isDragging && (component.properties.clickable || !isPreview),
