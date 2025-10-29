@@ -198,9 +198,6 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
 
   drag(drop(ref));
 
-  const isSelected = !isPreview && activeDesign?.selectedComponentId === component.id;
-  const isScaffoldElement = CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id);
-
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isPreview) {
@@ -458,6 +455,7 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
     ? 'drag-over-container'
     : '';
 
+  const isSelected = !isPreview && activeDesign?.selectedComponentId === component.id;
   const canResizeHorizontally = isSelected && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxWidth && !component.properties.fillMaxSize;
   const canResizeVertically = isSelected && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxHeight && !component.properties.fillMaxSize;
   const canResize = canResizeHorizontally || canResizeVertically;
@@ -506,3 +504,5 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
     </div>
   );
 }
+
+    
