@@ -490,7 +490,7 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
       )}
       {component.type !== 'Spacer' && !isPreview && canResize && (
         <>
-          {(['nw', 'ne', 'sw', 'se'] as HandleType[]).map(handle => (
+          {canResizeHorizontally && canResizeVertically && (['nw', 'ne', 'sw', 'se'] as HandleType[]).map(handle => (
             <div key={handle} className={`resize-handle ${handle}`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle)} />
           ))}
           {canResizeVertically && (['n', 's'] as HandleType[]).map(handle => (
@@ -504,5 +504,7 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
     </div>
   );
 }
+
+    
 
     
