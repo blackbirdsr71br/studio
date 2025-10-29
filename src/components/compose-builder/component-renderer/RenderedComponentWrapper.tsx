@@ -386,7 +386,7 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
   }
 
   const wrapperStyle: React.CSSProperties = {
-    transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out, outline-color 0.2s ease-in-out',
+    transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
     width: getDimensionValue('width', component.properties, component.type, component.id),
     height: getDimensionValue('height', component.properties, component.type, component.id),
     position: 'relative',
@@ -452,7 +452,7 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
   }
 
   const containerDropTargetStyle = (isContainerType(component.type, customComponentTemplates) || CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id)) && isOverCurrent && canDropCurrent && dropIndicator === null
-    ? 'drag-over-container'
+    ? 'bg-accent/10'
     : '';
 
   const isSelected = !isPreview && activeDesign?.selectedComponentId === component.id;

@@ -34,10 +34,6 @@ export function DesignSurface() {
       id="design-surface"
     >
       <style jsx global>{`
-        .drag-over-container { 
-          outline: 2px dashed hsl(var(--accent));
-          background-color: hsla(var(--accent-hsl, 291 64% 42%) / 0.1) !important; 
-        }
         .resize-handle {
           position: absolute;
           width: 12px;
