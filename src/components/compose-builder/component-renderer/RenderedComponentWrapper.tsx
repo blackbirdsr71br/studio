@@ -27,10 +27,7 @@ interface DraggedLibraryItem {
   type: string;
 }
 
-type HandleType = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 type DropIndicatorPosition = 'top' | 'bottom' | null;
-
-const MIN_DIMENSION = 20;
 
 const isNumericValue = (value: any): boolean => {
   if (value === null || value === undefined || typeof value === 'boolean') {
@@ -79,17 +76,9 @@ const getDimensionValue = (
 };
   
 export function RenderedComponentWrapper({ component, isPreview = false }: RenderedComponentWrapperProps) {
-  const { activeDesign, zoomLevel, selectComponent, getComponentById, addComponent, moveComponent, updateComponent, customComponentTemplates } = useDesign();
+  const { selectComponent, getComponentById, addComponent, moveComponent, customComponentTemplates } = useDesign();
   const ref = useRef<HTMLDivElement>(null);
   const [dropIndicator, setDropIndicator] = useState<DropIndicatorPosition>(null);
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizeDetails, setResizeDetails] = useState<{
-    handle: HandleType;
-    startX: number;
-    startY: number;
-    initialWidth: number;
-    initialHeight: number;
-  } | null>(null);
 
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.CANVAS_COMPONENT_ITEM,
@@ -205,85 +194,6 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
     }
   };
 
-  const handleMouseDownOnResizeHandle = useCallback((event: React.MouseEvent<HTMLDivElement>, handle: HandleType) => {
-    event.stopPropagation();
-    event.preventDefault();
-    if (isPreview || CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id)) return;
-
-    selectComponent(component.id);
-    
-    const rect = ref.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    setIsResizing(true);
-    setResizeDetails({
-      handle,
-      startX: event.clientX,
-      startY: event.clientY,
-      initialWidth: rect.width,
-      initialHeight: rect.height,
-    });
-  }, [component.id, selectComponent, isPreview]);
-
-  useEffect(() => {
-    const handleMouseMove = (event: MouseEvent) => {
-      if (!isResizing || !resizeDetails || !ref.current) return;
-
-      const dx = (event.clientX - resizeDetails.startX) / zoomLevel;
-      const dy = (event.clientY - resizeDetails.startY) / zoomLevel;
-      
-      const updatedProps: Record<string, any> = {};
-
-      const initialUnscaledWidth = resizeDetails.initialWidth / zoomLevel;
-      const initialUnscaledHeight = resizeDetails.initialHeight / zoomLevel;
-
-      const isHorizontalResize = resizeDetails.handle.includes('e') || resizeDetails.handle.includes('w');
-      const isVerticalResize = resizeDetails.handle.includes('n') || resizeDetails.handle.includes('s');
-
-      if (isHorizontalResize) {
-        let newWidth = initialUnscaledWidth;
-        if (resizeDetails.handle.includes('e')) newWidth += dx;
-        if (resizeDetails.handle.includes('w')) newWidth -= dx;
-        
-        updatedProps.width = Math.round(Math.max(newWidth, MIN_DIMENSION));
-        updatedProps.fillMaxWidth = false; 
-        updatedProps.fillMaxSize = false;
-      }
-
-      if (isVerticalResize) {
-        let newHeight = initialUnscaledHeight;
-        if (resizeDetails.handle.includes('s')) newHeight += dy;
-        if (resizeDetails.handle.includes('n')) newHeight -= dy;
-
-        updatedProps.height = Math.round(Math.max(newHeight, MIN_DIMENSION));
-        updatedProps.fillMaxHeight = false; 
-        updatedProps.fillMaxSize = false;
-      }
-
-      if (Object.keys(updatedProps).length > 0) {
-        updateComponent(component.id, { properties: updatedProps });
-      }
-    };
-
-    const handleMouseUp = () => {
-      if (isResizing) {
-        setIsResizing(false);
-        setResizeDetails(null);
-      }
-    };
-
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizing, resizeDetails, component.id, updateComponent, zoomLevel]);
-
-
   const renderSpecificComponent = () => {
     const childrenToRender = (component.properties.children || [])
       .map(id => getComponentById(id))
@@ -386,7 +296,7 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
   }
 
   const wrapperStyle: React.CSSProperties = {
-    transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
+    transition: isDragging ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
     width: getDimensionValue('width', component.properties, component.type, component.id),
     height: getDimensionValue('height', component.properties, component.type, component.id),
     position: 'relative',
@@ -454,11 +364,6 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
   const containerDropTargetStyle = (isContainerType(component.type, customComponentTemplates) || CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id)) && isOverCurrent && canDropCurrent && dropIndicator === null
     ? 'bg-accent/10'
     : '';
-
-  const isSelected = !isPreview && activeDesign?.selectedComponentId === component.id;
-  const canResizeHorizontally = isSelected && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxWidth && !component.properties.fillMaxSize;
-  const canResizeVertically = isSelected && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxHeight && !component.properties.fillMaxSize;
-  const canResize = canResizeHorizontally || canResizeVertically;
   
   const isReorderTarget = isOverCurrent && canDropCurrent && dropIndicator !== null;
 
@@ -467,7 +372,7 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
       ref={ref}
       style={wrapperStyle}
       className={cn(
-        'border border-transparent',
+        'border border-transparent', // REMOVED ALL SELECTION STYLES (ring, shadow, etc.)
         { 
           'opacity-50': isDragging,
           'cursor-grabbing': isDragging,
@@ -487,19 +392,6 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
       {renderSpecificComponent()} 
       {isReorderTarget && dropIndicator === 'bottom' && (
           <div className="absolute bottom-[-2px] left-0 right-0 h-[4px] bg-primary z-20 pointer-events-none" />
-      )}
-      {component.type !== 'Spacer' && !isPreview && canResize && (
-        <>
-          {canResizeHorizontally && canResizeVertically && (['nw', 'ne', 'sw', 'se'] as HandleType[]).map(handle => (
-            <div key={handle} className={`resize-handle ${handle}`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle)} />
-          ))}
-          {canResizeVertically && !canResizeHorizontally && (['n', 's'] as HandleType[]).map(handle => (
-            <div key={handle} className={`resize-handle ${handle}`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle)} />
-          ))}
-          {canResizeHorizontally && !canResizeVertically && (['e', 'w'] as HandleType[]).map(handle => (
-            <div key={handle} className={`resize-handle ${handle}`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle)} />
-          ))}
-        </>
       )}
     </div>
   );
