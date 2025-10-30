@@ -9,12 +9,12 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ComponentProperty, ComponentPropertyOption, ClickAction } from '@/types/compose-spec';
 import { Button } from '../ui/button';
-import { Droplet } from 'lucide-react';
+import { Droplet, XCircle } from 'lucide-react';
 
 interface PropertyEditorProps {
   property: Omit<ComponentProperty, 'value'>; // Definition of the property
-  currentValue: string | number | boolean | ClickAction; // Actual current value from the component
-  onChange: (value: string | number | boolean | ClickAction) => void;
+  currentValue: string | number | boolean | ClickAction | null; // Actual current value from the component
+  onChange: (value: string | number | boolean | ClickAction | null) => void;
 }
 
 export function PropertyEditor({ property, currentValue, onChange }: PropertyEditorProps) {
@@ -23,7 +23,7 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
     if (property.type === 'number') {
       const strValue = e.target.value;
       if (strValue === '') {
-        onChange(0); 
+        onChange(null); 
       } else {
         const numValue = parseFloat(strValue);
         if (!isNaN(numValue)) {
@@ -49,23 +49,22 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
 
   const handleActionChange = (field: 'type' | 'value', value: string) => {
     const newAction: ClickAction = {
-      ...(currentValue as ClickAction),
+      ...((currentValue as ClickAction) || { type: 'SHOW_TOAST', value: '' }),
       [field]: value
     };
     onChange(newAction);
   };
 
   const handleTransparentClick = () => {
-    if (currentValue === 'transparent') {
-      onChange('#FFFFFF');
-    } else {
-      onChange('transparent');
-    }
+    onChange('transparent');
+  }
+
+  const handleNoColorClick = () => {
+    onChange(null);
   }
   
   const id = `prop-${property.name}`;
-  const isTransparent = currentValue === 'transparent';
-
+  
   switch (property.type) {
     case 'action':
       const action = currentValue as ClickAction || { type: 'SHOW_TOAST', value: 'Clicked' };
@@ -112,13 +111,14 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
         </div>
       );
     case 'number':
+       const numValue = currentValue === null ? '' : (currentValue as number);
       return (
         <div className="space-y-1.5">
           <Label htmlFor={id} className="text-xs">{property.label}</Label>
           <Input
             id={id}
             type="number"
-            value={currentValue as number ?? ''}
+            value={numValue}
             onChange={handleInputChange}
             placeholder={property.placeholder}
             className="h-8 text-sm"
@@ -128,6 +128,10 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
         </div>
       );
     case 'color':
+       const isTransparent = currentValue === 'transparent';
+       const isNull = currentValue === null || currentValue === undefined;
+       const colorValue = isTransparent || isNull ? '#FFFFFF' : (currentValue as string || '#FFFFFF');
+       const textValue = isNull ? '' : (currentValue as string || '');
       return (
         <div className="space-y-1.5">
           <Label htmlFor={id} className="text-xs">{property.label}</Label>
@@ -135,29 +139,40 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
             <Input
               id={id}
               type="color"
-              value={isTransparent ? '#FFFFFF' : (currentValue as string || '#FFFFFF')}
+              value={colorValue}
               onChange={handleInputChange}
               className="h-8 w-10 p-1"
-              disabled={isTransparent}
+              disabled={isTransparent || isNull}
             />
             <Input
               type="text"
-              value={currentValue as string || '#FFFFFF'}
+              value={textValue}
               onChange={handleInputChange}
-              placeholder="#RRGGBB or transparent"
+              placeholder={isNull ? "None" : "#RRGGBB or transparent"}
               className="h-8 text-sm flex-grow"
               aria-label={`${property.label} hex value`}
-              disabled={isTransparent}
             />
-            <Button
+          </div>
+          <div className="flex items-center gap-2 mt-1">
+             <Button
               size="sm"
-              variant={isTransparent ? "default" : "outline"}
+              variant={isTransparent ? "secondary" : "outline"}
               onClick={handleTransparentClick}
-              className="h-8 text-xs px-2"
+              className="h-7 text-xs px-2 flex-1"
               title="Set to transparent"
             >
               <Droplet className="w-3 h-3 mr-1" />
               Transparent
+            </Button>
+            <Button
+              size="sm"
+              variant={isNull ? "secondary" : "outline"}
+              onClick={handleNoColorClick}
+              className="h-7 text-xs px-2 flex-1"
+              title="Set no color"
+            >
+              <XCircle className="w-3 h-3 mr-1" />
+              No Color
             </Button>
           </div>
         </div>
