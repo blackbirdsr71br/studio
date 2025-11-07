@@ -189,15 +189,12 @@ const buildContentComponentTreeForModalJson = (
   currentParentIdForContext: string,
   includeDefaultValues: boolean
 ): ModalJsonNode[] => {
-  const parentComponent = allComponents.find(c => c.id === currentParentIdForContext);
-
-  if (!parentComponent || !Array.isArray(parentComponent.properties.children)) {
+  const childIds = allComponents.find(c => c.id === currentParentIdForContext)?.properties.children || [];
+  if (!Array.isArray(childIds) || childIds.length === 0) {
     return [];
   }
 
-  const orderedChildIds = parentComponent.properties.children;
-
-  return orderedChildIds.map(childId => {
+  return childIds.map(childId => {
     const component = allComponents.find(c => c.id === childId);
     if (!component) return null;
 
@@ -595,7 +592,7 @@ export async function updateGlobalStylesheetAction(
       if (section === 'light') {
         regex = new RegExp(`(:root\\s*{[^}]*${cssVar}\\s*:\\s*)[0-9]+\\s+[0-9]+%\\s+[0-9]+%(\\s*;[^}]*})`, 's');
       } else { 
-        regex = new RegExp(`(\\.dark\\s*{[^}]*${cssVar}\\s*:\\s*)[0-9]+\\s+[0-9]+%\\s+[0-9]+%(\\s*;[^}]*})`, 's');
+        regex = new RegExp(`(\\.dark\\s*{[^}]*${cssVar}\\s*:\\s*)[0-9]+\\s+[0-g]+%\\s+[0-9]+%(\\s*;[^}]*})`, 's');
       }
       
       if (cssContent.match(regex)) {
