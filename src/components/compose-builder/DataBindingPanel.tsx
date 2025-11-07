@@ -87,9 +87,11 @@ export function DataBindingPanel() {
   };
 
   const handleBindingChange = (propName: string, bindingKey: string) => {
-    const newBindings = { ...dataBindings, [propName]: `{${bindingKey}}` };
+    const newBindings = { ...dataBindings };
     if (bindingKey === 'none') {
       delete newBindings[propName];
+    } else {
+      newBindings[propName] = `{${bindingKey}}`;
     }
     setDataBindings(newBindings);
     if (targetContainer) {
@@ -98,39 +100,43 @@ export function DataBindingPanel() {
   };
 
   const handleGenerateChildren = () => {
-    if (targetContainer) {
+    if (targetContainer && generateChildrenFromDataSource) {
       generateChildrenFromDataSource(targetContainer.id, childTemplateId);
+    } else {
+      toast({ title: "Error", description: "Generation function not available.", variant: "destructive" });
     }
   };
   
   const handleTemplateChange = (templateId: string) => {
       setChildTemplateId(templateId);
-      if (targetContainer) {
-          // This doesn't need to update the component immediately,
-          // as the template choice is only used during generation.
-          // If we wanted to link it to a persistent "childrenTemplate" prop, we'd do it here.
-      }
   }
 
   const renderBindingUI = () => {
-    // Correctly determine the type of the component to get properties for.
     let typeForProps: ComponentType | string = childTemplateId;
+    let baseProps: Record<string, any> = {};
+
     if (childTemplateId.startsWith('custom/')) {
         const template = customComponentTemplates.find(t => t.templateId === childTemplateId);
-        const rootInTemplate = template?.componentTree.find(c => c.id === template.rootComponentId);
-        if (rootInTemplate) {
-            typeForProps = rootInTemplate.type;
+        if (template) {
+            const rootInTemplate = template.componentTree.find(c => c.id === template.rootComponentId);
+            if (rootInTemplate) {
+                typeForProps = rootInTemplate.type;
+                baseProps = rootInTemplate.properties;
+            }
         }
     }
       
-    const propsForBinding = propertyDefinitions[typeForProps as ComponentType] || [];
-    const relevantProps = propsForBinding.filter(p => ['text', 'src', 'contentDescription', 'title'].includes(p.name));
+    const propsForBinding = (propertyDefinitions[typeForProps as ComponentType] || []).filter(p => 
+        !['Layout', 'Behavior'].includes(p.group) && 
+        p.name !== 'children' && 
+        !p.name.startsWith('on')
+    );
 
-    if (relevantProps.length === 0) {
+    if (propsForBinding.length === 0) {
         return <p className="text-xs text-center text-muted-foreground">No bindable properties found for the selected template.</p>;
     }
 
-    return relevantProps.map(prop => {
+    return propsForBinding.map(prop => {
       const boundValue = dataBindings[prop.name]?.replace(/[{}]/g, '') || 'none';
       
       return (
@@ -179,7 +185,7 @@ export function DataBindingPanel() {
             <SelectGroup>
               <SelectLabel>Standard Components</SelectLabel>
               {availableChildTypes.map(type => (
-                <SelectItem key={type} value={type}>{getComponentDisplayName(type)}</SelectItem>
+                <SelectItem key={type} value={type}>{getComponentDisplayName(type as ComponentType)}</SelectItem>
               ))}
             </SelectGroup>
             {customComponentTemplates.length > 0 && (
@@ -196,18 +202,18 @@ export function DataBindingPanel() {
 
       <div>
         <h3 className="text-base font-medium mb-2">3. Property Bindings</h3>
-        <div className="space-y-2 rounded-md border p-3 bg-muted/20">
+        <div className="space-y-2 rounded-md border p-3 bg-muted/20 max-h-48 overflow-y-auto">
           {schema.length > 0 ? renderBindingUI() : <p className="text-xs text-center text-muted-foreground">Fetch a schema to see binding options.</p>}
         </div>
       </div>
       
       <div>
          <h3 className="text-base font-medium mb-2">4. Generate Children</h3>
-        <Button onClick={handleGenerateChildren} disabled={!targetContainer || schema.length === 0 || Object.keys(dataBindings).length === 0} className="w-full">
+        <Button onClick={handleGenerateChildren} disabled={!targetContainer || schema.length === 0} className="w-full">
             <CopyPlus className="mr-2 h-4 w-4" />
             Generate Children from Data
         </Button>
-        <p className="text-xs text-muted-foreground mt-2 text-center">This will replace existing children with new components based on the data source and bindings.</p>
+        <p className="text-xs text-muted-foreground mt-2 text-center">This will replace existing children with new components based on the data source.</p>
       </div>
     </div>
   );
