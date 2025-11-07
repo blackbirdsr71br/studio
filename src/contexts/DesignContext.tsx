@@ -585,9 +585,9 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
     const { url } = parent.properties.dataSource;
     const bindings = parent.properties.dataBindings || {};
-    const childTemplate = parent.properties.childrenTemplate;
+    const childTemplateComponent = parent.properties.childrenTemplate;
 
-    if (!childTemplate) {
+    if (!childTemplateComponent) {
         toast({ title: "Error", description: "No child template selected for data binding.", variant: "destructive" });
         return;
     }
@@ -613,11 +613,11 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         data.forEach((itemData: Record<string, any>) => {
           let componentsToClone: DesignComponent[] = [];
-          if (childTemplate.templateIdRef) {
-            const template = designState.customComponentTemplates.find(t => t.templateId === childTemplate.templateIdRef);
+          if (childTemplateComponent.templateIdRef) {
+            const template = designState.customComponentTemplates.find(t => t.templateId === childTemplateComponent.templateIdRef);
             if (template) componentsToClone = deepClone(template.componentTree);
           } else {
-            componentsToClone = [deepClone(childTemplate)];
+            componentsToClone = [deepClone(childTemplateComponent)];
           }
 
           if (componentsToClone.length === 0) return;
@@ -1213,19 +1213,16 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const parentProps = components[parentIdx].properties;
         delete parentProps.dataSource;
         delete parentProps.dataBindings;
+        delete parentProps.childrenTemplate;
 
         // Remove existing children
         const childrenToRemove = new Set(parentProps.children || []);
         components = components.filter(c => !childrenToRemove.has(c.id));
-        components[parentIdx].properties.children = [];
         
         let currentNextId = nextId;
-        const newChildIds: string[] = [];
+        const newChildRootIds: string[] = [];
 
         for (let i = 0; i < count; i++) {
-          let componentsToAdd: DesignComponent[] = [];
-          let rootOfNewComponentsId = '';
-
           if (childTypeOrTemplateId.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
             const template = designState.customComponentTemplates.find(t => t.templateId === childTypeOrTemplateId);
             if (template) {
@@ -1235,20 +1232,26 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 idMap[c.id] = newId;
                 return { ...c, id: newId };
               });
+
               newTemplateComponents.forEach(c => {
-                  if (c.parentId) c.parentId = idMap[c.parentId];
+                  c.parentId = c.parentId ? idMap[c.parentId] : null;
+                  if (c.properties.children) {
+                      c.properties.children = c.properties.children.map(childId => idMap[childId]);
+                  }
               });
+              
               const rootOfPasted = newTemplateComponents.find(c => c.parentId === null)!;
               rootOfPasted.parentId = parentId;
               rootOfPasted.templateIdRef = template.templateId;
               rootOfPasted.name = `${template.name} ${i + 1}`;
-              rootOfNewComponentsId = rootOfPasted.id;
-              componentsToAdd.push(...newTemplateComponents);
+              
+              newChildRootIds.push(rootOfPasted.id);
+              components.push(...newTemplateComponents);
             }
           } else {
             const newId = `comp-${currentNextId++}`;
-            rootOfNewComponentsId = newId;
-            componentsToAdd.push({
+            newChildRootIds.push(newId);
+            components.push({
               id: newId,
               type: childTypeOrTemplateId as ComponentType,
               name: `${getComponentDisplayName(childTypeOrTemplateId as ComponentType)} ${newId.split('-')[1]}`,
@@ -1256,13 +1259,10 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
               parentId: parentId,
             });
           }
-          
-          components.push(...componentsToAdd);
-          newChildIds.push(rootOfNewComponentsId);
         }
 
         const finalParentIdx = components.findIndex(c => c.id === parentId);
-        components[finalParentIdx].properties.children = newChildIds;
+        components[finalParentIdx].properties.children = newChildRootIds;
         
         return {
           components: components,
