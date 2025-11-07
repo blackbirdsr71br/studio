@@ -114,15 +114,18 @@ export function DataBindingPanel() {
 
   const selectedComponentId = activeDesign?.selectedComponentId;
   const selectedComponent = selectedComponentId ? getComponentById(selectedComponentId) : null;
+  const parentComponent = selectedComponent?.parentId ? getComponentById(selectedComponent.parentId) : null;
 
   const targetContainer = isLazyContainerType(selectedComponent?.type || '')
     ? selectedComponent
+    : parentComponent && isLazyContainerType(parentComponent.type)
+    ? parentComponent
     : null;
 
-  const [url, setUrl] = useState(targetContainer?.properties.dataSource?.url || '');
-  const [schema, setSchema] = useState<string[]>(targetContainer?.properties.dataSource?.schema || []);
+  const [url, setUrl] = useState('');
+  const [schema, setSchema] = useState<string[]>([]);
   const [isLoadingSchema, setIsLoadingSchema] = useState(false);
-  const [dataBindings, setDataBindings] = useState(targetContainer?.properties.dataBindings || {});
+  const [dataBindings, setDataBindings] = useState<Record<string, string>>({});
   
   const [childTemplateId, setChildTemplateId] = useState<string>('Text');
 
@@ -131,7 +134,13 @@ export function DataBindingPanel() {
         const newUrl = targetContainer.properties.dataSource?.url || '';
         const newSchema = targetContainer.properties.dataSource?.schema || [];
         const newBindings = targetContainer.properties.dataBindings || {};
-        const newTemplateId = targetContainer.properties.childrenTemplate?.type || 'Text';
+        
+        let newTemplateId;
+        if(targetContainer.properties.childrenTemplate?.templateIdRef) {
+          newTemplateId = targetContainer.properties.childrenTemplate.templateIdRef;
+        } else {
+          newTemplateId = targetContainer.properties.childrenTemplate?.type || 'Text';
+        }
 
         setUrl(newUrl);
         setSchema(newSchema);
@@ -197,6 +206,9 @@ export function DataBindingPanel() {
               const customTemplate = customComponentTemplates.find(t => t.templateId === templateId);
               if (customTemplate) {
                   templateComponent = customTemplate.componentTree.find(c => c.id === customTemplate.rootComponentId);
+                   if (templateComponent) {
+                      templateComponent.templateIdRef = templateId;
+                   }
               }
           } else {
               templateComponent = { id: 'template-dummy', type: templateId as ComponentType, name: getComponentDisplayName(templateId as ComponentType), properties: {} };
@@ -224,7 +236,7 @@ export function DataBindingPanel() {
   }
   
   if (!targetContainer) {
-    return <p className='text-sm text-muted-foreground p-4 text-center'>Select a Lazy container (e.g., LazyRow, LazyColumn) to configure data binding.</p>
+    return <p className='text-sm text-muted-foreground p-4 text-center'>Select a Lazy container or its direct child to configure data binding.</p>
   }
 
   return (
