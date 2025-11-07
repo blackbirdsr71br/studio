@@ -86,7 +86,8 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     title, 
     titleFontSize,
     fillMaxWidth, 
-    fillMaxHeight 
+    fillMaxHeight,
+    dataSource,
   } = effectiveProperties;
 
   const defaultAllSidesPadding = (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID ? 8 : (effectiveType === 'Card' ? 16 : 0));
@@ -339,14 +340,17 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     baseStyle.alignItems = effectiveProperties.horizontalAlignment === 'Start' ? 'flex-start' : effectiveProperties.horizontalAlignment === 'CenterHorizontally' ? 'center' : effectiveProperties.horizontalAlignment === 'End' ? 'flex-end' : 'stretch';
   }
 
-  const showPlaceholder = (component.id === DEFAULT_TOP_APP_BAR_ID && !title && childrenComponents.length === 0) ||
-                        (component.id === DEFAULT_BOTTOM_NAV_BAR_ID && childrenComponents.length === 0) ||
-                        (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID && childrenComponents.length === 0) ||
-                        (![DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID].includes(component.id) && childrenComponents.length === 0 && effectiveType !== 'Box');
+  // Determine if placeholder should be shown. It should only be shown if there are no children
+  // AND the component is NOT connected to a data source.
+  const isDataBound = !!dataSource?.url;
+  const showPlaceholder = !isDataBound && childrenComponents.length === 0;
 
-  const placeholderText = `Drop components into this ${getComponentDisplayName(effectiveType as OriginalComponentType)}`;
+  let placeholderText = `Drop components into this ${getComponentDisplayName(effectiveType as OriginalComponentType)}`;
 
-
+  if (isDataBound) {
+      placeholderText = `This ${getComponentDisplayName(effectiveType as OriginalComponentType)} is connected to a data source. Use the "Data" panel to generate children.`;
+  }
+  
   const topAppBarTitleElement = effectiveType === 'TopAppBar' && title ? (
     <div style={{ flexShrink: 0, marginRight: (childrenComponents.length > 0 ? (itemSpacing || 8) : 0) + 'px' }} className="top-app-bar-title-container">
       <TextView properties={{ text: title, fontSize: titleFontSize || 20, textColor: baseStyle.color as string }} />
@@ -367,8 +371,8 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       {showPlaceholder && (
         <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground/70 text-xs pointer-events-none p-2 text-center leading-tight">
           {placeholderText}
-          {(effectiveType === 'LazyVerticalGrid' && effectiveProperties.columns) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.columns} columns)</span>}
-          {(effectiveType === 'LazyHorizontalGrid' && effectiveProperties.rows) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.rows})</span>}
+          {(!isDataBound && effectiveType === 'LazyVerticalGrid' && effectiveProperties.columns) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.columns} columns)</span>}
+          {(!isDataBound && effectiveType === 'LazyHorizontalGrid' && effectiveProperties.rows) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.rows})</span>}
         </div>
       )}
       {topAppBarTitleElement}
