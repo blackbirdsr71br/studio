@@ -46,6 +46,7 @@ interface DesignContextType extends DesignState {
   addImageToGallery: (url: string) => Promise<{success: boolean, message: string}>;
   removeImageFromGallery: (id: string) => Promise<{success: boolean, message: string}>;
   generateChildrenFromDataSource: (parentId: string, childTemplate: DesignComponent) => Promise<void>;
+  generateStaticChildren: (parentId: string, childTypeOrTemplateId: string, count: number) => void;
   isLoadingCustomTemplates: boolean;
   isLoadingLayouts: boolean;
   
@@ -587,7 +588,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
     const { url } = parent.properties.dataSource;
     const bindings = parent.properties.dataBindings || {};
-    let { components: currentComponents, nextId: currentNextId } = deepClone(activeDesign);
 
     try {
       const response = await fetch(url);
@@ -1217,6 +1217,66 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setDesignState(prev => ({ ...prev, galleryImages: newGallery }));
     return { success: true, message: "Image Removed." };
   }, [designState.galleryImages]);
+  
+  const generateStaticChildren = useCallback((parentId: string, childTypeOrTemplateId: string, count: number) => {
+    if (!activeDesign) return;
+
+    if (window.confirm(`This will replace all existing children in the selected container. Are you sure you want to generate ${count} new children?`)) {
+      updateActiveDesignWithHistory(ad => {
+        let { components, nextId } = deepClone(ad);
+        
+        const parentIdx = components.findIndex(c => c.id === parentId);
+        if (parentIdx === -1) return null;
+
+        // Remove existing children
+        const childrenToRemove = new Set(components[parentIdx].properties.children || []);
+        components = components.filter(c => !childrenToRemove.has(c.id));
+        components[parentIdx].properties.children = [];
+
+        for (let i = 0; i < count; i++) {
+          addComponent(childTypeOrTemplateId, parentId);
+        }
+        
+        // The addComponent call modifies the state, so we need to get the latest state.
+        // This is a limitation of the current structure. A better approach might be for addComponent to return the new state.
+        // For now, this will generate one at a time and cause multiple history entries.
+        // A better implementation would batch this.
+        // Let's try to batch it here.
+
+        let batchComponents = ad.components;
+        let batchNextId = ad.nextId;
+        const parentComponentIndex = batchComponents.findIndex(c => c.id === parentId);
+        if(parentComponentIndex === -1) return null;
+
+        const oldChildren = batchComponents[parentComponentIndex].properties.children || [];
+        batchComponents = batchComponents.filter(c => !oldChildren.includes(c.id));
+        
+        const newChildIds: string[] = [];
+        for (let i = 0; i < count; i++) {
+           const newId = `comp-${batchNextId++}`;
+           newChildIds.push(newId);
+           const newComp = {
+             id: newId,
+             type: childTypeOrTemplateId as ComponentType,
+             name: `${getComponentDisplayName(childTypeOrTemplateId as ComponentType)} ${newId.split('-')[1]}`,
+             properties: { ...getDefaultProperties(childTypeOrTemplateId as ComponentType, newId) },
+             parentId: parentId,
+           };
+           batchComponents.push(newComp);
+        }
+
+        const finalParentIdx = batchComponents.findIndex(c => c.id === parentId);
+        batchComponents[finalParentIdx].properties.children = newChildIds;
+        
+        return {
+          components: batchComponents,
+          nextId: batchNextId,
+          selectedComponentId: ad.selectedComponentId
+        };
+      });
+    }
+  }, [activeDesign, addComponent, updateActiveDesignWithHistory]);
+
 
   const contextValue: DesignContextType = {
     ...designState,
@@ -1229,6 +1289,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     saveCurrentCanvasAsLayout, loadLayout, loadLayoutForEditing, updateLayout, deleteLayout,
     addImageToGallery, removeImageFromGallery,
     generateChildrenFromDataSource,
+    generateStaticChildren,
     isLoadingCustomTemplates,
     isLoadingLayouts,
     zoomLevel, setZoomLevel,

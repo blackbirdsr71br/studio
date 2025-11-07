@@ -192,7 +192,12 @@ export function DataBindingPanel() {
 
   const handleGenerateChildren = () => {
     if (targetContainer && childTemplate) {
-      generateChildrenFromDataSource(targetContainer.id, childTemplate);
+        if (typeof generateChildrenFromDataSource === 'function') {
+            generateChildrenFromDataSource(targetContainer.id, childTemplate);
+        } else {
+            console.error("generateChildrenFromDataSource is not a function on useDesign context");
+            toast({ title: "Error", description: "The feature to generate children is currently unavailable.", variant: "destructive" });
+        }
     } else {
       toast({ title: "Error", description: "A valid container and child template must be selected.", variant: "destructive" });
     }

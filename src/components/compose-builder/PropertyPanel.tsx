@@ -19,9 +19,10 @@ import {
   CORE_SCAFFOLD_ELEMENT_IDS
 } from '@/types/compose-spec';
 import { PropertyEditor } from './PropertyEditor';
-import { Trash2, Sparkles, Loader2, Upload, Search, Save, CopyPlus } from 'lucide-react';
+import { Trash2, Sparkles, Loader2, Upload, Search, Save, CopyPlus, Plus } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ReactNode } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -49,7 +50,7 @@ const isLazyContainerType = (type: string) =>
     ['LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid'].includes(type);
 
 function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
-  const { activeDesign, getComponentById, updateComponent, deleteComponent, customComponentTemplates, saveSelectedAsCustomTemplate } = useDesign();
+  const { activeDesign, getComponentById, updateComponent, deleteComponent, customComponentTemplates, saveSelectedAsCustomTemplate, generateStaticChildren } = useDesign();
   const selectedComponentId = activeDesign?.selectedComponentId;
   const selectedComponent = selectedComponentId ? getComponentById(selectedComponentId) : null;
   const { toast } = useToast();
@@ -58,6 +59,11 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [newTemplateName, setNewTemplateName] = useState("");
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+  
+  // State for static child generation
+  const [staticChildType, setStaticChildType] = useState<string>('Card');
+  const [staticChildCount, setStaticChildCount] = useState<number>(5);
+  const [isGeneratingStatic, setIsGeneratingStatic] = useState(false);
   
   const handleSaveAsTemplate = async () => {
     if (!selectedComponentId) {
@@ -73,6 +79,23 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
     setIsSavingTemplate(false);
     setNewTemplateName("");
   };
+
+  const handleGenerateStaticChildren = () => {
+    if (!selectedComponent || !isLazyContainerType(selectedComponent.type) || staticChildCount <= 0) {
+      toast({ title: "Invalid Request", description: "Please select a lazy container and specify a valid number of children.", variant: "destructive" });
+      return;
+    }
+    setIsGeneratingStatic(true);
+    if (typeof generateStaticChildren === 'function') {
+        generateStaticChildren(selectedComponent.id, staticChildType, staticChildCount);
+    } else {
+        console.error("generateStaticChildren is not a function on useDesign context");
+        toast({ title: "Error", description: "The feature to generate children is currently unavailable.", variant: "destructive" });
+    }
+    setIsGeneratingStatic(false);
+  };
+  
+  const availableChildTypesForStaticGen = Object.keys(propertyDefinitions).filter(type => !['Scaffold', 'TopAppBar', 'BottomNavigationBar'].includes(type) && !isLazyContainerType(type));
 
   if (!selectedComponent || !activeDesign) {
     return (
@@ -378,6 +401,54 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
             </ScrollArea>
           </Tabs>
         </div>
+         {isLazyContainerType(selectedComponent.type) && (
+            <Accordion type="single" collapsible className="w-full mt-4 shrink-0 border-t pt-2">
+                <AccordionItem value="item-1">
+                    <AccordionTrigger className="text-base font-medium">Children Generation</AccordionTrigger>
+                    <AccordionContent className="space-y-3">
+                         <div>
+                            <Label htmlFor="child-type-select" className="text-xs">Child Component Type</Label>
+                            <Select value={staticChildType} onValueChange={setStaticChildType}>
+                                <SelectTrigger id="child-type-select" className="h-9 mt-1">
+                                    <SelectValue placeholder="Select component" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectGroup>
+                                        <SelectLabel>Standard Components</SelectLabel>
+                                        {availableChildTypesForStaticGen.map(type => (
+                                            <SelectItem key={type} value={type}>{getComponentDisplayName(type as ComponentType)}</SelectItem>
+                                        ))}
+                                    </SelectGroup>
+                                     {customComponentTemplates.length > 0 && (
+                                        <SelectGroup>
+                                            <SelectLabel>Custom Components</SelectLabel>
+                                            {customComponentTemplates.map(template => (
+                                            <SelectItem key={template.templateId} value={template.templateId}>{template.name}</SelectItem>
+                                            ))}
+                                        </SelectGroup>
+                                    )}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label htmlFor="child-count" className="text-xs">Number of Children</Label>
+                            <Input
+                                id="child-count"
+                                type="number"
+                                value={staticChildCount}
+                                onChange={(e) => setStaticChildCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                                className="h-9 mt-1"
+                                min="1"
+                            />
+                        </div>
+                        <Button onClick={handleGenerateStaticChildren} disabled={isGeneratingStatic} className="w-full">
+                           {isGeneratingStatic ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Plus className="mr-2 h-4 w-4"/>}
+                           Generate Children
+                        </Button>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+        )}
       </div>
     );
 }
