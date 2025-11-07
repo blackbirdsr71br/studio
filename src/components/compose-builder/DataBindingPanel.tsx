@@ -37,19 +37,26 @@ export function DataBindingPanel() {
   const [isLoadingSchema, setIsLoadingSchema] = useState(false);
   const [dataBindings, setDataBindings] = useState(targetContainer?.properties.dataBindings || {});
   
-  const [childTemplate, setChildTemplate] = useState<string>(
-    targetContainer?.properties.childrenTemplate?.type || 
-    (targetContainer?.properties.children?.[0] ? (getComponentById(targetContainer.properties.children[0])?.type || 'Text') : 'Text')
-  );
-
-  useEffect(() => {
-    setUrl(targetContainer?.properties.dataSource?.url || '');
-    setSchema(targetContainer?.properties.dataSource?.schema || []);
-    setDataBindings(targetContainer?.properties.dataBindings || {});
+  const [childTemplateId, setChildTemplateId] = useState<string>(() => {
     const firstChildId = targetContainer?.properties.children?.[0];
     const firstChild = firstChildId ? getComponentById(firstChildId) : null;
-    const templateType = targetContainer?.properties.childrenTemplate?.type || firstChild?.type || 'Text';
-    setChildTemplate(templateType);
+    return firstChild?.templateIdRef || firstChild?.type || 'Text';
+  });
+
+  useEffect(() => {
+    const newUrl = targetContainer?.properties.dataSource?.url || '';
+    const newSchema = targetContainer?.properties.dataSource?.schema || [];
+    const newBindings = targetContainer?.properties.dataBindings || {};
+    
+    setUrl(newUrl);
+    setSchema(newSchema);
+    setDataBindings(newBindings);
+
+    const firstChildId = targetContainer?.properties.children?.[0];
+    const firstChild = firstChildId ? getComponentById(firstChildId) : null;
+    const newTemplateId = firstChild?.templateIdRef || firstChild?.type || 'Text';
+    setChildTemplateId(newTemplateId);
+
   }, [targetContainer, getComponentById]);
 
   const handleFetchSchema = async () => {
@@ -92,24 +99,38 @@ export function DataBindingPanel() {
 
   const handleGenerateChildren = () => {
     if (targetContainer) {
-      generateChildrenFromDataSource(targetContainer.id, childTemplate);
+      generateChildrenFromDataSource(targetContainer.id, childTemplateId);
     }
   };
   
   const handleTemplateChange = (templateId: string) => {
-      setChildTemplate(templateId);
+      setChildTemplateId(templateId);
       if (targetContainer) {
-          const templateComponent = { type: templateId, properties: {} } as any; // Simplified
-          updateComponent(targetContainer.id, { properties: { childrenTemplate: templateComponent } });
+          // This doesn't need to update the component immediately,
+          // as the template choice is only used during generation.
+          // If we wanted to link it to a persistent "childrenTemplate" prop, we'd do it here.
       }
   }
 
   const renderBindingUI = () => {
-    const propsForBinding = propertyDefinitions[childTemplate as ComponentType] || [];
+    // Correctly determine the type of the component to get properties for.
+    let typeForProps: ComponentType | string = childTemplateId;
+    if (childTemplateId.startsWith('custom/')) {
+        const template = customComponentTemplates.find(t => t.templateId === childTemplateId);
+        const rootInTemplate = template?.componentTree.find(c => c.id === template.rootComponentId);
+        if (rootInTemplate) {
+            typeForProps = rootInTemplate.type;
+        }
+    }
+      
+    const propsForBinding = propertyDefinitions[typeForProps as ComponentType] || [];
     const relevantProps = propsForBinding.filter(p => ['text', 'src', 'contentDescription', 'title'].includes(p.name));
 
+    if (relevantProps.length === 0) {
+        return <p className="text-xs text-center text-muted-foreground">No bindable properties found for the selected template.</p>;
+    }
+
     return relevantProps.map(prop => {
-      const currentBinding = Object.entries(dataBindings).find(([_, val]) => val === `{${prop.name}}`)?.[0] || 'none';
       const boundValue = dataBindings[prop.name]?.replace(/[{}]/g, '') || 'none';
       
       return (
@@ -150,7 +171,7 @@ export function DataBindingPanel() {
 
       <div>
         <h3 className="text-base font-medium mb-2">2. Child Template</h3>
-        <Select value={childTemplate} onValueChange={handleTemplateChange}>
+        <Select value={childTemplateId} onValueChange={handleTemplateChange}>
           <SelectTrigger className="h-9">
             <SelectValue placeholder="Select a component template" />
           </SelectTrigger>
