@@ -45,7 +45,7 @@ interface DesignContextType extends DesignState {
   deleteLayout: (firestoreId: string) => Promise<void>;
   addImageToGallery: (url: string) => Promise<{success: boolean, message: string}>;
   removeImageFromGallery: (id: string) => Promise<{success: boolean, message: string}>;
-  generateChildrenFromDataSource: (parentId: string, componentTypeOrTemplateId: string) => Promise<void>;
+  generateChildrenFromDataSource: (parentId: string, childTemplate: DesignComponent) => Promise<void>;
   isLoadingCustomTemplates: boolean;
   isLoadingLayouts: boolean;
   
@@ -576,7 +576,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const generateChildrenFromDataSource = useCallback(async (
     parentId: string,
-    componentTypeOrTemplateId: string
+    childTemplate: DesignComponent
   ) => {
     updateActiveDesignWithHistory(activeDesign => {
       const parent = activeDesign.components.find(c => c.id === parentId);
@@ -585,11 +585,11 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         return null;
       }
 
-      const { url, schema } = parent.properties.dataSource;
+      const { url } = parent.properties.dataSource;
       const bindings = parent.properties.dataBindings || {};
-      let { components: updatedComponents, nextId: currentNextId } = deepClone(activeDesign);
+      let { components: currentComponents, nextId: currentNextId } = deepClone(activeDesign);
 
-      // Fetch data
+      // This is a fire-and-forget fetch. The state will be updated inside the async block.
       fetch(url)
         .then(res => {
           if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
@@ -598,58 +598,101 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         .then(data => {
           if (!Array.isArray(data)) throw new Error("Data source did not return an array.");
 
-          // 1. Remove existing children from parent
-          const childrenToRemove = new Set(parent.properties.children || []);
-          updatedComponents = updatedComponents.filter(c => !childrenToRemove.has(c.id));
-          const parentIdx = updatedComponents.findIndex(c => c.id === parentId);
-          if(parentIdx !== -1) {
-            updatedComponents[parentIdx].properties.children = [];
+          // 1. Get all descendants of the template to clone them properly
+          let templateDescendants: DesignComponent[] = [];
+          const templateRoot = deepClone(childTemplate);
+          
+          if(templateRoot.type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
+             const customTemplate = designState.customComponentTemplates.find(t => t.templateId === templateRoot.type);
+             if (customTemplate) {
+                 const idMap: Record<string, string> = {};
+                 templateDescendants = deepClone(customTemplate.componentTree);
+                 templateDescendants.forEach(c => {
+                    const originalId = c.id;
+                    c.id = `template-clone-${originalId}`;
+                    idMap[originalId] = c.id;
+                 });
+                 templateDescendants.forEach(c => {
+                     if(c.parentId) c.parentId = idMap[c.parentId];
+                     if(c.properties.children) c.properties.children = c.properties.children.map(cid => idMap[cid]);
+                 });
+             }
+          } else {
+              templateDescendants.push(templateRoot);
           }
 
-          // 2. Generate new children
-          const allNewComponents: DesignComponent[] = [];
-          const newChildIds: string[] = [];
 
-          data.forEach((item: Record<string, any>, index: number) => {
-             const newId = `comp-${currentNextId++}`;
-             const newComp: DesignComponent = {
-                id: newId,
-                type: componentTypeOrTemplateId as ComponentType,
-                name: `${getComponentDisplayName(componentTypeOrTemplateId as ComponentType)} ${newId.split('-')[1]}`,
-                properties: { ...getDefaultProperties(componentTypeOrTemplateId as ComponentType, newId) },
-                parentId: parentId,
-             };
-             
-             // Apply bindings
-             Object.keys(bindings).forEach(propName => {
-                 const bindingKey = bindings[propName].replace(/[{}]/g, '');
-                 if(item[bindingKey] !== undefined) {
-                     (newComp.properties as any)[propName] = item[bindingKey];
-                 }
-             });
+          // 2. Remove existing children of the lazy container
+          const childrenToRemove = new Set(parent.properties.children || []);
+          let updatedComponents = currentComponents.filter(c => !childrenToRemove.has(c.id));
 
-             allNewComponents.push(newComp);
-             newChildIds.push(newId);
+          // 3. Generate new children from data
+          const allNewGeneratedComponents: DesignComponent[] = [];
+          const newTopLevelChildIds: string[] = [];
+
+          data.forEach((itemData: Record<string, any>, index: number) => {
+            const idMap: Record<string, string> = {};
+            const newInstances = templateDescendants.map(comp => {
+                const newId = `comp-${currentNextId++}`;
+                idMap[comp.id] = newId;
+                return {...deepClone(comp), id: newId };
+            });
+
+            newInstances.forEach(instance => {
+                // Re-wire parent/child relationships
+                if(instance.parentId) instance.parentId = idMap[instance.parentId];
+                if(instance.properties.children) instance.properties.children = instance.properties.children.map(cid => idMap[cid]);
+                
+                // Apply data bindings
+                Object.keys(bindings).forEach(propPath => {
+                    const [componentIdInTemplate, propName] = propPath.split('.');
+                    if (idMap[componentIdInTemplate] === instance.id) {
+                        const bindingKey = bindings[propPath].replace(/[{}]/g, '');
+                        if (itemData[bindingKey] !== undefined) {
+                            (instance.properties as any)[propName] = itemData[bindingKey];
+                        }
+                    }
+                });
+            });
+            
+            const rootInstance = newInstances.find(i => templateDescendants.find(td => td.id === Object.keys(idMap).find(key => idMap[key] === i.id))?.parentId === null);
+
+            if(rootInstance) {
+               rootInstance.parentId = parentId;
+               newTopLevelChildIds.push(rootInstance.id);
+            }
+            allNewGeneratedComponents.push(...newInstances);
           });
           
-          updatedComponents.push(...allNewComponents);
+          updatedComponents.push(...allNewGeneratedComponents);
           const finalParentIdx = updatedComponents.findIndex(c => c.id === parentId);
           if (finalParentIdx !== -1) {
-             updatedComponents[finalParentIdx].properties.children = newChildIds;
+             updatedComponents[finalParentIdx].properties.children = newTopLevelChildIds;
           }
           
           // Use another `setDesignState` call inside the async block
-          // This is a simplified approach; a more robust solution might use a different state management pattern
-          // to avoid directly calling setDesignState inside an async `update` function.
+          // to apply the final state.
           setDesignState(prev => {
              const activeIdx = prev.designs.findIndex(d => d.id === prev.activeDesignId);
              if (activeIdx === -1) return prev;
+             
+             // Create a new history entry for this major change
+             const currentActiveDesign = prev.designs[activeIdx];
+             const newHistory = [...currentActiveDesign.history, { 
+                components: currentActiveDesign.components, 
+                nextId: currentActiveDesign.nextId, 
+                selectedComponentId: currentActiveDesign.selectedComponentId 
+             }];
+             if (newHistory.length > 50) newHistory.shift();
+
              const newDesigns = [...prev.designs];
              newDesigns[activeIdx] = {
                  ...newDesigns[activeIdx],
                  components: updatedComponents,
                  nextId: currentNextId,
                  selectedComponentId: parentId, // Reselect parent
+                 history: newHistory,
+                 future: [],
              };
              return {...prev, designs: newDesigns };
           });
@@ -661,9 +704,9 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           toast({ title: "Generation Failed", description: error.message, variant: "destructive" });
         });
 
-      return null; // Initial update does nothing, async operation will update state
+      return null; // Return null because the state is updated asynchronously
     });
-  }, [toast, updateActiveDesignWithHistory]);
+  }, [toast, updateActiveDesignWithHistory, designState.customComponentTemplates]);
 
 
   const deleteComponent = React.useCallback((id: string) => {
