@@ -359,53 +359,12 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
           <Label htmlFor="componentName" className="text-xs">Instance Name</Label>
           <Input id="componentName" type="text" value={selectedComponent.name || ''} onChange={handleNameChange} className="h-8 text-sm mt-1.5" disabled={isCoreScaffoldElement} />
         </div>
-        <div className="flex-grow flex flex-col min-h-0">
-          <Tabs defaultValue={propertyGroups[0] || 'save'} className="flex flex-col flex-grow min-h-0">
-            <div className="overflow-x-auto bg-muted/50 p-1 rounded-md shrink-0">
-              <TabsList className="inline-flex h-auto bg-transparent p-0">
-                {propertyGroups.map((group) => (
-                  <TabsTrigger key={group} value={group} className="text-xs px-2 py-1.5 h-auto whitespace-nowrap">{group}</TabsTrigger>
-                ))}
-                 {!activeDesign.editingTemplateInfo && !isCoreScaffoldElement && (
-                      <TabsTrigger value="save" className="text-xs px-2 py-1.5 h-auto whitespace-nowrap">Save</TabsTrigger>
-                  )}
-              </TabsList>
-            </div>
-            <ScrollArea className="flex-grow min-h-0 mt-3 -mx-4">
-              <div className="px-4">
-                {propertyGroups.map((group) => (
-                  <TabsContent key={group} value={group} className="space-y-3 mt-0">
-                    {groupedProperties[group]}
-                    {(selectedComponent.type === 'Image' || sourceComponentForShapeType === 'Image') && group === 'Content' && (
-                      <div className="mt-3 pt-3 border-t border-sidebar-border">
-                        <Button onClick={handleGenerateImage} disabled={isGeneratingImage || !selectedComponent.properties['data-ai-hint']} className="w-full" size="sm">
-                          {isGeneratingImage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                          Generate Image from Hint
-                        </Button>
-                        {generationError && <p className="text-xs text-destructive mt-1 text-center">{generationError}</p>}
-                      </div>
-                    )}
-                  </TabsContent>
-                ))}
-                 <TabsContent value="save" className="mt-0">
-                      <div className="space-y-2 pt-2">
-                          <Label htmlFor="templateName" className="text-xs">Custom Component Name</Label>
-                          <Input id="templateName" placeholder="e.g., User Profile Card" value={newTemplateName || ''} onChange={(e) => setNewTemplateName(e.target.value)} disabled={isSavingTemplate} className="h-8 text-sm" />
-                          <Button onClick={handleSaveAsTemplate} disabled={isSavingTemplate || !newTemplateName.trim()} className="w-full h-8 text-xs">
-                              {isSavingTemplate ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
-                              Save Selected as Component
-                          </Button>
-                      </div>
-                  </TabsContent>
-              </div>
-            </ScrollArea>
-          </Tabs>
-        </div>
-         {isLazyContainerType(selectedComponent.type) && (
-            <Accordion type="single" collapsible className="w-full mt-4 shrink-0 border-t pt-2">
+
+        {isLazyContainerType(selectedComponent.type) && (
+            <Accordion type="single" collapsible className="w-full mb-4 shrink-0 border-b">
                 <AccordionItem value="item-1">
-                    <AccordionTrigger className="text-base font-medium">Children Generation</AccordionTrigger>
-                    <AccordionContent className="space-y-3">
+                    <AccordionTrigger className="text-base font-medium py-2">Children Generation</AccordionTrigger>
+                    <AccordionContent className="space-y-3 pt-2">
                          <div>
                             <Label htmlFor="child-type-select" className="text-xs">Child Component Type</Label>
                             <Select value={staticChildType} onValueChange={setStaticChildType}>
@@ -449,6 +408,49 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
                 </AccordionItem>
             </Accordion>
         )}
+
+        <div className="flex-grow flex flex-col min-h-0">
+          <Tabs defaultValue={propertyGroups[0] || 'save'} className="flex flex-col flex-grow min-h-0">
+            <div className="overflow-x-auto bg-muted/50 p-1 rounded-md shrink-0">
+              <TabsList className="inline-flex h-auto bg-transparent p-0">
+                {propertyGroups.map((group) => (
+                  <TabsTrigger key={group} value={group} className="text-xs px-2 py-1.5 h-auto whitespace-nowrap">{group}</TabsTrigger>
+                ))}
+                 {!activeDesign.editingTemplateInfo && !isCoreScaffoldElement && (
+                      <TabsTrigger value="save" className="text-xs px-2 py-1.5 h-auto whitespace-nowrap">Save</TabsTrigger>
+                  )}
+              </TabsList>
+            </div>
+            <ScrollArea className="flex-grow min-h-0 mt-3 -mx-4">
+              <div className="px-4">
+                {propertyGroups.map((group) => (
+                  <TabsContent key={group} value={group} className="space-y-3 mt-0">
+                    {groupedProperties[group]}
+                    {(selectedComponent.type === 'Image' || sourceComponentForShapeType === 'Image') && group === 'Content' && (
+                      <div className="mt-3 pt-3 border-t border-sidebar-border">
+                        <Button onClick={handleGenerateImage} disabled={isGeneratingImage || !selectedComponent.properties['data-ai-hint']} className="w-full" size="sm">
+                          {isGeneratingImage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                          Generate Image from Hint
+                        </Button>
+                        {generationError && <p className="text-xs text-destructive mt-1 text-center">{generationError}</p>}
+                      </div>
+                    )}
+                  </TabsContent>
+                ))}
+                 <TabsContent value="save" className="mt-0">
+                      <div className="space-y-2 pt-2">
+                          <Label htmlFor="templateName" className="text-xs">Custom Component Name</Label>
+                          <Input id="templateName" placeholder="e.g., User Profile Card" value={newTemplateName || ''} onChange={(e) => setNewTemplateName(e.target.value)} disabled={isSavingTemplate} className="h-8 text-sm" />
+                          <Button onClick={handleSaveAsTemplate} disabled={isSavingTemplate || !newTemplateName.trim()} className="w-full h-8 text-xs">
+                              {isSavingTemplate ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
+                              Save Selected as Component
+                          </Button>
+                      </div>
+                  </TabsContent>
+              </div>
+            </ScrollArea>
+          </Tabs>
+        </div>
       </div>
     );
 }
