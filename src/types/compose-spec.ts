@@ -55,15 +55,20 @@ export interface ClickAction {
   value: string;
 }
 
+export interface DataSource {
+  url?: string;
+  schema?: string[]; // Array of keys from the fetched data
+}
+
 export interface BaseComponentProps {
   [key: string]: any;
   text?: string;
   fontFamily?: string;
   fontSize?: number;
   titleFontSize?: number;
-  textColor?: string;
-  backgroundColor?: string;
-  contentColor?: string;
+  textColor?: string | null;
+  backgroundColor?: string | null;
+  contentColor?: string | null;
   width?: number | string | undefined;
   height?: number | string | undefined;
   fillMaxSize?: boolean;
@@ -78,7 +83,7 @@ export interface BaseComponentProps {
   id?: string;
   children?: string[] | any[];
   contentDescription?: string;
-  src?: string;
+  src?: string | { binding: string };
   "data-ai-hint"?: string;
   elevation?: number;
   cornerRadius?: number;
@@ -121,6 +126,11 @@ export interface BaseComponentProps {
   topBarId?: string; // ID of the TopAppBar component
   contentId?: string; // ID of the main content container (e.g., LazyColumn)
   bottomBarId?: string; // ID of the BottomNavigationBar component
+  
+  // New properties for data binding
+  dataSource?: DataSource;
+  dataBindings?: Record<string, string>; // e.g., { text: '{name}', src: '{avatar}' }
+  childrenTemplate?: DesignComponent; // Stores the template component for lazy containers
 }
 
 export interface DesignComponent {
@@ -167,6 +177,7 @@ export interface SingleDesign {
     templateId: string;
     firestoreId: string;
     name: string;
+    rootComponentId: string;
   } | null;
   editingLayoutInfo?: {
     firestoreId: string;
@@ -209,7 +220,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         fontSize: 16,
         fontFamily: 'Inter',
         textColor: undefined,
-        backgroundColor: undefined,
+        backgroundColor: null,
         padding: 0,
         width: 120,
         height: 25,
@@ -229,7 +240,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         text: 'Click Me',
         fontSize: 14,
         backgroundColor: '#3F51B5',
-        textColor: undefined,
+        textColor: null,
         padding: 12,
         width: 120,
         height: 50,
@@ -252,7 +263,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         ...commonLayout,
         src: 'https://placehold.co/300x200.png',
         contentDescription: 'Placeholder Image',
-        backgroundColor: undefined,
+        backgroundColor: null,
         width: 200,
         height: 100,
         "data-ai-hint": "abstract pattern",
@@ -267,7 +278,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         ...commonLayout,
         children: [],
         padding: 8,
-        backgroundColor: undefined,
+        backgroundColor: null,
         width: 200, height: 200, itemSpacing: 8,
         verticalArrangement: 'Top', horizontalAlignment: 'Start',
         selfAlign: 'Inherit',
@@ -278,7 +289,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         ...commonLayout,
         children: [],
         padding: 8,
-        backgroundColor: undefined,
+        backgroundColor: null,
         width: 412, height: 100, itemSpacing: 8,
         horizontalArrangement: 'Start', verticalAlignment: 'Top',
         selfAlign: 'Inherit',
@@ -290,7 +301,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         ...commonLayout,
         children: [],
         padding: 0,
-        backgroundColor: undefined,
+        backgroundColor: null,
         width: 100, height: 100,
         cornerRadiusTopLeft: 4, cornerRadiusTopRight: 4, cornerRadiusBottomRight: 4, cornerRadiusBottomLeft: 4,
         selfAlign: 'Inherit',
@@ -304,7 +315,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         itemSpacing: 8,               
         children: [],
         padding: 16,
-        backgroundColor: undefined, contentColor: undefined,
+        backgroundColor: null, contentColor: null,
         width: 200, height: 150, elevation: 2,
         cornerRadiusTopLeft: 8, cornerRadiusTopRight: 8, cornerRadiusBottomRight: 8, cornerRadiusBottomLeft: 8,
         borderWidth: 0, borderColor: '#000000',
@@ -335,7 +346,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         fillMaxWidth: false,
         children: [],
         padding: 8,
-        backgroundColor: undefined,
+        backgroundColor: null,
         width: 412, height: 120, itemSpacing: 8,
         userScrollEnabled: true, reverseLayout: false,
         horizontalArrangement: 'Start', verticalAlignment: 'Top',
@@ -348,7 +359,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         fillMaxWidth: false,
         children: [],
         padding: 8,
-        backgroundColor: undefined,
+        backgroundColor: null,
         width: 412, height: 300, columns: 2, itemSpacing: 8,
         verticalArrangement: 'Top', horizontalAlignment: 'Start',
         selfAlign: 'Inherit',
@@ -360,7 +371,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         fillMaxWidth: true,
         children: [],
         padding: 8,
-        backgroundColor: undefined,
+        backgroundColor: null,
         width: undefined, height: 200, rows: 2, itemSpacing: 8,
         horizontalArrangement: 'Start', verticalAlignment: 'Top',
         selfAlign: 'Inherit',
@@ -416,7 +427,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         ...commonLayout,
         children: [],
         padding: 8,
-        backgroundColor: undefined,
+        backgroundColor: null,
         width: 200, height: 200, itemSpacing: 8,
         verticalArrangement: 'Top', horizontalAlignment: 'Start',
         animationType: 'Fade',
@@ -869,9 +880,9 @@ const BaseModalPropertiesSchema = z.object({
   fontFamily: z.string().optional(),
   fontSize: z.number().min(0, "Font size must be non-negative").optional(),
   titleFontSize: z.number().min(0, "Font size must be non-negative").optional(),
-  textColor: ColorStringSchema.optional().or(z.literal(undefined)),
-  backgroundColor: ColorStringSchema.optional(),
-  contentColor: ColorStringSchema.optional().or(z.literal(undefined)),
+  textColor: ColorStringSchema.nullable().optional(),
+  backgroundColor: ColorStringSchema.nullable().optional(),
+  contentColor: ColorStringSchema.nullable().optional(),
   width: z.union([z.number().min(0), z.string()]).optional(),
   height: z.union([z.number().min(0), z.string()]).optional(),
   fillMaxSize: z.boolean().optional(),
@@ -884,7 +895,11 @@ const BaseModalPropertiesSchema = z.object({
   paddingStart: z.number().min(0).optional(),
   paddingEnd: z.number().min(0).optional(),
   contentDescription: z.string().optional(),
-  src: z.string().url("Must be a valid HTTP/S URL").or(z.string().startsWith("data:image/")).optional(),
+  src: z.union([
+        z.string().url("Must be a valid HTTP/S URL"),
+        z.string().startsWith("data:image/"),
+        z.object({ binding: z.string() })
+    ]).optional(),
   "data-ai-hint": z.string().optional(),
   elevation: z.number().min(0).optional(),
   cornerRadius: z.number().min(0).optional(),
@@ -922,6 +937,11 @@ const BaseModalPropertiesSchema = z.object({
   animationType: z.enum(['Fade', 'Scale', 'SlideFromTop', 'SlideFromBottom', 'SlideFromStart', 'SlideFromEnd']).optional(),
   animationDuration: z.number().int().min(0).optional(),
   shape: z.enum(['Rectangle', 'RoundedCorner', 'Circle']).optional(),
+  dataSource: z.object({
+      url: z.string().url().optional(),
+      schema: z.array(z.string()).optional(),
+  }).optional(),
+  dataBindings: z.record(z.string()).optional(),
 }).catchall(z.any()); 
 
 

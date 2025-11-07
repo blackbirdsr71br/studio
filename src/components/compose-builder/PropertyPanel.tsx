@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useRef, ChangeEvent } from 'react';
@@ -10,6 +11,7 @@ import {
   type ComponentType,
   type ComponentProperty,
   getComponentDisplayName,
+  getDefaultProperties,
   DEFAULT_CONTENT_LAZY_COLUMN_ID,
   ROOT_SCAFFOLD_ID,
   DEFAULT_TOP_APP_BAR_ID,
@@ -28,7 +30,7 @@ import { Separator } from '../ui/separator';
 import type { ImageSourceModalRef } from './ImageSourceModal';
 import type { BaseComponentProps, ClickAction } from '@/types/compose-spec';
 import { ComponentTreeView } from './ComponentTreeView';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '../ui/select';
+import { DataBindingPanel } from './DataBindingPanel';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 
@@ -42,25 +44,22 @@ interface PropertyPanelProps {
 
 const PREFERRED_GROUP_ORDER = ['Layout', 'Appearance', 'Content', 'Behavior'];
 
-export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
+
+const isLazyContainerType = (type: string) => 
+    ['LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid'].includes(type);
+
+function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
   const { activeDesign, getComponentById, updateComponent, deleteComponent, customComponentTemplates, saveSelectedAsCustomTemplate, populateLazyContainer } = useDesign();
-  
   const selectedComponentId = activeDesign?.selectedComponentId;
   const selectedComponent = selectedComponentId ? getComponentById(selectedComponentId) : null;
-  
   const { toast } = useToast();
-
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
   const [newTemplateName, setNewTemplateName] = useState("");
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
-  
-  // State for lazy container population
   const [childGenerationCount, setChildGenerationCount] = useState<number>(5);
   const [childGenerationType, setChildGenerationType] = useState<string>('Text');
-
 
   const handleSaveAsTemplate = async () => {
     if (!selectedComponentId) {
@@ -76,9 +75,9 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     setIsSavingTemplate(false);
     setNewTemplateName("");
   };
-
-  const handlePopulateLazyContainer = () => {
-    if (selectedComponent && ['LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid'].includes(selectedComponent.type)) {
+  
+    const handlePopulateLazyContainer = () => {
+    if (selectedComponent && isLazyContainerType(selectedComponent.type)) {
         if (childGenerationCount > 0 && childGenerationType) {
             populateLazyContainer(selectedComponent.id, childGenerationType, childGenerationCount);
             toast({
@@ -95,56 +94,48 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     }
   };
 
-  const getDefaultPropertyValue = (propDef: Omit<ComponentProperty, 'value'>) => {
-    if (!selectedComponent) return '';
-    if (['paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd'].includes(propDef.name)) {
-        return selectedComponent.properties[propDef.name] ?? '';
+
+  if (!selectedComponent || !activeDesign) {
+    return (
+      <div className="flex-grow flex items-center justify-center h-full">
+        <p className="text-sm text-muted-foreground text-center p-4">Select a component on the canvas to see its properties.</p>
+      </div>
+    );
+  }
+
+  let componentPropsDefSourceType = selectedComponent.type;
+  if (selectedComponent.templateIdRef) {
+    const template = customComponentTemplates.find(t => t.templateId === selectedComponent.templateIdRef);
+    if (template) {
+      const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
+      if (rootTemplateComponent) componentPropsDefSourceType = rootTemplateComponent.type;
     }
-    if (propDef.type === 'number') return 0;
-    if (propDef.type === 'boolean') return false;
-    if (propDef.type === 'enum' && propDef.options && propDef.options.length > 0) return propDef.options[0].value;
-    if (propDef.type === 'action') return { type: 'SHOW_TOAST', value: 'Clicked' };
-    return '';
+  }
+  const componentPropsDef = (propertyDefinitions[componentPropsDefSourceType as ComponentType] || []) as (Omit<ComponentProperty, 'value'> & { group: string })[];
+
+  const handlePropertyChange = (propName: string, value: string | number | boolean | ClickAction | null) => {
+    let actualValue: any = value;
+    const propDefinition = componentPropsDef.find(p => p.name === propName);
+    if (propDefinition?.type === 'number' && (value === '' || value === null)) {
+      actualValue = undefined;
+    }
+
+    const updates: Partial<BaseComponentProps> = { [propName]: actualValue };
+
+    if (propName === 'fillMaxSize') {
+        const isChecked = actualValue as boolean;
+        updates.fillMaxWidth = isChecked;
+        updates.fillMaxHeight = isChecked;
+    } else if (propName === 'fillMaxWidth' || propName === 'fillMaxHeight') {
+        const isChecked = actualValue as boolean;
+        const otherPropName = propName === 'fillMaxWidth' ? 'fillMaxHeight' : 'fillMaxWidth'; // Corrected logic
+        const otherPropValue = selectedComponent.properties[otherPropName] ?? false;
+        updates.fillMaxSize = isChecked && otherPropValue;
+    }
+
+    updateComponent(selectedComponent.id, { properties: updates });
   };
-
-  const renderProperties = () => {
-    if (!selectedComponent || !activeDesign) return null;
-
-    let componentPropsDefSourceType = selectedComponent.type;
-    if (selectedComponent.templateIdRef) {
-      const template = customComponentTemplates.find(t => t.templateId === selectedComponent.templateIdRef);
-      if (template) {
-        const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
-        if (rootTemplateComponent) {
-          componentPropsDefSourceType = rootTemplateComponent.type; 
-        }
-      }
-    }
-    const componentPropsDef = (propertyDefinitions[componentPropsDefSourceType as ComponentType] || []) as (Omit<ComponentProperty, 'value'> & { group: string })[];
-
-    const handlePropertyChange = (propName: string, value: string | number | boolean | ClickAction) => {
-      let actualValue: any = value;
-      const propDefinition = componentPropsDef.find(p => p.name === propName);
-      if (propDefinition?.type === 'number' && value === '') {
-        actualValue = undefined;
-      }
-
-      const updates: Partial<BaseComponentProps> = { [propName]: actualValue };
-
-      if (propName === 'fillMaxSize') {
-          const isChecked = actualValue as boolean;
-          updates.fillMaxWidth = isChecked;
-          updates.fillMaxHeight = isChecked;
-      } else if (propName === 'fillMaxWidth' || propName === 'fillMaxHeight') {
-          const isChecked = actualValue as boolean;
-          const otherPropName = propName === 'fillMaxWidth' ? 'fillMaxHeight' : 'fillMaxHeight';
-          const otherPropValue = selectedComponent.properties[otherPropName] ?? false;
-          updates.fillMaxSize = isChecked && otherPropValue;
-      }
-
-      updateComponent(selectedComponent.id, { properties: updates });
-    };
-
+  
     const handleNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
        updateComponent(selectedComponent.id, { name: event.target.value });
     };
@@ -158,17 +149,17 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
         deleteComponent(selectedComponent.id);
       }
     };
-
+    
     const handleGenerateImage = async () => {
-      if (selectedComponent.type !== 'Image' || !selectedComponent.properties['data-ai-hint']) {
+      const aiHint = selectedComponent.properties['data-ai-hint'];
+      if (selectedComponent.type !== 'Image' || typeof aiHint !== 'string' || !aiHint) {
         toast({ title: "Cannot Generate Image", description: "Please select an Image component and provide an AI hint.", variant: "destructive" });
         return;
       }
       setIsGeneratingImage(true);
       setGenerationError(null);
       try {
-        const hint = selectedComponent.properties['data-ai-hint'] as string;
-        const result = await generateImageFromHintAction(hint);
+        const result = await generateImageFromHintAction(aiHint);
         if (result.imageUrls && result.imageUrls.length > 0) {
           updateComponent(selectedComponent.id, { properties: { src: result.imageUrls[0] } });
           toast({ title: "Image Generated", description: "Image source has been updated successfully." });
@@ -184,8 +175,8 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
         setIsGeneratingImage(false);
       }
     };
-
-    const handleLocalImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    
+      const handleLocalImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (file && selectedComponentId) {
         const reader = new FileReader();
@@ -208,12 +199,14 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
 
     const openImageSourceModal = () => {
       if (imageSourceModalRef.current) {
-          imageSourceModalRef.current.openModal(handleImageFromModal, selectedComponent?.properties.src as string || '');
+          const currentSrc = selectedComponent?.properties.src;
+          const srcString = typeof currentSrc === 'string' ? currentSrc : '';
+          imageSourceModalRef.current.openModal(handleImageFromModal, srcString);
       } else {
           console.warn("ImageSourceModal ref not available in PropertyPanel.");
       }
     };
-
+    
     const groupedProperties: GroupedProperties = {};
     const propertyGroups: string[] = [];
 
@@ -231,7 +224,7 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     const shouldShowCornerRadiusGroup = ['Image', 'Box', 'Card'].includes(sourceComponentForShapeType) || (sourceComponentForShapeType === 'Button' && selectedComponent.properties.shape === 'RoundedCorner');
 
     if (shouldShowCornerRadiusGroup) {
-      const { cornerRadius, cornerRadiusTopLeft, cornerRadiusTopRight, cornerRadiusBottomRight, cornerRadiusBottomLeft } = selectedComponent.properties;
+      const { cornerRadiusTopLeft, cornerRadiusTopRight, cornerRadiusBottomRight, cornerRadiusBottomLeft } = selectedComponent.properties;
       const allCornersHaveValue = typeof cornerRadiusTopLeft === 'number' && typeof cornerRadiusTopRight === 'number' && typeof cornerRadiusBottomRight === 'number' && typeof cornerRadiusBottomLeft === 'number';
       const allCornersAreEqual = allCornersHaveValue && cornerRadiusTopLeft === cornerRadiusTopRight && cornerRadiusTopLeft === cornerRadiusBottomRight && cornerRadiusTopLeft === cornerRadiusBottomLeft;
       const allCornersValue = allCornersAreEqual ? (cornerRadiusTopLeft ?? '') : '';
@@ -267,41 +260,30 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
       if (!groupedProperties['Appearance']) { groupedProperties['Appearance'] = []; if (!propertyGroups.includes('Appearance')) { propertyGroups.push('Appearance'); } }
       groupedProperties['Appearance'].push(allCornersEditor);
     }
-
-    componentPropsDef.forEach((propDef) => {
+    
+        componentPropsDef.forEach((propDef) => {
       if (propDef.name === 'onClickAction' && !selectedComponent.properties.clickable) {
-        return; 
+        return;
       }
       
       const isButtonShape = selectedComponent.type === 'Button' && selectedComponent.properties.shape === 'RoundedCorner';
-      if (propDef.name === 'cornerRadius') {
-        // Hide the general cornerRadius if individual controls are present (for non-buttons) or if it's a button and shape isn't rounded.
-        if (!isButtonShape || shouldShowCornerRadiusGroup) return; 
+      if (propDef.name === 'cornerRadius' && (!isButtonShape || shouldShowCornerRadiusGroup)) {
+          return;
       }
-      if (['cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft'].includes(propDef.name)) {
-        if (sourceComponentForShapeType === 'Button' && !isButtonShape) return;
+      if (['cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft'].includes(propDef.name) && !shouldShowCornerRadiusGroup) {
+          return;
       }
-
 
       const group = propDef.group || 'General';
-      if (!groupedProperties[group]) { 
-          groupedProperties[group] = []; 
-          if (!propertyGroups.includes(group)) { 
+      if (!groupedProperties[group]) {
+          groupedProperties[group] = [];
+          if (!propertyGroups.includes(group)) {
               propertyGroups.push(group);
-          } 
+          }
       }
 
-      let currentValue = selectedComponent.properties[propDef.name];
-      if (['paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd'].includes(propDef.name) && currentValue === undefined) {
-          currentValue = '';
-      } else {
-          currentValue = currentValue ?? getDefaultPropertyValue(propDef);
-      }
+      const currentValue = selectedComponent.properties[propDef.name] ?? getDefaultProperties(componentPropsDefSourceType as ComponentType)[propDef.name];
       
-      if (propDef.name === 'fillMaxSize') {
-          currentValue = !!(selectedComponent.properties.fillMaxWidth && selectedComponent.properties.fillMaxHeight);
-      }
-
       const editorElement = (
         <PropertyEditor
           key={propDef.name}
@@ -320,15 +302,12 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
          );
       } else if (propDef.name === 'width' || propDef.name === 'height') {
         const shouldShow = propDef.name === 'width' ? !selectedComponent.properties.fillMaxWidth : !selectedComponent.properties.fillMaxHeight;
-        if (shouldShow) {
-          groupedProperties[group].push(editorElement);
-        }
-      }
-      else {
+        if (shouldShow) groupedProperties[group].push(editorElement);
+      } else {
          groupedProperties[group].push(editorElement);
       }
-
-      if (propDef.name === 'src' && (selectedComponent.type === 'Image' || (sourceComponentForShapeType === 'Image'))) {
+      
+       if (propDef.name === 'src' && (selectedComponent.type === 'Image' || (sourceComponentForShapeType === 'Image'))) {
         const imageButtons = (
           <div key="src-buttons" className="mt-1.5 space-y-1.5">
              <div className="flex gap-1.5">
@@ -355,22 +334,17 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
       return a.localeCompare(b);
     });
 
-    let componentDisplayName;
-    if (selectedComponent.templateIdRef) {
-      componentDisplayName = customComponentTemplates.find(t => t.templateId === selectedComponent.templateIdRef)?.name || getComponentDisplayName(selectedComponent.type as ComponentType);
-    } else {
-      componentDisplayName = getComponentDisplayName(selectedComponent.type as ComponentType);
-    }
+    let componentDisplayName = selectedComponent.templateIdRef
+        ? customComponentTemplates.find(t => t.templateId === selectedComponent.templateIdRef)?.name || getComponentDisplayName(selectedComponent.type)
+        : getComponentDisplayName(selectedComponent.type);
+
     const isCoreScaffoldElement = CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponent.id) && !selectedComponent.templateIdRef;
-    
-    const isLazyContainer = ['LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid'].includes(selectedComponent.type);
-    const availableChildTypes = Object.keys(propertyDefinitions).filter(type => !['Scaffold', 'TopAppBar', 'BottomNavigationBar'].includes(type));
     
     return (
       <div className="h-full flex flex-col">
         <div className="flex items-center justify-between mb-1 shrink-0">
            <h2 className="text-lg font-semibold text-sidebar-foreground font-headline truncate mr-2" title={`${selectedComponent.name} (${componentDisplayName})`}>
-            {selectedComponent.name}
+            {selectedComponent.name || ''}
           </h2>
           <div className="flex items-center">
             <Button variant="ghost" size="icon" onClick={handleDelete} className="text-destructive hover:bg-destructive/10 h-7 w-7" aria-label="Delete component" disabled={isCoreScaffoldElement}>
@@ -379,139 +353,82 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
           </div>
         </div>
         <p className="text-xs text-muted-foreground mb-3 -mt-1 shrink-0">{componentDisplayName}</p>
-
         <div className="mb-4 shrink-0">
           <Label htmlFor="componentName" className="text-xs">Instance Name</Label>
-          <Input id="componentName" type="text" value={selectedComponent.name} onChange={handleNameChange} className="h-8 text-sm mt-1.5" disabled={isCoreScaffoldElement} />
+          <Input id="componentName" type="text" value={selectedComponent.name || ''} onChange={handleNameChange} className="h-8 text-sm mt-1.5" disabled={isCoreScaffoldElement} />
         </div>
-
-        {isLazyContainer && (
-           <Accordion type="single" collapsible className="w-full mb-4 shrink-0">
-             <AccordionItem value="item-1" className="border border-sidebar-border rounded-md px-3 bg-muted/20">
-               <AccordionTrigger className="text-sm font-medium text-sidebar-foreground py-2.5">Generate Children</AccordionTrigger>
-               <AccordionContent className="pt-1 pb-3 space-y-3">
-                 <div className='flex gap-2'>
-                     <div className='flex-1 space-y-1'>
-                         <Label htmlFor='child-count' className='text-xs'>Count</Label>
-                         <Input
-                             id='child-count'
-                             type='number'
-                             value={childGenerationCount}
-                             onChange={(e) => setChildGenerationCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                             min={1}
-                             className='h-8 text-sm'
-                         />
-                     </div>
-                     <div className='flex-1 space-y-1'>
-                         <Label htmlFor='child-type' className='text-xs'>Component Type</Label>
-                         <Select value={childGenerationType} onValueChange={setChildGenerationType}>
-                              <SelectTrigger id="child-type" className="h-8 text-sm">
-                                 <SelectValue placeholder="Select type" />
-                             </SelectTrigger>
-                             <SelectContent>
-                                 <SelectGroup>
-                                     <SelectLabel>Standard</SelectLabel>
-                                     {availableChildTypes.map(type => (
-                                         <SelectItem key={type} value={type}>{getComponentDisplayName(type)}</SelectItem>
-                                     ))}
-                                 </SelectGroup>
-                                 {customComponentTemplates.length > 0 && (
-                                     <SelectGroup>
-                                         <SelectLabel>Custom</SelectLabel>
-                                         {customComponentTemplates.map(template => (
-                                             <SelectItem key={template.templateId} value={template.templateId}>{template.name}</SelectItem>
-                                         ))}
-                                     </SelectGroup>
-                                 )}
-                             </SelectContent>
-                         </Select>
-                     </div>
-                 </div>
-                 <Button size="sm" className='w-full h-8' onClick={handlePopulateLazyContainer}>
-                     <CopyPlus className='w-4 h-4 mr-2' />
-                     Generate
-                 </Button>
-               </AccordionContent>
-             </AccordionItem>
-           </Accordion>
-        )}
-
-        {componentPropsDef.length === 0 && !activeDesign.editingTemplateInfo ? (
-          <div className="flex-grow flex items-center justify-center min-h-0">
-            <p className="text-sm text-muted-foreground">No editable properties for this component type.</p>
-          </div>
-        ) : (
-          <div className="flex-grow flex flex-col min-h-0">
-            <Tabs defaultValue={propertyGroups[0] || 'save'} className="flex flex-col flex-grow min-h-0">
-              <div className="overflow-x-auto bg-muted/50 p-1 rounded-md shrink-0">
-                <TabsList className="inline-flex h-auto bg-transparent p-0">
-                  {propertyGroups.map((group) => (
-                    <TabsTrigger key={group} value={group} className="text-xs px-2 py-1.5 h-auto whitespace-nowrap">
-                      {group}
-                    </TabsTrigger>
-                  ))}
-                   {!activeDesign.editingTemplateInfo && !isCoreScaffoldElement && (
-                        <TabsTrigger value="save" className="text-xs px-2 py-1.5 h-auto whitespace-nowrap">
-                          Save
-                        </TabsTrigger>
+        <div className="flex-grow flex flex-col min-h-0">
+          <Tabs defaultValue={propertyGroups[0] || 'save'} className="flex flex-col flex-grow min-h-0">
+            <div className="overflow-x-auto bg-muted/50 p-1 rounded-md shrink-0">
+              <TabsList className="inline-flex h-auto bg-transparent p-0">
+                {propertyGroups.map((group) => (
+                  <TabsTrigger key={group} value={group} className="text-xs px-2 py-1.5 h-auto whitespace-nowrap">{group}</TabsTrigger>
+                ))}
+                 {!activeDesign.editingTemplateInfo && !isCoreScaffoldElement && (
+                      <TabsTrigger value="save" className="text-xs px-2 py-1.5 h-auto whitespace-nowrap">Save</TabsTrigger>
+                  )}
+              </TabsList>
+            </div>
+            <ScrollArea className="flex-grow min-h-0 mt-3 -mx-4">
+              <div className="px-4">
+                {propertyGroups.map((group) => (
+                  <TabsContent key={group} value={group} className="space-y-3 mt-0">
+                    {groupedProperties[group]}
+                    {(selectedComponent.type === 'Image' || sourceComponentForShapeType === 'Image') && group === 'Content' && (
+                      <div className="mt-3 pt-3 border-t border-sidebar-border">
+                        <Button onClick={handleGenerateImage} disabled={isGeneratingImage || !selectedComponent.properties['data-ai-hint']} className="w-full" size="sm">
+                          {isGeneratingImage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                          Generate Image from Hint
+                        </Button>
+                        {generationError && <p className="text-xs text-destructive mt-1 text-center">{generationError}</p>}
+                      </div>
                     )}
-                </TabsList>
-              </div>
-              <ScrollArea className="flex-grow min-h-0 mt-3 -mx-4">
-                <div className="px-4">
-                  {propertyGroups.map((group) => (
-                    <TabsContent key={group} value={group} className="space-y-3 mt-0">
-                      {groupedProperties[group]}
-                      {(selectedComponent.type === 'Image' || sourceComponentForShapeType === 'Image') && group === 'Content' && !groupedProperties[group].some(el => (el as React.ReactElement)?.key === 'src-buttons') && (
-                        <div className="mt-3 pt-3 border-t border-sidebar-border">
-                          <Button onClick={handleGenerateImage} disabled={isGeneratingImage || !selectedComponent.properties['data-ai-hint']} className="w-full" size="sm">
-                            {isGeneratingImage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                            Generate Image from Hint
+                  </TabsContent>
+                ))}
+                 <TabsContent value="save" className="mt-0">
+                      <div className="space-y-2 pt-2">
+                          <Label htmlFor="templateName" className="text-xs">Custom Component Name</Label>
+                          <Input id="templateName" placeholder="e.g., User Profile Card" value={newTemplateName || ''} onChange={(e) => setNewTemplateName(e.target.value)} disabled={isSavingTemplate} className="h-8 text-sm" />
+                          <Button onClick={handleSaveAsTemplate} disabled={isSavingTemplate || !newTemplateName.trim()} className="w-full h-8 text-xs">
+                              {isSavingTemplate ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
+                              Save Selected as Component
                           </Button>
-                          {generationError && <p className="text-xs text-destructive mt-1 text-center">{generationError}</p>}
-                        </div>
-                      )}
-                    </TabsContent>
-                  ))}
-                   <TabsContent value="save" className="mt-0">
-                        <div className="space-y-2 pt-2">
-                            <Label htmlFor="templateName" className="text-xs">Custom Component Name</Label>
-                            <Input
-                                id="templateName"
-                                placeholder="e.g., User Profile Card"
-                                value={newTemplateName}
-                                onChange={(e) => setNewTemplateName(e.target.value)}
-                                disabled={isSavingTemplate}
-                                className="h-8 text-sm"
-                            />
-                            <Button onClick={handleSaveAsTemplate} disabled={isSavingTemplate || !newTemplateName.trim()} className="w-full h-8 text-xs">
-                                {isSavingTemplate ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
-                                Save Selected as Component
-                            </Button>
-                        </div>
-                    </TabsContent>
-                </div>
-              </ScrollArea>
-            </Tabs>
-          </div>
-        )}
+                      </div>
+                  </TabsContent>
+              </div>
+            </ScrollArea>
+          </Tabs>
+        </div>
       </div>
     );
-  };
+}
+
+
+export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
+  const { activeDesign, getComponentById } = useDesign();
+  const selectedComponentId = activeDesign?.selectedComponentId;
+  const selectedComponent = selectedComponentId ? getComponentById(selectedComponentId) : null;
+  const parentComponent = selectedComponent?.parentId ? getComponentById(selectedComponent.parentId) : null;
   
+  const isDataBindingRelevant = 
+      selectedComponent && (
+          isLazyContainerType(selectedComponent.type) || 
+          (parentComponent && isLazyContainerType(parentComponent.type))
+      );
+
   return (
     <aside className="w-80 border-l bg-sidebar p-4 flex flex-col shrink-0">
-        <Tabs defaultValue="structure" className="w-full flex flex-col flex-grow min-h-0">
-            <TabsList className="grid w-full grid-cols-2 shrink-0">
-                <TabsTrigger value="properties" disabled={!selectedComponent}>Properties</TabsTrigger>
+        <Tabs defaultValue="properties" className="w-full flex flex-col flex-grow min-h-0">
+            <TabsList className="grid w-full grid-cols-3 shrink-0">
+                <TabsTrigger value="properties">Properties</TabsTrigger>
+                <TabsTrigger value="data" disabled={!isDataBindingRelevant}>Data</TabsTrigger>
                 <TabsTrigger value="structure">Structure</TabsTrigger>
             </TabsList>
             <TabsContent value="properties" className="flex-grow min-h-0 mt-4 focus-visible:ring-0 focus-visible:ring-offset-0">
-                {selectedComponent ? renderProperties() : (
-                    <div className="flex-grow flex items-center justify-center h-full">
-                      <p className="text-sm text-muted-foreground text-center p-4">Select a component on the canvas to see its properties.</p>
-                    </div>
-                )}
+                <PropertiesTab imageSourceModalRef={imageSourceModalRef}/>
+            </TabsContent>
+             <TabsContent value="data" className="flex-grow min-h-0 mt-4 focus-visible:ring-0 focus-visible:ring-offset-0">
+                {isDataBindingRelevant ? <DataBindingPanel /> : <p className='text-sm text-muted-foreground p-4 text-center'>Select a Lazy container or its direct child to configure data binding.</p>}
             </TabsContent>
              <TabsContent value="structure" className="flex-grow min-h-0 mt-2 focus-visible:ring-0 focus-visible:ring-offset-0">
                 <ComponentTreeView />
@@ -520,3 +437,4 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     </aside>
   );
 }
+

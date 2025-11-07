@@ -1,4 +1,5 @@
 
+
 'use server';
 import { generateImageFromHint } from '@/ai/flows/generate-image-from-hint-flow';
 import { generateJsonFromComposeCommands } from '@/ai/flows/generate-json-from-compose-commands';
@@ -24,6 +25,29 @@ const cleanEmptyOrNullProperties = (properties: Record<string, any>): Record<str
   }
   return cleanedProperties;
 };
+
+export async function fetchAndAnalyzeEndpoint(url: string): Promise<{ schema?: string[]; error?: string; }> {
+    if (!url) return { error: 'URL is empty.' };
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            return { error: `Request failed with status: ${response.status}` };
+        }
+        const data = await response.json();
+        if (Array.isArray(data) && data.length > 0) {
+            const firstItem = data[0];
+            if (typeof firstItem === 'object' && firstItem !== null) {
+                return { schema: Object.keys(firstItem) };
+            }
+        }
+        return { error: 'Response is not a non-empty array of objects.' };
+    } catch (e) {
+        if (e instanceof Error) {
+            return { error: e.message };
+        }
+        return { error: 'An unknown error occurred.' };
+    }
+}
 
 
 export async function generateJetpackComposeCodeAction(
