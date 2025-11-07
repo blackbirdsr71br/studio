@@ -111,14 +111,14 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
         </div>
       );
     case 'number':
-       const numValue = currentValue ?? '';
+       const numValue = currentValue;
       return (
         <div className="space-y-1.5">
           <Label htmlFor={id} className="text-xs">{property.label}</Label>
           <Input
             id={id}
             type="number"
-            value={numValue}
+            value={numValue ?? ''}
             onChange={handleInputChange}
             placeholder={property.placeholder}
             className="h-8 text-sm"
@@ -142,7 +142,6 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
               value={colorValue}
               onChange={handleInputChange}
               className="h-8 w-10 p-1"
-              disabled={isTransparent || isNull}
             />
             <Input
               type="text"
