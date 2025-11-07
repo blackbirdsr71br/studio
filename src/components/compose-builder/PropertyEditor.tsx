@@ -13,7 +13,7 @@ import { Droplet, XCircle } from 'lucide-react';
 
 interface PropertyEditorProps {
   property: Omit<ComponentProperty, 'value'>; // Definition of the property
-  currentValue: string | number | boolean | ClickAction | null; // Actual current value from the component
+  currentValue: string | number | boolean | ClickAction | null | undefined; // Actual current value from the component
   onChange: (value: string | number | boolean | ClickAction | null) => void;
 }
 
@@ -88,7 +88,7 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
              <Input
                 id={`${id}-value`}
                 type="text"
-                value={action.value}
+                value={action.value || ''}
                 onChange={(e) => handleActionChange('value', e.target.value)}
                 placeholder="e.g., /profile, Item clicked, etc."
                 className="h-8 text-sm mt-1"
@@ -103,7 +103,7 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
           <Input
             id={id}
             type="text"
-            value={currentValue as string || ''}
+            value={(currentValue as string) || ''}
             onChange={handleInputChange}
             placeholder={property.placeholder}
             className="h-8 text-sm"
@@ -111,7 +111,7 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
         </div>
       );
     case 'number':
-       const numValue = currentValue === null ? '' : (currentValue as number);
+       const numValue = currentValue ?? '';
       return (
         <div className="space-y-1.5">
           <Label htmlFor={id} className="text-xs">{property.label}</Label>
@@ -183,7 +183,7 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
           <Label htmlFor={id} className="text-xs">{property.label}</Label>
           <Switch
             id={id}
-            checked={currentValue as boolean}
+            checked={!!currentValue}
             onCheckedChange={handleSwitchChange}
           />
         </div>
@@ -192,7 +192,7 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
       return (
         <div className="space-y-1.5">
           <Label htmlFor={id} className="text-xs">{property.label}</Label>
-          <Select value={currentValue as string} onValueChange={handleSelectChange}>
+          <Select value={(currentValue as string) || ''} onValueChange={handleSelectChange}>
             <SelectTrigger id={id} className="h-8 text-sm">
               <SelectValue placeholder={property.placeholder || "Select an option"} />
             </SelectTrigger>

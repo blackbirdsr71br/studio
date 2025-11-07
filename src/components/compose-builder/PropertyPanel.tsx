@@ -49,7 +49,7 @@ const isLazyContainerType = (type: string) =>
     ['LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid'].includes(type);
 
 function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
-  const { activeDesign, getComponentById, updateComponent, deleteComponent, customComponentTemplates, saveSelectedAsCustomTemplate, populateLazyContainer } = useDesign();
+  const { activeDesign, getComponentById, updateComponent, deleteComponent, customComponentTemplates, saveSelectedAsCustomTemplate } = useDesign();
   const selectedComponentId = activeDesign?.selectedComponentId;
   const selectedComponent = selectedComponentId ? getComponentById(selectedComponentId) : null;
   const { toast } = useToast();
@@ -58,9 +58,7 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [newTemplateName, setNewTemplateName] = useState("");
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
-  const [childGenerationCount, setChildGenerationCount] = useState<number>(5);
-  const [childGenerationType, setChildGenerationType] = useState<string>('Text');
-
+  
   const handleSaveAsTemplate = async () => {
     if (!selectedComponentId) {
         toast({ title: "Error", description: "No component selected to save.", variant: "destructive"});
@@ -75,25 +73,6 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
     setIsSavingTemplate(false);
     setNewTemplateName("");
   };
-  
-    const handlePopulateLazyContainer = () => {
-    if (selectedComponent && isLazyContainerType(selectedComponent.type)) {
-        if (childGenerationCount > 0 && childGenerationType) {
-            populateLazyContainer(selectedComponent.id, childGenerationType, childGenerationCount);
-            toast({
-                title: 'Components Generated',
-                description: `${childGenerationCount} ${getComponentDisplayName(childGenerationType)} components were added.`,
-            });
-        } else {
-            toast({
-                title: 'Invalid Input',
-                description: 'Please specify a count greater than 0 and select a component type.',
-                variant: 'destructive',
-            });
-        }
-    }
-  };
-
 
   if (!selectedComponent || !activeDesign) {
     return (
@@ -437,4 +416,3 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     </aside>
   );
 }
-

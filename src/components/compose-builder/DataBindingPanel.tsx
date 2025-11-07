@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -11,6 +12,11 @@ import { Loader2, Link, CopyPlus } from 'lucide-react';
 import { fetchAndAnalyzeEndpoint } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { getComponentDisplayName, propertyDefinitions, type ComponentType, isContainerType } from '@/types/compose-spec';
+
+function isLazyContainerType(type: string): boolean {
+    return ['LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid'].includes(type);
+}
+
 
 export function DataBindingPanel() {
   const { activeDesign, getComponentById, updateComponent, customComponentTemplates, generateChildrenFromDataSource } = useDesign();
@@ -134,7 +140,7 @@ export function DataBindingPanel() {
         <div className="space-y-1.5">
           <Label htmlFor="dataSourceUrl">REST Endpoint URL</Label>
           <div className="flex gap-2">
-            <Input id="dataSourceUrl" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://api.example.com/items" />
+            <Input id="dataSourceUrl" value={url || ''} onChange={e => setUrl(e.target.value)} placeholder="https://api.example.com/items" />
             <Button onClick={handleFetchSchema} disabled={isLoadingSchema} variant="outline" size="icon" className="h-9 w-9">
               {isLoadingSchema ? <Loader2 className="animate-spin" /> : <Link />}
             </Button>
