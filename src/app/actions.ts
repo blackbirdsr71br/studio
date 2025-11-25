@@ -12,8 +12,7 @@ import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { hexToHslCssString } from '@/lib/utils';
-import { getAndroidProjectTemplates } from '@/lib/android-project-templates';
-import { generateDynamicUiComponentKt, generateComponentDtoKt } from '@/lib/jetpack-compose-generator';
+import { generateComposableCode } from '@/lib/jetpack-compose-generator';
 
 // Helper function to remove properties with empty string or null values
 const cleanEmptyOrNullProperties = (properties: Record<string, any>): Record<string, any> => {
@@ -55,21 +54,18 @@ export async function generateJetpackComposeCodeAction(
   customComponentTemplates: CustomComponentTemplate[]
 ): Promise<{ files?: Record<string, string>; error?: string }> {
     try {
-      const projectFiles = getAndroidProjectTemplates();
-      const contentJson = await getDesignComponentsAsJsonAction(components, customComponentTemplates, true);
-      const componentTree = buildComponentTreeForAi(components, customComponentTemplates, ROOT_SCAFFOLD_ID, true);
+      // Build the hierarchical component tree starting from the root scaffold.
+      const componentTree = buildComponentTree(components, ROOT_SCAFFOLD_ID);
+      
+      // Generate the single Composable file.
+      const composableCode = generateComposableCode(componentTree, components, customComponentTemplates);
 
-      // Generate the two dynamic files deterministically
-      const componentDtoContent = generateComponentDtoKt(componentTree);
-      const dynamicUiComponentContent = generateDynamicUiComponentKt(componentTree);
-
-      const finalProjectFiles = {
-        ...projectFiles,
-        'app/src/main/java/com/example/myapplication/data/model/ComponentDto.kt': componentDtoContent,
-        'app/src/main/java/com/example/myapplication/presentation/components/DynamicUiComponent.kt': dynamicUiComponentContent,
+      // Return the single file in the expected format.
+      return {
+        files: {
+          'GeneratedScreen.kt': composableCode,
+        },
       };
-
-      return { files: finalProjectFiles };
     } catch (error) {
       console.error("Error generating Jetpack Compose code:", error);
       const message = error instanceof Error ? error.message : "An unknown error occurred while generating code.";
@@ -78,83 +74,34 @@ export async function generateJetpackComposeCodeAction(
 }
 
 
-// Interface for the nodes in the AI-specific tree (for Jetpack Compose generation)
-interface AiComponentTreeNode {
-  id: string;
-  type: string;
-  name: string;
-  properties: Record<string, any>;
-  children?: AiComponentTreeNode[]; // For standard containers
-  // For Scaffold specifically
-  topBar?: AiComponentTreeNode | null;
-  bottomBar?: AiComponentTreeNode | null;
-  content?: AiComponentTreeNode | null; // Content will usually be a LazyColumn
-}
-
-// Helper to create a hierarchical structure for the AI (Jetpack Compose)
-const buildComponentTreeForAi = (
+// Helper to create a hierarchical structure from the flat component list
+const buildComponentTree = (
   allComponents: DesignComponent[],
-  customComponentTemplates: CustomComponentTemplate[],
-  componentIdToBuildTreeFrom: string,
-  isRootCall: boolean = false
-): AiComponentTreeNode | AiComponentTreeNode[] => {
+  componentId: string,
+): DesignComponent | null => {
+  const component = allComponents.find(c => c.id === componentId);
+  if (!component) return null;
 
-  if (isRootCall) {
-    const rootScaffold = allComponents.find(c => c.id === ROOT_SCAFFOLD_ID && c.parentId === null);
-    if (!rootScaffold) {
-      console.error("Root Scaffold component not found for AI tree generation.");
-      return [];
-    }
-
-    const topBarComponent = allComponents.find(c => c.parentId === ROOT_SCAFFOLD_ID && c.type === 'TopAppBar');
-    const contentAreaComponent = allComponents.find(c => c.parentId === ROOT_SCAFFOLD_ID && c.type === 'LazyColumn' && c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID);
-    const bottomBarComponent = allComponents.find(c => c.parentId === ROOT_SCAFFOLD_ID && c.type === 'BottomNavigationBar');
-    
-    const scaffoldNode: AiComponentTreeNode = {
-      id: rootScaffold.id,
-      type: rootScaffold.type,
-      name: rootScaffold.name,
-      properties: cleanEmptyOrNullProperties({ ...rootScaffold.properties }),
-      topBar: topBarComponent ? buildComponentTreeForAi(allComponents, customComponentTemplates, topBarComponent.id) as AiComponentTreeNode : null,
-      content: contentAreaComponent ? buildComponentTreeForAi(allComponents, customComponentTemplates, contentAreaComponent.id) as AiComponentTreeNode : null,
-      bottomBar: bottomBarComponent ? buildComponentTreeForAi(allComponents, customComponentTemplates, bottomBarComponent.id) as AiComponentTreeNode : null,
-    };
-    delete scaffoldNode.properties.children; 
-    return scaffoldNode;
-  }
-
-  const currentComponent = allComponents.find(c => c.id === componentIdToBuildTreeFrom);
-  if (!currentComponent) {
-    console.warn(`Component with ID ${componentIdToBuildTreeFrom} not found during AI tree build.`);
-    return [];
-  }
-
-  let nodeProperties = cleanEmptyOrNullProperties({ ...currentComponent.properties });
-  
-  const node: AiComponentTreeNode = {
-    id: currentComponent.id,
-    type: currentComponent.type,
-    name: currentComponent.name,
-    properties: nodeProperties,
+  const componentWithChildren: DesignComponent = {
+    ...component,
+    properties: {
+      ...component.properties,
+      children: [], // Initialize children array
+    },
   };
 
-  if (currentComponent.templateIdRef) {
-    (node as any).templateIdRef = currentComponent.templateIdRef;
-  }
-
-  if (isContainerType(currentComponent.type, customComponentTemplates) && currentComponent.type !== 'Scaffold') {
-    const childrenOfThisComponent = allComponents.filter(c => c.parentId === currentComponent.id);
-    const childNodes = childrenOfThisComponent
-      .map(child => buildComponentTreeForAi(allComponents, customComponentTemplates, child.id) as AiComponentTreeNode)
-      .filter(n => n && Object.keys(n).length > 0);
-
-    if (childNodes.length > 0) {
-      node.children = childNodes;
-      delete node.properties.children; 
+  if (isContainerType(component.type) && component.properties.children) {
+    const childIds = component.properties.children;
+    if (Array.isArray(childIds)) {
+      componentWithChildren.properties.children = childIds
+        .map(id => buildComponentTree(allComponents, id))
+        .filter((c): c is DesignComponent => c !== null);
     }
   }
-  return node;
+
+  return componentWithChildren;
 };
+
 
 // Interface for nodes in the JSON for the "View JSON" modal and Remote Config (content part)
 interface ModalJsonNode {
@@ -189,7 +136,9 @@ const buildContentComponentTreeForModalJson = (
   currentParentIdForContext: string,
   includeDefaultValues: boolean
 ): ModalJsonNode[] => {
-  const childIds = allComponents.find(c => c.id === currentParentIdForContext)?.properties.children || [];
+  const parentComponent = allComponents.find(c => c.id === currentParentIdForContext);
+  const childIds = parentComponent?.properties.children || [];
+  
   if (!Array.isArray(childIds) || childIds.length === 0) {
     return [];
   }

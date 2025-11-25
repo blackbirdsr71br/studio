@@ -1,211 +1,223 @@
-
-
-// THIS IS A NEW FILE
-
 /**
  * @fileoverview This file contains the deterministic Jetpack Compose code generator.
- * It takes a component tree and generates Kotlin code without using AI.
+ * It takes a component tree and generates a single Kotlin file with pure composables.
  */
+import type { DesignComponent, BaseComponentProps, CustomComponentTemplate } from '@/types/compose-spec';
 
-// Helper function to extract all unique properties from the component tree
-const getAllProperties = (node: any, propertiesSet: Set<string>) => {
-    if (node.properties) {
-        Object.keys(node.properties).forEach(prop => propertiesSet.add(prop));
+function indent(level: number): string {
+    return '    '.repeat(level);
+}
+
+function generateModifiers(props: BaseComponentProps, level: number): string {
+    let modifierLines: string[] = [];
+
+    const p = props || {};
+
+    if (p.fillMaxSize) modifierLines.push('fillMaxSize()');
+    else {
+        if (p.fillMaxWidth) modifierLines.push('fillMaxWidth()');
+        if (p.fillMaxHeight) modifierLines.push('fillMaxHeight()');
     }
-    if (node.children) {
-        node.children.forEach((child: any) => getAllProperties(child, propertiesSet));
-    }
-    if(node.topBar) getAllProperties(node.topBar, propertiesSet);
-    if(node.content) getAllProperties(node.content, propertiesSet);
-    if(node.bottomBar) getAllProperties(node.bottomBar, propertiesSet);
-};
-
-
-export function generateComponentDtoKt(componentTree: any): string {
-    const propertiesSet = new Set<string>();
-    getAllProperties(componentTree, propertiesSet);
-
-    // Filter out 'children' as it's handled separately.
-    propertiesSet.delete('children');
-
-    const propsStrings = Array.from(propertiesSet).sort().map(prop => {
-        // Convert camelCase to snake_case for the JSON key, which is a common convention
-        const jsonKey = prop.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
-        return `    @SerialName("${jsonKey}") val ${prop}: String? = null`;
-    });
     
-    const childrenProp = `    @SerialName("children") val children: List<ComponentDto>? = null`;
+    if (typeof p.width === 'number' && !p.fillMaxWidth && !p.fillMaxSize) modifierLines.push(`width(${p.width}.dp)`);
+    if (typeof p.height === 'number' && !p.fillMaxHeight && !p.fillMaxSize) modifierLines.push(`height(${p.height}.dp)`);
+    if (typeof p.layoutWeight === 'number' && p.layoutWeight > 0) modifierLines.push(`weight(${p.layoutWeight}f)`);
 
-    return `package com.example.myapplication.data.model
+    const hasSpecificPadding = typeof p.paddingTop === 'number' || typeof p.paddingBottom === 'number' || typeof p.paddingStart === 'number' || typeof p.paddingEnd === 'number';
+    if (typeof p.padding === 'number' && p.padding > 0 && !hasSpecificPadding) {
+        modifierLines.push(`padding(${p.padding}.dp)`);
+    } else if (hasSpecificPadding) {
+        const top = p.paddingTop ?? p.padding ?? 0;
+        const bottom = p.paddingBottom ?? p.padding ?? 0;
+        const start = p.paddingStart ?? p.padding ?? 0;
+        const end = p.paddingEnd ?? p.padding ?? 0;
+        modifierLines.push(`padding(start = ${start}.dp, top = ${top}.dp, end = ${end}.dp, bottom = ${bottom}.dp)`);
+    }
+    
+    if (p.borderWidth && p.borderColor) {
+        modifierLines.push(`border(${p.borderWidth}.dp, color = Color(android.graphics.Color.parseColor("${p.borderColor}")))`);
+    }
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+    if (p.backgroundColor) {
+        if (typeof p.backgroundColor === 'object' && p.backgroundColor.type === 'linearGradient') {
+             const colors = p.backgroundColor.colors.map((c: string) => `Color(android.graphics.Color.parseColor("${c}"))`).join(', ');
+             modifierLines.push(`background(brush = Brush.linearGradient(colors = listOf(${colors})))`);
+        } else if (typeof p.backgroundColor === 'string') {
+             modifierLines.push(`background(color = Color(android.graphics.Color.parseColor("${p.backgroundColor}")))`);
+        }
+    }
+    
+    if (p.clickable) modifierLines.push(`clickable { /* TODO: Implement click action: ${p.onClickAction?.type} - ${p.onClickAction?.value} */ }`);
 
-@Serializable
-data class ComponentDto(
-    @SerialName("id") val id: String? = null,
-    @SerialName("type") val type: String? = null,
-    @SerialName("properties") val properties: PropertiesDto? = null
-)
+    if (modifierLines.length === 0) return "";
+    if (modifierLines.length === 1) return `modifier = Modifier.${modifierLines[0]}`;
 
-@Serializable
-data class PropertiesDto(
-${propsStrings.join(',\n')},
-${childrenProp}
-)
-`;
+    return `modifier = Modifier\n${indent(level + 2)}.${modifierLines.join(`\n${indent(level + 2)}.`)}`;
+}
+
+function generateComposable(
+    component: DesignComponent,
+    allComponents: DesignComponent[],
+    customComponentTemplates: CustomComponentTemplate[],
+    level: number
+): string {
+    if (!component) return "";
+
+    const { type, properties, name, templateIdRef } = component;
+    const p = properties || {};
+    let composableName: string;
+    let isContainer = false;
+
+    let effectiveType = type;
+    if (templateIdRef) {
+        const template = customComponentTemplates.find(t => t.templateId === templateIdRef);
+        const rootComponent = template?.componentTree.find(c => c.id === template.rootComponentId);
+        if (rootComponent) {
+            effectiveType = rootComponent.type;
+        }
+    }
+    
+    // Determine composable name and if it's a container
+    if (templateIdRef) {
+        composableName = name.replace(/[^a-zA-Z0-9]/g, '');
+        isContainer = true; // Assume custom components can be containers
+    } else {
+        composableName = effectiveType;
+        isContainer = Array.isArray(p.children) && p.children.length > 0;
+    }
+
+    const modifierString = generateModifiers(p, level);
+
+    let propsString: string[] = [];
+
+    // Component-specific properties
+    if (effectiveType === 'Text') {
+        propsString.push(`text = "${p.text || ""}"`);
+        if (p.textColor) propsString.push(`color = Color(android.graphics.Color.parseColor("${p.textColor}"))`);
+        if (p.fontSize) propsString.push(`fontSize = ${p.fontSize}.sp`);
+    } else if (effectiveType === 'Button') {
+        propsString.push(`onClick = { /* TODO: Implement click */ }`);
+    } else if (effectiveType === 'Image') {
+        propsString.push(`model = "${p.src || "https://placehold.co/100x100.png"}"`);
+        propsString.push(`contentDescription = "${p.contentDescription || name}"`);
+    } else if (effectiveType === 'Column' || effectiveType === 'Row' || effectiveType.startsWith('Lazy')) {
+        const arrangementType = (effectiveType === 'Column' || effectiveType === 'LazyColumn') ? 'verticalArrangement' : 'horizontalArrangement';
+        if (p[arrangementType]) {
+            const arrangement = p[arrangementType];
+            const composeArrangement = `Arrangement.${arrangement.charAt(0).toLowerCase() + arrangement.slice(1)}`;
+            propsString.push(`${arrangementType} = ${composeArrangement}`);
+        }
+        if (p.itemSpacing && p.itemSpacing > 0) {
+            const arrangementKey = (effectiveType === 'Column' || effectiveType === 'LazyColumn') ? 'verticalArrangement' : 'horizontalArrangement';
+            if(!propsString.some(s => s.startsWith(arrangementKey))) {
+                propsString.push(`${arrangementKey} = Arrangement.spacedBy(${p.itemSpacing}.dp)`);
+            }
+        }
+    } else if (effectiveType === 'Spacer') {
+        // Modifiers are handled, no extra props needed here
+    }
+
+    if (modifierString) {
+        propsString.unshift(modifierString);
+    }
+    
+    const finalPropsString = propsString.length > 0 ? `(\n${indent(level + 1)}${propsString.join(`,\n${indent(level + 1)}`)}\n${indent(level)})` : '()';
+
+    let childrenString = "";
+    if (isContainer) {
+        childrenString = ` {\n`;
+        if (templateIdRef) {
+            // Find the root of the template and render its children
+            const template = customComponentTemplates.find(t => t.templateId === templateIdRef);
+            const rootInTemplate = template?.componentTree.find(c => c.id === template.rootComponentId);
+            if (rootInTemplate && Array.isArray(rootInTemplate.properties.children)) {
+                 const templateChildren = rootInTemplate.properties.children as DesignComponent[];
+                 childrenString += templateChildren.map(child => generateComposable(child, template!.componentTree, customComponentTemplates, level + 1)).join('\n');
+            }
+        } else {
+             const children = (p.children || []) as DesignComponent[];
+             childrenString += children.map(child => generateComposable(child, allComponents, customComponentTemplates, level + 1)).join('\n');
+        }
+        childrenString += `\n${indent(level)}}`;
+    } else if (effectiveType === 'Button') {
+        // Special case for button with text
+        childrenString = ` { Text("${p.text || 'Button'}") }`;
+    }
+
+    const composableCall = templateIdRef ? composableName : (effectiveType === 'Image' ? 'AsyncImage' : effectiveType);
+
+    return `${indent(level)}${composableCall}${finalPropsString}${childrenString}`;
 }
 
 
-const generateModifiers = (props: any): string => {
-    let modifierString = "";
+function generateAllComposables(
+    componentTree: DesignComponent,
+    allComponents: DesignComponent[],
+    customComponentTemplates: CustomComponentTemplate[],
+): string {
+    let allComposables = new Map<string, string>();
+    const processingQueue: DesignComponent[] = [componentTree];
+    const processedIds = new Set<string>();
 
-    if (props.fillMaxSize) modifierString += ".fillMaxSize()";
-    else {
-        if (props.fillMaxWidth) modifierString += ".fillMaxWidth()";
-        if (props.fillMaxHeight) modifierString += ".fillMaxHeight()";
-    }
+    while(processingQueue.length > 0) {
+        const component = processingQueue.shift()!;
+        if (processedIds.has(component.id)) continue;
+        processedIds.add(component.id);
 
-    if (props.width && !props.fillMaxWidth) modifierString += `.width(${props.width}.dp)`;
-    if (props.height && !props.fillMaxHeight) modifierString += `.height(${props.height}.dp)`;
-    if (props.layoutWeight) modifierString += `.weight(${props.layoutWeight}f)`;
+        // If it's a custom component instance, generate its definition
+        if (component.templateIdRef && !allComposables.has(component.templateIdRef)) {
+            const template = customComponentTemplates.find(t => t.templateId === component.templateIdRef);
+            if (template) {
+                const rootComponentInTemplate = template.componentTree.find(c => c.id === template.rootComponentId);
+                 if(rootComponentInTemplate) {
+                    const composableName = component.name.replace(/[^a-zA-Z0-9]/g, '');
 
-    const hasPadding = props.padding || props.paddingTop || props.paddingBottom || props.paddingStart || props.paddingEnd;
-    if (hasPadding) {
-        if (props.padding) {
-            modifierString += `.padding(${props.padding}.dp)`;
-        } else {
-            modifierString += `.padding(start = ${props.paddingStart || 0}.dp, top = ${props.paddingTop || 0}.dp, end = ${props.paddingEnd || 0}.dp, bottom = ${props.paddingBottom || 0}.dp)`;
+                    // Build the tree for the template's internal structure
+                     const buildTemplateTree = (compId: string): DesignComponent | null => {
+                        const comp = template.componentTree.find(c => c.id === compId);
+                        if (!comp) return null;
+                        const children = (comp.properties.children || [])
+                            .map((childId: string) => buildTemplateTree(childId))
+                            .filter((c): c is DesignComponent => c !== null);
+                        return { ...comp, properties: { ...comp.properties, children } };
+                    };
+                    
+                    const templateTree = buildTemplateTree(rootComponentInTemplate.id);
+
+                    if (templateTree) {
+                        const composableBody = generateComposable(templateTree, template.componentTree, customComponentTemplates, 1);
+                        const composableCode = `@Composable\nfun ${composableName}() {\n${composableBody}\n}\n`;
+                        allComposables.set(component.templateIdRef, composableCode);
+                    }
+                }
+            }
+        }
+
+        // Add its children to the queue
+        if (Array.isArray(component.properties.children)) {
+            const children = (component.properties.children as (string | DesignComponent)[])
+                .map(child => typeof child === 'string' ? allComponents.find(c => c.id === child) : child)
+                .filter((c): c is DesignComponent => c !== undefined);
+
+            processingQueue.push(...children);
         }
     }
     
-    if(props.borderWidth > 0 && props.borderColor) {
-        modifierString += `.border(${props.borderWidth}.dp, color = Color(android.graphics.Color.parseColor("${props.borderColor}")), shape = RoundedCornerShape(${props.cornerRadius ?? 4}.dp))`;
-    }
-    
-    if (props.backgroundColor) {
-        modifierString += `.background(Color(android.graphics.Color.parseColor("${props.backgroundColor}")), shape = RoundedCornerShape(${props.cornerRadius ?? 4}.dp))`;
-    }
-    
-    if(props.clickable) {
-        modifierString += ".clickable { /* Handle click action */ }";
-    }
+    // Main screen composable
+    const mainScreenCode = `@Composable\nfun GeneratedScreen() {\n${generateComposable(componentTree, allComponents, customComponentTemplates, 1)}\n}`;
+    allComposables.set('main', mainScreenCode);
 
-    // Add more modifiers here based on other properties...
-    return modifierString.length > 0 ? `modifier = Modifier${modifierString}` : "";
-};
+    return Array.from(allComposables.values()).join('\n\n');
+}
 
+export function generateComposableCode(
+    componentTree: DesignComponent | null,
+    allComponents: DesignComponent[],
+    customComponentTemplates: CustomComponentTemplate[],
+): string {
+    if (!componentTree) return "// No root component found to generate code.";
 
-const generateComponentComposable = (component: any): string => {
-    if (!component || !component.type) return "";
-
-    const { type, properties = {}, children = [] } = component;
-    const modifiers = generateModifiers(properties);
-    const args = [modifiers].filter(Boolean).join(",\\n        ");
-
-    switch (type) {
-        case 'Text':
-            return `
-    Text(
-        text = componentDto.properties?.text ?: "",
-        fontSize = componentDto.properties?.fontSize?.toFloatOrNull()?.sp ?: 16.sp,
-        color = componentDto.properties?.textColor?.let { Color(android.graphics.Color.parseColor(it)) } ?: Color.Unspecified,
-        ${args}
-    )`;
-        case 'Button':
-             return `
-    Button(
-        onClick = { /* Handle Click */ },
-        ${args}
-    ) {
-        Text(text = componentDto.properties?.text ?: "Button")
-    }`;
-        case 'Image':
-             return `
-    AsyncImage(
-        model = componentDto.properties?.src,
-        contentDescription = componentDto.properties?.contentDescription,
-        ${args}
-    )`;
-        case 'Column':
-        case 'Row':
-        case 'Box':
-        case 'Card':
-        case 'LazyColumn':
-        case 'LazyRow':
-             const arrangement = type === 'Column' || type === 'LazyColumn' ?
-                `verticalArrangement = Arrangement.spacedBy(${properties.itemSpacing || 0}.dp)` :
-                `horizontalArrangement = Arrangement.spacedBy(${properties.itemSpacing || 0}.dp)`;
-
-            return `
-    ${type}(
-        ${args.length > 0 ? args + ',' : ''}
-        ${arrangement}
-    ) {
-        componentDto.properties?.children?.forEach { childDto ->
-            DynamicUiComponent(componentDto = childDto)
-        }
-    }`;
-        case 'Spacer':
-            return `
-    Spacer(${args})`
-        
-        case 'Scaffold':
-            const topBar = component.topBar ? `topBar = { DynamicUiComponent(componentDto = componentDto.properties?.children?.find { it.type == "TopAppBar" }!!) }` : "";
-            const bottomBar = component.bottomBar ? `bottomBar = { DynamicUiComponent(componentDto = componentDto.properties?.children?.find { it.type == "BottomNavigationBar" }!!) }` : "";
-            const content = component.content ? `
-        DynamicUiComponent(componentDto = componentDto.properties?.children?.find { it.type == "LazyColumn" }!!)
-            ` : "";
-
-             return `
-    Scaffold(
-        ${topBar}${topBar && bottomBar ? ',' : ''}
-        ${bottomBar}
-    ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues)) {
-            ${content}
-        }
-    }`;
-        case 'TopAppBar':
-             return `
-    TopAppBar(
-        title = { Text(componentDto.properties?.title ?: "Title") },
-        ${args}
-    )
-             `
-        default:
-            return `
-    // Unknown component type: ${type}
-    Box(modifier = Modifier.padding(8.dp).border(1.dp, Color.Red)) {
-        Text("Unknown: ${type}")
-    }`;
-    }
-};
-
-export function generateDynamicUiComponentKt(componentTree: any): string {
-    // This is a simplified generator. A real one would need to be more robust.
-    const allComponentTypes = new Set<string>();
-    const collectTypes = (node: any) => {
-        if (node.type) allComponentTypes.add(node.type);
-        if (node.children) node.children.forEach(collectTypes);
-        if(node.topBar) collectTypes(node.topBar);
-        if(node.content) collectTypes(node.content);
-        if(node.bottomBar) collectTypes(node.bottomBar);
-    };
-    collectTypes(componentTree);
-
-    const whenCases = Array.from(allComponentTypes).map(type => {
-        // Create a dummy component of this type to generate the code snippet
-        const dummyComponent = { type, properties: componentTree.properties }; 
-        if(componentTree.children) dummyComponent.properties.children = componentTree.children;
-        return `        "${type}" -> {
-${generateComponentComposable(dummyComponent)}
-        }`;
-    }).join("\n");
-
-    return `package com.example.myapplication.presentation.components
-
-import androidx.compose.foundation.layout.*
+    const header = `import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.border
@@ -216,23 +228,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.myapplication.data.model.ComponentDto
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DynamicUiComponent(componentDto: ComponentDto) {
-    when (componentDto.type) {
-${whenCases}
-        else -> {
-            // Render a placeholder for unknown types
-            Box(modifier = Modifier.padding(8.dp).border(1.dp, Color.Gray)) {
-                Text(text = "Unsupported component: \${componentDto.type}")
-            }
-        }
-    }
-}
+// This is a generated file. Modifications may be overwritten.
+
 `;
+
+    const allComposablesString = generateAllComposables(componentTree, allComponents, customComponentTemplates);
+
+    return header + allComposablesString;
 }

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useImperativeHandle, forwardRef, useCallback } from 'react';
@@ -13,8 +14,6 @@ import { java as javaLang } from '@codemirror/lang-java';
 import { githubLight, githubDark } from '@uiw/codemirror-theme-github';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import JSZip from 'jszip';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export interface GenerateCodeModalRef {
   openModal: () => void;
@@ -22,14 +21,13 @@ export interface GenerateCodeModalRef {
 
 export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [generatedFiles, setGeneratedFiles] = useState<Record<string, string> | null>(null);
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { activeDesign, customComponentTemplates } = useDesign();
   const { toast } = useToast();
   const { resolvedTheme } = useTheme();
   const [hasGeneratedOnce, setHasGeneratedOnce] = useState(false);
-  const [activeTab, setActiveTab] = useState('renderer');
 
   const handleGenerateCode = useCallback(async () => {
     if (!activeDesign) {
@@ -38,26 +36,24 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
     }
     setIsLoading(true);
     setError(null);
-    setGeneratedFiles(null);
+    setGeneratedCode(null);
     setHasGeneratedOnce(true);
     try {
-      // This now calls the non-AI generator
       const result = await generateJetpackComposeCodeAction(activeDesign.components, customComponentTemplates);
       if (result.error) {
         setError(result.error);
-        setGeneratedFiles(null);
-      } else if (result.files && Object.keys(result.files).length > 0) {
-        setGeneratedFiles(result.files);
-        setActiveTab('app/src/main/java/com/example/myapplication/presentation/components/DynamicUiComponent.kt'); // Default to showing the renderer first
+        setGeneratedCode(null);
+      } else if (result.files && result.files['GeneratedScreen.kt']) {
+        setGeneratedCode(result.files['GeneratedScreen.kt']);
       } else {
         setError("Code generation returned an empty or invalid structure.");
-        setGeneratedFiles(null);
+        setGeneratedCode(null);
       }
     } catch (e) {
       console.error("Error generating screen code:", e);
       const errorMessage = e instanceof Error ? e.message : "Failed to generate screen code.";
       setError(errorMessage);
-      setGeneratedFiles(null);
+      setGeneratedCode(null);
     } finally {
       setIsLoading(false);
     }
@@ -66,61 +62,37 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
   useImperativeHandle(ref, () => ({
     openModal: () => {
       setIsOpen(true);
-      setGeneratedFiles(null);
+      setGeneratedCode(null);
       setError(null);
       setHasGeneratedOnce(false);
-      setActiveTab('app/src/main/java/com/example/myapplication/presentation/components/DynamicUiComponent.kt');
     }
   }));
   
-  const handleCopyToClipboard = async (fileKey: string) => {
-    const codeToCopy = generatedFiles?.[fileKey] || '';
-    if (codeToCopy) {
+  const handleCopyToClipboard = async () => {
+    if (generatedCode) {
       try {
-        await navigator.clipboard.writeText(codeToCopy);
-        const fileName = fileKey.split('/').pop();
-        toast({ title: "Code Copied!", description: `${fileName} copied to clipboard.` });
+        await navigator.clipboard.writeText(generatedCode);
+        toast({ title: "Code Copied!", description: `GeneratedScreen.kt copied to clipboard.` });
       } catch (err) {
         toast({ title: "Copy Failed", description: "Could not copy code to clipboard.", variant: "destructive" });
       }
     }
   };
 
-  const handleDownloadZip = async () => {
-    if (!generatedFiles) {
-      toast({ title: "Download Failed", description: "No files to download.", variant: "destructive" });
-      return;
-    }
-
-    try {
-        const zip = new JSZip();
-        for (const filePath in generatedFiles) {
-          zip.file(filePath, generatedFiles[filePath]);
-        }
-
-        const blob = await zip.generateAsync({ type: "blob" });
-        
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = 'ComposeUISource.zip';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(link.href);
-        
-        toast({ title: "Source Code Downloaded", description: "Your ZIP file is being downloaded." });
-
-    } catch (error) {
-        console.error("Error creating source zip:", error);
-        toast({ title: "Download Failed", description: "Could not create the ZIP file.", variant: "destructive" });
+  const handleDownload = () => {
+    if (generatedCode) {
+      const blob = new Blob([generatedCode], { type: 'text/plain;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'GeneratedScreen.kt';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
     }
   };
 
-  const rendererFileKey = 'app/src/main/java/com/example/myapplication/presentation/components/DynamicUiComponent.kt';
-  const dtoFileKey = 'app/src/main/java/com/example/myapplication/data/model/ComponentDto.kt';
-  const fileKeys = generatedFiles ? Object.keys(generatedFiles).filter(k => k.endsWith('.kt')).sort((a, b) => a.localeCompare(b)) : [rendererFileKey, dtoFileKey];
-
-  const canCopyOrDownload = !isLoading && generatedFiles && Object.keys(generatedFiles).length > 0;
+  const canCopyOrDownload = !isLoading && generatedCode && !error;
   
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -128,18 +100,11 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
         <DialogHeader>
           <DialogTitle className="font-headline">Generated Jetpack Compose Code</DialogTitle>
           <DialogDescription>
-             Below is the generated Kotlin code for your design. You can copy individual files or download a ZIP with the full project.
+             Below is the generated Kotlin code for your design. You can copy it or download it as a .kt file.
           </DialogDescription>
         </DialogHeader>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-2 mb-2">
-             {fileKeys.map(key => (
-              <TabsTrigger key={key} value={key}>{key.split('/').pop()}</TabsTrigger>
-            ))}
-          </TabsList>
-            
-          <div className="flex-grow my-2 rounded-md border bg-muted/30 overflow-y-auto relative min-h-[300px]">
+          
+        <div className="flex-grow my-2 rounded-md border bg-muted/30 overflow-y-auto relative min-h-[300px]">
             {isLoading ? (
               <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -151,19 +116,12 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
                 </div>
             ) : !hasGeneratedOnce ? (
               <div className="flex items-center justify-center h-full">
-                  <p className="text-muted-foreground">Click "Generate" to create the Kotlin source files.</p>
+                  <p className="text-muted-foreground">Click "Generate" to create the Kotlin Composable file.</p>
               </div>
             ) : (
-              <>
-                {fileKeys.map(key => (
-                  <TabsContent key={key} value={key} className="m-0 h-full">
-                      <CodeMirror value={generatedFiles?.[key] || ''} height="100%" extensions={[javaLang()]} theme={resolvedTheme === 'dark' ? githubDark : githubLight} readOnly className="text-sm h-full" basicSetup={{ lineNumbers: true, foldGutter: true }}/>
-                  </TabsContent>
-                ))}
-              </>
+                <CodeMirror value={generatedCode || ''} height="100%" extensions={[javaLang()]} theme={resolvedTheme === 'dark' ? githubDark : githubLight} readOnly className="text-sm h-full" basicSetup={{ lineNumbers: true, foldGutter: true }}/>
             )}
-          </div>
-        </Tabs>
+        </div>
         
         <DialogFooter className="sm:justify-between flex-wrap gap-2 pt-4 border-t shrink-0">
            <Button variant="outline" onClick={handleGenerateCode} disabled={isLoading}>
@@ -171,11 +129,11 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
             {hasGeneratedOnce ? 'Regenerate' : 'Generate'}
           </Button>
           <div className="flex gap-2">
-            <Button onClick={() => handleCopyToClipboard(activeTab)} disabled={!canCopyOrDownload}>
-              <Copy className="mr-2 h-4 w-4" /> Copy {activeTab.split('/').pop()}
+            <Button onClick={handleCopyToClipboard} disabled={!canCopyOrDownload}>
+              <Copy className="mr-2 h-4 w-4" /> Copy Code
             </Button>
-            <Button onClick={handleDownloadZip} disabled={!canCopyOrDownload}>
-              <Download className="mr-2 h-4 w-4" /> Download Project.zip
+            <Button onClick={handleDownload} disabled={!canCopyOrDownload}>
+              <Download className="mr-2 h-4 w-4" /> Download .kt File
             </Button>
           </div>
         </DialogFooter>
@@ -185,5 +143,3 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
 });
 
 GenerateCodeModal.displayName = 'GenerateCodeModal';
-
-    
