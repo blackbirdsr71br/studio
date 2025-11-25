@@ -57,6 +57,10 @@ export async function generateJetpackComposeCodeAction(
       // Build the hierarchical component tree starting from the root scaffold.
       const componentTree = buildComponentTree(components, ROOT_SCAFFOLD_ID);
       
+      if (!componentTree) {
+        return { error: "Could not find the root scaffold component to build the component tree." };
+      }
+
       // Generate the single Composable file.
       const composableCode = generateComposableCode(componentTree, components, customComponentTemplates);
 
@@ -95,7 +99,7 @@ const buildComponentTree = (
     if (Array.isArray(childIds)) {
       componentWithChildren.properties.children = childIds
         .map(id => buildComponentTree(allComponents, id))
-        .filter((c): c is DesignComponent => c !== null);
+        .filter((c): c is DesignComponent => c !== null); // Ensure only valid components are included
     }
   }
 

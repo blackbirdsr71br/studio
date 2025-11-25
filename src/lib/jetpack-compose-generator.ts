@@ -27,11 +27,13 @@ function generateModifiers(props: BaseComponentProps, level: number): string {
     if (typeof p.padding === 'number' && p.padding > 0 && !hasSpecificPadding) {
         modifierLines.push(`padding(${p.padding}.dp)`);
     } else if (hasSpecificPadding) {
-        const top = p.paddingTop ?? p.padding ?? 0;
-        const bottom = p.paddingBottom ?? p.padding ?? 0;
-        const start = p.paddingStart ?? p.padding ?? 0;
-        const end = p.paddingEnd ?? p.padding ?? 0;
-        modifierLines.push(`padding(start = ${start}.dp, top = ${top}.dp, end = ${end}.dp, bottom = ${bottom}.dp)`);
+        const top = p.paddingTop ?? 0;
+        const bottom = p.paddingBottom ?? 0;
+        const start = p.paddingStart ?? 0;
+        const end = p.paddingEnd ?? 0;
+        if(top > 0 || bottom > 0 || start > 0 || end > 0) {
+           modifierLines.push(`padding(start = ${start}.dp, top = ${top}.dp, end = ${end}.dp, bottom = ${bottom}.dp)`);
+        }
     }
     
     if (p.borderWidth && p.borderColor) {
@@ -61,7 +63,10 @@ function generateComposable(
     customComponentTemplates: CustomComponentTemplate[],
     level: number
 ): string {
-    if (!component) return "";
+    if (!component || !component.type) {
+        console.warn('generateComposable called with invalid component:', component);
+        return "";
+    }
 
     const { type, properties, name, templateIdRef } = component;
     const p = properties || {};
@@ -100,10 +105,10 @@ function generateComposable(
     } else if (effectiveType === 'Image') {
         propsString.push(`model = "${p.src || "https://placehold.co/100x100.png"}"`);
         propsString.push(`contentDescription = "${p.contentDescription || name}"`);
-    } else if (effectiveType === 'Column' || effectiveType === 'Row' || effectiveType.startsWith('Lazy')) {
+    } else if (effectiveType && (effectiveType.startsWith('Lazy') || effectiveType === 'Column' || effectiveType === 'Row')) {
         const arrangementType = (effectiveType === 'Column' || effectiveType === 'LazyColumn') ? 'verticalArrangement' : 'horizontalArrangement';
         if (p[arrangementType]) {
-            const arrangement = p[arrangementType];
+            const arrangement = p[arrangementType] as string;
             const composeArrangement = `Arrangement.${arrangement.charAt(0).toLowerCase() + arrangement.slice(1)}`;
             propsString.push(`${arrangementType} = ${composeArrangement}`);
         }
@@ -126,18 +131,12 @@ function generateComposable(
     let childrenString = "";
     if (isContainer) {
         childrenString = ` {\n`;
-        if (templateIdRef) {
-            // Find the root of the template and render its children
-            const template = customComponentTemplates.find(t => t.templateId === templateIdRef);
-            const rootInTemplate = template?.componentTree.find(c => c.id === template.rootComponentId);
-            if (rootInTemplate && Array.isArray(rootInTemplate.properties.children)) {
-                 const templateChildren = rootInTemplate.properties.children as DesignComponent[];
-                 childrenString += templateChildren.map(child => generateComposable(child, template!.componentTree, customComponentTemplates, level + 1)).join('\n');
-            }
-        } else {
-             const children = (p.children || []) as DesignComponent[];
-             childrenString += children.map(child => generateComposable(child, allComponents, customComponentTemplates, level + 1)).join('\n');
-        }
+        const children = (p.children || [])
+            .map((child: string | DesignComponent) => typeof child === 'string' ? allComponents.find(c => c.id === child) : child)
+            .filter((c): c is DesignComponent => !!c); // Ensure children are valid components
+
+        childrenString += children.map(child => generateComposable(child, allComponents, customComponentTemplates, level + 1)).join('\n');
+        
         childrenString += `\n${indent(level)}}`;
     } else if (effectiveType === 'Button') {
         // Special case for button with text
@@ -161,7 +160,7 @@ function generateAllComposables(
 
     while(processingQueue.length > 0) {
         const component = processingQueue.shift()!;
-        if (processedIds.has(component.id)) continue;
+        if (processedIds.has(component.id) || !component) continue;
         processedIds.add(component.id);
 
         // If it's a custom component instance, generate its definition
@@ -195,7 +194,7 @@ function generateAllComposables(
 
         // Add its children to the queue
         if (Array.isArray(component.properties.children)) {
-            const children = (component.properties.children as (string | DesignComponent)[])
+            const children = (component.properties.children)
                 .map(child => typeof child === 'string' ? allComponents.find(c => c.id === child) : child)
                 .filter((c): c is DesignComponent => c !== undefined);
 
@@ -211,7 +210,7 @@ function generateAllComposables(
 }
 
 export function generateComposableCode(
-    componentTree: DesignComponent | null,
+    componentTree: DesignComponent,
     allComponents: DesignComponent[],
     customComponentTemplates: CustomComponentTemplate[],
 ): string {
