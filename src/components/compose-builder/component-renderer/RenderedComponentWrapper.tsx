@@ -402,5 +402,3 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
     </div>
   );
 }
-
-    
