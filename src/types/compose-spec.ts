@@ -19,6 +19,8 @@ export type ComponentType =
   | 'BottomNavigationBar' // Added
   | 'AnimatedContent' // Added
   | 'Group' // Added for grouping functionality
+  | 'Checkbox'
+  | 'RadioButton'
   | 'Scaffold'; // Explicitly a root type
 
 export const CUSTOM_COMPONENT_TYPE_PREFIX = "custom/";
@@ -42,7 +44,7 @@ export interface ComponentPropertyOption {
 }
 export interface ComponentProperty {
   name:string;
-  type: 'string' | 'number' | 'color' | 'boolean' | 'enum' | 'action';
+  type: 'string' | 'number' | 'color' | 'boolean' | 'enum' | 'action' | 'gradient';
   value: string | number | boolean;
   options?: ComponentPropertyOption[];
   label: string;
@@ -60,6 +62,12 @@ export interface DataSource {
   schema?: string[]; // Array of keys from the fetched data
 }
 
+export interface LinearGradient {
+    type: 'linearGradient';
+    colors: string[];
+    angle: number;
+}
+
 export interface BaseComponentProps {
   [key: string]: any;
   text?: string;
@@ -67,7 +75,7 @@ export interface BaseComponentProps {
   fontSize?: number;
   titleFontSize?: number;
   textColor?: string | null;
-  backgroundColor?: string | null;
+  backgroundColor?: string | LinearGradient | null;
   contentColor?: string | null;
   width?: number | string | undefined;
   height?: number | string | undefined;
@@ -121,6 +129,9 @@ export interface BaseComponentProps {
   animationType?: 'Fade' | 'Scale' | 'SlideFromTop' | 'SlideFromBottom' | 'SlideFromStart' | 'SlideFromEnd';
   animationDuration?: number;
   shape?: 'Rectangle' | 'RoundedCorner' | 'Circle';
+  checked?: boolean; // For Checkbox
+  selected?: boolean; // For RadioButton
+  enabled?: boolean; // For interactive components
 
   // Properties for Scaffold structure, used by AI generation
   topBarId?: string; // ID of the TopAppBar component
@@ -273,6 +284,22 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         selfAlign: 'Inherit',
         ...defaultClickableBehavior,
       };
+    case 'Checkbox':
+        return {
+            ...commonLayout,
+            text: 'Checkbox Label',
+            checked: false,
+            enabled: true,
+            selfAlign: 'Inherit',
+        };
+    case 'RadioButton':
+        return {
+            ...commonLayout,
+            text: 'Radio Option',
+            selected: false,
+            enabled: true,
+            selfAlign: 'Inherit',
+        };
     case 'Column':
       return {
         ...commonLayout,
@@ -449,6 +476,8 @@ export const getComponentDisplayName = (type: ComponentType | string): string =>
     case 'Scaffold': return 'Scaffold (Root)';
     case 'Text': return 'Text';
     case 'Button': return 'Button';
+    case 'Checkbox': return 'Checkbox';
+    case 'RadioButton': return 'Radio Button';
     case 'Column': return 'Column (Layout)';
     case 'Row': return 'Row (Layout)';
     case 'Image': return 'Image';
@@ -625,7 +654,7 @@ const fontProperties: (Omit<ComponentProperty, 'value'>)[] = [
 
 export const propertyDefinitions: Record<ComponentType | string, (Omit<ComponentProperty, 'value'>)[]> = {
   Scaffold: [
-    { name: 'backgroundColor', type: 'color', label: 'Background Color (Scaffold Body)', group: 'Appearance' },
+    { name: 'backgroundColor', type: 'gradient', label: 'Background Color (Scaffold Body)', group: 'Appearance' },
   ],
   Text: [
     ...commonLayoutProperties,
@@ -633,7 +662,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     { name: 'text', type: 'string', label: 'Text Content', placeholder: 'Enter text', group: 'Content' },
     ...fontProperties,
     { name: 'textColor', type: 'color', label: 'Text Color', group: 'Appearance' },
-    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
     { name: 'lineHeight', type: 'number', label: 'Line Height (multiplier)', placeholder: '1.5', group: 'Appearance' },
     { name: 'maxLines', type: 'number', label: 'Max Lines', placeholder: 'e.g., 2', group: 'Content' },
     {
@@ -667,7 +696,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     { name: 'iconSize', type: 'number', label: 'Icon Size (px)', placeholder: '16', group: 'Appearance' },
     { name: 'iconSpacing', type: 'number', label: 'Icon Spacing (px)', placeholder: '8', group: 'Appearance' },
     { name: 'fontSize', type: 'number', label: 'Font Size (sp)', placeholder: '14', group: 'Appearance' },
-    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
     { name: 'textColor', type: 'color', label: 'Text/Icon Color', group: 'Appearance' },
     {
       name: 'shape',
@@ -683,6 +712,20 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     { name: 'cornerRadius', type: 'number', label: 'Corner Radius (dp)', placeholder: '4', group: 'Appearance' },
     ...cornerRadiusProperties,
     ...clickableProperties,
+  ],
+  Checkbox: [
+      ...commonLayoutProperties.filter(p => !p.name.includes('fill')),
+      selfAlignProperty,
+      { name: 'text', type: 'string', label: 'Label', group: 'Content' },
+      { name: 'checked', type: 'boolean', label: 'Checked', group: 'Behavior' },
+      { name: 'enabled', type: 'boolean', label: 'Enabled', group: 'Behavior' },
+  ],
+  RadioButton: [
+      ...commonLayoutProperties.filter(p => !p.name.includes('fill')),
+      selfAlignProperty,
+      { name: 'text', type: 'string', label: 'Label', group: 'Content' },
+      { name: 'selected', type: 'boolean', label: 'Selected', group: 'Behavior' },
+      { name: 'enabled', type: 'boolean', label: 'Enabled', group: 'Behavior' },
   ],
   Image: [
     ...commonLayoutProperties,
@@ -706,27 +749,27 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
         { label: 'Fill Height', value: 'FillHeight' },
       ]
     },
-    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
     ...clickableProperties,
   ],
   Column: [
     ...commonLayoutProperties,
     ...columnSpecificLayoutProperties,
     selfAlignProperty,
-    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
     ...clickableProperties,
   ],
   Row: [
     ...commonLayoutProperties,
     ...rowSpecificLayoutProperties,
     selfAlignProperty,
-    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
     ...clickableProperties,
   ],
   Box: [
     ...commonLayoutProperties,
     selfAlignProperty,
-    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
     ...cornerRadiusProperties,
     ...clickableProperties,
   ],
@@ -734,7 +777,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     ...commonLayoutProperties,
     ...columnSpecificLayoutProperties,
     selfAlignProperty,
-    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
     ...cornerRadiusProperties,
     ...clickableProperties,
   ],
@@ -742,7 +785,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     ...commonLayoutProperties,
     ...columnSpecificLayoutProperties, // Card often behaves like a Column for its children
     selfAlignProperty,
-    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (Overrides default contrast)', group: 'Appearance' },
     ...cornerRadiusProperties,
     { name: 'elevation', type: 'number', label: 'Elevation (dp)', placeholder: '2', group: 'Appearance' },
@@ -752,7 +795,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
   LazyColumn: [ // Properties for the content area LazyColumn
     ...commonLayoutProperties.filter(p => !p.name.startsWith('selfAlign')), // selfAlign not relevant for root content
     ...columnSpecificLayoutProperties,
-    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
     { name: 'userScrollEnabled', type: 'boolean', label: 'Enable Scrolling', group: 'Behavior' },
     { name: 'reverseLayout', type: 'boolean', label: 'Reverse Layout', group: 'Behavior' },
     ...clickableProperties,
@@ -761,7 +804,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     ...commonLayoutProperties,
     ...rowSpecificLayoutProperties,
     selfAlignProperty,
-    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
     { name: 'userScrollEnabled', type: 'boolean', label: 'Enable Scrolling', group: 'Behavior' },
     { name: 'reverseLayout', type: 'boolean', label: 'Reverse Layout', group: 'Behavior' },
     ...clickableProperties,
@@ -770,7 +813,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     ...commonLayoutProperties,
     ...columnSpecificLayoutProperties, // Grids often share column-like child alignment
     selfAlignProperty,
-    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
     { name: 'columns', type: 'number', label: 'Number of Columns', placeholder: '2', group: 'Layout' },
     ...clickableProperties,
   ],
@@ -778,7 +821,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     ...commonLayoutProperties,
     ...rowSpecificLayoutProperties, // And row-like child alignment
     selfAlignProperty,
-    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
     { name: 'rows', type: 'number', label: 'Number of Rows', placeholder: '2', group: 'Layout' },
     ...clickableProperties,
   ],
@@ -794,7 +837,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '56', group: 'Layout' },
     { name: 'title', type: 'string', label: 'Title', placeholder: 'Screen Title', group: 'Content' },
     { name: 'titleFontSize', type: 'number', label: 'Title Font Size (sp)', placeholder: '20', group: 'Appearance' },
-    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (Title, Icons)', group: 'Appearance' },
     // TopAppBar behaves like a Row for its children (title, actions)
     ...rowSpecificLayoutProperties.filter(p => p.name !== 'itemSpacing'), // Use its own itemSpacing definition
@@ -804,7 +847,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
   BottomNavigationBar: [ // Properties specific to BottomNavigationBar slot component
      ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd', 'layoutWeight', 'fillMaxHeight', 'height'].includes(p.name) ),
     { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '56', group: 'Layout' },
-    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
     { name: 'contentColor', type: 'color', label: 'Content Color (Icons, Labels)', group: 'Appearance' },
     // BottomNavigationBar behaves like a Row for its children (nav items)
     ...rowSpecificLayoutProperties,
@@ -814,7 +857,7 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
     ...commonLayoutProperties,
     ...columnSpecificLayoutProperties,
     selfAlignProperty,
-    { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
     {
       name: 'animationType',
       type: 'enum',
@@ -849,7 +892,7 @@ export const CONTAINER_TYPES: ReadonlyArray<ComponentType | string > = [
 // Checks if a given component type string represents a container.
 // If type is a custom component ID, customTemplates must be provided to resolve its base type.
 export function isContainerType(type: ComponentType | string, customTemplates?: CustomComponentTemplate[]): boolean {
-  if (type === 'Spacer') return false;
+  if (['Spacer', 'Checkbox', 'RadioButton'].includes(type)) return false;
 
   if (isCustomComponentType(type)) {
     if (customTemplates) {
@@ -937,6 +980,9 @@ const BaseModalPropertiesSchema = z.object({
   animationType: z.enum(['Fade', 'Scale', 'SlideFromTop', 'SlideFromBottom', 'SlideFromStart', 'SlideFromEnd']).optional(),
   animationDuration: z.number().int().min(0).optional(),
   shape: z.enum(['Rectangle', 'RoundedCorner', 'Circle']).optional(),
+  checked: z.boolean().optional(),
+  selected: z.boolean().optional(),
+  enabled: z.boolean().optional(),
   dataSource: z.object({
       url: z.string().url().optional(),
       schema: z.array(z.string()).optional(),

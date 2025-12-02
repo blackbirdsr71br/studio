@@ -28,6 +28,8 @@ import {
   Trash2,
   Loader2,
   Download,
+  CheckSquare,
+  CircleDot,
 } from "lucide-react";
 import { Button } from '../ui/button';
 import { LayoutPreview } from './LayoutPreview';
@@ -40,6 +42,8 @@ const availableBaseComponents: { type: ComponentType; icon: React.ElementType }[
   { type: "Text", icon: Type },
   { type: "Button", icon: MousePointerSquareDashed },
   { type: "Image", icon: ImageIcon },
+  { type: "Checkbox", icon: CheckSquare },
+  { type: "RadioButton", icon: CircleDot },
   { type: "Column", icon: Columns },
   { type: "Row", icon: Rows },
   { type: "Box", icon: Box },

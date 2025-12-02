@@ -12,6 +12,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { ItemTypes } from '@/lib/dnd-types';
 import { isContainerType, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID, CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
+import { CheckboxView } from './CheckboxView';
+import { RadioButtonView } from './RadioButtonView';
 
 interface RenderedComponentWrapperProps {
   component: DesignComponent;
@@ -233,6 +235,10 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
         return <ButtonView properties={component.properties} />;
       case 'Image':
         return <ImageView properties={component.properties} isPreview={isPreview} />;
+      case 'Checkbox':
+        return <CheckboxView properties={component.properties} />;
+      case 'RadioButton':
+        return <RadioButtonView properties={component.properties} />;
       
       case 'Column':
       case 'Box':
