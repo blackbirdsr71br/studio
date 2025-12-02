@@ -3,7 +3,7 @@
 
 import React from 'react';
 import type { SavedLayout, DesignComponent } from '@/types/compose-spec';
-import { ReadonlyRenderedComponentWrapper } from './component-renderer/ReadonlyRenderedComponentWrapper';
+import { RenderedComponentWrapper } from './component-renderer/RenderedComponentWrapper';
 import { ROOT_SCAFFOLD_ID } from '@/types/compose-spec';
 import { MobileFrame, FRAME_WIDTH, FRAME_HEIGHT } from './MobileFrame';
 
@@ -47,9 +47,8 @@ export function LayoutPreview({ layout }: LayoutPreviewProps) {
         }}
       >
           <MobileFrame isPreview={true}>
-            <ReadonlyRenderedComponentWrapper
+            <RenderedComponentWrapper
                 component={rootComponent}
-                getComponentById={getLayoutComponentById}
                 isPreview={true}
             />
           </MobileFrame>

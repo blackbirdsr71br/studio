@@ -78,7 +78,7 @@ const getDimensionValue = (
 };
   
 export function RenderedComponentWrapper({ component, isPreview = false }: RenderedComponentWrapperProps) {
-  const { selectComponent, getComponentById, addComponent, moveComponent, customComponentTemplates } = useDesign();
+  const { activeDesign, selectComponent, getComponentById, addComponent, moveComponent, customComponentTemplates } = useDesign();
   const ref = useRef<HTMLDivElement>(null);
   const [dropIndicator, setDropIndicator] = useState<DropIndicatorPosition>(null);
 
@@ -188,6 +188,8 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
   }), [component.id, component.type, component.parentId, addComponent, moveComponent, getComponentById, customComponentTemplates, dropIndicator, isPreview]);
 
   drag(drop(ref));
+
+  const isSelected = !isPreview && activeDesign?.selectedComponentId === component.id;
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -302,7 +304,7 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
   }
 
   const wrapperStyle: React.CSSProperties = {
-    transition: 'none',
+    transition: isDragging ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
     width: getDimensionValue('width', component.properties, component.type, component.id),
     height: getDimensionValue('height', component.properties, component.type, component.id),
     position: 'relative',
@@ -385,6 +387,8 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
           'cursor-pointer': !isDragging && (component.properties.clickable || !isPreview),
           'cursor-grab': !isDragging && !component.properties.clickable && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !isPreview,
           'relative': true,
+          'hover:border-primary/50': !isSelected && !isPreview,
+          'border-primary ring-2 ring-primary ring-offset-2 z-10': isSelected && !isPreview
         },
         containerDropTargetStyle,
       )}

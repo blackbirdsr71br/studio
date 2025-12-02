@@ -60,12 +60,22 @@ export function TextView({ properties }: TextViewProps) {
   };
 
   if (backgroundColor) {
-    style.backgroundColor = backgroundColor;
+     if (typeof backgroundColor === 'object' && backgroundColor.type === 'linearGradient') {
+      const angle = backgroundColor.angle || 0;
+      const colorStops = backgroundColor.colors.join(', ');
+      style.background = `linear-gradient(${angle}deg, ${colorStops})`;
+      // Apply gradient to text
+      style.WebkitBackgroundClip = 'text';
+      style.backgroundClip = 'text';
+      style.color = 'transparent';
+    } else if (typeof backgroundColor === 'string') {
+      style.backgroundColor = backgroundColor;
+    }
   }
 
-  if (textColor !== undefined) {
+  if (textColor !== undefined && !style.backgroundClip) {
     style.color = textColor;
-  } else {
+  } else if (!style.backgroundClip) {
     style.color = 'var(--effective-foreground-color, hsl(var(--foreground)))';
   }
 

@@ -1,8 +1,7 @@
 
 'use client';
-import type { DesignComponent, ComponentType as OriginalComponentType } from '@/types/compose-spec';
-import { RenderedComponentWrapper } from '../RenderedComponentWrapper';
-import { ReadonlyRenderedComponentWrapper } from './ReadonlyRenderedComponentWrapper';
+import type { DesignComponent, ComponentType as OriginalComponentType, BaseComponentProps } from '@/types/compose-spec';
+import { RenderedComponentWrapper } from '../component-renderer/RenderedComponentWrapper';
 import { getComponentDisplayName, DEFAULT_CONTENT_LAZY_COLUMN_ID, isCustomComponentType, ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID } from '@/types/compose-spec';
 import { useDesign } from '@/contexts/DesignContext';
 import { getContrastingTextColor, cn } from '@/lib/utils';
@@ -14,7 +13,6 @@ interface ContainerViewProps {
   childrenComponents: DesignComponent[];
   isRow: boolean;
   isPreview?: boolean;
-  getComponentById?: (id: string) => DesignComponent | undefined; // Make this optional for the main canvas
 }
 
 const isNumericValue = (value: any): boolean => {
@@ -30,7 +28,7 @@ const isNumericValue = (value: any): boolean => {
   return false;
 };
 
-export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, isPreview = false, getComponentById }: ContainerViewProps) {
+export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, isPreview = false }: ContainerViewProps) {
   const { customComponentTemplates } = useDesign();
   const { resolvedTheme } = useTheme();
 
@@ -73,10 +71,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     paddingStart,
     paddingEnd,
     elevation = (effectiveType === 'Card' ? 2 : 0),
-    cornerRadiusTopLeft = defaultRadiusForType(effectiveType),
-    cornerRadiusTopRight = defaultRadiusForType(effectiveType),
-    cornerRadiusBottomRight = defaultRadiusForType(effectiveType),
-    cornerRadiusBottomLeft = defaultRadiusForType(effectiveType),
+    cornerRadius,
     itemSpacing = 0,
     reverseLayout = false,
     backgroundColor: containerBackgroundColor,
@@ -178,10 +173,6 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     paddingRight: `${effectivePaddingEnd}px`,
     width: styleWidth,
     height: styleHeight,
-    borderTopLeftRadius: `${cornerRadiusTopLeft}px`,
-    borderTopRightRadius: `${cornerRadiusTopRight}px`,
-    borderBottomRightRadius: `${cornerRadiusBottomRight}px`,
-    borderBottomLeftRadius: `${cornerRadiusBottomLeft}px`,
     gap: `${itemSpacing}px`,
     boxSizing: 'border-box',
     position: 'relative', 
@@ -189,14 +180,23 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     minWidth: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || effectiveProperties.width === 'match_parent' || fillMaxWidth ) ? '100%' : (effectiveProperties.width === 'wrap_content' || !isNumericValue(effectiveProperties.width) ? 'auto' : '20px'),
     minHeight: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || effectiveProperties.height === 'match_parent' || fillMaxHeight || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar') ? styleHeight : (effectiveProperties.height === 'wrap_content' || !isNumericValue(effectiveProperties.height) ? 'auto' : '20px'),
   };
+  
+    if (cornerRadius) {
+      baseStyle.borderRadius = `${cornerRadius}px`;
+    }
 
-  if (component.id !== DEFAULT_CONTENT_LAZY_COLUMN_ID &&
-      (cornerRadiusTopLeft > 0 || cornerRadiusTopRight > 0 || cornerRadiusBottomLeft > 0 || cornerRadiusBottomRight > 0)) {
+  if (component.id !== DEFAULT_CONTENT_LAZY_COLUMN_ID && baseStyle.borderRadius) {
     baseStyle.overflow = 'hidden'; 
   }
   
   if (containerBackgroundColor) {
-    baseStyle.backgroundColor = containerBackgroundColor;
+    if (typeof containerBackgroundColor === 'object' && containerBackgroundColor.type === 'linearGradient') {
+      const angle = containerBackgroundColor.angle || 0;
+      const colorStops = containerBackgroundColor.colors.join(', ');
+      baseStyle.background = `linear-gradient(${angle}deg, ${colorStops})`;
+    } else if (typeof containerBackgroundColor === 'string') {
+      baseStyle.backgroundColor = containerBackgroundColor;
+    }
   } else if (['Column', 'Row', 'Box', 'Card', 'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid', 'AnimatedContent'].includes(effectiveType as string)) {
     // If no background color is set, apply theme-dependent default
     baseStyle.backgroundColor = resolvedTheme === 'dark' ? 'hsl(var(--muted))' : '#F0F0F0';
@@ -331,7 +331,11 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   }
   
   if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
-    baseStyle.backgroundColor = containerBackgroundColor || 'transparent';
+    if (typeof containerBackgroundColor === 'string') {
+        baseStyle.backgroundColor = containerBackgroundColor;
+    } else {
+        baseStyle.backgroundColor = 'transparent';
+    }
     baseStyle.width = '100%';
     baseStyle.height = 'auto';
     baseStyle.minHeight = '100%';
@@ -363,8 +367,6 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       'scrollbar-hidden': (isLazyRowType && baseStyle.overflowX === 'auto') || (isLazyColumnType && baseStyle.overflowY === 'auto' && component.id !== DEFAULT_CONTENT_LAZY_COLUMN_ID)
     }
   );
-  
-  const Wrapper = isPreview ? ReadonlyRenderedComponentWrapper : RenderedComponentWrapper;
 
   return (
     <div style={baseStyle} className={containerClasses} data-container-id={component.id} data-container-type={effectiveType}>
@@ -377,7 +379,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       )}
       {topAppBarTitleElement}
       {childrenComponents.map(child => (
-        <Wrapper key={child.id} component={child} isPreview={isPreview} {...(isPreview ? { getComponentById } : {})} />
+        <RenderedComponentWrapper key={child.id} component={child} isPreview={isPreview} />
       ))}
     </div>
   );

@@ -3,7 +3,7 @@
 
 import React from 'react';
 import type { CustomComponentTemplate, DesignComponent } from '@/types/compose-spec';
-import { ReadonlyRenderedComponentWrapper } from './component-renderer/ReadonlyRenderedComponentWrapper';
+import { RenderedComponentWrapper } from './component-renderer/RenderedComponentWrapper';
 
 interface TemplatePreviewProps {
   template: CustomComponentTemplate;
@@ -42,9 +42,8 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
             transformOrigin: 'center center'
         }}
       >
-          <ReadonlyRenderedComponentWrapper
+          <RenderedComponentWrapper
             component={rootComponent}
-            getComponentById={getTemplateComponentById}
             isPreview={true}
           />
       </div>
