@@ -50,6 +50,7 @@ export function LayoutPreview({ layout }: LayoutPreviewProps) {
             <RenderedComponentWrapper
                 component={rootComponent}
                 isPreview={true}
+                getComponentByIdOverride={getLayoutComponentById}
             />
           </MobileFrame>
       </div>

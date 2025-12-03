@@ -45,6 +45,7 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
           <RenderedComponentWrapper
             component={rootComponent}
             isPreview={true}
+            getComponentByIdOverride={getTemplateComponentById}
           />
       </div>
     </div>

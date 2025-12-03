@@ -18,6 +18,7 @@ import { RadioButtonView } from './RadioButtonView';
 interface RenderedComponentWrapperProps {
   component: DesignComponent;
   isPreview?: boolean;
+  getComponentByIdOverride?: (id: string) => DesignComponent | undefined;
 }
 
 interface DraggedCanvasItem {
@@ -30,6 +31,9 @@ interface DraggedLibraryItem {
 }
 
 type DropIndicatorPosition = 'top' | 'bottom' | null;
+type HandleType = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
+const MIN_DIMENSION = 20;
+
 
 const isNumericValue = (value: any): boolean => {
   if (value === null || value === undefined || typeof value === 'boolean') {
@@ -77,10 +81,20 @@ const getDimensionValue = (
     return 'auto';
 };
   
-export function RenderedComponentWrapper({ component, isPreview = false }: RenderedComponentWrapperProps) {
-  const { activeDesign, selectComponent, getComponentById, addComponent, moveComponent, customComponentTemplates } = useDesign();
+export function RenderedComponentWrapper({ component, isPreview = false, getComponentByIdOverride }: RenderedComponentWrapperProps) {
+  const { activeDesign, zoomLevel, selectComponent, getComponentById: getComponentFromContext, addComponent, moveComponent, updateComponent, customComponentTemplates } = useDesign();
   const ref = useRef<HTMLDivElement>(null);
   const [dropIndicator, setDropIndicator] = useState<DropIndicatorPosition>(null);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeDetails, setResizeDetails] = useState<{
+    handle: HandleType;
+    startX: number;
+    startY: number;
+    initialWidth: number;
+    initialHeight: number;
+  } | null>(null);
+  
+  const getComponentById = getComponentByIdOverride || getComponentFromContext;
 
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.CANVAS_COMPONENT_ITEM,
@@ -198,6 +212,85 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
     }
   };
 
+  const handleMouseDownOnResizeHandle = useCallback((event: React.MouseEvent<HTMLDivElement>, handle: HandleType) => {
+    event.stopPropagation();
+    event.preventDefault();
+    if (isPreview || CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id)) return;
+
+    selectComponent(component.id);
+    
+    const rect = ref.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    setIsResizing(true);
+    setResizeDetails({
+      handle,
+      startX: event.clientX,
+      startY: event.clientY,
+      initialWidth: rect.width,
+      initialHeight: rect.height,
+    });
+  }, [component.id, selectComponent, isPreview]);
+
+  useEffect(() => {
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!isResizing || !resizeDetails || !ref.current) return;
+
+      const dx = (event.clientX - resizeDetails.startX) / zoomLevel;
+      const dy = (event.clientY - resizeDetails.startY) / zoomLevel;
+      
+      const updatedProps: Record<string, any> = {};
+
+      const initialUnscaledWidth = resizeDetails.initialWidth / zoomLevel;
+      const initialUnscaledHeight = resizeDetails.initialHeight / zoomLevel;
+
+      const isHorizontalResize = resizeDetails.handle.includes('e') || resizeDetails.handle.includes('w');
+      const isVerticalResize = resizeDetails.handle.includes('n') || resizeDetails.handle.includes('s');
+
+      if (isHorizontalResize) {
+        let newWidth = initialUnscaledWidth;
+        if (resizeDetails.handle.includes('e')) newWidth += dx;
+        if (resizeDetails.handle.includes('w')) newWidth -= dx;
+        
+        updatedProps.width = Math.round(Math.max(newWidth, MIN_DIMENSION));
+        updatedProps.fillMaxWidth = false; 
+        updatedProps.fillMaxSize = false;
+      }
+
+      if (isVerticalResize) {
+        let newHeight = initialUnscaledHeight;
+        if (resizeDetails.handle.includes('s')) newHeight += dy;
+        if (resizeDetails.handle.includes('n')) newHeight -= dy;
+
+        updatedProps.height = Math.round(Math.max(newHeight, MIN_DIMENSION));
+        updatedProps.fillMaxHeight = false; 
+        updatedProps.fillMaxSize = false;
+      }
+
+      if (Object.keys(updatedProps).length > 0) {
+        updateComponent(component.id, { properties: updatedProps });
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (isResizing) {
+        setIsResizing(false);
+        setResizeDetails(null);
+      }
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, resizeDetails, component.id, updateComponent, zoomLevel]);
+
+
   const renderSpecificComponent = () => {
     const childrenToRender = (component.properties.children || [])
       .map(id => getComponentById(id))
@@ -213,7 +306,11 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
           <div className="flex flex-col w-full h-full bg-[var(--scaffold-bg-color)]" style={{'--scaffold-bg-color': component.properties.backgroundColor || 'transparent'} as React.CSSProperties}>
             {topBarChild && (
               <div style={{ flexShrink: 0, width: '100%', height: `${topBarChild.properties.height || 56}px` }} className="flex w-full">
-                <RenderedComponentWrapper component={topBarChild} isPreview={isPreview} />
+                <RenderedComponentWrapper 
+                    component={topBarChild} 
+                    isPreview={isPreview} 
+                    getComponentByIdOverride={getComponentByIdOverride}
+                />
               </div>
             )}
             {contentChild && (
@@ -221,12 +318,20 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
                 style={{ flexGrow: 1, minHeight: 0, width: '100%' }}
                 className={cn("flex w-full", "overflow-y-auto overflow-x-hidden")}
               >
-                <RenderedComponentWrapper component={contentChild} isPreview={isPreview} />
+                <RenderedComponentWrapper 
+                    component={contentChild} 
+                    isPreview={isPreview} 
+                    getComponentByIdOverride={getComponentByIdOverride}
+                />
               </div>
             )}
             {bottomBarChild && (
               <div style={{ flexShrink: 0, width: '100%', height: `${bottomBarChild.properties.height || 56}px` }} className="flex w-full">
-                 <RenderedComponentWrapper component={bottomBarChild} isPreview={isPreview} />
+                 <RenderedComponentWrapper 
+                    component={bottomBarChild} 
+                    isPreview={isPreview} 
+                    getComponentByIdOverride={getComponentByIdOverride}
+                 />
               </div>
             )}
           </div>
@@ -247,7 +352,7 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
       case 'Card':
       case 'LazyColumn': 
       case 'AnimatedContent':
-        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={false} isPreview={isPreview} />;
+        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={false} isPreview={isPreview} getComponentByIdOverride={getComponentByIdOverride} />;
 
       case 'Row':
       case 'LazyRow':
@@ -255,7 +360,7 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
       case 'LazyHorizontalGrid':
       case 'TopAppBar': 
       case 'BottomNavigationBar':
-        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={true} isPreview={isPreview} />;
+        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={true} isPreview={isPreview} getComponentByIdOverride={getComponentByIdOverride} />;
       
       case 'Spacer':
         const width = component.properties.width ?? 8;
@@ -278,7 +383,7 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
              const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
              if (rootTemplateComponent) {
                 const isTemplateRootRowLike = ['Row', 'LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar'].includes(rootTemplateComponent.type);
-                return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isTemplateRootRowLike} isPreview={isPreview} />;
+                return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isTemplateRootRowLike} isPreview={isPreview} getComponentByIdOverride={getComponentByIdOverride} />;
              }
            }
         }
@@ -304,7 +409,7 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
   }
 
   const wrapperStyle: React.CSSProperties = {
-    transition: isDragging ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
+    transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
     width: getDimensionValue('width', component.properties, component.type, component.id),
     height: getDimensionValue('height', component.properties, component.type, component.id),
     position: 'relative',
@@ -321,8 +426,8 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
 
   if (effectiveLayoutWeight > 0) {
     wrapperStyle.flexGrow = effectiveLayoutWeight;
-    wrapperStyle.flexShrink = 1;
-    wrapperStyle.flexBasis = '0%';
+    wrapperStyle.flexShrink = 1; 
+    wrapperStyle.flexBasis = '0%'; 
   }
 
   if (parent && (isContainerType(parent.type, customComponentTemplates) || parent.templateIdRef)) {
@@ -372,8 +477,14 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
   const containerDropTargetStyle = (isContainerType(component.type, customComponentTemplates) || CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id)) && isOverCurrent && canDropCurrent && dropIndicator === null
     ? 'bg-accent/10'
     : '';
+
+  const canResizeHorizontally = !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxWidth && !component.properties.fillMaxSize;
+  const canResizeVertically = !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxHeight && !component.properties.fillMaxSize;
+  const canResize = canResizeHorizontally || canResizeVertically;
   
   const isReorderTarget = isOverCurrent && canDropCurrent && dropIndicator !== null;
+  
+  const SELECTION_OFFSET = 8;
 
   return (
     <div
@@ -387,8 +498,6 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
           'cursor-pointer': !isDragging && (component.properties.clickable || !isPreview),
           'cursor-grab': !isDragging && !component.properties.clickable && !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !isPreview,
           'relative': true,
-          'hover:border-primary/50': !isSelected && !isPreview,
-          'border-primary ring-2 ring-primary ring-offset-2 z-10': isSelected && !isPreview
         },
         containerDropTargetStyle,
       )}
@@ -396,6 +505,50 @@ export function RenderedComponentWrapper({ component, isPreview = false }: Rende
       data-component-id={component.id}
       data-component-type={component.type}
     >
+      {isSelected && !isPreview && (
+        <div
+            className="pointer-events-none absolute z-50 border-2 border-primary"
+            style={{
+                top: `-${SELECTION_OFFSET}px`,
+                left: `-${SELECTION_OFFSET}px`,
+                right: `-${SELECTION_OFFSET}px`,
+                bottom: `-${SELECTION_OFFSET}px`,
+            }}
+        >
+            {canResize && (
+              <>
+                {canResizeVertically && canResizeHorizontally && ['nw', 'ne', 'sw', 'se'].map(handle => (
+                    <div key={handle} className={`resize-handle ${handle} pointer-events-auto`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle as HandleType)} />
+                ))}
+                {canResizeVertically && ['n', 's'].map(handle => (
+                    <div key={handle} className={`resize-handle ${handle} pointer-events-auto`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle as HandleType)} />
+                ))}
+                {canResizeHorizontally && ['e', 'w'].map(handle => (
+                    <div key={handle} className={`resize-handle ${handle} pointer-events-auto`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle as HandleType)} />
+                ))}
+                <style jsx>{`
+                    .resize-handle {
+                    position: absolute;
+                    width: 12px;
+                    height: 12px;
+                    background-color: hsl(var(--primary));
+                    border: 1px solid hsl(var(--primary-foreground));
+                    border-radius: 2px;
+                    z-index: 10; 
+                    }
+                    .resize-handle.nw { cursor: nwse-resize; top: -6px; left: -6px; }
+                    .resize-handle.ne { cursor: nesw-resize; top: -6px; right: -6px; }
+                    .resize-handle.sw { cursor: nesw-resize; bottom: -6px; left: -6px; }
+                    .resize-handle.se { cursor: nwse-resize; bottom: -6px; right: -6px; }
+                    .resize-handle.n { cursor: ns-resize; top: -6px; left: 50%; transform: translateX(-50%); }
+                    .resize-handle.s { cursor: ns-resize; bottom: -6px; left: 50%; transform: translateX(-50%); }
+                    .resize-handle.w { cursor: ew-resize; top: 50%; left: -6px; transform: translateY(-50%); }
+                    .resize-handle.e { cursor: ew-resize; top: 50%; right: -6px; transform: translateY(-50%); }
+                `}</style>
+              </>
+            )}
+        </div>
+      )}
       {isReorderTarget && dropIndicator === 'top' && (
           <div className="absolute top-[-2px] left-0 right-0 h-[4px] bg-primary z-20 pointer-events-none" />
       )}

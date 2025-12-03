@@ -13,6 +13,7 @@ interface ContainerViewProps {
   childrenComponents: DesignComponent[];
   isRow: boolean;
   isPreview?: boolean;
+  getComponentByIdOverride?: (id: string) => DesignComponent | undefined;
 }
 
 const isNumericValue = (value: any): boolean => {
@@ -28,7 +29,7 @@ const isNumericValue = (value: any): boolean => {
   return false;
 };
 
-export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, isPreview = false }: ContainerViewProps) {
+export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, isPreview = false, getComponentByIdOverride }: ContainerViewProps) {
   const { customComponentTemplates } = useDesign();
   const { resolvedTheme } = useTheme();
 
@@ -379,7 +380,12 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       )}
       {topAppBarTitleElement}
       {childrenComponents.map(child => (
-        <RenderedComponentWrapper key={child.id} component={child} isPreview={isPreview} />
+        <RenderedComponentWrapper 
+            key={child.id} 
+            component={child} 
+            isPreview={isPreview} 
+            getComponentByIdOverride={getComponentByIdOverride}
+        />
       ))}
     </div>
   );
