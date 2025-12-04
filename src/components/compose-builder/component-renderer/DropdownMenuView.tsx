@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { BaseComponentProps, DesignComponent } from '@/types/compose-spec';
@@ -44,7 +45,9 @@ export function DropdownMenuView({ component, childrenComponents, isPreview = fa
     position: 'relative',
   };
 
-  // In preview mode, we can show the menu items below the button
+  // The new logic is handled by ContainerView. This component might be deprecated or simplified.
+  // For now, let's keep a simplified preview logic if needed elsewhere, but the main render path is through ContainerView.
+
   if (isPreview) {
     return (
       <div className="flex flex-col items-start">
@@ -67,20 +70,15 @@ export function DropdownMenuView({ component, childrenComponents, isPreview = fa
     );
   }
 
-  // In the main editor, we just show the button and a placeholder for children
+  // This simplified view is for the main canvas, handled by ContainerView now.
+  // We can return a placeholder or simplified button.
   return (
     <div
-      style={{ ...style, minWidth: '100px', minHeight: '36px' }}
+      style={{ ...style, width: '100%', height: '100%' }}
       className="select-none"
     >
       <span>{text}</span>
       <ChevronDown size={18} />
-      {/* A simple indicator that it contains children */}
-      {childrenComponents.length > 0 && (
-        <div className="absolute -bottom-2 -right-2 text-xs bg-accent text-accent-foreground rounded-full h-4 w-4 flex items-center justify-center pointer-events-none">
-          {childrenComponents.length}
-        </div>
-      )}
     </div>
   );
 }

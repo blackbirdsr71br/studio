@@ -7,6 +7,7 @@ import { useDesign } from '@/contexts/DesignContext';
 import { getContrastingTextColor, cn } from '@/lib/utils';
 import { TextView } from './TextView'; 
 import { useTheme } from '@/contexts/ThemeContext';
+import { ChevronDown } from 'lucide-react';
 
 interface ContainerViewProps {
   component: DesignComponent;
@@ -153,7 +154,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   }
 
   let finalFlexDirection: 'row' | 'column';
-  if (effectiveType === 'Row' || effectiveType === 'LazyRow' || effectiveType === 'LazyHorizontalGrid' || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar') {
+  if (effectiveType === 'Row' || effectiveType === 'LazyRow' || effectiveType === 'LazyHorizontalGrid' || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar' || effectiveType === 'DropdownMenu') {
     finalFlexDirection = 'row';
   } else if (effectiveType === 'Column' || effectiveType === 'LazyColumn' || effectiveType === 'LazyVerticalGrid' || effectiveType === 'Card' || effectiveType === 'Box' || effectiveType === 'AnimatedContent') {
     finalFlexDirection = 'column';
@@ -177,7 +178,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     gap: `${itemSpacing}px`,
     boxSizing: 'border-box',
     position: 'relative', 
-    border: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || (effectiveType as string).startsWith('Lazy') || effectiveType === 'Card' || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar') ? 'none' : '1px dashed hsl(var(--border) / 0.3)',
+    border: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || (effectiveType as string).startsWith('Lazy') || effectiveType === 'Card' || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar' || effectiveType === 'DropdownMenu') ? 'none' : '1px dashed hsl(var(--border) / 0.3)',
     minWidth: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || effectiveProperties.width === 'match_parent' || fillMaxWidth ) ? '100%' : (effectiveProperties.width === 'wrap_content' || !isNumericValue(effectiveProperties.width) ? 'auto' : '20px'),
     minHeight: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || effectiveProperties.height === 'match_parent' || fillMaxHeight || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar') ? styleHeight : (effectiveProperties.height === 'wrap_content' || !isNumericValue(effectiveProperties.height) ? 'auto' : '20px'),
   };
@@ -329,6 +330,17 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       baseStyle.alignItems = effectiveProperties.verticalAlignment ? (effectiveProperties.verticalAlignment.toLowerCase().includes('center') ? 'center' : effectiveProperties.verticalAlignment.toLowerCase() as any) : 'center';
       baseStyle.justifyContent = effectiveProperties.horizontalArrangement ? effectiveProperties.horizontalArrangement.toLowerCase().replace('space', 'space-') as any : (effectiveType === 'TopAppBar' ? 'flex-start' : 'space-around');
       break;
+    case 'DropdownMenu':
+      baseStyle.flexDirection = 'column';
+      baseStyle.alignItems = 'stretch';
+      baseStyle.justifyContent = 'flex-start';
+      baseStyle.border = '1px solid hsl(var(--border))';
+      baseStyle.borderRadius = '8px';
+      baseStyle.boxShadow = `0 4px 6px rgba(0,0,0,0.1)`;
+      baseStyle.backgroundColor = 'hsl(var(--popover))';
+      baseStyle.color = 'hsl(var(--popover-foreground))';
+      (baseStyle as any)['--effective-foreground-color'] = 'hsl(var(--popover-foreground))';
+      break;
   }
   
   if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
@@ -361,6 +373,27 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       <TextView properties={{ text: title, fontSize: titleFontSize || 20, textColor: baseStyle.color as string }} />
     </div>
   ) : null;
+  
+  const dropdownButtonElement = effectiveType === 'DropdownMenu' ? (
+    <div
+      style={{
+        backgroundColor: effectiveProperties.backgroundColor as string || 'hsl(var(--primary))',
+        color: explicitContentColor || getContrastingTextColor(effectiveProperties.backgroundColor as string || 'hsl(var(--primary))'),
+        padding: '8px 12px',
+        borderRadius: `${effectiveProperties.cornerRadius ?? 4}px`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        cursor: 'pointer',
+        marginBottom: '4px',
+      }}
+      className="dropdown-button-anchor"
+    >
+      <span>{effectiveProperties.text as string || 'Menu'}</span>
+      <ChevronDown size={18} />
+    </div>
+  ) : null;
+
 
   const containerClasses = cn(
     "select-none component-container",
@@ -371,13 +404,19 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
 
   return (
     <div style={baseStyle} className={containerClasses} data-container-id={component.id} data-container-type={effectiveType}>
-      {showPlaceholder && (
+      {dropdownButtonElement}
+      {showPlaceholder && effectiveType !== 'DropdownMenu' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground/70 text-xs pointer-events-none p-2 text-center leading-tight">
           {placeholderText}
           {(!isDataBound && effectiveType === 'LazyVerticalGrid' && effectiveProperties.columns) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.columns} columns)</span>}
           {(!isDataBound && effectiveType === 'LazyHorizontalGrid' && effectiveProperties.rows) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.rows})</span>}
         </div>
       )}
+       {showPlaceholder && effectiveType === 'DropdownMenu' && (
+         <div className="flex-grow flex items-center justify-center text-muted-foreground/70 text-xs pointer-events-none p-2 text-center leading-tight">
+           {placeholderText}
+         </div>
+       )}
       {topAppBarTitleElement}
       {childrenComponents.map(child => (
         <RenderedComponentWrapper 

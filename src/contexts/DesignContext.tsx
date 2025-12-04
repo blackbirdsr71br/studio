@@ -5,7 +5,7 @@
 import type { ReactNode} from 'react';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { DesignComponent, DesignState, ComponentType, BaseComponentProps, CustomComponentTemplate, SavedLayout, GalleryImage, SingleDesign } from '@/types/compose-spec';
-import { getDefaultProperties, CUSTOM_COMPONENT_TYPE_PREFIX, isContainerType, getComponentDisplayName, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, CORE_SCAFFOLD_ELEMENT_IDS, CUSTOM_TEMPLATES_COLLECTION, SAVED_LAYOUTS_COLLECTION, GALLERY_IMAGES_COLLECTION, DESIGNS_COLLECTION, MAIN_DESIGN_DOC_ID } from '@/types/compose-spec';
+import { getDefaultProperties, CUSTOM_COMPONENT_TYPE_PREFIX, isContainerType as isContainerTypeUtil, getComponentDisplayName, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, CORE_SCAFFOLD_ELEMENT_IDS, CUSTOM_TEMPLATES_COLLECTION, SAVED_LAYOUTS_COLLECTION, GALLERY_IMAGES_COLLECTION, DESIGNS_COLLECTION, MAIN_DESIGN_DOC_ID } from '@/types/compose-spec';
 import { db } from '@/lib/firebase';
 import { collection, doc, setDoc, getDocs, deleteDoc, query, orderBy, onSnapshot, Unsubscribe } from "firebase/firestore";
 import { useToast } from '@/hooks/use-toast';
@@ -509,7 +509,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       else if (!parentIdOrNull) effectiveParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
   
       let parentComponent = updatedComponentsList.find(c => c.id === effectiveParentId);
-      if (!parentComponent || !isContainerType(parentComponent.type, designState.customComponentTemplates)) {
+      if (!parentComponent || !isContainerTypeUtil(parentComponent.type, designState.customComponentTemplates)) {
         effectiveParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
       }
 
@@ -561,7 +561,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const parentIdx = updatedComponentsList.findIndex(c => c.id === effectiveParentId);
         if (parentIdx !== -1) {
             const parent = updatedComponentsList[parentIdx];
-            if (isContainerType(parent.type, designState.customComponentTemplates) || parent.templateIdRef) {
+            if (isContainerTypeUtil(parent.type, designState.customComponentTemplates) || parent.templateIdRef) {
                 const childIdsToAdd = componentsToAdd.filter(c => c.parentId === effectiveParentId).map(c => c.id);
                 let children = [...(parent.properties.children || [])];
                 if (index !== undefined && index >= 0) children.splice(index, 0, ...childIdsToAdd);
@@ -936,7 +936,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         let parentId = targetParentId;
         if(parentId === undefined) {
             const selected = newComponents.find(c => c.id === activeDesign.selectedComponentId);
-            parentId = selected ? (isContainerType(selected.type, designState.customComponentTemplates) ? selected.id : selected.parentId) : DEFAULT_CONTENT_LAZY_COLUMN_ID;
+            parentId = selected ? (isContainerTypeUtil(selected.type, designState.customComponentTemplates) ? selected.id : selected.parentId) : DEFAULT_CONTENT_LAZY_COLUMN_ID;
         }
         if (!parentId) parentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
         rootPasted.parentId = parentId;

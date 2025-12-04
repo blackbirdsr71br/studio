@@ -206,6 +206,31 @@ export interface DesignState {
   galleryImages: GalleryImage[];
 }
 
+export const isContainerType = (type: ComponentType | string, customTemplates: CustomComponentTemplate[] = []): boolean => {
+    if (typeof type !== 'string') return false;
+
+    const standardContainerTypes: (ComponentType | string)[] = [
+        'Scaffold', 'Column', 'Row', 'Box', 'Card', 'LazyColumn', 'LazyRow',
+        'LazyVerticalGrid', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar',
+        'AnimatedContent', 'DropdownMenu'
+    ];
+
+    if (standardContainerTypes.includes(type)) {
+        return true;
+    }
+
+    if (type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
+        const template = customTemplates.find(t => t.templateId === type);
+        if (!template) return false; // If template not found, assume not a container
+        const rootComponent = template.componentTree.find(c => c.id === template.rootComponentId);
+        if (!rootComponent) return false;
+        // Recursively check if the root of the template is a container
+        return isContainerType(rootComponent.type, customTemplates);
+    }
+    
+    return false;
+};
+
 export const getDefaultProperties = (type: ComponentType | string, componentId?: string): BaseComponentProps => {
   const commonLayout = {
     layoutWeight: 0,
@@ -229,8 +254,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
       return {
         ...commonLayout,
         text: 'Sample Text',
-        fontSize: 16,
         fontFamily: 'Inter',
+        fontSize: 16,
         textColor: undefined,
         backgroundColor: null,
         padding: 0,
@@ -306,8 +331,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         ...commonLayout,
         children: [],
         text: 'Menu',
-        backgroundColor: '#6200EE',
-        textColor: null,
+        backgroundColor: '#FFFFFF',
+        textColor: '#000000',
         padding: 8,
         width: 150, height: 48,
         cornerRadius: 4,
@@ -513,426 +538,6 @@ export const getComponentDisplayName = (type: ComponentType | string): string =>
       return 'Unknown Component';
   }
 };
-
-const selfAlignProperty: Omit<ComponentProperty, 'value'> = {
-  name: 'selfAlign',
-  type: 'enum',
-  label: 'Self Horizontal Alignment',
-  group: 'Layout',
-  options: [
-    { label: 'Inherit from Parent', value: 'Inherit' },
-    { label: 'Start', value: 'Start' },
-    { label: 'Center', value: 'Center' },
-    { label: 'End', value: 'End' },
-  ],
-  placeholder: 'Inherit from Parent',
-};
-
-const commonLayoutProperties: (Omit<ComponentProperty, 'value'>)[] = [
-    { name: 'fillMaxSize', type: 'boolean', label: 'Fill Max Size', group: 'Layout' },
-    { name: 'fillMaxWidth', type: 'boolean', label: 'Fill Max Width', group: 'Layout' },
-    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: 'e.g., 100', group: 'Layout' },
-    { name: 'fillMaxHeight', type: 'boolean', label: 'Fill Max Height', group: 'Layout' },
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: 'e.g., 100', group: 'Layout' },
-    { name: 'layoutWeight', type: 'number', label: 'Layout Weight', placeholder: '0 (no weight)', group: 'Layout' },
-    { name: 'padding', type: 'number', label: 'Padding (All Sides, dp)', placeholder: 'e.g., 8', group: 'Layout' },
-    { name: 'paddingStart', type: 'number', label: 'Padding Start (dp)', placeholder: 'Overrides "All Sides"', group: 'Layout' },
-    { name: 'paddingEnd', type: 'number', label: 'Padding End (dp)', placeholder: 'Overrides "All Sides"', group: 'Layout' },
-    { name: 'paddingTop', type: 'number', label: 'Padding Top (dp)', placeholder: 'Overrides "All Sides"', group: 'Layout' },
-    { name: 'paddingBottom', type: 'number', label: 'Padding Bottom (dp)', placeholder: 'Overrides "All Sides"', group: 'Layout' },
-];
-
-const rowSpecificLayoutProperties: (Omit<ComponentProperty, 'value'>)[] = [
-  { name: 'itemSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' },
-  {
-    name: 'horizontalArrangement', type: 'enum', label: 'Horizontal Arrangement', group: 'Layout',
-    options: [
-      { label: 'Start', value: 'Start' }, { label: 'End', value: 'End' }, { label: 'Center', value: 'Center' },
-      { label: 'Space Around', value: 'SpaceAround' }, { label: 'Space Between', value: 'SpaceBetween' }, { label: 'Space Evenly', value: 'SpaceEvenly' },
-    ]
-  },
-  {
-    name: 'verticalAlignment', type: 'enum', label: 'Vertical Alignment', group: 'Layout',
-    options: [
-      { label: 'Top', value: 'Top' }, { label: 'Center Vertically', value: 'CenterVertically' }, { label: 'Bottom', value: 'Bottom' },
-    ]
-  },
-];
-
-const columnSpecificLayoutProperties: (Omit<ComponentProperty, 'value'>)[] = [
-  { name: 'itemSpacing', type: 'number', label: 'Item Spacing (dp)', placeholder: '0', group: 'Layout' },
-  {
-    name: 'verticalArrangement', type: 'enum', label: 'Vertical Arrangement', group: 'Layout',
-    options: [
-      { label: 'Top', value: 'Top' }, { label: 'Bottom', value: 'Bottom' }, { label: 'Center', value: 'Center' },
-      { label: 'Space Around', value: 'SpaceAround' }, { label: 'Space Between', value: 'SpaceBetween' }, { label: 'Space Evenly', value: 'SpaceEvenly' },
-    ]
-  },
-  {
-    name: 'horizontalAlignment', type: 'enum', label: 'Horizontal Alignment (Children)', group: 'Layout',
-    options: [
-      { label: 'Start', value: 'Start' }, { label: 'Center Horizontally', value: 'CenterHorizontally' }, { label: 'End', value: 'End' },
-    ]
-  },
-];
-
-const clickableProperties: (Omit<ComponentProperty, 'value'>)[] = [
-    { name: 'clickable', type: 'boolean', label: 'Is Clickable', group: 'Behavior' },
-    { name: 'onClickAction', type: 'action', label: 'On-Click Action', group: 'Behavior' },
-];
-
-const cornerRadiusProperties: (Omit<ComponentProperty, 'value'>)[] = [
-    { name: 'cornerRadiusTopLeft', type: 'number', label: 'Corner Radius TL (dp)', placeholder: '0', group: 'Appearance' },
-    { name: 'cornerRadiusTopRight', type: 'number', label: 'Corner Radius TR (dp)', placeholder: '0', group: 'Appearance' },
-    { name: 'cornerRadiusBottomRight', type: 'number', label: 'Corner Radius BR (dp)', placeholder: '0', group: 'Appearance' },
-    { name: 'cornerRadiusBottomLeft', type: 'number', label: 'Corner Radius BL (dp)', placeholder: '0', group: 'Appearance' },
-];
-
-const borderProperties: (Omit<ComponentProperty, 'value'>)[] = [
-    { name: 'borderWidth', type: 'number', label: 'Border Width (dp)', placeholder: '0', group: 'Appearance' },
-    { name: 'borderColor', type: 'color', label: 'Border Color', group: 'Appearance' },
-];
-
-const fontProperties: (Omit<ComponentProperty, 'value'>)[] = [
-  { name: 'fontSize', type: 'number', label: 'Font Size (sp)', placeholder: '16', group: 'Appearance' },
-  {
-      name: 'fontFamily',
-      type: 'enum',
-      label: 'Font Family',
-      group: 'Appearance',
-      options: [
-          { label: 'Inter', value: 'Inter' },
-          { label: 'Roboto', value: 'Roboto' },
-          { label: 'Lato', value: 'Lato' },
-          { label: 'Oswald', value: 'Oswald' },
-          { label: 'Merriweather', value: 'Merriweather' },
-          { label: 'Playfair Display', value: 'Playfair Display' },
-          { label: 'Source Code Pro', value: 'Source Code Pro' },
-          { label: 'Poppins', value: 'Poppins' },
-          { label: 'Montserrat', value: 'Montserrat' },
-          { label: 'Raleway', value: 'Raleway' },
-          { label: 'Nunito', value: 'Nunito' },
-          { label: 'Open Sans', value: 'Open Sans' },
-          { label: 'EB Garamond', value: 'EB Garamond' },
-          { label: 'DM Sans', value: 'DM Sans' },
-      ]
-  },
-  {
-    name: 'fontWeight',
-    type: 'enum',
-    label: 'Font Weight',
-    group: 'Appearance',
-    options: [
-      { label: 'Normal', value: 'Normal' },
-      { label: 'Semibold', value: 'Semibold' },
-      { label: 'Bold', value: 'Bold' },
-    ]
-  },
-  {
-    name: 'fontStyle',
-    type: 'enum',
-    label: 'Font Style',
-    group: 'Appearance',
-    options: [
-      { label: 'Normal', value: 'Normal' },
-      { label: 'Italic', value: 'Italic' },
-    ]
-  },
-  {
-    name: 'textAlign',
-    type: 'enum',
-    label: 'Text Align',
-    group: 'Appearance',
-    options: [
-      { label: 'Start', value: 'Start' },
-      { label: 'End', value: 'End' },
-      { label: 'Left', value: 'Left' },
-      { label: 'Right', value: 'Right' },
-      { label: 'Center', value: 'Center' },
-      { label: 'Justify', value: 'Justify' },
-    ]
-  },
-  {
-    name: 'textDecoration',
-    type: 'enum',
-    label: 'Text Decoration',
-    group: 'Appearance',
-    options: [
-      { label: 'None', value: 'None' },
-      { label: 'Underline', value: 'Underline' },
-      { label: 'LineThrough', value: 'LineThrough' },
-    ]
-  },
-];
-
-
-export const propertyDefinitions: Record<ComponentType | string, (Omit<ComponentProperty, 'value'>)[]> = {
-  Scaffold: [
-    { name: 'backgroundColor', type: 'gradient', label: 'Background Color (Scaffold Body)', group: 'Appearance' },
-  ],
-  Text: [
-    ...commonLayoutProperties,
-    selfAlignProperty,
-    { name: 'text', type: 'string', label: 'Text Content', placeholder: 'Enter text', group: 'Content' },
-    ...fontProperties,
-    { name: 'textColor', type: 'color', label: 'Text Color', group: 'Appearance' },
-    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
-    { name: 'lineHeight', type: 'number', label: 'Line Height (multiplier)', placeholder: '1.5', group: 'Appearance' },
-    { name: 'maxLines', type: 'number', label: 'Max Lines', placeholder: 'e.g., 2', group: 'Content' },
-    {
-      name: 'textOverflow',
-      type: 'enum',
-      label: 'Text Overflow',
-      group: 'Content',
-      options: [
-        { label: 'Clip', value: 'Clip' },
-        { label: 'Ellipsis', value: 'Ellipsis' },
-        { label: 'Visible', value: 'Visible' },
-      ]
-    },
-    ...clickableProperties,
-  ],
-  Button: [
-    ...commonLayoutProperties,
-    selfAlignProperty,
-    { name: 'text', type: 'string', label: 'Button Text', placeholder: 'Button', group: 'Content' },
-    { name: 'iconName', type: 'string', label: 'Icon Name (Lucide)', placeholder: 'e.g., Check, arrow-right', group: 'Content' },
-    {
-      name: 'iconPosition',
-      type: 'enum',
-      label: 'Icon Position',
-      group: 'Content',
-      options: [
-        { label: 'Start', value: 'Start' },
-        { label: 'End', value: 'End' },
-      ]
-    },
-    { name: 'iconSize', type: 'number', label: 'Icon Size (px)', placeholder: '16', group: 'Appearance' },
-    { name: 'iconSpacing', type: 'number', label: 'Icon Spacing (px)', placeholder: '8', group: 'Appearance' },
-    { name: 'fontSize', type: 'number', label: 'Font Size (sp)', placeholder: '14', group: 'Appearance' },
-    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
-    { name: 'textColor', type: 'color', label: 'Text/Icon Color', group: 'Appearance' },
-    {
-      name: 'shape',
-      type: 'enum',
-      label: 'Shape',
-      group: 'Appearance',
-      options: [
-        { label: 'Rounded Corner', value: 'RoundedCorner' },
-        { label: 'Rectangle', value: 'Rectangle' },
-        { label: 'Circle', value: 'Circle' },
-      ]
-    },
-    { name: 'cornerRadius', type: 'number', label: 'Corner Radius (dp)', placeholder: '4', group: 'Appearance' },
-    ...cornerRadiusProperties,
-    ...clickableProperties,
-  ],
-  Checkbox: [
-      ...commonLayoutProperties.filter(p => !p.name.includes('fill')),
-      selfAlignProperty,
-      { name: 'text', type: 'string', label: 'Label', group: 'Content' },
-      { name: 'checked', type: 'boolean', label: 'Checked', group: 'Behavior' },
-      { name: 'enabled', type: 'boolean', label: 'Enabled', group: 'Behavior' },
-  ],
-  RadioButton: [
-      ...commonLayoutProperties.filter(p => !p.name.includes('fill')),
-      selfAlignProperty,
-      { name: 'text', type: 'string', label: 'Label', group: 'Content' },
-      { name: 'selected', type: 'boolean', label: 'Selected', group: 'Behavior' },
-      { name: 'enabled', type: 'boolean', label: 'Enabled', group: 'Behavior' },
-  ],
-  DropdownMenu: [
-    ...commonLayoutProperties.filter(p => !p.name.includes('fill') && p.name !== 'layoutWeight'),
-    selfAlignProperty,
-    { name: 'text', type: 'string', label: 'Button Text', group: 'Content' },
-    { name: 'backgroundColor', type: 'gradient', label: 'Button Background', group: 'Appearance' },
-    { name: 'textColor', type: 'color', label: 'Button Text Color', group: 'Appearance' },
-    { name: 'cornerRadius', type: 'number', label: 'Button Corner Radius', group: 'Appearance' },
-  ],
-  Image: [
-    ...commonLayoutProperties,
-    selfAlignProperty,
-    { name: 'src', type: 'string', label: 'Image URL', placeholder: 'https://example.com/image.png', group: 'Content' },
-    { name: 'contentDescription', type: 'string', label: 'Content Description', placeholder: 'Image description', group: 'Content' },
-    { name: 'data-ai-hint', type: 'string', label: 'AI Hint (for placeholder/generation)', placeholder: 'e.g. "landscape sunset"', group: 'Content'},
-    ...cornerRadiusProperties,
-    {
-      name: 'contentScale',
-      type: 'enum',
-      label: 'Content Scale',
-      group: 'Appearance',
-      options: [
-        { label: 'Crop', value: 'Crop' },
-        { label: 'Fit', value: 'Fit' },
-        { label: 'Fill Bounds', value: 'FillBounds' },
-        { label: 'Inside', value: 'Inside' },
-        { label: 'None', value: 'None' },
-        { label: 'Fill Width', value: 'FillWidth' },
-        { label: 'Fill Height', value: 'FillHeight' },
-      ]
-    },
-    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
-    ...clickableProperties,
-  ],
-  Column: [
-    ...commonLayoutProperties,
-    ...columnSpecificLayoutProperties,
-    selfAlignProperty,
-    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
-    ...clickableProperties,
-  ],
-  Row: [
-    ...commonLayoutProperties,
-    ...rowSpecificLayoutProperties,
-    selfAlignProperty,
-    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
-    ...clickableProperties,
-  ],
-  Box: [
-    ...commonLayoutProperties,
-    selfAlignProperty,
-    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
-    ...cornerRadiusProperties,
-    ...clickableProperties,
-  ],
-  Group: [
-    ...commonLayoutProperties,
-    ...columnSpecificLayoutProperties,
-    selfAlignProperty,
-    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
-    ...cornerRadiusProperties,
-    ...clickableProperties,
-  ],
-  Card: [
-    ...commonLayoutProperties,
-    ...columnSpecificLayoutProperties, // Card often behaves like a Column for its children
-    selfAlignProperty,
-    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
-    { name: 'contentColor', type: 'color', label: 'Content Color (Overrides default contrast)', group: 'Appearance' },
-    ...cornerRadiusProperties,
-    { name: 'elevation', type: 'number', label: 'Elevation (dp)', placeholder: '2', group: 'Appearance' },
-    ...borderProperties,
-    ...clickableProperties,
-  ],
-  LazyColumn: [ // Properties for the content area LazyColumn
-    ...commonLayoutProperties.filter(p => !p.name.startsWith('selfAlign')), // selfAlign not relevant for root content
-    ...columnSpecificLayoutProperties,
-    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
-    { name: 'userScrollEnabled', type: 'boolean', label: 'Enable Scrolling', group: 'Behavior' },
-    { name: 'reverseLayout', type: 'boolean', label: 'Reverse Layout', group: 'Behavior' },
-    ...clickableProperties,
-  ],
-  LazyRow: [
-    ...commonLayoutProperties,
-    ...rowSpecificLayoutProperties,
-    selfAlignProperty,
-    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
-    { name: 'userScrollEnabled', type: 'boolean', label: 'Enable Scrolling', group: 'Behavior' },
-    { name: 'reverseLayout', type: 'boolean', label: 'Reverse Layout', group: 'Behavior' },
-    ...clickableProperties,
-  ],
-  LazyVerticalGrid: [
-    ...commonLayoutProperties,
-    ...columnSpecificLayoutProperties, // Grids often share column-like child alignment
-    selfAlignProperty,
-    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
-    { name: 'columns', type: 'number', label: 'Number of Columns', placeholder: '2', group: 'Layout' },
-    ...clickableProperties,
-  ],
-  LazyHorizontalGrid: [
-    ...commonLayoutProperties,
-    ...rowSpecificLayoutProperties, // And row-like child alignment
-    selfAlignProperty,
-    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
-    { name: 'rows', type: 'number', label: 'Number of Rows', placeholder: '2', group: 'Layout' },
-    ...clickableProperties,
-  ],
-  Spacer: [
-    { name: 'width', type: 'number', label: 'Width (dp)', placeholder: '8', group: 'Layout' },
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '8', group: 'Layout' },
-    { name: 'layoutWeight', type: 'number', label: 'Layout Weight', placeholder: '0 (no weight)', group: 'Layout' },
-    { name: 'clickable', type: 'boolean', label: 'Is Clickable', group: 'Behavior' },
-    { name: 'onClickAction', type: 'action', label: 'On-Click Action', group: 'Behavior' },
-  ],
-  TopAppBar: [ // Properties specific to TopAppBar slot component
-    ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd', 'layoutWeight', 'fillMaxHeight', 'height'].includes(p.name) ), // Basic layout, but height is fixed/managed
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '56', group: 'Layout' },
-    { name: 'title', type: 'string', label: 'Title', placeholder: 'Screen Title', group: 'Content' },
-    { name: 'titleFontSize', type: 'number', label: 'Title Font Size (sp)', placeholder: '20', group: 'Appearance' },
-    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
-    { name: 'contentColor', type: 'color', label: 'Content Color (Title, Icons)', group: 'Appearance' },
-    // TopAppBar behaves like a Row for its children (title, actions)
-    ...rowSpecificLayoutProperties.filter(p => p.name !== 'itemSpacing'), // Use its own itemSpacing definition
-    { name: 'itemSpacing', type: 'number', label: 'Action Item Spacing (dp)', placeholder: '8', group: 'Layout' },
-    ...clickableProperties,
-  ],
-  BottomNavigationBar: [ // Properties specific to BottomNavigationBar slot component
-     ...commonLayoutProperties.filter(p => !['padding', 'paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd', 'layoutWeight', 'fillMaxHeight', 'height'].includes(p.name) ),
-    { name: 'height', type: 'number', label: 'Height (dp)', placeholder: '56', group: 'Layout' },
-    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
-    { name: 'contentColor', type: 'color', label: 'Content Color (Icons, Labels)', group: 'Appearance' },
-    // BottomNavigationBar behaves like a Row for its children (nav items)
-    ...rowSpecificLayoutProperties,
-    ...clickableProperties,
-  ],
-  AnimatedContent: [
-    ...commonLayoutProperties,
-    ...columnSpecificLayoutProperties,
-    selfAlignProperty,
-    { name: 'backgroundColor', type: 'gradient', label: 'Background Color', group: 'Appearance' },
-    {
-      name: 'animationType',
-      type: 'enum',
-      label: 'Animation Type',
-      group: 'Behavior',
-      options: [
-        { label: 'Fade', value: 'Fade' },
-        { label: 'Scale', value: 'Scale' },
-        { label: 'Slide From Top', value: 'SlideFromTop' },
-        { label: 'Slide From Bottom', value: 'SlideFromBottom' },
-        { label: 'Slide From Start', value: 'SlideFromStart' },
-        { label: 'Slide From End', value: 'SlideFromEnd' },
-      ]
-    },
-    { name: 'animationDuration', type: 'number', label: 'Animation Duration (ms)', placeholder: '300', group: 'Behavior' },
-    ...clickableProperties,
-  ],
-};
-
-export const isCustomComponentType = (type: string): boolean => {
-  return type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX);
-};
-
-export const CONTAINER_TYPES: ReadonlyArray<ComponentType | string > = [
-  'Column', 'Row', 'Box', 'Card', 'Group',
-  'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid',
-  'TopAppBar', 'BottomNavigationBar', // These are now containers for their items
-  'AnimatedContent',
-  'DropdownMenu', // Added
-  'Scaffold' // Scaffold is the root container
-];
-
-// Checks if a given component type string represents a container.
-// If type is a custom component ID, customTemplates must be provided to resolve its base type.
-export function isContainerType(type: ComponentType | string, customTemplates?: CustomComponentTemplate[]): boolean {
-  if (['Spacer', 'Checkbox', 'RadioButton'].includes(type)) return false;
-
-  if (isCustomComponentType(type)) {
-    if (customTemplates) {
-      const template = customTemplates.find(t => t.templateId === type);
-      if (template && template.rootComponentId) {
-        const rootOfTemplate = template.componentTree.find(c => c.id === template.rootComponentId);
-        if (rootOfTemplate) {
-          // Recursively check if the root of the custom component is a container (passing customTemplates down)
-          return isContainerType(rootOfTemplate.type, customTemplates);
-        }
-      }
-    }
-    return false;
-  }
-  return CONTAINER_TYPES.includes(type as ComponentType);
-}
-
 
 const ColorStringSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").or(z.literal('transparent'));
 

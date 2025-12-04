@@ -7,14 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { ComponentProperty, ComponentPropertyOption, ClickAction } from '@/types/compose-spec';
+import type { ComponentProperty, ComponentPropertyOption, ClickAction, LinearGradient } from '@/types/compose-spec';
 import { Button } from '../ui/button';
-import { Droplet, XCircle } from 'lucide-react';
+import { Droplet, XCircle, Plus, Trash2 } from 'lucide-react';
+import { Slider } from '../ui/slider';
 
 interface PropertyEditorProps {
   property: Omit<ComponentProperty, 'value'>; // Definition of the property
-  currentValue: string | number | boolean | ClickAction | null | undefined; // Actual current value from the component
-  onChange: (value: string | number | boolean | ClickAction | null) => void;
+  currentValue: string | number | boolean | ClickAction | LinearGradient | null | undefined; // Actual current value from the component
+  onChange: (value: string | number | boolean | ClickAction | LinearGradient | null) => void;
 }
 
 export function PropertyEditor({ property, currentValue, onChange }: PropertyEditorProps) {
@@ -66,6 +67,87 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
   const id = `prop-${property.name}`;
   
   switch (property.type) {
+     case 'gradient':
+      const isGradient = typeof currentValue === 'object' && currentValue?.type === 'linearGradient';
+      const gradient = isGradient ? (currentValue as LinearGradient) : { type: 'linearGradient', colors: ['#FFFFFF', '#000000'], angle: 90 };
+      const solidColor = typeof currentValue === 'string' ? currentValue : '#FFFFFF';
+
+      const handleGradientTypeChange = (type: 'solid' | 'linearGradient') => {
+        if (type === 'solid') {
+          onChange(solidColor);
+        } else {
+          onChange(gradient);
+        }
+      };
+      
+      const handleGradientColorChange = (index: number, color: string) => {
+        const newColors = [...gradient.colors];
+        newColors[index] = color;
+        onChange({ ...gradient, colors: newColors });
+      };
+
+      const addGradientColor = () => {
+        onChange({ ...gradient, colors: [...gradient.colors, '#000000'] });
+      };
+
+      const removeGradientColor = (index: number) => {
+        if (gradient.colors.length > 2) {
+          const newColors = gradient.colors.filter((_, i) => i !== index);
+          onChange({ ...gradient, colors: newColors });
+        }
+      };
+      
+      const handleAngleChange = (newAngle: number[]) => {
+        onChange({ ...gradient, angle: newAngle[0] });
+      };
+
+      return (
+        <div className="space-y-3 p-2 my-2 border rounded-md border-sidebar-border">
+          <Select value={isGradient ? 'linearGradient' : 'solid'} onValueChange={handleGradientTypeChange}>
+            <SelectTrigger className="h-8 text-xs mt-1">
+              <SelectValue placeholder="Select background type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="solid">Solid Color</SelectItem>
+              <SelectItem value="linearGradient">Linear Gradient</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {!isGradient ? (
+             <div className="space-y-1.5">
+                <Label htmlFor={`${id}-solid`} className="text-xs">Solid Color</Label>
+                <div className="flex items-center gap-2">
+                    <Input id={`${id}-solid-color`} type="color" value={solidColor === 'transparent' ? '#ffffff' : solidColor} onChange={e => onChange(e.target.value)} className="h-8 w-10 p-1" />
+                    <Input id={`${id}-solid-hex`} type="text" value={solidColor} onChange={e => onChange(e.target.value)} placeholder="#RRGGBB" className="h-8 text-sm flex-grow" />
+                </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs">Gradient Colors</Label>
+                <div className="space-y-2 mt-1">
+                  {gradient.colors.map((color, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                       <Input type="color" value={color} onChange={e => handleGradientColorChange(index, e.target.value)} className="h-8 w-10 p-1" />
+                       <Input type="text" value={color} onChange={e => handleGradientColorChange(index, e.target.value)} className="h-8 text-sm flex-grow" />
+                       <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeGradientColor(index)} disabled={gradient.colors.length <= 2}>
+                          <Trash2 className="h-4 w-4" />
+                       </Button>
+                    </div>
+                  ))}
+                </div>
+                 <Button variant="outline" size="sm" onClick={addGradientColor} className="mt-2 text-xs h-7">
+                    <Plus className="h-4 w-4 mr-1" /> Add Color
+                </Button>
+              </div>
+              <div className="space-y-1.5">
+                 <Label htmlFor={`${id}-angle`} className="text-xs">Angle ({gradient.angle}°)</Label>
+                 <Slider id={`${id}-angle`} min={0} max={360} step={1} value={[gradient.angle]} onValueChange={handleAngleChange} />
+              </div>
+            </div>
+          )}
+        </div>
+      );
     case 'action':
       const action = currentValue as ClickAction || { type: 'SHOW_TOAST', value: 'Clicked' };
       return (

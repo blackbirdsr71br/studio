@@ -14,7 +14,6 @@ import { ItemTypes } from '@/lib/dnd-types';
 import { isContainerType, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID, CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
 import { CheckboxView } from './CheckboxView';
 import { RadioButtonView } from './RadioButtonView';
-import { DropdownMenuView } from './DropdownMenuView'; // Added
 
 interface RenderedComponentWrapperProps {
   component: DesignComponent;
@@ -83,7 +82,8 @@ const getDimensionValue = (
 };
   
 export function RenderedComponentWrapper({ component, isPreview = false, getComponentByIdOverride }: RenderedComponentWrapperProps) {
-  const { activeDesign, zoomLevel, selectComponent, getComponentById: getComponentFromContext, addComponent, moveComponent, updateComponent, customComponentTemplates } = useDesign();
+  const designContext = useDesign();
+  const { activeDesign, zoomLevel, selectComponent, getComponentById: getComponentFromContext, addComponent, moveComponent, updateComponent, customComponentTemplates } = designContext;
   const ref = useRef<HTMLDivElement>(null);
   const [dropIndicator, setDropIndicator] = useState<DropIndicatorPosition>(null);
   const [isResizing, setIsResizing] = useState(false);
@@ -347,8 +347,6 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
         return <CheckboxView properties={component.properties} />;
       case 'RadioButton':
         return <RadioButtonView properties={component.properties} />;
-      case 'DropdownMenu':
-        return <DropdownMenuView component={component} childrenComponents={childrenToRender} isPreview={isPreview} />;
       
       case 'Column':
       case 'Box':
@@ -363,6 +361,7 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
       case 'LazyHorizontalGrid':
       case 'TopAppBar': 
       case 'BottomNavigationBar':
+      case 'DropdownMenu':
         return <ContainerView component={component} childrenComponents={childrenToRender} isRow={true} isPreview={isPreview} getComponentByIdOverride={getComponentByIdOverride} />;
       
       case 'Spacer':

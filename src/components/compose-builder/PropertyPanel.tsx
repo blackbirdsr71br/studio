@@ -16,7 +16,8 @@ import {
   ROOT_SCAFFOLD_ID,
   DEFAULT_TOP_APP_BAR_ID,
   DEFAULT_BOTTOM_NAV_BAR_ID,
-  CORE_SCAFFOLD_ELEMENT_IDS
+  CORE_SCAFFOLD_ELEMENT_IDS,
+  isContainerType as isContainerTypeUtil,
 } from '@/types/compose-spec';
 import { PropertyEditor } from './PropertyEditor';
 import { Trash2, Sparkles, Loader2, Upload, Search, Save, CopyPlus, Plus } from 'lucide-react';

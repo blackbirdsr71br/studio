@@ -7,7 +7,8 @@ import { convertCanvasToCustomJson } from '@/ai/flows/convert-canvas-to-custom-j
 import type { GenerateImageFromHintInput, GenerateJsonFromComposeCommandsInput, ConvertCanvasToCustomJsonInput } from '@/types/ai-spec';
 
 import type { DesignComponent, CustomComponentTemplate, BaseComponentProps, ComponentType } from '@/types/compose-spec';
-import { isContainerType, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, CORE_SCAFFOLD_ELEMENT_IDS, propertyDefinitions, getDefaultProperties } from '@/types/compose-spec';
+import { ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, CORE_SCAFFOLD_ELEMENT_IDS, getDefaultProperties } from '@/types/compose-spec';
+import { propertyDefinitions } from '@/components/compose-builder/properties-panel-spec';
 import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -94,7 +95,7 @@ const buildComponentTree = (
     },
   };
 
-  if (isContainerType(component.type) && component.properties.children) {
+  if (Array.isArray(component.properties.children)) {
     const childIds = component.properties.children;
     if (Array.isArray(childIds)) {
       componentWithChildren.properties.children = childIds
@@ -274,7 +275,7 @@ const buildContentComponentTreeForModalJson = (
       node.templateIdRef = component.templateIdRef;
     }
 
-    if (isContainerType(component.type, customComponentTemplates)) {
+    if (Array.isArray(component.properties.children) && component.properties.children.length > 0) {
       const childrenObjectNodes = buildContentComponentTreeForModalJson(allComponents, customComponentTemplates, component.id, includeDefaultValues);
       if (childrenObjectNodes.length > 0) {
         node.properties.children = childrenObjectNodes as any;

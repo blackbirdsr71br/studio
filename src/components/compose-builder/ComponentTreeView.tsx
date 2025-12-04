@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import type { DesignComponent } from '@/types/compose-spec';
 import { getComponentIcon } from './ComponentIconMap';
-import { ROOT_SCAFFOLD_ID, getComponentDisplayName, isContainerType, CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
+import { ROOT_SCAFFOLD_ID, getComponentDisplayName, isContainerType as isContainerTypeUtil, CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
 import { ChevronRight, Trash2 } from 'lucide-react';
 import { ItemTypes } from '@/lib/dnd-types';
 
@@ -70,7 +70,7 @@ const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: T
       
       let indicator: 'top' | 'bottom' | 'inside' | null = null;
       
-      if (component && isContainerType(component.type, customComponentTemplates)) {
+      if (component && isContainerTypeUtil(component.type, customComponentTemplates)) {
           const topThird = hoverBoundingRect.height / 3;
           const bottomThird = hoverBoundingRect.height * (2/3);
 
@@ -109,7 +109,7 @@ const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: T
 
       if (!targetComponent || !dropAction) return;
 
-      if (dropAction === 'inside' && isContainerType(targetComponent.type, customComponentTemplates)) {
+      if (dropAction === 'inside' && isContainerTypeUtil(targetComponent.type, customComponentTemplates)) {
           moveComponent(draggedId, targetId);
       } else if (dropAction === 'top' || dropAction === 'bottom') {
           const targetParentId = targetComponent.parentId;
@@ -140,7 +140,7 @@ const RecursiveTreeItem = ({ componentId, level, collapsedNodes, toggleNode }: T
 
   const { selectedComponentId } = activeDesign;
   const isSelected = selectedComponentId === component.id;
-  const isEffectivelyContainer = isContainerType(component.type, customComponentTemplates);
+  const isEffectivelyContainer = isContainerTypeUtil(component.type, customComponentTemplates);
   const hasChildren = component.properties.children && component.properties.children.length > 0;
   const isCollapsible = isEffectivelyContainer && hasChildren;
   const isCollapsed = collapsedNodes.has(component.id);
