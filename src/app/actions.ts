@@ -7,8 +7,7 @@ import { convertCanvasToCustomJson } from '@/ai/flows/convert-canvas-to-custom-j
 import type { GenerateImageFromHintInput, GenerateJsonFromComposeCommandsInput, ConvertCanvasToCustomJsonInput } from '@/types/ai-spec';
 
 import type { DesignComponent, CustomComponentTemplate, BaseComponentProps, ComponentType } from '@/types/compose-spec';
-import { ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, CORE_SCAFFOLD_ELEMENT_IDS, getDefaultProperties } from '@/types/compose-spec';
-import { propertyDefinitions } from '@/components/compose-builder/properties-panel-spec';
+import { ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, CORE_SCAFFOLD_ELEMENT_IDS, getDefaultProperties, propertyDefinitions } from '@/types/compose-spec';
 import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -602,5 +601,3 @@ export async function searchWebForImagesAction(query: string): Promise<{ imageUr
     return { imageUrls: null, error: message };
   }
 }
-
-    
