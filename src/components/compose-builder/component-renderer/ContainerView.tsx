@@ -131,7 +131,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   } else if (effectiveType === 'LazyRow' || effectiveType === 'LazyHorizontalGrid') {
     defaultWidth = 'match_parent';
     defaultHeight = effectiveType === 'LazyRow' ? 120 : 200;
-  } else if (effectiveType === 'Card' || effectiveType === 'AnimatedContent') {
+  } else if (effectiveType === 'Card' || effectiveType === 'AnimatedContent' || effectiveType === 'DropdownMenu') {
     defaultWidth = 200;
     defaultHeight = 150;
   } else if (effectiveType === 'Box') {
@@ -173,8 +173,8 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     paddingBottom: `${effectivePaddingBottom}px`,
     paddingLeft: `${effectivePaddingStart}px`,
     paddingRight: `${effectivePaddingEnd}px`,
-    width: styleWidth,
-    height: styleHeight,
+    width: '100%',
+    height: '100%',
     gap: `${itemSpacing}px`,
     boxSizing: 'border-box',
     position: 'relative', 
@@ -215,7 +215,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     (baseStyle as any)['--effective-foreground-color'] = contrastingColor;
     baseStyle.color = contrastingColor;
   } else {
-    if (effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar') {
+    if (effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar' || effectiveType === 'DropdownMenu') {
       (baseStyle as any)['--effective-foreground-color'] = 'hsl(var(--foreground))';
       baseStyle.color = 'hsl(var(--foreground))';
     }
@@ -335,13 +335,14 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       baseStyle.alignItems = 'stretch';
       baseStyle.justifyContent = 'flex-start';
       baseStyle.border = '1px solid hsl(var(--border))';
-      baseStyle.borderRadius = '8px';
+      baseStyle.borderRadius = `${effectiveProperties.cornerRadius ?? 8}px`;
       baseStyle.boxShadow = `0 4px 6px rgba(0,0,0,0.1)`;
       baseStyle.backgroundColor = 'hsl(var(--popover))';
       baseStyle.color = 'hsl(var(--popover-foreground))';
       (baseStyle as any)['--effective-foreground-color'] = 'hsl(var(--popover-foreground))';
-      // Reset padding for dropdown menu container, internal items will have their own
       baseStyle.padding = '4px';
+      baseStyle.height = 'auto'; // Let height be determined by content
+      baseStyle.minHeight = '48px';
       break;
   }
   
@@ -365,8 +366,9 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   const showPlaceholder = !isDataBound && childrenComponents.length === 0;
 
   let placeholderText = `Drop components into this ${getComponentDisplayName(effectiveType as OriginalComponentType)}`;
-
-  if (isDataBound) {
+  if (effectiveType === 'DropdownMenu') {
+    placeholderText = "Drop components here to create menu items";
+  } else if (isDataBound) {
       placeholderText = `This ${getComponentDisplayName(effectiveType as OriginalComponentType)} is connected to a data source. Use the "Data" panel to generate children.`;
   }
   
@@ -388,6 +390,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
         justifyContent: 'space-between',
         cursor: 'default',
         width: '100%',
+        boxSizing: 'border-box'
       }}
       className="dropdown-button-anchor flex-shrink-0"
     >
@@ -404,26 +407,39 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     }
   );
 
+  const childrenContainerStyle: React.CSSProperties = {
+     display: 'flex',
+     flexDirection: finalFlexDirection,
+     gap: `${itemSpacing}px`,
+     width: '100%',
+     // For dropdown, make the children area grow. For others, let them behave as before.
+     flexGrow: effectiveType === 'DropdownMenu' ? 1 : undefined,
+  };
+
+
   return (
     <div style={baseStyle} className={containerClasses} data-container-id={component.id} data-container-type={effectiveType}>
       {dropdownButtonElement}
       {topAppBarTitleElement}
-      {showPlaceholder ? (
-        <div className="flex-grow flex flex-col items-center justify-center text-muted-foreground/70 text-xs pointer-events-none p-2 text-center leading-tight">
-          <span>{placeholderText}</span>
-          {(!isDataBound && effectiveType === 'LazyVerticalGrid' && effectiveProperties.columns) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.columns} columns)</span>}
-          {(!isDataBound && effectiveType === 'LazyHorizontalGrid' && effectiveProperties.rows) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.rows})</span>}
-        </div>
-      ) : (
-         childrenComponents.map(child => (
-          <RenderedComponentWrapper 
-              key={child.id} 
-              component={child} 
-              isPreview={isPreview} 
-              getComponentByIdOverride={getComponentByIdOverride}
-          />
-        ))
-      )}
+
+      <div style={childrenContainerStyle}>
+        {showPlaceholder ? (
+            <div className="flex-grow flex flex-col items-center justify-center text-muted-foreground/70 text-xs pointer-events-none p-2 text-center leading-tight">
+              <span>{placeholderText}</span>
+              {(!isDataBound && effectiveType === 'LazyVerticalGrid' && effectiveProperties.columns) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.columns} columns)</span>}
+              {(!isDataBound && effectiveType === 'LazyHorizontalGrid' && effectiveProperties.rows) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.rows})</span>}
+            </div>
+          ) : (
+             childrenComponents.map(child => (
+              <RenderedComponentWrapper 
+                  key={child.id} 
+                  component={child} 
+                  isPreview={isPreview} 
+                  getComponentByIdOverride={getComponentByIdOverride}
+              />
+            ))
+          )}
+      </div>
     </div>
   );
 }

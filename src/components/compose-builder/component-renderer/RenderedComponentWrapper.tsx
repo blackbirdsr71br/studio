@@ -353,6 +353,7 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
       case 'Card':
       case 'LazyColumn': 
       case 'AnimatedContent':
+      case 'DropdownMenu': // Add DropdownMenu here to be treated as a vertical container
         return <ContainerView component={component} childrenComponents={childrenToRender} isRow={false} isPreview={isPreview} getComponentByIdOverride={getComponentByIdOverride} />;
 
       case 'Row':
@@ -361,7 +362,6 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
       case 'LazyHorizontalGrid':
       case 'TopAppBar': 
       case 'BottomNavigationBar':
-      case 'DropdownMenu':
         return <ContainerView component={component} childrenComponents={childrenToRender} isRow={true} isPreview={isPreview} getComponentByIdOverride={getComponentByIdOverride} />;
       
       case 'Spacer':
@@ -384,7 +384,7 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
            if (template) {
              const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
              if (rootTemplateComponent) {
-                const isTemplateRootRowLike = ['Row', 'LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar', 'DropdownMenu'].includes(rootTemplateComponent.type);
+                const isTemplateRootRowLike = ['Row', 'LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar'].includes(rootTemplateComponent.type);
                 return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isTemplateRootRowLike} isPreview={isPreview} getComponentByIdOverride={getComponentByIdOverride} />;
              }
            }
