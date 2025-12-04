@@ -21,6 +21,7 @@ export type ComponentType =
   | 'Group' // Added for grouping functionality
   | 'Checkbox'
   | 'RadioButton'
+  | 'DropdownMenu' // Added
   | 'Scaffold'; // Explicitly a root type
 
 export const CUSTOM_COMPONENT_TYPE_PREFIX = "custom/";
@@ -300,6 +301,18 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
             enabled: true,
             selfAlign: 'Inherit',
         };
+    case 'DropdownMenu':
+      return {
+        ...commonLayout,
+        children: [],
+        text: 'Menu',
+        backgroundColor: '#6200EE',
+        textColor: null,
+        padding: 8,
+        width: 150, height: 48,
+        cornerRadius: 4,
+        selfAlign: 'Inherit',
+      };
     case 'Column':
       return {
         ...commonLayout,
@@ -478,6 +491,7 @@ export const getComponentDisplayName = (type: ComponentType | string): string =>
     case 'Button': return 'Button';
     case 'Checkbox': return 'Checkbox';
     case 'RadioButton': return 'Radio Button';
+    case 'DropdownMenu': return 'Dropdown Menu';
     case 'Column': return 'Column (Layout)';
     case 'Row': return 'Row (Layout)';
     case 'Image': return 'Image';
@@ -727,6 +741,14 @@ export const propertyDefinitions: Record<ComponentType | string, (Omit<Component
       { name: 'selected', type: 'boolean', label: 'Selected', group: 'Behavior' },
       { name: 'enabled', type: 'boolean', label: 'Enabled', group: 'Behavior' },
   ],
+  DropdownMenu: [
+    ...commonLayoutProperties.filter(p => !p.name.includes('fill') && p.name !== 'layoutWeight'),
+    selfAlignProperty,
+    { name: 'text', type: 'string', label: 'Button Text', group: 'Content' },
+    { name: 'backgroundColor', type: 'gradient', label: 'Button Background', group: 'Appearance' },
+    { name: 'textColor', type: 'color', label: 'Button Text Color', group: 'Appearance' },
+    { name: 'cornerRadius', type: 'number', label: 'Button Corner Radius', group: 'Appearance' },
+  ],
   Image: [
     ...commonLayoutProperties,
     selfAlignProperty,
@@ -886,6 +908,7 @@ export const CONTAINER_TYPES: ReadonlyArray<ComponentType | string > = [
   'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid',
   'TopAppBar', 'BottomNavigationBar', // These are now containers for their items
   'AnimatedContent',
+  'DropdownMenu', // Added
   'Scaffold' // Scaffold is the root container
 ];
 

@@ -17,6 +17,7 @@ import {
   Film,
   CheckSquare,
   CircleDot,
+  MenuSquare, // Added
   LayoutTemplate, // For Scaffold
 } from "lucide-react";
 import type { ComponentType } from "@/types/compose-spec";
@@ -41,6 +42,7 @@ export const getComponentIcon = (type: ComponentType | string): LucideIcon => {
         case 'AnimatedContent': return Film;
         case 'Checkbox': return CheckSquare;
         case 'RadioButton': return CircleDot;
+        case 'DropdownMenu': return MenuSquare; // Added
         case 'Scaffold': return LayoutTemplate;
         default: return BoxSelect; // Default for custom components
     }

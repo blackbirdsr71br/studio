@@ -14,6 +14,7 @@ import { ItemTypes } from '@/lib/dnd-types';
 import { isContainerType, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID, CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
 import { CheckboxView } from './CheckboxView';
 import { RadioButtonView } from './RadioButtonView';
+import { DropdownMenuView } from './DropdownMenuView'; // Added
 
 interface RenderedComponentWrapperProps {
   component: DesignComponent;
@@ -346,6 +347,8 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
         return <CheckboxView properties={component.properties} />;
       case 'RadioButton':
         return <RadioButtonView properties={component.properties} />;
+      case 'DropdownMenu':
+        return <DropdownMenuView component={component} childrenComponents={childrenToRender} isPreview={isPreview} />;
       
       case 'Column':
       case 'Box':
@@ -382,7 +385,7 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
            if (template) {
              const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
              if (rootTemplateComponent) {
-                const isTemplateRootRowLike = ['Row', 'LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar'].includes(rootTemplateComponent.type);
+                const isTemplateRootRowLike = ['Row', 'LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar', 'DropdownMenu'].includes(rootTemplateComponent.type);
                 return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isTemplateRootRowLike} isPreview={isPreview} getComponentByIdOverride={getComponentByIdOverride} />;
              }
            }
@@ -405,7 +408,7 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
           }
       }
       parentIsRowLike = ['LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar', 'Row'].includes(effectiveParentType);
-      parentIsColumnLike = ['LazyColumn', 'LazyVerticalGrid', 'Column', 'Card', 'Box', 'Scaffold'].includes(effectiveParentType);
+      parentIsColumnLike = ['LazyColumn', 'LazyVerticalGrid', 'Column', 'Card', 'Box', 'Scaffold', 'DropdownMenu'].includes(effectiveParentType);
   }
 
   const wrapperStyle: React.CSSProperties = {

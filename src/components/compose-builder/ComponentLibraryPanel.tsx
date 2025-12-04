@@ -30,6 +30,7 @@ import {
   Download,
   CheckSquare,
   CircleDot,
+  MenuSquare, // Added
 } from "lucide-react";
 import { Button } from '../ui/button';
 import { LayoutPreview } from './LayoutPreview';
@@ -44,6 +45,7 @@ const availableBaseComponents: { type: ComponentType; icon: React.ElementType }[
   { type: "Image", icon: ImageIcon },
   { type: "Checkbox", icon: CheckSquare },
   { type: "RadioButton", icon: CircleDot },
+  { type: "DropdownMenu", icon: MenuSquare }, // Added
   { type: "Column", icon: Columns },
   { type: "Row", icon: Rows },
   { type: "Box", icon: Box },
