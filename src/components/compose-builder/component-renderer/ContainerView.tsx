@@ -144,13 +144,13 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     height: '100%',
     boxSizing: 'border-box',
     position: 'relative', 
-    border: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || (effectiveType as string).startsWith('Lazy') || effectiveType === 'Card' || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar' || effectiveType === 'DropdownMenu') ? 'none' : '1px dashed hsl(var(--border) / 0.3)',
+    border: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || (effectiveType as string).startsWith('Lazy') || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar' || effectiveType === 'DropdownMenu') ? 'none' : ((effectiveType === 'Card') ? '1px solid hsl(var(--border) / 0.5)' : '1px dashed hsl(var(--border) / 0.3)'),
     minWidth: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || effectiveProperties.width === 'match_parent' || fillMaxWidth ) ? '100%' : (effectiveProperties.width === 'wrap_content' || !isNumericValue(effectiveProperties.width) ? 'auto' : '20px'),
     minHeight: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || effectiveProperties.height === 'match_parent' || fillMaxHeight || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar') ? styleHeight : (effectiveProperties.height === 'wrap_content' || !isNumericValue(effectiveProperties.height) ? 'auto' : '20px'),
     boxShadow: elevation > 0 ? `0 ${elevation}px ${elevation * 2}px rgba(0,0,0,0.1)` : 'none'
   };
   
-    // CORNER RADIUS LOGIC - REWRITTEN FOR ROBUSTNESS
+    // CORNER RADIUS LOGIC
     if (typeof effectiveProperties.cornerRadius === 'number' && effectiveProperties.cornerRadius > 0) {
         baseStyle.borderRadius = `${effectiveProperties.cornerRadius}px`;
     } else if (
@@ -190,6 +190,8 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     } else if (typeof containerBackgroundColor === 'string') {
       baseStyle.backgroundColor = containerBackgroundColor;
     }
+  } else if (effectiveType === 'Card' || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar') {
+    baseStyle.backgroundColor = 'hsl(var(--card))';
   }
 
   if (explicitContentColor && typeof explicitContentColor === 'string' && explicitContentColor.trim() !== '') {

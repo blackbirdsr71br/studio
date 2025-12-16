@@ -380,8 +380,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         itemSpacing: 8,               
         children: [],
         padding: 16,
-        backgroundColor: null, contentColor: null,
-        width: 200, height: 150, elevation: 2,
+        backgroundColor: undefined, contentColor: null,
+        width: 200, height: 150, elevation: 1,
         cornerRadiusTopLeft: 8, cornerRadiusTopRight: 8, cornerRadiusBottomRight: 8, cornerRadiusBottomLeft: 8,
         borderWidth: 0, borderColor: '#000000',
         selfAlign: 'Inherit',
@@ -464,8 +464,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         titleFontSize: 20,
         width: undefined,
         height: 56, // Standard height
-        backgroundColor: '#3F51B5', // Example primary color
-        contentColor: '#FFFFFF', // Example contrasting color for title/icons
+        backgroundColor: undefined, // Example primary color
+        contentColor: undefined, // Example contrasting color for title/icons
         itemSpacing: 8,
         horizontalArrangement: 'Start', // For title and actions
         verticalAlignment: 'CenterVertically',
@@ -480,8 +480,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         children: [], // For navigation items
         width: undefined,
         height: 56, // Standard height
-        backgroundColor: '#F0F0F0', // Example light color
-        contentColor: '#000000', // Example contrasting color
+        backgroundColor: undefined, // Example light color
+        contentColor: undefined, // Example contrasting color
         itemSpacing: 0, // Items usually have their own padding
         horizontalArrangement: 'SpaceAround', // Common for nav items
         verticalAlignment: 'CenterVertically',
@@ -501,7 +501,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         ...defaultClickableBehavior,
       };
     default:
-      if (type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
+      if (typeof type === 'string' && type.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
          console.warn(`getDefaultProperties called with a custom template ID '${type}'. This is unexpected. Returning generic defaults.`);
          return { ...commonLayout, children: [], width: undefined, height: undefined, padding: 0, fillMaxWidth: false, fillMaxHeight: false, selfAlign: 'Inherit' };
       }

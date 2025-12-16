@@ -59,7 +59,7 @@ body {
     --background: 220 10% 15%; /* Dark cool grey - Updated for canvas */
     --foreground: 0 0% 98%; /* White */
 
-    --card: 220 13% 12%; /* Slightly lighter dark cool grey for cards - will be darker than new background */
+    --card: 220 10% 18%; /* Lighter than background for distinction */
     --card-foreground: 0 0% 98%; /* White */
 
     --popover: 220 13% 12%; /* Consistent with card - will be darker than new background */
