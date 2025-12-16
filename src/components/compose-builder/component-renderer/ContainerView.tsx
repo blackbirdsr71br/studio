@@ -135,12 +135,12 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   } else if (effectiveType === 'Card' || effectiveType === 'AnimatedContent' || effectiveType === 'DropdownMenu') {
     defaultWidth = 200;
     defaultHeight = 150;
-  } else if (effectiveType === 'Box') {
-    defaultWidth = 100;
-    defaultHeight = 100;
   } else if (effectiveType === 'Column' || effectiveType === 'Row') {
     defaultWidth = 200;
     defaultHeight = (effectiveType === 'Row') ? 100 : 200;
+  } else if (effectiveType === 'Box') {
+    defaultWidth = 100;
+    defaultHeight = 100;
   }
 
 
@@ -184,13 +184,17 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     border: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || (effectiveType as string).startsWith('Lazy') || effectiveType === 'Card' || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar' || effectiveType === 'DropdownMenu') ? 'none' : '1px dashed hsl(var(--border) / 0.3)',
     minWidth: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || effectiveProperties.width === 'match_parent' || fillMaxWidth ) ? '100%' : (effectiveProperties.width === 'wrap_content' || !isNumericValue(effectiveProperties.width) ? 'auto' : '20px'),
     minHeight: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || effectiveProperties.height === 'match_parent' || fillMaxHeight || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar') ? styleHeight : (effectiveProperties.height === 'wrap_content' || !isNumericValue(effectiveProperties.height) ? 'auto' : '20px'),
-    overflow: (isLazyRowType || isLazyColumnType) && effectiveProperties.userScrollEnabled !== false ? 'auto' : 'hidden',
   };
   
   if (isLazyRowType) {
     baseStyle.flexDirection = 'row';
-    baseStyle.flexWrap = 'nowrap';
+    baseStyle.overflowX = 'auto';
   }
+
+  if (isLazyColumnType && effectiveProperties.userScrollEnabled !== false) {
+    baseStyle.overflowY = 'auto';
+  }
+
 
   if (cornerRadius) {
       baseStyle.borderRadius = `${cornerRadius}px`;
@@ -286,7 +290,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   const containerClasses = cn(
     "select-none component-container",
     {
-      'scrollbar-hidden': (baseStyle.overflow === 'auto')
+      'scrollbar-hidden': (baseStyle.overflow === 'auto' || baseStyle.overflowX === 'auto' || baseStyle.overflowY === 'auto')
     }
   );
   
@@ -296,12 +300,12 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
      gap: `${itemSpacing}px`,
      width: '100%',
      flexGrow: 1, // Make this container take available space
-     flexWrap: (finalFlexDirection === 'row' && !isLazyRowType) ? 'wrap' : 'nowrap',
   };
 
   if (isLazyRowType) {
-    childrenContainerStyle.flexDirection = 'row';
     childrenContainerStyle.flexWrap = 'nowrap';
+  } else {
+    childrenContainerStyle.flexWrap = 'wrap';
   }
 
 

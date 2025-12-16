@@ -418,6 +418,10 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
     display: 'block',
   };
   
+  if (parentIsRowLike) {
+    wrapperStyle.flexShrink = 0;
+  }
+
   let effectiveLayoutWeight = component.properties.layoutWeight || 0;
   if (parentIsRowLike && (component.properties.fillMaxWidth || component.properties.fillMaxSize)) {
     effectiveLayoutWeight = Math.max(effectiveLayoutWeight, 1);
