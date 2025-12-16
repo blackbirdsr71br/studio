@@ -1,4 +1,5 @@
 
+
 'use client';
 import type { DesignComponent, ComponentType as OriginalComponentType, BaseComponentProps } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from '../component-renderer/RenderedComponentWrapper';
@@ -347,7 +348,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       )}
       {topAppBarTitleElement}
 
-      <div style={childrenContainerStyle} className={cn("flex-grow", {"p-2 space-y-1": effectiveType === 'DropdownMenu'})}>
+      <div style={childrenContainerStyle} className={cn({"p-2 space-y-1": effectiveType === 'DropdownMenu'})}>
         {showPlaceholder ? (
             <div className="flex-grow flex flex-col items-center justify-center text-muted-foreground/70 text-xs pointer-events-none p-2 text-center leading-tight">
               <span>{placeholderText}</span>

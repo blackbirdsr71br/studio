@@ -251,6 +251,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         children: [DEFAULT_CONTENT_LAZY_COLUMN_ID],
       };
     case 'Text':
+      const textDefaults = { ...getDefaultProperties('Text'), ...properties };
       return {
         ...commonLayout,
         text: 'Sample Text',
@@ -272,6 +273,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         ...defaultClickableBehavior,
       };
     case 'Button':
+      const buttonDefaults = { ...getDefaultProperties('Button'), ...properties };
       return {
         ...commonLayout,
         text: 'Click Me',
@@ -390,17 +392,17 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
       const isContentArea = componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID;
       return {
         ...commonLayout,
-        fillMaxWidth: true,
-        fillMaxHeight: true,
+        fillMaxWidth: isContentArea, // True only for the main content area
+        fillMaxHeight: isContentArea, // True only for the main content area
+        width: isContentArea ? undefined : 400,
+        height: isContentArea ? undefined : 300,
         children: [],
-        padding: isContentArea ? 8 : 0, // Default padding for content area
+        padding: isContentArea ? 8 : 0, 
         backgroundColor: undefined,
-        width: undefined,
-        height: undefined,
         itemSpacing: 8,
         userScrollEnabled: true, reverseLayout: false,
         verticalArrangement: 'Top', horizontalAlignment: 'Start',
-        paddingBottom: isContentArea ? (8) : 8, // Add some bottom padding for scroll room
+        paddingBottom: isContentArea ? (8) : 8, 
         selfAlign: 'Inherit',
         ...defaultClickableBehavior,
       };
