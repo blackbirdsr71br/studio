@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useImperativeHandle, forwardRef } from 'react';
@@ -326,7 +327,7 @@ fun AppTheme(
                 <ColorInput label="errorContainer" color={colors.errorContainer} setColor={(c) => setColor('errorContainer', c)} />
                 <ColorInput label="onErrorContainer" color={colors.onErrorContainer} setColor={(c) => setColor('onErrorContainer', c)} />
             </ColorGroup>
-             <ColorGroup title="Surface & Background">
+             <ColorGroup title="Surface &amp; Background">
                 <ColorInput label="background" color={colors.background} setColor={(c) => setColor('background', c)} />
                 <ColorInput label="onBackground" color={colors.onBackground} setColor={(c) => setColor('onBackground', c)} />
                 <ColorInput label="surface" color={colors.surface} setColor={(c) => setColor('surface', c)} />
