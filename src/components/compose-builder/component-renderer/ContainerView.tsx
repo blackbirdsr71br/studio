@@ -81,7 +81,6 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     paddingStart,
     paddingEnd,
     elevation,
-    cornerRadius,
     itemSpacing,
     reverseLayout,
     backgroundColor: containerBackgroundColor,
@@ -151,6 +150,21 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     boxShadow: elevation > 0 ? `0 ${elevation}px ${elevation * 2}px rgba(0,0,0,0.1)` : 'none'
   };
   
+    // CORNER RADIUS LOGIC - REWRITTEN FOR ROBUSTNESS
+    if (typeof effectiveProperties.cornerRadius === 'number' && effectiveProperties.cornerRadius > 0) {
+        baseStyle.borderRadius = `${effectiveProperties.cornerRadius}px`;
+    } else if (
+        typeof effectiveProperties.cornerRadiusTopLeft === 'number' ||
+        typeof effectiveProperties.cornerRadiusTopRight === 'number' ||
+        typeof effectiveProperties.cornerRadiusBottomLeft === 'number' ||
+        typeof effectiveProperties.cornerRadiusBottomRight === 'number'
+    ) {
+        baseStyle.borderTopLeftRadius = `${effectiveProperties.cornerRadiusTopLeft || 0}px`;
+        baseStyle.borderTopRightRadius = `${effectiveProperties.cornerRadiusTopRight || 0}px`;
+        baseStyle.borderBottomLeftRadius = `${effectiveProperties.cornerRadiusBottomLeft || 0}px`;
+        baseStyle.borderBottomRightRadius = `${effectiveProperties.cornerRadiusBottomRight || 0}px`;
+    }
+
   if (isLazyRowType) {
     baseStyle.flexDirection = 'row';
     baseStyle.overflow = 'auto';
@@ -161,10 +175,6 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     baseStyle.overflowY = 'auto';
   }
 
-
-  if (typeof cornerRadius === 'number' && cornerRadius > 0) {
-      baseStyle.borderRadius = `${cornerRadius}px`;
-  }
 
   if (component.id !== DEFAULT_CONTENT_LAZY_COLUMN_ID && baseStyle.borderRadius) {
     if (!((isLazyRowType || isLazyColumnType) && effectiveProperties.userScrollEnabled !== false)) {
@@ -357,7 +367,3 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     </div>
   );
 }
-
-    
-
-    
