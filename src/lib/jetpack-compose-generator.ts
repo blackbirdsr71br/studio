@@ -223,7 +223,9 @@ export function generateComposableCode(
 ): string {
     if (!componentTree) return "// No root component found to generate code.";
 
-    const header = `import androidx.compose.foundation.layout.*
+    const header = `package com.example.generated.ui
+
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.border
@@ -242,6 +244,14 @@ import coil.compose.AsyncImage
 // Assuming AppTheme is defined in a file like ui/theme/Theme.kt
 // import com.example.app.ui.theme.AppTheme
 // import com.example.app.ui.theme.customColors
+
+// This is a placeholder theme. Replace with your own AppTheme.
+@Composable
+fun AppTheme(content: @Composable () -> Unit) {
+    MaterialTheme {
+        content()
+    }
+}
 
 // This is a generated file. Modifications may be overwritten.
 
