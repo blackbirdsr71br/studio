@@ -1,6 +1,7 @@
 
 'use client';
 import type { BaseComponentProps } from '@/types/compose-spec';
+import { getDefaultProperties } from '@/types/compose-spec';
 import { cn } from '@/lib/utils';
 
 interface TextViewProps {
@@ -8,23 +9,24 @@ interface TextViewProps {
 }
 
 export function TextView({ properties }: TextViewProps) {
+  const allProps = { ...getDefaultProperties('Text'), ...properties };
   const {
-    text = 'Text',
-    fontSize = 16,
+    text,
+    fontSize,
     textColor,
     padding, // All sides padding
     paddingTop,
     paddingBottom,
     paddingStart,
     paddingEnd,
-    fontWeight = 'Normal',
-    fontStyle = 'Normal',
-    fontFamily = 'Inter',
-    textAlign = 'Start',
-    textDecoration = 'None',
-    lineHeight = 1,
+    fontWeight,
+    fontStyle,
+    fontFamily,
+    textAlign,
+    textDecoration,
+    lineHeight,
     backgroundColor,
-  } = properties;
+  } = allProps;
 
   const getFontWeightValue = (weight: 'Normal' | 'Semibold' | 'Bold'): 'normal' | 'bold' | number => {
     switch (weight) {

@@ -1,6 +1,7 @@
 
 'use client';
 import type { BaseComponentProps } from '@/types/compose-spec';
+import { getDefaultProperties } from '@/types/compose-spec';
 import { getContrastingTextColor } from '@/lib/utils';
 import * as icons from 'lucide-react';
 
@@ -33,28 +34,29 @@ const DynamicLucideIcon = ({ name, ...props }: { name: string } & icons.LucidePr
 
 
 export function ButtonView({ properties }: ButtonViewProps) {
+  const allProps = { ...getDefaultProperties('Button'), ...properties };
   const {
-    text = 'Button',
-    backgroundColor = '#3F51B5',
+    text,
+    backgroundColor,
     textColor,
-    fontSize = 14,
+    fontSize,
     padding, 
     paddingTop,
     paddingBottom,
     paddingStart,
     paddingEnd,
     fillMaxWidth,
-    shape = 'RoundedCorner',
-    cornerRadius = 4,
+    shape,
+    cornerRadius,
     cornerRadiusTopLeft,
     cornerRadiusTopRight,
     cornerRadiusBottomRight,
     cornerRadiusBottomLeft,
     iconName,
-    iconPosition = 'Start',
-    iconSize = 16,
-    iconSpacing = 8,
-  } = properties;
+    iconPosition,
+    iconSize,
+    iconSpacing,
+  } = allProps;
 
   let effectiveTextColor;
   if (textColor && textColor.trim() !== '') {

@@ -2,7 +2,7 @@
 'use client';
 import type { DesignComponent, ComponentType as OriginalComponentType, BaseComponentProps } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from '../component-renderer/RenderedComponentWrapper';
-import { getComponentDisplayName, DEFAULT_CONTENT_LAZY_COLUMN_ID, isCustomComponentType, ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID } from '@/types/compose-spec';
+import { getComponentDisplayName, DEFAULT_CONTENT_LAZY_COLUMN_ID, isCustomComponentType, ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID, getDefaultProperties } from '@/types/compose-spec';
 import { useDesign } from '@/contexts/DesignContext';
 import { getContrastingTextColor, cn } from '@/lib/utils';
 import { TextView } from './TextView'; 
@@ -30,6 +30,26 @@ const isNumericValue = (value: any): boolean => {
   return false;
 };
 
+const processDimension = (
+  dimValue: string | number | undefined,
+  defaultValueIfUndefined: string | number | undefined,
+): string => {
+  if (typeof dimValue === 'number') return `${dimValue}px`;
+  if (dimValue === 'match_parent') return '100%';
+  if (dimValue === 'wrap_content') return 'auto';
+  if (typeof dimValue === 'string' && isNumericValue(dimValue)) return `${Number(dimValue)}px`;
+  if (typeof dimValue === 'string' && dimValue.endsWith('%')) return dimValue;
+
+  if (typeof defaultValueIfUndefined === 'number') return `${defaultValueIfUndefined}px`;
+  if (defaultValueIfUndefined === 'match_parent') return '100%';
+  if (defaultValueIfUndefined === 'wrap_content') return 'auto';
+
+  // Fallback for undefined default values
+  if (defaultValueIfUndefined === undefined) return 'auto';
+  
+  return defaultValueIfUndefined.toString();
+};
+
 export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, isPreview = false, getComponentByIdOverride }: ContainerViewProps) {
   const { customComponentTemplates, getComponentById: getComponentFromContext } = useDesign();
   const getComponentById = getComponentByIdOverride || getComponentFromContext;
@@ -55,17 +75,13 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     }
   }
   
+  const defaultProps = getDefaultProperties(effectiveType as OriginalComponentType, component.id);
   const effectiveProperties = { 
+    ...defaultProps,
     ...basePropertiesFromTemplateRoot, 
     ...component.properties 
   };
 
-
-  const defaultRadiusForType = (currentType: OriginalComponentType | string) => {
-    if (currentType === 'Card') return 8;
-    if (currentType === 'Box') return 4;
-    return 0;
-  };
 
   const {
     padding, 
@@ -73,10 +89,10 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     paddingBottom,
     paddingStart,
     paddingEnd,
-    elevation = (effectiveType === 'Card' ? 2 : 0),
+    elevation,
     cornerRadius,
-    itemSpacing = 0,
-    reverseLayout = false,
+    itemSpacing,
+    reverseLayout,
     backgroundColor: containerBackgroundColor,
     contentColor: explicitContentColor,
     borderWidth,
@@ -99,50 +115,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     effectivePaddingBottom += 60; 
   }
 
-
-  const processDimension = (
-    dimValue: string | number | undefined,
-    defaultValueIfUndefined: string | number,
-  ): string => {
-    if (typeof dimValue === 'number') return `${dimValue}px`;
-    if (dimValue === 'match_parent') return '100%';
-    if (dimValue === 'wrap_content') return 'auto';
-    if (typeof dimValue === 'string' && isNumericValue(dimValue)) return `${Number(dimValue)}px`;
-    if (typeof dimValue === 'string' && dimValue.endsWith('%')) return dimValue;
-
-    if (typeof defaultValueIfUndefined === 'number') return `${defaultValueIfUndefined}px`;
-    if (defaultValueIfUndefined === 'match_parent') return '100%';
-    if (defaultValueIfUndefined === 'wrap_content') return 'auto';
-    return defaultValueIfUndefined.toString();
-  };
-
-
-  let defaultWidth: string | number = 'wrap_content';
-  let defaultHeight: string | number = 'wrap_content';
-
-  if (component.id === DEFAULT_TOP_APP_BAR_ID || effectiveType === 'TopAppBar') {
-    defaultWidth = 'match_parent';
-    defaultHeight = effectiveProperties.height || 56; 
-  } else if (effectiveType === 'BottomNavigationBar') {
-    defaultWidth = 'match_parent';
-    defaultHeight = effectiveProperties.height || 56;
-  } else if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || effectiveType === 'LazyColumn' || effectiveType === 'LazyVerticalGrid') {
-    defaultWidth = 'match_parent';
-    defaultHeight = (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || effectiveType === 'LazyColumn') ? 'match_parent' : 300;
-  } else if (effectiveType === 'LazyRow' || effectiveType === 'LazyHorizontalGrid') {
-    defaultWidth = 'match_parent';
-    defaultHeight = effectiveType === 'LazyRow' ? 120 : 200;
-  } else if (effectiveType === 'Card' || effectiveType === 'AnimatedContent' || effectiveType === 'DropdownMenu') {
-    defaultWidth = 200;
-    defaultHeight = 150;
-  } else if (effectiveType === 'Column' || effectiveType === 'Row') {
-    defaultWidth = 200;
-    defaultHeight = (effectiveType === 'Row') ? 100 : 200;
-  } else if (effectiveType === 'Box') {
-    defaultWidth = 100;
-    defaultHeight = 100;
-  }
-
+  const { width: defaultWidth, height: defaultHeight } = defaultProps;
 
   let styleWidth = processDimension(effectiveProperties.width, defaultWidth);
   let styleHeight = processDimension(effectiveProperties.height, defaultHeight);
@@ -184,11 +157,13 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     border: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || (effectiveType as string).startsWith('Lazy') || effectiveType === 'Card' || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar' || effectiveType === 'DropdownMenu') ? 'none' : '1px dashed hsl(var(--border) / 0.3)',
     minWidth: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || effectiveProperties.width === 'match_parent' || fillMaxWidth ) ? '100%' : (effectiveProperties.width === 'wrap_content' || !isNumericValue(effectiveProperties.width) ? 'auto' : '20px'),
     minHeight: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || effectiveProperties.height === 'match_parent' || fillMaxHeight || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar') ? styleHeight : (effectiveProperties.height === 'wrap_content' || !isNumericValue(effectiveProperties.height) ? 'auto' : '20px'),
+    boxShadow: elevation > 0 ? `0 ${elevation}px ${elevation * 2}px rgba(0,0,0,0.1)` : 'none'
   };
   
   if (isLazyRowType) {
+    baseStyle.overflow = 'auto';
     baseStyle.flexDirection = 'row';
-    baseStyle.overflowX = 'auto';
+    baseStyle.flexWrap = 'nowrap';
   }
 
   if (isLazyColumnType && effectiveProperties.userScrollEnabled !== false) {
@@ -214,13 +189,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     } else if (typeof containerBackgroundColor === 'string') {
       baseStyle.backgroundColor = containerBackgroundColor;
     }
-  } else if (['Column', 'Row', 'Box', 'Card', 'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid', 'AnimatedContent'].includes(effectiveType as string)) {
-    // If no background color is set, apply theme-dependent default
-    baseStyle.backgroundColor = resolvedTheme === 'dark' ? 'hsl(var(--muted))' : '#F0F0F0';
-  } else {
-    baseStyle.backgroundColor = 'transparent';
   }
-
 
   if (explicitContentColor && typeof explicitContentColor === 'string' && explicitContentColor.trim() !== '') {
     (baseStyle as any)['--effective-foreground-color'] = explicitContentColor;
@@ -254,7 +223,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
 
   let placeholderText = `Drop components into this ${getComponentDisplayName(effectiveType as OriginalComponentType)}`;
   if (effectiveType === 'DropdownMenu') {
-    placeholderText = "Drop menu items into this container";
+    placeholderText = "Drop components into this Dropdown Menu";
   } else if (isDataBound) {
       placeholderText = `This ${getComponentDisplayName(effectiveType as OriginalComponentType)} is connected to a data source. Use the "Data" panel to generate children.`;
   }
@@ -303,6 +272,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   };
 
   if (isLazyRowType) {
+    childrenContainerStyle.flexDirection = 'row';
     childrenContainerStyle.flexWrap = 'nowrap';
   } else {
     childrenContainerStyle.flexWrap = 'wrap';
@@ -325,6 +295,8 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   baseStyle.flexDirection = 'column';
   if (isLazyRowType) {
     baseStyle.flexDirection = 'row';
+    childrenContainerStyle.flexDirection = 'row';
+    childrenContainerStyle.flexWrap = 'nowrap';
   } else if (isLazyColumnType) {
     baseStyle.flexDirection = 'column';
   }
@@ -366,10 +338,14 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
 
   return (
     <div style={baseStyle} className={containerClasses} data-container-id={component.id} data-container-type={effectiveType}>
-      {dropdownButtonElement}
+      {dropdownButtonElement && (
+        <div className="flex-shrink-0">
+          {dropdownButtonElement}
+        </div>
+      )}
       {topAppBarTitleElement}
 
-      <div style={childrenContainerStyle} className="flex-grow">
+      <div style={childrenContainerStyle} className={cn("flex-grow", {"p-2 space-y-1": effectiveType === 'DropdownMenu'})}>
         {showPlaceholder ? (
             <div className="flex-grow flex flex-col items-center justify-center text-muted-foreground/70 text-xs pointer-events-none p-2 text-center leading-tight">
               <span>{placeholderText}</span>
@@ -390,3 +366,5 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     </div>
   );
 }
+
+    
