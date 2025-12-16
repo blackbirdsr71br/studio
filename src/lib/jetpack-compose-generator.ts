@@ -240,7 +240,8 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 
 // Assuming AppTheme is defined in a file like ui/theme/Theme.kt
-// import com.example.app.ui.theme.AppTheme 
+// import com.example.app.ui.theme.AppTheme
+// import com.example.app.ui.theme.customColors
 
 // This is a generated file. Modifications may be overwritten.
 
@@ -250,3 +251,5 @@ import coil.compose.AsyncImage
 
     return header + allComposablesString;
 }
+
+    

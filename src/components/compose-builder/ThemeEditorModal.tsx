@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Palette, Loader2, FileCode2 } from 'lucide-react';
+import { Palette, Loader2, FileCode2, Plus, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '../ui/separator';
@@ -37,6 +37,11 @@ interface M3Colors {
   surfaceVariant: string;
   onSurfaceVariant: string;
   outline: string;
+}
+
+interface CustomColor {
+    name: string;
+    color: string;
 }
 
 // Default Material 3 baseline colors
@@ -136,6 +141,9 @@ export const ThemeEditorModal = forwardRef<ThemeEditorModalRef, {}>((props, ref)
   const [lightColors, setLightColors] = useState<M3Colors>(defaultLightColors);
   const [darkColors, setDarkColors] = useState<M3Colors>(defaultDarkColors);
 
+  const [customLightColors, setCustomLightColors] = useState<CustomColor[]>([]);
+  const [customDarkColors, setCustomDarkColors] = useState<CustomColor[]>([]);
+
   useImperativeHandle(ref, () => ({
     openModal: () => {
       setIsOpen(true);
@@ -148,6 +156,9 @@ export const ThemeEditorModal = forwardRef<ThemeEditorModalRef, {}>((props, ref)
         const lightColorScheme = Object.entries(lightColors).map(([name, color]) => `    ${name} = Color(0xFF${color.substring(1)})`).join(',\n');
         const darkColorScheme = Object.entries(darkColors).map(([name, color]) => `    ${name} = Color(0xFF${color.substring(1)})`).join(',\n');
 
+        const customLightColorScheme = customLightColors.map(c => `    val ${c.name.toLowerCase()} = Color(0xFF${c.color.substring(1)})`).join('\n');
+        const customDarkColorScheme = customDarkColors.map(c => `    val ${c.name.toLowerCase()} = Color(0xFF${c.color.substring(1)})`).join('\n');
+
         const themeFileContent = `
 package com.example.app.ui.theme
 
@@ -156,7 +167,26 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+
+// Custom Colors
+data class CustomColors(
+${customLightColors.map(c => `    val ${c.name.toLowerCase()}: Color`).join('\n')}
+)
+
+val LocalCustomColors = staticCompositionLocalOf {
+    CustomColors(
+${customLightColors.map(c => `        ${c.name.toLowerCase()} = Color.Unspecified`).join(',\n')}
+    )
+}
+
+// Access custom colors via MaterialTheme.customColors
+val MaterialTheme.customColors: CustomColors
+    @Composable
+    get() = LocalCustomColors.current
+
 
 private val LightColorScheme = lightColorScheme(
 ${lightColorScheme}
@@ -165,6 +195,15 @@ ${lightColorScheme}
 private val DarkColorScheme = darkColorScheme(
 ${darkColorScheme}
 )
+
+private val CustomLightColors = CustomColors(
+${customLightColors.map(c => `    ${c.name.toLowerCase()} = Color(0xFF${c.color.substring(1)})`).join(',\n')}
+)
+
+private val CustomDarkColors = CustomColors(
+${customDarkColors.map(c => `    ${c.name.toLowerCase()} = Color(0xFF${c.color.substring(1)})`).join(',\n')}
+)
+
 
 @Composable
 fun AppTheme(
@@ -176,12 +215,20 @@ fun AppTheme(
     } else {
         LightColorScheme
     }
+    
+    val customColors = if(useDarkTheme) {
+        CustomDarkColors
+    } else {
+        CustomLightColors
+    }
 
-    MaterialTheme(
-        colorScheme = colors,
-        // You can also define typography and shapes here
-        content = content
-    )
+    CompositionLocalProvider(LocalCustomColors provides customColors) {
+        MaterialTheme(
+            colorScheme = colors,
+            // You can also define typography and shapes here
+            content = content
+        )
+    }
 }
         `;
 
@@ -209,6 +256,37 @@ fun AppTheme(
       setIsGenerating(false);
     }
   };
+  
+    const handleAddCustomColor = (theme: 'light' | 'dark') => {
+        const newName = `custom${(theme === 'light' ? customLightColors.length : customDarkColors.length) + 1}`;
+        const newColor = { name: newName, color: '#FFC0CB' };
+        if (theme === 'light') {
+            setCustomLightColors([...customLightColors, newColor]);
+        } else {
+            setCustomDarkColors([...customDarkColors, newColor]);
+        }
+    };
+    
+    const handleUpdateCustomColor = (index: number, field: 'name' | 'color', value: string, theme: 'light' | 'dark') => {
+        if (theme === 'light') {
+            const updated = [...customLightColors];
+            updated[index] = { ...updated[index], [field]: value };
+            setCustomLightColors(updated);
+        } else {
+            const updated = [...customDarkColors];
+            updated[index] = { ...updated[index], [field]: value };
+            setCustomDarkColors(updated);
+        }
+    };
+
+    const handleRemoveCustomColor = (index: number, theme: 'light' | 'dark') => {
+        if (theme === 'light') {
+            setCustomLightColors(customLightColors.filter((_, i) => i !== index));
+        } else {
+            setCustomDarkColors(customDarkColors.filter((_, i) => i !== index));
+        }
+    };
+
 
   const createColorStateUpdater = (theme: 'light' | 'dark') => {
     const setColors = theme === 'light' ? setLightColors : setDarkColors;
@@ -221,6 +299,7 @@ fun AppTheme(
   const renderColorSection = (theme: 'light' | 'dark') => {
     const colors = theme === 'light' ? lightColors : darkColors;
     const setColor = createColorStateUpdater(theme);
+    const customColors = theme === 'light' ? customLightColors : customDarkColors;
 
     return (
         <div className="space-y-6">
@@ -257,6 +336,54 @@ fun AppTheme(
                 <ColorInput label="onSurfaceVariant" color={colors.onSurfaceVariant} setColor={(c) => setColor('onSurfaceVariant', c)} />
                 <ColorInput label="outline" color={colors.outline} setColor={(c) => setColor('outline', c)} />
             </ColorGroup>
+             <Separator />
+            <div>
+                <h3 className="text-base font-semibold mb-3 text-foreground">Custom Colors</h3>
+                <div className="space-y-4">
+                    {customColors.map((custom, index) => (
+                        <div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 p-3 border rounded-md">
+                             <div className="flex items-center justify-between gap-4">
+                                <Label htmlFor={`custom-name-${index}`} className="text-xs">Name</Label>
+                                <Input
+                                    id={`custom-name-${index}`}
+                                    type="text"
+                                    value={custom.name}
+                                    onChange={(e) => handleUpdateCustomColor(index, 'name', e.target.value.replace(/[^a-zA-Z0-9]/g, ''), theme)}
+                                    className="h-7 w-24 text-xs"
+                                    placeholder="e.g., success"
+                                />
+                            </div>
+                             <div className="flex items-center justify-between gap-4">
+                                <Label htmlFor={`custom-color-${index}`} className="text-xs">Color</Label>
+                                <div className="flex items-center gap-2">
+                                     <Input
+                                        id={`custom-color-input-${index}`}
+                                        type="color"
+                                        value={custom.color}
+                                        onChange={(e) => handleUpdateCustomColor(index, 'color', e.target.value, theme)}
+                                        className="h-7 w-8 p-1"
+                                    />
+                                    <Input
+                                        id={`custom-color-hex-${index}`}
+                                        type="text"
+                                        value={custom.color}
+                                        onChange={(e) => handleUpdateCustomColor(index, 'color', e.target.value, theme)}
+                                        className="h-7 w-24 text-xs"
+                                    />
+                                </div>
+                            </div>
+                             <div className="sm:col-span-2 flex justify-end">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleRemoveCustomColor(index, theme)}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    ))}
+                    <Button variant="outline" size="sm" onClick={() => handleAddCustomColor(theme)} className="w-full">
+                        <Plus className="mr-2 h-4 w-4" /> Add Custom Color
+                    </Button>
+                </div>
+            </div>
         </div>
     );
   }
@@ -300,3 +427,5 @@ fun AppTheme(
 });
 
 ThemeEditorModal.displayName = 'ThemeEditorModal';
+
+    
