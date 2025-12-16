@@ -12,7 +12,7 @@ body {
     --background: 0 0% 100%; /* White background */
     --foreground: 0 0% 3.9%; /* Default dark text */
 
-    --card: 0 0% 98%; /* Light gray cards to stand out */
+    --card: 0 0% 96.1%; /* Light gray cards to stand out */
     --card-foreground: 0 0% 3.9%;
 
     --popover: 0 0% 100%;
@@ -21,7 +21,7 @@ body {
     --primary: 231 48% 48%; /* Deep Blue #3F51B5 */
     --primary-foreground: 0 0% 100%; /* White text on deep blue */
 
-    --secondary: 0 0% 96%; /* Slightly darker gray for secondary elements */
+    --secondary: 0 0% 96.1%; /* Slightly darker gray for secondary elements */
     --secondary-foreground: 0 0% 9%;
 
     --muted: 0 0% 94%; /* Muted gray */
