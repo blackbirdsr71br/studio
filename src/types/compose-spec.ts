@@ -276,8 +276,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         ...commonLayout,
         text: 'Click Me',
         fontSize: 14,
-        backgroundColor: '#3F51B5',
-        textColor: null,
+        backgroundColor: undefined,
+        textColor: undefined,
         padding: 12,
         width: 120,
         height: 50,
@@ -464,8 +464,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         titleFontSize: 20,
         width: undefined,
         height: 56, // Standard height
-        backgroundColor: undefined, // Example primary color
-        contentColor: undefined, // Example contrasting color for title/icons
+        backgroundColor: undefined, 
+        contentColor: undefined,
         itemSpacing: 8,
         horizontalArrangement: 'Start', // For title and actions
         verticalAlignment: 'CenterVertically',
@@ -480,8 +480,8 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         children: [], // For navigation items
         width: undefined,
         height: 56, // Standard height
-        backgroundColor: undefined, // Example light color
-        contentColor: undefined, // Example contrasting color
+        backgroundColor: undefined, 
+        contentColor: undefined, 
         itemSpacing: 0, // Items usually have their own padding
         horizontalArrangement: 'SpaceAround', // Common for nav items
         verticalAlignment: 'CenterVertically',

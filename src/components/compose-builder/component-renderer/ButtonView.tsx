@@ -58,16 +58,9 @@ export function ButtonView({ properties }: ButtonViewProps) {
     iconSpacing,
   } = allProps;
 
-  let effectiveTextColor;
-  if (textColor && textColor.trim() !== '') {
-    effectiveTextColor = textColor;
-  } else {
-    effectiveTextColor = getContrastingTextColor(backgroundColor);
-  }
-
   const style: React.CSSProperties = {
-    backgroundColor,
-    color: effectiveTextColor,
+    backgroundColor: backgroundColor || 'hsl(var(--primary))',
+    color: textColor || 'hsl(var(--primary-foreground))',
     fontSize: `${fontSize}px`,
     paddingTop: `${paddingTop ?? padding ?? 8}px`,
     paddingBottom: `${paddingBottom ?? padding ?? 8}px`,
@@ -124,7 +117,7 @@ export function ButtonView({ properties }: ButtonViewProps) {
   }
   
   const iconElement = iconName ? (
-    <DynamicLucideIcon name={iconName} size={iconSize} color={effectiveTextColor} />
+    <DynamicLucideIcon name={iconName} size={iconSize} color={style.color as string} />
   ) : null;
 
   return (

@@ -150,20 +150,19 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     boxShadow: elevation > 0 ? `0 ${elevation}px ${elevation * 2}px rgba(0,0,0,0.1)` : 'none'
   };
   
-    // CORNER RADIUS LOGIC
-    if (typeof effectiveProperties.cornerRadius === 'number' && effectiveProperties.cornerRadius > 0) {
-        baseStyle.borderRadius = `${effectiveProperties.cornerRadius}px`;
-    } else if (
-        typeof effectiveProperties.cornerRadiusTopLeft === 'number' ||
-        typeof effectiveProperties.cornerRadiusTopRight === 'number' ||
-        typeof effectiveProperties.cornerRadiusBottomLeft === 'number' ||
-        typeof effectiveProperties.cornerRadiusBottomRight === 'number'
-    ) {
-        baseStyle.borderTopLeftRadius = `${effectiveProperties.cornerRadiusTopLeft || 0}px`;
-        baseStyle.borderTopRightRadius = `${effectiveProperties.cornerRadiusTopRight || 0}px`;
-        baseStyle.borderBottomLeftRadius = `${effectiveProperties.cornerRadiusBottomLeft || 0}px`;
-        baseStyle.borderBottomRightRadius = `${effectiveProperties.cornerRadiusBottomRight || 0}px`;
-    }
+  if (effectiveProperties.cornerRadius && typeof effectiveProperties.cornerRadius === 'number' && effectiveProperties.cornerRadius > 0) {
+      baseStyle.borderRadius = `${effectiveProperties.cornerRadius}px`;
+  } else if (
+      typeof effectiveProperties.cornerRadiusTopLeft === 'number' ||
+      typeof effectiveProperties.cornerRadiusTopRight === 'number' ||
+      typeof effectiveProperties.cornerRadiusBottomLeft === 'number' ||
+      typeof effectiveProperties.cornerRadiusBottomRight === 'number'
+  ) {
+      baseStyle.borderTopLeftRadius = `${effectiveProperties.cornerRadiusTopLeft || 0}px`;
+      baseStyle.borderTopRightRadius = `${effectiveProperties.cornerRadiusTopRight || 0}px`;
+      baseStyle.borderBottomLeftRadius = `${effectiveProperties.cornerRadiusBottomLeft || 0}px`;
+      baseStyle.borderBottomRightRadius = `${effectiveProperties.cornerRadiusBottomRight || 0}px`;
+  }
 
   if (isLazyRowType) {
     baseStyle.flexDirection = 'row';
@@ -203,8 +202,8 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     baseStyle.color = contrastingColor;
   } else {
     if (effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar' || effectiveType === 'DropdownMenu') {
-      (baseStyle as any)['--effective-foreground-color'] = 'hsl(var(--foreground))';
-      baseStyle.color = 'hsl(var(--foreground))';
+      (baseStyle as any)['--effective-foreground-color'] = 'hsl(var(--card-foreground))';
+      baseStyle.color = 'hsl(var(--card-foreground))';
     }
   }
 
