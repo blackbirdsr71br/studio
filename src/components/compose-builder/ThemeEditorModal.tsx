@@ -1,162 +1,297 @@
 
 'use client';
 
-import React, { useState, useImperativeHandle, forwardRef, useCallback } from 'react';
+import React, { useState, useImperativeHandle, forwardRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Palette, Loader2 } from 'lucide-react';
-import { updateGlobalStylesheetAction, type GlobalThemeColorsInput } from '@/app/actions';
+import { Palette, Loader2, FileCode2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '../ui/separator';
 
-const initialThemeColors: GlobalThemeColorsInput = {
-  lightBackground: "#F5F5F5",
-  lightForeground: "#0A0A0A",
-  lightPrimary: "#3F51B5",
-  lightAccent: "#9C27B0",
-  darkBackground: "#262B33", // Updated as per previous request for a darker canvas
-  darkForeground: "#FAFAFA",
-  darkPrimary: "#A3AFFF",
-  darkAccent: "#E0B0FF",
+// Represents the Material 3 ColorScheme properties
+interface M3Colors {
+  primary: string;
+  onPrimary: string;
+  primaryContainer: string;
+  onPrimaryContainer: string;
+  secondary: string;
+  onSecondary: string;
+  secondaryContainer: string;
+  onSecondaryContainer: string;
+  tertiary: string;
+  onTertiary: string;
+  tertiaryContainer: string;
+  onTertiaryContainer: string;
+  error: string;
+  onError: string;
+  errorContainer: string;
+  onErrorContainer: string;
+  background: string;
+  onBackground: string;
+  surface: string;
+  onSurface: string;
+  surfaceVariant: string;
+  onSurfaceVariant: string;
+  outline: string;
+}
+
+// Default Material 3 baseline colors
+const defaultLightColors: M3Colors = {
+  primary: '#6750A4',
+  onPrimary: '#FFFFFF',
+  primaryContainer: '#EADDFF',
+  onPrimaryContainer: '#21005D',
+  secondary: '#625B71',
+  onSecondary: '#FFFFFF',
+  secondaryContainer: '#E8DEF8',
+  onSecondaryContainer: '#1D192B',
+  tertiary: '#7D5260',
+  onTertiary: '#FFFFFF',
+  tertiaryContainer: '#FFD8E4',
+  onTertiaryContainer: '#31111D',
+  error: '#B3261E',
+  onError: '#FFFFFF',
+  errorContainer: '#F9DEDC',
+  onErrorContainer: '#410E0B',
+  background: '#FFFBFE',
+  onBackground: '#1C1B1F',
+  surface: '#FFFBFE',
+  onSurface: '#1C1B1F',
+  surfaceVariant: '#E7E0EC',
+  onSurfaceVariant: '#49454F',
+  outline: '#79747E',
 };
+
+const defaultDarkColors: M3Colors = {
+  primary: '#D0BCFF',
+  onPrimary: '#381E72',
+  primaryContainer: '#4F378B',
+  onPrimaryContainer: '#EADDFF',
+  secondary: '#CCC2DC',
+  onSecondary: '#332D41',
+  secondaryContainer: '#4A4458',
+  onSecondaryContainer: '#E8DEF8',
+  tertiary: '#EFB8C8',
+  onTertiary: '#492532',
+  tertiaryContainer: '#633B48',
+  onTertiaryContainer: '#FFD8E4',
+  error: '#F2B8B5',
+  onError: '#601410',
+  errorContainer: '#8C1D18',
+  onErrorContainer: '#F9DEDC',
+  background: '#1C1B1F',
+  onBackground: '#E6E1E5',
+  surface: '#1C1B1F',
+  onSurface: '#E6E1E5',
+  surfaceVariant: '#49454F',
+  onSurfaceVariant: '#CAC4D0',
+  outline: '#938F99',
+};
+
 
 export interface ThemeEditorModalRef {
   openModal: () => void;
 }
 
-const ColorInputGroup: React.FC<{
-  label: string;
-  hexValue: string;
-  onHexChange: (value: string) => void;
-  idPrefix: string;
-}> = ({ label, hexValue, onHexChange, idPrefix }) => (
-  <div className="space-y-1.5">
-    <Label htmlFor={`${idPrefix}-hex`} className="text-xs">{label} (HEX)</Label>
+const ColorInput: React.FC<{ label: string; color: string; setColor: (color: string) => void; }> = ({ label, color, setColor }) => (
+  <div className="flex items-center justify-between gap-4">
+    <Label htmlFor={`color-${label}`} className="text-xs whitespace-nowrap">{label}</Label>
     <div className="flex items-center gap-2">
       <Input
-        id={`${idPrefix}-color`}
+        id={`color-${label}`}
         type="color"
-        value={hexValue}
-        onChange={(e) => onHexChange(e.target.value)}
-        className="h-8 w-10 p-1"
-        aria-label={`${label} color picker`}
+        value={color}
+        onChange={(e) => setColor(e.target.value)}
+        className="h-7 w-8 p-1"
       />
       <Input
-        id={`${idPrefix}-hex`}
         type="text"
-        value={hexValue}
-        onChange={(e) => onHexChange(e.target.value)}
-        placeholder="#RRGGBB"
-        className="h-8 text-sm flex-grow"
-        aria-label={`${label} hex value`}
+        value={color}
+        onChange={(e) => setColor(e.target.value)}
+        className="h-7 w-24 text-xs"
       />
     </div>
   </div>
 );
 
+const ColorGroup: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+    <div>
+        <h4 className="text-sm font-semibold mb-2 text-foreground/90">{title}</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 pl-2 border-l-2">
+            {children}
+        </div>
+    </div>
+);
+
+
 export const ThemeEditorModal = forwardRef<ThemeEditorModalRef, {}>((props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
-  const [isUpdatingStylesheet, setIsUpdatingStylesheet] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  // State for theme colors
-  const [lightBackground, setLightBackground] = useState(initialThemeColors.lightBackground);
-  const [lightForeground, setLightForeground] = useState(initialThemeColors.lightForeground);
-  const [lightPrimary, setLightPrimary] = useState(initialThemeColors.lightPrimary);
-  const [lightAccent, setLightAccent] = useState(initialThemeColors.lightAccent);
-
-  const [darkBackground, setDarkBackground] = useState(initialThemeColors.darkBackground);
-  const [darkForeground, setDarkForeground] = useState(initialThemeColors.darkForeground);
-  const [darkPrimary, setDarkPrimary] = useState(initialThemeColors.darkPrimary);
-  const [darkAccent, setDarkAccent] = useState(initialThemeColors.darkAccent);
+  const [lightColors, setLightColors] = useState<M3Colors>(defaultLightColors);
+  const [darkColors, setDarkColors] = useState<M3Colors>(defaultDarkColors);
 
   useImperativeHandle(ref, () => ({
     openModal: () => {
-      // Optionally, you could fetch current values from CSS here if needed,
-      // but for now, it opens with initial/last set values.
       setIsOpen(true);
     }
   }));
 
-  const handleApplyStylesheet = async () => {
-    setIsUpdatingStylesheet(true);
-    const themeColors: GlobalThemeColorsInput = {
-      lightBackground, lightForeground, lightPrimary, lightAccent,
-      darkBackground, darkForeground, darkPrimary, darkAccent,
-    };
+  const handleGenerateThemeFile = async () => {
+    setIsGenerating(true);
     try {
-      const result = await updateGlobalStylesheetAction(themeColors);
-      if (result.success) {
-        toast({
-          title: "Stylesheet Updated",
-          description: "App theme has been applied. The page might reload to reflect changes.",
-        });
-        // Consider closing the modal on success or providing a close button.
-        // setIsOpen(false); 
-      } else {
-        toast({
-          title: "Stylesheet Update Failed",
-          description: result.error || "Could not update stylesheet.",
-          variant: "destructive",
-        });
-      }
+        const lightColorScheme = Object.entries(lightColors).map(([name, color]) => `    ${name} = Color(0xFF${color.substring(1)})`).join(',\n');
+        const darkColorScheme = Object.entries(darkColors).map(([name, color]) => `    ${name} = Color(0xFF${color.substring(1)})`).join(',\n');
+
+        const themeFileContent = `
+package com.example.app.ui.theme
+
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+
+private val LightColorScheme = lightColorScheme(
+${lightColorScheme}
+)
+
+private val DarkColorScheme = darkColorScheme(
+${darkColorScheme}
+)
+
+@Composable
+fun AppTheme(
+    useDarkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit
+) {
+    val colors = if (useDarkTheme) {
+        DarkColorScheme
+    } else {
+        LightColorScheme
+    }
+
+    MaterialTheme(
+        colorScheme = colors,
+        // You can also define typography and shapes here
+        content = content
+    )
+}
+        `;
+
+      const blob = new Blob([themeFileContent.trim()], { type: 'text/plain;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'Theme.kt';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
+      toast({
+        title: "Theme File Generated",
+        description: "Theme.kt has been downloaded.",
+      });
+
     } catch (error) {
       toast({
         title: "Error",
-        description: "An unexpected error occurred while updating the stylesheet.",
+        description: "An unexpected error occurred while generating the theme file.",
         variant: "destructive",
       });
     } finally {
-      setIsUpdatingStylesheet(false);
+      setIsGenerating(false);
     }
   };
 
+  const createColorStateUpdater = (theme: 'light' | 'dark') => {
+    const setColors = theme === 'light' ? setLightColors : setDarkColors;
+    const colors = theme === 'light' ? lightColors : darkColors;
+    return (key: keyof M3Colors, value: string) => {
+        setColors({ ...colors, [key]: value });
+    };
+  }
+
+  const renderColorSection = (theme: 'light' | 'dark') => {
+    const colors = theme === 'light' ? lightColors : darkColors;
+    const setColor = createColorStateUpdater(theme);
+
+    return (
+        <div className="space-y-6">
+            <ColorGroup title="Primary">
+                <ColorInput label="primary" color={colors.primary} setColor={(c) => setColor('primary', c)} />
+                <ColorInput label="onPrimary" color={colors.onPrimary} setColor={(c) => setColor('onPrimary', c)} />
+                <ColorInput label="primaryContainer" color={colors.primaryContainer} setColor={(c) => setColor('primaryContainer', c)} />
+                <ColorInput label="onPrimaryContainer" color={colors.onPrimaryContainer} setColor={(c) => setColor('onPrimaryContainer', c)} />
+            </ColorGroup>
+            <ColorGroup title="Secondary">
+                <ColorInput label="secondary" color={colors.secondary} setColor={(c) => setColor('secondary', c)} />
+                <ColorInput label="onSecondary" color={colors.onSecondary} setColor={(c) => setColor('onSecondary', c)} />
+                <ColorInput label="secondaryContainer" color={colors.secondaryContainer} setColor={(c) => setColor('secondaryContainer', c)} />
+                <ColorInput label="onSecondaryContainer" color={colors.onSecondaryContainer} setColor={(c) => setColor('onSecondaryContainer', c)} />
+            </ColorGroup>
+            <ColorGroup title="Tertiary">
+                <ColorInput label="tertiary" color={colors.tertiary} setColor={(c) => setColor('tertiary', c)} />
+                <ColorInput label="onTertiary" color={colors.onTertiary} setColor={(c) => setColor('onTertiary', c)} />
+                <ColorInput label="tertiaryContainer" color={colors.tertiaryContainer} setColor={(c) => setColor('tertiaryContainer', c)} />
+                <ColorInput label="onTertiaryContainer" color={colors.onTertiaryContainer} setColor={(c) => setColor('onTertiaryContainer', c)} />
+            </ColorGroup>
+            <ColorGroup title="Error">
+                <ColorInput label="error" color={colors.error} setColor={(c) => setColor('error', c)} />
+                <ColorInput label="onError" color={colors.onError} setColor={(c) => setColor('onError', c)} />
+                <ColorInput label="errorContainer" color={colors.errorContainer} setColor={(c) => setColor('errorContainer', c)} />
+                <ColorInput label="onErrorContainer" color={colors.onErrorContainer} setColor={(c) => setColor('onErrorContainer', c)} />
+            </ColorGroup>
+             <ColorGroup title="Surface & Background">
+                <ColorInput label="background" color={colors.background} setColor={(c) => setColor('background', c)} />
+                <ColorInput label="onBackground" color={colors.onBackground} setColor={(c) => setColor('onBackground', c)} />
+                <ColorInput label="surface" color={colors.surface} setColor={(c) => setColor('surface', c)} />
+                <ColorInput label="onSurface" color={colors.onSurface} setColor={(c) => setColor('onSurface', c)} />
+                <ColorInput label="surfaceVariant" color={colors.surfaceVariant} setColor={(c) => setColor('surfaceVariant', c)} />
+                <ColorInput label="onSurfaceVariant" color={colors.onSurfaceVariant} setColor={(c) => setColor('onSurfaceVariant', c)} />
+                <ColorInput label="outline" color={colors.outline} setColor={(c) => setColor('outline', c)} />
+            </ColorGroup>
+        </div>
+    );
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md max-h-[80vh] flex flex-col">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="font-headline flex items-center gap-2">
-            <Palette className="w-5 h-5 text-primary" /> App Theme Editor
+            <Palette className="w-5 h-5 text-primary" /> Material 3 Theme Editor
           </DialogTitle>
           <DialogDescription>
-            Customize the base colors for the light and dark themes of this application.
-            Changes will be applied to the global stylesheet.
+            Define the light and dark color schemes for your Jetpack Compose app. The generated Theme.kt file can be used in your project.
           </DialogDescription>
         </DialogHeader>
         
-        <ScrollArea className="flex-grow min-h-0"> {/* Removed my-4, pr-3 */}
-          <div className="space-y-4 py-4 pr-4"> {/* Added py-4 and pr-4 here */}
-            <div>
-              <h4 className="text-sm font-medium mb-2 text-foreground">Light Theme</h4>
-              <div className="space-y-3 p-1">
-                <ColorInputGroup label="Background" hexValue={lightBackground} onHexChange={setLightBackground} idPrefix="light-bg" />
-                <ColorInputGroup label="Foreground" hexValue={lightForeground} onHexChange={setLightForeground} idPrefix="light-fg" />
-                <ColorInputGroup label="Primary" hexValue={lightPrimary} onHexChange={setLightPrimary} idPrefix="light-primary" />
-                <ColorInputGroup label="Accent" hexValue={lightAccent} onHexChange={setLightAccent} idPrefix="light-accent" />
-              </div>
-            </div>
-
-            <Separator />
-            
-            <div>
-              <h4 className="text-sm font-medium mb-2 text-foreground">Dark Theme</h4>
-              <div className="space-y-3 p-1">
-                <ColorInputGroup label="Background" hexValue={darkBackground} onHexChange={setDarkBackground} idPrefix="dark-bg" />
-                <ColorInputGroup label="Foreground" hexValue={darkForeground} onHexChange={setDarkForeground} idPrefix="dark-fg" />
-                <ColorInputGroup label="Primary" hexValue={darkPrimary} onHexChange={setDarkPrimary} idPrefix="dark-primary" />
-                <ColorInputGroup label="Accent" hexValue={darkAccent} onHexChange={setDarkAccent} idPrefix="dark-accent" />
-              </div>
-            </div>
-          </div>
-        </ScrollArea>
+        <Tabs defaultValue="light" className="flex-grow flex flex-col min-h-0">
+             <TabsList className="grid w-full grid-cols-2 mb-2">
+                <TabsTrigger value="light">Light Scheme</TabsTrigger>
+                <TabsTrigger value="dark">Dark Scheme</TabsTrigger>
+            </TabsList>
+            <ScrollArea className="flex-grow min-h-0 pr-3 -mr-3">
+                 <TabsContent value="light" className="mt-0">
+                    <div className="p-4">{renderColorSection('light')}</div>
+                </TabsContent>
+                <TabsContent value="dark" className="mt-0">
+                    <div className="p-4">{renderColorSection('dark')}</div>
+                </TabsContent>
+            </ScrollArea>
+        </Tabs>
         
-        <DialogFooter className="mt-auto pt-4"> {/* Ensure footer doesn't overlap scroll content due to ScrollArea's margin removal */}
-          <Button onClick={handleApplyStylesheet} disabled={isUpdatingStylesheet} className="w-full">
-            {isUpdatingStylesheet ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Palette className="mr-2 h-4 w-4" />}
-            Apply & Update Stylesheet
+        <DialogFooter className="mt-auto pt-4 border-t">
+          <Button onClick={handleGenerateThemeFile} disabled={isGenerating} className="w-full">
+            {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileCode2 className="mr-2 h-4 w-4" />}
+            Generate and Download Theme.kt
           </Button>
         </DialogFooter>
       </DialogContent>

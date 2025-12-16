@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Globe, Link as LinkIcon, Image as ImageIcon, Search, Loader2, Sparkles, LayoutGrid, Trash2, Pencil, Check } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { generateImageFromHintAction, searchWebForImagesAction } from '@/app/actions';
+import { generateImageFromHintAction } from '@/app/actions';
 import { useDesign } from '@/contexts/DesignContext';
 import { cn } from '@/lib/utils';
 
@@ -18,7 +18,7 @@ export interface ImageSourceModalRef {
 }
 
 const MIN_WIDTH = 640;
-const MIN_HEIGHT = 480;
+const MIN_HEIGHT = 600;
 
 export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -40,11 +40,6 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
   const [aiSearchResults, setAiSearchResults] = useState<string[]>([]);
   const [isAiSearching, setIsAiSearching] = useState(false);
   
-  // State for Web Search
-  const [webSearchQuery, setWebSearchQuery] = useState('');
-  const [webSearchResults, setWebSearchResults] = useState<string[]>([]);
-  const [isWebSearching, setIsWebSearching] = useState(false);
-
   const handleResizeMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     const startX = e.clientX;
@@ -79,9 +74,6 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
       setAiSearchQuery('');
       setAiSearchResults([]);
       setIsAiSearching(false);
-      setWebSearchQuery('');
-      setWebSearchResults([]);
-      setIsWebSearching(false);
       setIsEditingGallery(false);
       setNewImageUrl('');
       setActiveTab('gallery');
@@ -166,39 +158,9 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
     }
   };
   
-  const handleWebSearch = async () => {
-    if (!webSearchQuery.trim()) {
-        toast({title: "Search Term", description: "Please enter a term to search.", variant: "default"});
-        return;
-    }
-    setIsWebSearching(true);
-    setWebSearchResults([]);
-    try {
-        const result = await searchWebForImagesAction(webSearchQuery);
-        if (result.imageUrls && result.imageUrls.length > 0) {
-            setWebSearchResults(result.imageUrls);
-        } else {
-            toast({
-                title: "Web Search Failed",
-                description: result.error || "Could not find images for this search term.",
-                variant: "destructive",
-            });
-        }
-    } catch (error) {
-         toast({
-            title: "Web Search Error",
-            description: error instanceof Error ? error.message : "An unexpected error occurred.",
-            variant: "destructive",
-        });
-    } finally {
-        setIsWebSearching(false);
-    }
-  };
-
-
   const renderResultsGrid = (
     results: (string | { id: string; url: string })[],
-    type: 'ai' | 'web' | 'gallery'
+    type: 'ai' | 'gallery'
   ) => (
     <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-2">
       {results.map((item, index) => {
@@ -253,16 +215,15 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
             <ImageIcon className="w-5 h-5 text-primary" /> Set Image Source
           </DialogTitle>
           <DialogDescription>
-            Enter a URL, generate images with AI, search the web, or select from the gallery. Drag the bottom-right corner to resize.
+            Enter a URL, generate images with AI, or select from the gallery. Drag the bottom-right corner to resize.
           </DialogDescription>
         </DialogHeader>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-4 mb-3">
+          <TabsList className="grid w-full grid-cols-3 mb-3">
             <TabsTrigger value="url"><LinkIcon className="mr-1.5 h-4 w-4" />From URL</TabsTrigger>
             <TabsTrigger value="gallery"><LayoutGrid className="mr-1.5 h-4 w-4" />Gallery</TabsTrigger>
             <TabsTrigger value="generate"><Sparkles className="mr-1.5 h-4 w-4" />Generate AI</TabsTrigger>
-            <TabsTrigger value="search"><Globe className="mr-1.5 h-4 w-4" />Search Web</TabsTrigger>
           </TabsList>
 
           <TabsContent value="url" className="flex-grow flex flex-col space-y-3 min-h-0">
@@ -352,41 +313,6 @@ export const ImageSourceModal = forwardRef<ImageSourceModalRef, {}>((props, ref)
                   ) : (
                       <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground gap-2">
                         <p>Enter a description to generate unique images with AI.</p>
-                      </div>
-                  )}
-                </ScrollArea>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="search" className="flex-grow flex flex-col space-y-3 min-h-0">
-            <div className="flex gap-2">
-                <Input 
-                    type="text" 
-                    placeholder="e.g., city skyline, abstract background" 
-                    value={webSearchQuery}
-                    onChange={(e) => setWebSearchQuery(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { handleWebSearch(); e.preventDefault(); } }}
-                    className="h-9"
-                    disabled={isWebSearching}
-                />
-                <Button onClick={handleWebSearch} variant="outline" size="sm" className="h-9 px-3" disabled={isWebSearching || !webSearchQuery.trim()}>
-                    {isWebSearching ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin"/> : <Search className="mr-1.5 h-4 w-4"/>}
-                    Search
-                </Button>
-            </div>
-            <div className="flex-grow min-h-0">
-                <ScrollArea className="h-full border rounded-md p-2 bg-muted/20">
-                  {isWebSearching ? (
-                      <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground gap-2">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        <p>Searching the web for images...</p>
-                      </div>
-                  ) : webSearchResults.length > 0 ? (
-                      renderResultsGrid(webSearchResults, 'web')
-                  ) : (
-                      <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground gap-2">
-                        <p>Enter a term to search for high-quality photos.</p>
-                        <p className="text-xs">(Powered by Pexels)</p>
                       </div>
                   )}
                 </ScrollArea>

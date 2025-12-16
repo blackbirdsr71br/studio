@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This file contains the deterministic Jetpack Compose code generator.
  * It takes a component tree and generates a single Kotlin file with pure composables.
@@ -36,7 +37,7 @@ function generateModifiers(props: BaseComponentProps, level: number): string {
         }
     }
     
-    if (p.borderWidth && p.borderColor) {
+    if (p.borderWidth && p.borderWidth > 0 && p.borderColor) {
         modifierLines.push(`border(${p.borderWidth}.dp, color = Color(android.graphics.Color.parseColor("${p.borderColor}")))`);
     }
 
@@ -44,7 +45,7 @@ function generateModifiers(props: BaseComponentProps, level: number): string {
         if (typeof p.backgroundColor === 'object' && p.backgroundColor.type === 'linearGradient') {
              const colors = p.backgroundColor.colors.map((c: string) => `Color(android.graphics.Color.parseColor("${c}"))`).join(', ');
              modifierLines.push(`background(brush = Brush.linearGradient(colors = listOf(${colors})))`);
-        } else if (typeof p.backgroundColor === 'string') {
+        } else if (typeof p.backgroundColor === 'string' && p.backgroundColor !== 'transparent') {
              modifierLines.push(`background(color = Color(android.graphics.Color.parseColor("${p.backgroundColor}")))`);
         }
     }
@@ -203,7 +204,13 @@ function generateAllComposables(
     }
     
     // Main screen composable
-    const mainScreenCode = `@Composable\nfun GeneratedScreen() {\n${generateComposable(componentTree, allComponents, customComponentTemplates, 1)}\n}`;
+    const mainScreenCode = `@Composable
+fun GeneratedScreen() {
+    // It's recommended to place Theme.kt in your project's ui.theme package.
+    AppTheme {
+${generateComposable(componentTree, allComponents, customComponentTemplates, 2)}
+    }
+}`;
     allComposables.set('main', mainScreenCode);
 
     return Array.from(allComposables.values()).join('\n\n');
@@ -231,6 +238,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+
+// Assuming AppTheme is defined in a file like ui/theme/Theme.kt
+// import com.example.app.ui.theme.AppTheme 
 
 // This is a generated file. Modifications may be overwritten.
 
