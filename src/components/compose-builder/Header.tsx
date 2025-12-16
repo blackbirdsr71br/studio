@@ -296,7 +296,7 @@ export function Header({
                   variant="outline"
                   onClick={handleOpenThemeEditor}
                   aria-label="Edit App Theme"
-                  className="text-sidebar-foreground border-sidebar-border bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+                  className="text-sidebar-foreground border-sidebar-border bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 >
                   <Palette />
                 </Button>
@@ -314,7 +314,7 @@ export function Header({
                       size="icon"
                       variant="outline"
                       aria-label="Settings"
-                      className="text-sidebar-foreground border-sidebar-border bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+                      className="text-sidebar-foreground border-sidebar-border bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     >
                       <Settings />
                     </Button>
@@ -336,7 +336,7 @@ export function Header({
                   variant="outline"
                   onClick={handleViewJson}
                   aria-label="View/Edit Design JSON"
-                  className="text-sidebar-foreground border-sidebar-border bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
+                  className="text-sidebar-foreground border-sidebar-border bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 >
                   <FileJson />
                 </Button>
