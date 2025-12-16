@@ -41,12 +41,11 @@ const processDimension = (
   if (typeof dimValue === 'string' && isNumericValue(dimValue)) return `${Number(dimValue)}px`;
   if (typeof dimValue === 'string' && dimValue.endsWith('%')) return dimValue;
 
+  if (defaultValueIfUndefined === undefined) return 'auto';
+
   if (typeof defaultValueIfUndefined === 'number') return `${defaultValueIfUndefined}px`;
   if (defaultValueIfUndefined === 'match_parent') return '100%';
   if (defaultValueIfUndefined === 'wrap_content') return 'auto';
-
-  // Fallback for undefined default values
-  if (defaultValueIfUndefined === undefined) return 'auto';
   
   return defaultValueIfUndefined.toString();
 };
@@ -95,11 +94,11 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     dataSource,
   } = effectiveProperties;
 
-  const defaultAllSidesPadding = (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID ? 8 : (effectiveType === 'Card' ? 16 : 0));
-  const effectivePaddingTop = paddingTop ?? padding ?? (effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar' ? 0 : defaultAllSidesPadding) ;
-  let effectivePaddingBottom = paddingBottom ?? padding ?? (effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar' ? 0 : defaultAllSidesPadding);
-  const effectivePaddingStart = paddingStart ?? padding ?? (effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar' ? 0 : defaultAllSidesPadding);
-  const effectivePaddingEnd = paddingEnd ?? padding ?? (effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar' ? 0 : defaultAllSidesPadding);
+  const defaultAllSidesPadding = 0;
+  const effectivePaddingTop = paddingTop ?? padding ?? defaultAllSidesPadding ;
+  let effectivePaddingBottom = paddingBottom ?? padding ?? defaultAllSidesPadding;
+  const effectivePaddingStart = paddingStart ?? padding ?? defaultAllSidesPadding;
+  const effectivePaddingEnd = paddingEnd ?? padding ?? defaultAllSidesPadding;
 
 
   if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID && component.parentId === ROOT_SCAFFOLD_ID) {
@@ -146,24 +145,24 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     boxSizing: 'border-box',
     position: 'relative', 
     border: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || (effectiveType as string).startsWith('Lazy') || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar' || effectiveType === 'DropdownMenu') ? 'none' : ((effectiveType === 'Card') ? '1px solid hsl(var(--border) / 0.5)' : '1px dashed hsl(var(--border) / 0.3)'),
-    minWidth: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || effectiveProperties.width === 'match_parent' || fillMaxWidth ) ? '100%' : (effectiveProperties.width === 'wrap_content' || !isNumericValue(effectiveProperties.width) ? 'auto' : '20px'),
-    minHeight: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || effectiveProperties.height === 'match_parent' || fillMaxHeight || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar') ? styleHeight : (effectiveProperties.height === 'wrap_content' || !isNumericValue(effectiveProperties.height) ? 'auto' : '20px'),
+    minWidth: '20px',
+    minHeight: '20px',
     boxShadow: elevation > 0 ? `0 ${elevation}px ${elevation * 2}px rgba(0,0,0,0.1)` : 'none'
   };
   
-  if (effectiveProperties.cornerRadius && typeof effectiveProperties.cornerRadius === 'number' && effectiveProperties.cornerRadius > 0) {
+    if (typeof effectiveProperties.cornerRadius === 'number' && effectiveProperties.cornerRadius > 0) {
       baseStyle.borderRadius = `${effectiveProperties.cornerRadius}px`;
-  } else if (
-      typeof effectiveProperties.cornerRadiusTopLeft === 'number' ||
-      typeof effectiveProperties.cornerRadiusTopRight === 'number' ||
-      typeof effectiveProperties.cornerRadiusBottomLeft === 'number' ||
-      typeof effectiveProperties.cornerRadiusBottomRight === 'number'
-  ) {
-      baseStyle.borderTopLeftRadius = `${effectiveProperties.cornerRadiusTopLeft || 0}px`;
-      baseStyle.borderTopRightRadius = `${effectiveProperties.cornerRadiusTopRight || 0}px`;
-      baseStyle.borderBottomLeftRadius = `${effectiveProperties.cornerRadiusBottomLeft || 0}px`;
-      baseStyle.borderBottomRightRadius = `${effectiveProperties.cornerRadiusBottomRight || 0}px`;
-  }
+    } else if (
+        typeof effectiveProperties.cornerRadiusTopLeft === 'number' ||
+        typeof effectiveProperties.cornerRadiusTopRight === 'number' ||
+        typeof effectiveProperties.cornerRadiusBottomLeft === 'number' ||
+        typeof effectiveProperties.cornerRadiusBottomRight === 'number'
+    ) {
+        baseStyle.borderTopLeftRadius = `${effectiveProperties.cornerRadiusTopLeft || 0}px`;
+        baseStyle.borderTopRightRadius = `${effectiveProperties.cornerRadiusTopRight || 0}px`;
+        baseStyle.borderBottomLeftRadius = `${effectiveProperties.cornerRadiusBottomLeft || 0}px`;
+        baseStyle.borderBottomRightRadius = `${effectiveProperties.cornerRadiusBottomRight || 0}px`;
+    }
 
   if (isLazyRowType) {
     baseStyle.flexDirection = 'row';
@@ -338,6 +337,11 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       break;
   }
   
+  const placeholderStyle: React.CSSProperties = {};
+  if (effectiveType === 'LazyVerticalGrid') {
+    placeholderStyle.gridColumn = '1 / -1';
+  }
+
 
   return (
     <div style={baseStyle} className={containerClasses} data-container-id={component.id} data-container-type={effectiveType}>
@@ -350,7 +354,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
 
       <div style={childrenContainerStyle} className={cn({"p-2 space-y-1": effectiveType === 'DropdownMenu'})}>
         {showPlaceholder ? (
-            <div className="flex-grow flex flex-col items-center justify-center text-muted-foreground/70 text-xs pointer-events-none p-2 text-center leading-tight">
+            <div style={placeholderStyle} className="flex-grow flex flex-col items-center justify-center text-muted-foreground/70 text-xs pointer-events-none p-2 text-center leading-tight">
               <span>{placeholderText}</span>
               {(!isDataBound && effectiveType === 'LazyVerticalGrid' && effectiveProperties.columns) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.columns} columns)</span>}
               {(!isDataBound && effectiveType === 'LazyHorizontalGrid' && effectiveProperties.rows) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.rows})</span>}
