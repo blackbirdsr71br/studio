@@ -189,7 +189,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     } else if (typeof containerBackgroundColor === 'string') {
       baseStyle.backgroundColor = containerBackgroundColor;
     }
-  } else if (effectiveType === 'Card' || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar') {
+  } else if (['Card', 'TopAppBar', 'BottomNavigationBar', 'Column', 'Row', 'Box', 'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid'].includes(effectiveType)) {
     baseStyle.backgroundColor = 'hsl(var(--card))';
   }
 
