@@ -31,7 +31,8 @@ const isNumericValue = (value: any): boolean => {
 };
 
 export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, isPreview = false, getComponentByIdOverride }: ContainerViewProps) {
-  const { customComponentTemplates } = useDesign();
+  const { customComponentTemplates, getComponentById: getComponentFromContext } = useDesign();
+  const getComponentById = getComponentByIdOverride || getComponentFromContext;
   const { resolvedTheme } = useTheme();
 
   let effectiveType: OriginalComponentType | string = component.type;
@@ -186,13 +187,16 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     overflow: (isLazyRowType || isLazyColumnType) && effectiveProperties.userScrollEnabled !== false ? 'auto' : 'hidden',
   };
   
-    if (cornerRadius) {
+  if (isLazyRowType) {
+    baseStyle.flexDirection = 'row';
+    baseStyle.flexWrap = 'nowrap';
+  }
+
+  if (cornerRadius) {
       baseStyle.borderRadius = `${cornerRadius}px`;
-    }
+  }
 
   if (component.id !== DEFAULT_CONTENT_LAZY_COLUMN_ID && baseStyle.borderRadius) {
-    // This was causing issues with scrollbars on lazy containers.
-    // Let's only hide overflow if it's not a scrollable lazy container.
     if (!((isLazyRowType || isLazyColumnType) && effectiveProperties.userScrollEnabled !== false)) {
         baseStyle.overflow = 'hidden';
     }
@@ -228,11 +232,6 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     }
   }
 
-  // Flexbox properties for children are applied to the inner `childrenContainerStyle`
-  // But the `baseStyle` itself might need to be a flex container for alignment within its own parent,
-  // which is handled by the RenderedComponentWrapper's styles. Let's keep baseStyle simple here.
-
-
   if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
     if (typeof containerBackgroundColor === 'string') {
         baseStyle.backgroundColor = containerBackgroundColor;
@@ -246,8 +245,6 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     delete baseStyle.overflow;
   }
 
-  // Determine if placeholder should be shown. It should only be shown if there are no children
-  // AND the component is NOT connected to a data source.
   const isDataBound = !!dataSource?.url;
   const showPlaceholder = !isDataBound && childrenComponents.length === 0;
 
@@ -289,7 +286,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   const containerClasses = cn(
     "select-none component-container",
     {
-      'scrollbar-hidden': (isLazyRowType && baseStyle.overflow === 'auto') || (isLazyColumnType && baseStyle.overflowY === 'auto' && component.id !== DEFAULT_CONTENT_LAZY_COLUMN_ID)
+      'scrollbar-hidden': (baseStyle.overflow === 'auto')
     }
   );
   
@@ -301,6 +298,12 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
      flexGrow: 1, // Make this container take available space
      flexWrap: (finalFlexDirection === 'row' && !isLazyRowType) ? 'wrap' : 'nowrap',
   };
+
+  if (isLazyRowType) {
+    childrenContainerStyle.flexDirection = 'row';
+    childrenContainerStyle.flexWrap = 'nowrap';
+  }
+
 
   // Special handling for lazy containers
   if (effectiveType === 'LazyVerticalGrid') {
@@ -318,10 +321,8 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   baseStyle.flexDirection = 'column';
   if (isLazyRowType) {
     baseStyle.flexDirection = 'row';
-    childrenContainerStyle.flexDirection = 'row';
   } else if (isLazyColumnType) {
     baseStyle.flexDirection = 'column';
-    childrenContainerStyle.flexDirection = 'column';
   }
 
   // The main container should have its own flex properties, independent of the children container.
