@@ -56,7 +56,6 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   const { resolvedTheme } = useTheme();
 
   let effectiveType: OriginalComponentType | string = component.type;
-  let basePropertiesFromTemplateRoot: DesignComponent['properties'] = {};
 
   if (component.templateIdRef) {
     const template = customComponentTemplates.find(t => t.templateId === component.templateIdRef);
@@ -64,24 +63,16 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
       if (rootTemplateComponent) {
         effectiveType = rootTemplateComponent.type; 
-        basePropertiesFromTemplateRoot = { ...rootTemplateComponent.properties };
       } else {
         console.warn(`Root component for template ${component.templateIdRef} not found in its tree.`);
-        effectiveType = component.type; 
       }
     } else {
         console.warn(`Custom template with ID ${component.templateIdRef} not found.`);
-        effectiveType = component.type;
     }
   }
   
   const defaultProps = getDefaultProperties(effectiveType as OriginalComponentType, component.id);
-  const effectiveProperties = { 
-    ...defaultProps,
-    ...basePropertiesFromTemplateRoot, 
-    ...component.properties 
-  };
-
+  const effectiveProperties = { ...defaultProps, ...component.properties };
 
   const {
     padding, 
@@ -161,8 +152,8 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   };
   
   if (isLazyRowType) {
-    baseStyle.overflow = 'auto';
     baseStyle.flexDirection = 'row';
+    baseStyle.overflow = 'auto';
     baseStyle.flexWrap = 'nowrap';
   }
 
@@ -171,7 +162,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   }
 
 
-  if (cornerRadius) {
+  if (typeof cornerRadius === 'number' && cornerRadius > 0) {
       baseStyle.borderRadius = `${cornerRadius}px`;
   }
 
@@ -366,5 +357,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     </div>
   );
 }
+
+    
 
     
