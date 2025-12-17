@@ -144,7 +144,6 @@ const ShapeEditor: React.FC<{ shapes: M3Shapes, setShapes: (s: M3Shapes) => void
     </div>
 );
 
-
 const ThemePreview: React.FC<{ colors: M3Colors; customColors: CustomColor[], typography: M3Typography, shapes: M3Shapes }> = ({ colors, customColors, typography, shapes }) => {
     const getFontFamilyVariable = (fontName: string) => `var(--font-${fontName.toLowerCase().replace(/ /g, '-')})`;
     const getFontWeightValue = (weight: 'Normal' | 'Medium' | 'Bold') => (weight === 'Normal' ? 400 : weight === 'Medium' ? 500 : 700);
@@ -155,8 +154,13 @@ const ThemePreview: React.FC<{ colors: M3Colors; customColors: CustomColor[], ty
             '--preview-surface': colors.surface, '--preview-on-surface': colors.onSurface,
             '--preview-surface-variant': colors.surfaceVariant, '--preview-on-surface-variant': colors.onSurfaceVariant,
             '--preview-primary': colors.primary, '--preview-on-primary': colors.onPrimary,
+            '--preview-primary-container': colors.primaryContainer, '--preview-on-primary-container': colors.onPrimaryContainer,
+            '--preview-secondary-container': colors.secondaryContainer, '--preview-on-secondary-container': colors.onSecondaryContainer,
+            '--preview-tertiary-container': colors.tertiaryContainer, '--preview-on-tertiary-container': colors.onTertiaryContainer,
             '--preview-outline': colors.outline,
+            '--shape-small': `${shapes.small}px`,
             '--shape-medium': `${shapes.medium}px`,
+            '--shape-large': `${shapes.large}px`,
         } as React.CSSProperties;
 
         customColors.forEach(cc => { if (cc.name) { style[`--preview-custom-${cc.name.toLowerCase()}`] = cc.color; }});
@@ -171,21 +175,52 @@ const ThemePreview: React.FC<{ colors: M3Colors; customColors: CustomColor[], ty
     }, [colors, customColors, typography, shapes]);
 
     return (
-        <div className="w-full h-full p-6 rounded-lg transition-colors duration-200" style={{ backgroundColor: 'var(--preview-background)', color: 'var(--preview-on-background)' }}>
-            <div style={dynamicStyles}>
-                 <h3 style={{ fontFamily: 'var(--font-family-headlineMedium)', fontWeight: 'var(--font-weight-headlineMedium)', fontSize: 'var(--font-size-headlineMedium)'}}
-                     className="mb-4">Live Preview</h3>
-                <Card className="preview-card" style={{ borderRadius: 'var(--shape-medium)', borderColor: 'var(--preview-outline)', backgroundColor: 'var(--preview-surface)' }}>
-                    <CardHeader><CardTitle className="preview-card-title" style={{color: 'var(--preview-on-surface)', fontFamily: 'var(--font-family-titleMedium)', fontWeight: 'var(--font-weight-titleMedium)', fontSize: 'var(--font-size-titleMedium)'}}>Card Title</CardTitle></CardHeader>
-                    <CardContent className="space-y-4">
-                        <p className="text-sm preview-card-desc" style={{color: 'var(--preview-on-surface-variant)', fontFamily: 'var(--font-family-bodyLarge)', fontWeight: 'var(--font-weight-bodyLarge)', fontSize: 'var(--font-size-bodyLarge)'}}>This is a sample card to preview the theme.</p>
-                        <Button className="w-full preview-button" style={{ backgroundColor: 'var(--preview-primary)', color: 'var(--preview-on-primary)', borderRadius: '999px' }}>Primary Button</Button>
-                    </CardContent>
-                </Card>
-            </div>
+        <div className="w-full h-full p-4 rounded-lg transition-colors duration-200" style={{ backgroundColor: 'var(--preview-background)', color: 'var(--preview-on-background)', ...dynamicStyles }}>
+            <h3 style={{ fontFamily: 'var(--font-family-headlineMedium)', fontWeight: 'var(--font-weight-headlineMedium)', fontSize: 'var(--font-size-headlineMedium)'}}
+                className="mb-4 text-center">Live Preview</h3>
+            
+            <Card style={{ 
+                borderRadius: 'var(--shape-large)', 
+                borderColor: 'var(--preview-outline)', 
+                backgroundColor: 'var(--preview-surface)',
+                color: 'var(--preview-on-surface)',
+            }}>
+                <CardHeader>
+                    <CardTitle style={{
+                        fontFamily: 'var(--font-family-titleMedium)', 
+                        fontWeight: 'var(--font-weight-titleMedium)', 
+                        fontSize: 'var(--font-size-titleMedium)',
+                        color: 'var(--preview-on-surface)',
+                    }}>
+                        Example Card
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="p-4 rounded-md" style={{backgroundColor: 'var(--preview-surface-variant)', color: 'var(--preview-on-surface-variant)'}}>
+                         <p style={{
+                            fontFamily: 'var(--font-family-bodyLarge)',
+                            fontWeight: 'var(--font-weight-bodyLarge)',
+                            fontSize: 'var(--font-size-bodyLarge)',
+                         }}>This is a sample card to preview the theme on a surface-variant color.</p>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                         <Button style={{ backgroundColor: 'var(--preview-primary)', color: 'var(--preview-on-primary)', borderRadius: 'var(--shape-small)' }}>
+                             Primary
+                         </Button>
+                         <Button style={{ backgroundColor: 'var(--preview-secondary-container)', color: 'var(--preview-on-secondary-container)', borderRadius: 'var(--shape-small)' }}>
+                             Secondary
+                         </Button>
+                         <Button style={{ backgroundColor: 'var(--preview-tertiary-container)', color: 'var(--preview-on-tertiary-container)', borderRadius: 'var(--shape-small)' }}>
+                             Tertiary
+                         </Button>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 };
+
 
 
 // --- MAIN COMPONENT ---
