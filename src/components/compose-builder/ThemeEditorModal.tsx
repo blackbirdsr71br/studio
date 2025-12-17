@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useImperativeHandle, forwardRef, useMemo } from 'react';
@@ -176,7 +177,11 @@ const ThemePreview: React.FC<{ colors: M3Colors; customColors: CustomColor[], ty
 
     return (
         <div className="w-full h-full p-4 rounded-lg transition-colors duration-200" style={{ backgroundColor: 'var(--preview-background)', color: 'var(--preview-on-background)', ...dynamicStyles }}>
-            <h3 style={{ fontFamily: 'var(--font-family-headlineMedium)', fontWeight: 'var(--font-weight-headlineMedium)', fontSize: 'var(--font-size-headlineMedium)'}}
+            <h3 style={{ 
+                fontFamily: 'var(--font-family-headlineMedium)', 
+                fontWeight: 'var(--font-weight-headlineMedium)', 
+                fontSize: 'var(--font-size-headlineMedium)'
+            }}
                 className="mb-4 text-center">Live Preview</h3>
             
             <Card style={{ 
@@ -419,7 +424,12 @@ fun AppTheme(useDarkTheme: Boolean = isSystemInDarkTheme(), content: @Composable
                 </Tabs>
             </div>
             
-            <div className="flex flex-col min-h-0 bg-muted/30 rounded-lg"><div className="p-2 border-b"><h3 className="text-sm font-semibold text-center">Live Preview</h3></div><div className="flex-grow flex items-center justify-center"><ThemePreview colors={currentColorsForPreview} customColors={currentCustomColorsForPreview} typography={typography} shapes={shapes} /></div></div>
+             <div className="flex flex-col min-h-0 bg-muted/30 rounded-lg">
+                <div className="p-2 border-b shrink-0"><h3 className="text-sm font-semibold text-center">Live Preview</h3></div>
+                <ScrollArea className="flex-grow">
+                    <ThemePreview colors={currentColorsForPreview} customColors={currentCustomColorsForPreview} typography={typography} shapes={shapes} />
+                </ScrollArea>
+            </div>
         </div>
         
         <DialogFooter className="mt-4 pt-4 border-t shrink-0"><Button onClick={handleGenerateThemeFile} disabled={isGenerating} className="w-full">{isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileCode2 className="mr-2 h-4 w-4" />}Generate and Download Theme.kt</Button></DialogFooter>
