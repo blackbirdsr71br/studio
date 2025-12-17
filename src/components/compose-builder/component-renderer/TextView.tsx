@@ -74,11 +74,11 @@ export function TextView({ properties }: TextViewProps) {
     }
   }
 
+  // Use explicit textColor if provided, otherwise use the effective foreground color from the container.
   if (textColor) {
     style.color = textColor;
-  } else if (!style.backgroundClip) {
-    // If no specific text color, use the one provided by the container or the M3 theme default
-    style.color = 'var(--effective-foreground-color, var(--m3-on-surface, hsl(var(--foreground))))';
+  } else if (!style.backgroundClip) { // Only set color if it's not a text gradient
+    style.color = 'var(--effective-foreground-color, var(--m3-on-surface))';
   }
 
   if (properties.fillMaxWidth) {

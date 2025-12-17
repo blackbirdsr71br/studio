@@ -2,17 +2,19 @@
 'use client';
 
 import React from 'react';
-import type { SavedLayout, DesignComponent } from '@/types/compose-spec';
+import type { SavedLayout, DesignComponent, M3Theme } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from './component-renderer/RenderedComponentWrapper';
 import { ROOT_SCAFFOLD_ID } from '@/types/compose-spec';
 import { MobileFrame, FRAME_WIDTH, FRAME_HEIGHT } from './MobileFrame';
+import { useDesign } from '@/contexts/DesignContext';
 
 interface LayoutPreviewProps {
   layout: SavedLayout;
 }
 
 export function LayoutPreview({ layout }: LayoutPreviewProps) {
-  
+  const { m3Theme } = useDesign(); // Get the current theme from context
+
   const getLayoutComponentById = (id: string): DesignComponent | undefined => {
     return layout.components.find(c => c.id === id);
   };
@@ -24,8 +26,6 @@ export function LayoutPreview({ layout }: LayoutPreviewProps) {
   }
   
   // These are the dimensions of the container this preview will be in
-  // Typically, the panel width is 256px, minus padding of 16px on each side = 224px.
-  // The scrollbar reduces this slightly more, let's use a safe value.
   const previewContainerWidth = 200; 
 
   // Calculate the scale factor to fit the entire MobileFrame within the preview container width
@@ -46,11 +46,10 @@ export function LayoutPreview({ layout }: LayoutPreviewProps) {
             transform: `translate(-50%, -50%) scale(${scale})`,
         }}
       >
-          <MobileFrame isPreview={true}>
+          <MobileFrame isPreview={true} themeOverride={m3Theme}>
             <RenderedComponentWrapper
                 component={rootComponent}
                 isPreview={true}
-                getComponentByIdOverride={getLayoutComponentById}
             />
           </MobileFrame>
       </div>

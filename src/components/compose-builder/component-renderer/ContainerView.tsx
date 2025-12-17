@@ -13,7 +13,6 @@ interface ContainerViewProps {
   childrenComponents: DesignComponent[];
   isRow: boolean;
   isPreview?: boolean;
-  getComponentByIdOverride?: (id: string) => DesignComponent | undefined;
 }
 
 const isNumericValue = (value: any): boolean => {
@@ -48,9 +47,8 @@ const processDimension = (
   return defaultValueIfUndefined.toString();
 };
 
-export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, isPreview = false, getComponentByIdOverride }: ContainerViewProps) {
-  const { customComponentTemplates, getComponentById: getComponentFromContext } = useDesign();
-  const getComponentById = getComponentByIdOverride || getComponentFromContext;
+export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, isPreview = false }: ContainerViewProps) {
+  const { customComponentTemplates, getComponentById } = useDesign();
   const { resolvedTheme } = useTheme();
 
   let effectiveType: OriginalComponentType | string = component.type;
@@ -203,6 +201,12 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     if (effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar' || effectiveType === 'DropdownMenu') {
       (baseStyle as any)['--effective-foreground-color'] = 'var(--m3-on-surface, hsl(var(--card-foreground)))';
       baseStyle.color = 'var(--m3-on-surface, hsl(var(--card-foreground)))';
+    } else if (effectiveType === 'Card') {
+      (baseStyle as any)['--effective-foreground-color'] = 'var(--m3-on-surface, hsl(var(--card-foreground)))';
+      baseStyle.color = 'var(--m3-on-surface, hsl(var(--card-foreground)))';
+    } else {
+      (baseStyle as any)['--effective-foreground-color'] = 'var(--m3-on-background, hsl(var(--foreground)))';
+      baseStyle.color = 'var(--m3-on-background, hsl(var(--foreground)))';
     }
   }
 
@@ -363,8 +367,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
               <RenderedComponentWrapper 
                   key={child.id} 
                   component={child} 
-                  isPreview={isPreview} 
-                  getComponentByIdOverride={getComponentByIdOverride}
+                  isPreview={isPreview}
               />
             ))
           )}

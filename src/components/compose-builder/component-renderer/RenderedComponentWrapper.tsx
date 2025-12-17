@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { DesignComponent, CustomComponentTemplate, BaseComponentProps } from '@/types/compose-spec';
@@ -18,7 +19,6 @@ import { RadioButtonView } from './RadioButtonView';
 interface RenderedComponentWrapperProps {
   component: DesignComponent;
   isPreview?: boolean;
-  getComponentByIdOverride?: (id: string) => DesignComponent | undefined;
 }
 
 interface DraggedCanvasItem {
@@ -81,9 +81,9 @@ const getDimensionValue = (
     return 'auto';
 };
   
-export function RenderedComponentWrapper({ component, isPreview = false, getComponentByIdOverride }: RenderedComponentWrapperProps) {
+export function RenderedComponentWrapper({ component, isPreview = false }: RenderedComponentWrapperProps) {
   const designContext = useDesign();
-  const { activeDesign, zoomLevel, selectComponent, getComponentById: getComponentFromContext, addComponent, moveComponent, updateComponent, customComponentTemplates } = designContext;
+  const { activeDesign, zoomLevel, selectComponent, getComponentById, addComponent, moveComponent, updateComponent, customComponentTemplates } = designContext;
   const ref = useRef<HTMLDivElement>(null);
   const [dropIndicator, setDropIndicator] = useState<DropIndicatorPosition>(null);
   const [isResizing, setIsResizing] = useState(false);
@@ -95,8 +95,6 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
     initialHeight: number;
   } | null>(null);
   
-  const getComponentById = getComponentByIdOverride || getComponentFromContext;
-
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.CANVAS_COMPONENT_ITEM,
     item: { id: component.id, type: ItemTypes.CANVAS_COMPONENT_ITEM },
@@ -309,8 +307,7 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
               <div style={{ flexShrink: 0, width: '100%', height: `${topBarChild.properties.height || 56}px` }} className="flex w-full">
                 <RenderedComponentWrapper 
                     component={topBarChild} 
-                    isPreview={isPreview} 
-                    getComponentByIdOverride={getComponentByIdOverride}
+                    isPreview={isPreview}
                 />
               </div>
             )}
@@ -321,8 +318,7 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
               >
                 <RenderedComponentWrapper 
                     component={contentChild} 
-                    isPreview={isPreview} 
-                    getComponentByIdOverride={getComponentByIdOverride}
+                    isPreview={isPreview}
                 />
               </div>
             )}
@@ -330,8 +326,7 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
               <div style={{ flexShrink: 0, width: '100%', height: `${bottomBarChild.properties.height || 56}px` }} className="flex w-full">
                  <RenderedComponentWrapper 
                     component={bottomBarChild} 
-                    isPreview={isPreview} 
-                    getComponentByIdOverride={getComponentByIdOverride}
+                    isPreview={isPreview}
                  />
               </div>
             )}
@@ -354,7 +349,7 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
       case 'LazyColumn': 
       case 'AnimatedContent':
       case 'DropdownMenu': // Add DropdownMenu here to be treated as a vertical container
-        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={false} isPreview={isPreview} getComponentByIdOverride={getComponentByIdOverride} />;
+        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={false} isPreview={isPreview} />;
 
       case 'Row':
       case 'LazyRow':
@@ -362,7 +357,7 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
       case 'LazyHorizontalGrid':
       case 'TopAppBar': 
       case 'BottomNavigationBar':
-        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={true} isPreview={isPreview} getComponentByIdOverride={getComponentByIdOverride} />;
+        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={true} isPreview={isPreview} />;
       
       case 'Spacer':
         const width = component.properties.width ?? 8;
@@ -385,7 +380,7 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
              const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
              if (rootTemplateComponent) {
                 const isTemplateRootRowLike = ['Row', 'LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar'].includes(rootTemplateComponent.type);
-                return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isTemplateRootRowLike} isPreview={isPreview} getComponentByIdOverride={getComponentByIdOverride} />;
+                return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isTemplateRootRowLike} isPreview={isPreview} />;
              }
            }
         }
@@ -565,5 +560,3 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
     </div>
   );
 }
-
-    

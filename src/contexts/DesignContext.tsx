@@ -121,6 +121,14 @@ const createInitialDesignState = (): DesignState => ({
   customComponentTemplates: [],
   savedLayouts: [],
   galleryImages: [],
+  m3Theme: {
+    lightColors: defaultLightColors,
+    darkColors: defaultDarkColors,
+    customLightColors: [],
+    customDarkColors: [],
+    typography: defaultTypography,
+    shapes: defaultShapes,
+  },
 });
 
 
@@ -329,16 +337,6 @@ function sanitizeForFirebase(data: any): any {
 
 export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [designState, setDesignState] = React.useState<DesignState>(createInitialDesignState());
-  const [m3Theme, setM3Theme] = useState<DesignContextType['m3Theme']>({
-      lightColors: defaultLightColors,
-      darkColors: defaultDarkColors,
-      customLightColors: [],
-      customDarkColors: [],
-      typography: defaultTypography,
-      shapes: defaultShapes,
-  });
-
-  const [isClient, setIsClient] = React.useState(false);
   const { toast } = useToast();
   const [zoomLevel, setZoomLevel] = useState(0.7);
   const [isLoadingCustomTemplates, setIsLoadingCustomTemplates] = useState(true);
@@ -434,7 +432,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, []);
   
   useEffect(() => {
-    setIsClient(true);
     // Firestore subscriptions
     const unsubscribers: Unsubscribe[] = [];
     if (db) {
@@ -1299,8 +1296,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const contextValue: DesignContextType = {
     ...designState,
-    m3Theme,
-    setM3Theme,
+    setM3Theme: (theme) => setDesignState(prev => ({...prev, m3Theme: typeof theme === 'function' ? theme(prev.m3Theme) : theme})),
     activeDesign,
     addNewDesign, closeDesign, setActiveDesign, updateDesignName,
     addComponent, deleteComponent, selectComponent, updateComponent, updateComponentPosition,
@@ -1315,30 +1311,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     isLoadingLayouts,
     zoomLevel, setZoomLevel,
   };
-
-  if (!isClient) {
-    const dummyContext: Partial<DesignContextType> = {
-        ...createInitialDesignState(),
-        activeDesign: createInitialDesignState().designs[0],
-        m3Theme: {
-            lightColors: defaultLightColors,
-            darkColors: defaultDarkColors,
-            customLightColors: [],
-            customDarkColors: [],
-            typography: defaultTypography,
-            shapes: defaultShapes,
-        },
-        getComponentById: (id: string) => createInitialDesignState().designs[0].components.find(c => c.id === id),
-        setM3Theme: () => {},
-        setZoomLevel: () => {},
-        zoomLevel: 1,
-    };
-    return (
-      <DesignContext.Provider value={dummyContext as DesignContextType}>
-        {children}
-      </DesignContext.Provider>
-    );
-  }
 
   return (
     <DesignContext.Provider value={contextValue}>

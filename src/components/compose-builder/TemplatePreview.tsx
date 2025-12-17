@@ -2,14 +2,17 @@
 'use client';
 
 import React from 'react';
-import type { CustomComponentTemplate, DesignComponent } from '@/types/compose-spec';
+import type { CustomComponentTemplate, DesignComponent, M3Theme } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from './component-renderer/RenderedComponentWrapper';
+import { useDesign } from '@/contexts/DesignContext';
+import { MobileFrame } from './MobileFrame';
 
 interface TemplatePreviewProps {
   template: CustomComponentTemplate;
 }
 
 export function TemplatePreview({ template }: TemplatePreviewProps) {
+  const { m3Theme } = useDesign();
   
   const getTemplateComponentById = (id: string): DesignComponent | undefined => {
     return template.componentTree.find(c => c.id === id);
@@ -24,8 +27,6 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
   const componentWidth = typeof rootComponent.properties.width === 'number' ? rootComponent.properties.width : 200;
   const componentHeight = typeof rootComponent.properties.height === 'number' ? rootComponent.properties.height : 150;
   
-  // This wrapper ensures the content scales down to fit, but doesn't scale up.
-  // The outer div in ComponentLibraryPanel provides the fixed height and width context (e.g., w-full, h-[60px]).
   return (
     <div 
         className="w-full h-full flex items-center justify-center bg-background"
@@ -35,18 +36,17 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
         style={{
             width: `${componentWidth}px`,
             height: `${componentHeight}px`,
-            // This is the robust scaling logic. It finds the smaller of the two possible scales (width-based or height-based)
-            // to ensure the entire component fits without being cropped or overflowing.
-            // Container width is typically ~220px, height is 60px.
             transform: `scale(${Math.min(220 / componentWidth, 60 / componentHeight)})`,
             transformOrigin: 'center center'
         }}
       >
-          <RenderedComponentWrapper
-            component={rootComponent}
-            isPreview={true}
-            getComponentByIdOverride={getTemplateComponentById}
-          />
+        {/* We wrap with a simplified MobileFrame to inject the theme context */}
+        <MobileFrame isPreview={true} themeOverride={m3Theme}>
+            <RenderedComponentWrapper
+                component={rootComponent}
+                isPreview={true}
+            />
+        </MobileFrame>
       </div>
     </div>
   );
