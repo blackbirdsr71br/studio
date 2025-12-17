@@ -181,31 +181,35 @@ const buildContentComponentTreeForModalJson = (
     let objectToSort: Record<string, any>;
 
     if (includeDefaultValues) {
-      const fullProps: Record<string, any> = { ...originalProperties };
-      const propDefs = propertyDefinitions[component.type as ComponentType] || [];
-      const defaultProps = getDefaultProperties(component.type as ComponentType);
+        const fullProps: Record<string, any> = { ...originalProperties };
+        const propDefs = propertyDefinitions[component.type as ComponentType] || [];
+        const defaultProps = getDefaultProperties(component.type as ComponentType);
 
-      propDefs.forEach(def => {
-          if (!(def.name in fullProps)) {
-              const defaultValue = defaultProps[def.name];
-              fullProps[def.name] = defaultValue === undefined ? null : defaultValue;
-          }
-           // New logic to inject theme colors for undefined color properties
-          if (m3Theme && def.type === 'color' && fullProps[def.name] === undefined) {
-              const themeColor = getThemeColorForComponentProp(m3Theme.lightColors, component.type, def.name as keyof BaseComponentProps);
-              if (themeColor) {
-                  fullProps[def.name] = themeColor;
-              }
-          }
-      });
-      if (propDefs.some(d => d.name === 'cornerRadiusTopLeft') && !('cornerRadius' in fullProps)) {
-          fullProps['cornerRadius'] = defaultProps['cornerRadius'] === undefined ? null : defaultProps['cornerRadius'];
-      }
-       if (propDefs.some(d => d.name === 'paddingTop') && !('padding' in fullProps)) {
-          fullProps['padding'] = defaultProps['padding'] === undefined ? null : defaultProps['padding'];
-      }
+        propDefs.forEach(def => {
+            // Priority 1: Inject theme color if the property is a color and is currently undefined.
+            if (m3Theme && def.type === 'color' && fullProps[def.name] === undefined) {
+                const themeColor = getThemeColorForComponentProp(m3Theme.lightColors, component.type, def.name as keyof BaseComponentProps);
+                if (themeColor) {
+                    fullProps[def.name] = themeColor;
+                }
+            }
+            
+            // Priority 2: If still not in fullProps, add the default value from compose-spec.
+            if (!(def.name in fullProps)) {
+                const defaultValue = defaultProps[def.name];
+                fullProps[def.name] = defaultValue === undefined ? null : defaultValue;
+            }
+        });
+        
+        // Ensure composite properties like 'cornerRadius' and 'padding' are also considered.
+        if (propDefs.some(d => d.name === 'cornerRadiusTopLeft') && !('cornerRadius' in fullProps)) {
+            fullProps['cornerRadius'] = defaultProps['cornerRadius'] === undefined ? null : defaultProps['cornerRadius'];
+        }
+        if (propDefs.some(d => d.name === 'paddingTop') && !('padding' in fullProps)) {
+            fullProps['padding'] = defaultProps['padding'] === undefined ? null : defaultProps['padding'];
+        }
       
-      objectToSort = fullProps;
+        objectToSort = fullProps;
 
     } else {
       const cleaned: Record<string, any> = {};
@@ -552,3 +556,5 @@ export async function convertCanvasToCustomJsonAction(
     return { error: message };
   }
 }
+
+    
