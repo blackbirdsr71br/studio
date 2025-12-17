@@ -295,14 +295,14 @@ export function Header({
                   size="icon"
                   variant="outline"
                   onClick={handleOpenThemeEditor}
-                  aria-label="Edit App Theme"
+                  aria-label="Edit Material 3 App Theme"
                   className="text-sidebar-foreground border-sidebar-border bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 >
-                  <Palette />
+                  <Edit />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Edit App Theme</p>
+                <p>Edit Material 3 App Theme</p>
               </TooltipContent>
             </Tooltip>
 
@@ -316,7 +316,7 @@ export function Header({
                       aria-label="Settings"
                       className="text-sidebar-foreground border-sidebar-border bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     >
-                      <Settings />
+                      <Palette />
                     </Button>
                   </PopoverTrigger>
                 </TooltipTrigger>
@@ -367,5 +367,3 @@ export function Header({
     </header>
   );
 }
-
-    

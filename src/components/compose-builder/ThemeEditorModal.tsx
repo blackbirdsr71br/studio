@@ -156,8 +156,25 @@ export const ThemeEditorModal = forwardRef<ThemeEditorModalRef, {}>((props, ref)
         const lightColorScheme = Object.entries(lightColors).map(([name, color]) => `    ${name} = Color(0xFF${color.substring(1)})`).join(',\n');
         const darkColorScheme = Object.entries(darkColors).map(([name, color]) => `    ${name} = Color(0xFF${color.substring(1)})`).join(',\n');
 
-        const customLightColorScheme = customLightColors.map(c => `    val ${c.name.toLowerCase()} = Color(0xFF${c.color.substring(1)})`).join('\n');
-        const customDarkColorScheme = customDarkColors.map(c => `    val ${c.name.toLowerCase()} = Color(0xFF${c.color.substring(1)})`).join('\n');
+        const customColorsInterface = customLightColors.length > 0
+            ? `data class CustomColors(\n${customLightColors.map(c => `    val ${c.name.toLowerCase()}: Color`).join(',\n')}\n)`
+            : 'data class CustomColors(\n    // No custom colors defined\n)';
+
+        const localCustomColorsProvider = customLightColors.length > 0
+            ? `staticCompositionLocalOf {\n    CustomColors(\n${customLightColors.map(c => `        ${c.name.toLowerCase()} = Color.Unspecified`).join(',\n')}\n    )\n}`
+            : `staticCompositionLocalOf { CustomColors() }`;
+
+        const customColorsExtension = customLightColors.length > 0
+            ? `val MaterialTheme.customColors: CustomColors\n    @Composable\n    get() = LocalCustomColors.current`
+            : '';
+
+        const customLightColorsImpl = customLightColors.length > 0
+            ? `private val CustomLightColors = CustomColors(\n${customLightColors.map(c => `    ${c.name.toLowerCase()} = Color(0xFF${c.color.substring(1)})`).join(',\n')}\n)`
+            : 'private val CustomLightColors = CustomColors()';
+            
+        const customDarkColorsImpl = customDarkColors.length > 0
+            ? `private val CustomDarkColors = CustomColors(\n${customDarkColors.map(c => `    ${c.name.toLowerCase()} = Color(0xFF${c.color.substring(1)})`).join(',\n')}\n)`
+            : 'private val CustomDarkColors = CustomColors()';
 
         const themeFileContent = `
 package com.example.app.ui.theme
@@ -172,21 +189,11 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 // Custom Colors
-data class CustomColors(
-${customLightColors.map(c => `    val ${c.name.toLowerCase()}: Color`).join('\n')}
-)
+${customColorsInterface}
 
-val LocalCustomColors = staticCompositionLocalOf {
-    CustomColors(
-${customLightColors.map(c => `        ${c.name.toLowerCase()} = Color.Unspecified`).join(',\n')}
-    )
-}
+val LocalCustomColors = ${localCustomColorsProvider}
 
-// Access custom colors via MaterialTheme.customColors
-val MaterialTheme.customColors: CustomColors
-    @Composable
-    get() = LocalCustomColors.current
-
+${customColorsExtension}
 
 private val LightColorScheme = lightColorScheme(
 ${lightColorScheme}
@@ -196,13 +203,9 @@ private val DarkColorScheme = darkColorScheme(
 ${darkColorScheme}
 )
 
-private val CustomLightColors = CustomColors(
-${customLightColors.map(c => `    ${c.name.toLowerCase()} = Color(0xFF${c.color.substring(1)})`).join(',\n')}
-)
+${customLightColorsImpl}
 
-private val CustomDarkColors = CustomColors(
-${customDarkColors.map(c => `    ${c.name.toLowerCase()} = Color(0xFF${c.color.substring(1)})`).join(',\n')}
-)
+${customDarkColorsImpl}
 
 
 @Composable
@@ -262,8 +265,12 @@ fun AppTheme(
         const newColor = { name: newName, color: '#FFC0CB' };
         if (theme === 'light') {
             setCustomLightColors([...customLightColors, newColor]);
+             // Add corresponding dark color
+            setCustomDarkColors([...customDarkColors, { ...newColor, color: '#806065'}]);
         } else {
             setCustomDarkColors([...customDarkColors, newColor]);
+            // Add corresponding light color
+            setCustomLightColors([...customLightColors, { ...newColor, color: '#FFC0CB'}]);
         }
     };
     
@@ -272,19 +279,30 @@ fun AppTheme(
             const updated = [...customLightColors];
             updated[index] = { ...updated[index], [field]: value };
             setCustomLightColors(updated);
+             if (field === 'name') {
+                const updatedDark = [...customDarkColors];
+                if (updatedDark[index]) {
+                    updatedDark[index].name = value;
+                    setCustomDarkColors(updatedDark);
+                }
+            }
         } else {
             const updated = [...customDarkColors];
             updated[index] = { ...updated[index], [field]: value };
             setCustomDarkColors(updated);
+            if (field === 'name') {
+                const updatedLight = [...customLightColors];
+                if (updatedLight[index]) {
+                    updatedLight[index].name = value;
+                    setCustomLightColors(updatedLight);
+                }
+            }
         }
     };
 
-    const handleRemoveCustomColor = (index: number, theme: 'light' | 'dark') => {
-        if (theme === 'light') {
-            setCustomLightColors(customLightColors.filter((_, i) => i !== index));
-        } else {
-            setCustomDarkColors(customDarkColors.filter((_, i) => i !== index));
-        }
+    const handleRemoveCustomColor = (index: number) => {
+        setCustomLightColors(customLightColors.filter((_, i) => i !== index));
+        setCustomDarkColors(customDarkColors.filter((_, i) => i !== index));
     };
 
 
@@ -373,7 +391,7 @@ fun AppTheme(
                                 </div>
                             </div>
                              <div className="sm:col-span-2 flex justify-end">
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleRemoveCustomColor(index, theme)}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleRemoveCustomColor(index)}>
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
                             </div>
