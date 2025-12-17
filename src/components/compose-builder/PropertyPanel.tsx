@@ -30,7 +30,7 @@ import { useToast } from '@/hooks/use-toast';
 import { generateImageFromHintAction } from '@/app/actions';
 import { Separator } from '../ui/separator';
 import type { ImageSourceModalRef } from './ImageSourceModal';
-import type { BaseComponentProps, ClickAction } from '@/types/compose-spec';
+import type { BaseComponentProps, ClickAction, M3Colors } from '@/types/compose-spec';
 import { ComponentTreeView } from './ComponentTreeView';
 import { DataBindingPanel } from './DataBindingPanel';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -50,8 +50,37 @@ const PREFERRED_GROUP_ORDER = ['Layout', 'Appearance', 'Content', 'Behavior'];
 const isLazyContainerType = (type: string) => 
     ['LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid'].includes(type);
 
+// This helper function centralizes the logic for determining which theme color a property corresponds to.
+// It's used both for displaying the effective color and for updating the theme.
+const getThemeColorKeyForComponentProp = (
+  componentType: ComponentType | string,
+  propName: keyof BaseComponentProps
+): keyof M3Colors | null => {
+    switch(componentType) {
+        case 'Button':
+            if (propName === 'backgroundColor') return 'primary';
+            if (propName === 'textColor') return 'onPrimary';
+            break;
+        case 'Card':
+        case 'TopAppBar':
+        case 'BottomNavigationBar':
+        case 'DropdownMenu':
+            if (propName === 'backgroundColor') return 'surface';
+            if (propName === 'contentColor') return 'onSurface';
+            break;
+        case 'Text':
+            if (propName === 'textColor') return 'onSurface';
+            break;
+        case 'Scaffold':
+            if (propName === 'backgroundColor') return 'background';
+            break;
+    }
+    return null;
+};
+
+
 function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
-  const { activeDesign, getComponentById, updateComponent, deleteComponent, customComponentTemplates, saveSelectedAsCustomTemplate, generateStaticChildren } = useDesign();
+  const { activeDesign, getComponentById, updateComponent, deleteComponent, customComponentTemplates, saveSelectedAsCustomTemplate, generateStaticChildren, m3Theme, setM3Theme } = useDesign();
   const selectedComponentId = activeDesign?.selectedComponentId;
   const selectedComponent = selectedComponentId ? getComponentById(selectedComponentId) : null;
   const { toast } = useToast();
@@ -116,9 +145,10 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
   }
   const componentPropsDef = (propertyDefinitions[componentPropsDefSourceType as ComponentType] || []) as (Omit<ComponentProperty, 'value'> & { group: string })[];
 
-  const handlePropertyChange = (propName: string, value: string | number | boolean | ClickAction | null) => {
+ const handlePropertyChange = (propName: keyof BaseComponentProps, value: string | number | boolean | ClickAction | null) => {
     let actualValue: any = value;
     const propDefinition = componentPropsDef.find(p => p.name === propName);
+    
     if (propDefinition?.type === 'number' && (value === '' || value === null)) {
       actualValue = undefined;
     }
@@ -131,13 +161,35 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
         updates.fillMaxHeight = isChecked;
     } else if (propName === 'fillMaxWidth' || propName === 'fillMaxHeight') {
         const isChecked = actualValue as boolean;
-        const otherPropName = propName === 'fillMaxWidth' ? 'fillMaxHeight' : 'fillMaxWidth'; // Corrected logic
+        const otherPropName = propName === 'fillMaxWidth' ? 'fillMaxHeight' : 'fillMaxWidth';
         const otherPropValue = selectedComponent.properties[otherPropName] ?? false;
         updates.fillMaxSize = isChecked && otherPropValue;
     }
 
     updateComponent(selectedComponent.id, { properties: updates });
-  };
+    
+    // --- Two-way binding logic ---
+    // If the changed property is a color and it has a corresponding theme color key...
+    if (propDefinition?.type === 'color' && typeof value === 'string') {
+        const themeColorKey = getThemeColorKeyForComponentProp(componentPropsDefSourceType, propName);
+        if (themeColorKey) {
+            // Update the theme in the context. This will trigger updates everywhere.
+            setM3Theme(prevTheme => ({
+                ...prevTheme,
+                lightColors: {
+                    ...prevTheme.lightColors,
+                    [themeColorKey]: value,
+                },
+                 // Optionally, update dark theme too or have a more complex logic
+                darkColors: {
+                    ...prevTheme.darkColors,
+                    [themeColorKey]: value,
+                }
+            }));
+        }
+    }
+};
+
   
     const handleNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
        updateComponent(selectedComponent.id, { name: event.target.value });
@@ -285,14 +337,24 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
           }
       }
 
-      const currentValue = selectedComponent.properties[propDef.name] ?? getDefaultProperties(componentPropsDefSourceType as ComponentType)[propDef.name];
+      let currentValue = selectedComponent.properties[propDef.name];
+      // If the property is a color and it's undefined, get it from the theme
+      if (propDef.type === 'color' && currentValue === undefined) {
+          const themeColorKey = getThemeColorKeyForComponentProp(componentPropsDefSourceType, propDef.name as keyof BaseComponentProps);
+          if (themeColorKey) {
+              currentValue = m3Theme.lightColors[themeColorKey];
+          }
+      }
+      if(currentValue === undefined) {
+        currentValue = getDefaultProperties(componentPropsDefSourceType as ComponentType)[propDef.name as keyof BaseComponentProps]
+      }
       
       const editorElement = (
         <PropertyEditor
           key={propDef.name}
           property={propDef}
           currentValue={currentValue}
-          onChange={(value) => handlePropertyChange(propDef.name, value)}
+          onChange={(value) => handlePropertyChange(propDef.name as keyof BaseComponentProps, value)}
         />
       );
 
