@@ -3,7 +3,7 @@ import type { DesignComponent, ComponentType as OriginalComponentType, BaseCompo
 import { RenderedComponentWrapper } from '../component-renderer/RenderedComponentWrapper';
 import { getComponentDisplayName, DEFAULT_CONTENT_LAZY_COLUMN_ID, isCustomComponentType, ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID, getDefaultProperties } from '@/types/compose-spec';
 import { useDesign } from '@/contexts/DesignContext';
-import { getContrastingTextColor, cn } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { TextView } from './TextView'; 
 import { useTheme } from '@/contexts/ThemeContext';
 import { ChevronDown } from 'lucide-react';
@@ -185,37 +185,15 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     } else if (typeof containerBackgroundColor === 'string') {
       baseStyle.backgroundColor = containerBackgroundColor;
     }
-  } else if (['Card', 'TopAppBar', 'BottomNavigationBar'].includes(effectiveType)) {
-    baseStyle.backgroundColor = 'var(--m3-surface, hsl(var(--card)))';
+  } else if (['Card', 'TopAppBar', 'BottomNavigationBar', 'DropdownMenu'].includes(effectiveType)) {
+    baseStyle.backgroundColor = 'var(--m3-surface)';
+  } else if (component.id === ROOT_SCAFFOLD_ID || component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
+    baseStyle.backgroundColor = 'var(--m3-background)';
   }
 
-
-  if (explicitContentColor && typeof explicitContentColor === 'string' && explicitContentColor.trim() !== '') {
-    (baseStyle as any)['--effective-foreground-color'] = explicitContentColor;
-     baseStyle.color = explicitContentColor; 
-  } else if (baseStyle.backgroundColor && typeof baseStyle.backgroundColor === 'string' && baseStyle.backgroundColor !== 'transparent') {
-    const contrastingColor = getContrastingTextColor(baseStyle.backgroundColor);
-    (baseStyle as any)['--effective-foreground-color'] = contrastingColor;
-    baseStyle.color = contrastingColor;
-  } else {
-    if (effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar' || effectiveType === 'DropdownMenu') {
-      (baseStyle as any)['--effective-foreground-color'] = 'var(--m3-on-surface, hsl(var(--card-foreground)))';
-      baseStyle.color = 'var(--m3-on-surface, hsl(var(--card-foreground)))';
-    } else if (effectiveType === 'Card') {
-      (baseStyle as any)['--effective-foreground-color'] = 'var(--m3-on-surface, hsl(var(--card-foreground)))';
-      baseStyle.color = 'var(--m3-on-surface, hsl(var(--card-foreground)))';
-    } else {
-      (baseStyle as any)['--effective-foreground-color'] = 'var(--m3-on-background, hsl(var(--foreground)))';
-      baseStyle.color = 'var(--m3-on-background, hsl(var(--foreground)))';
-    }
-  }
+  baseStyle.color = explicitContentColor || 'var(--m3-on-surface)';
 
   if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
-    if (typeof containerBackgroundColor === 'string') {
-        baseStyle.backgroundColor = containerBackgroundColor;
-    } else {
-        baseStyle.backgroundColor = 'var(--m3-background, transparent)';
-    }
     baseStyle.width = '100%';
     baseStyle.height = 'auto';
     baseStyle.minHeight = '100%';

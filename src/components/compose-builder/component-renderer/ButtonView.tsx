@@ -1,7 +1,6 @@
 'use client';
 import type { BaseComponentProps } from '@/types/compose-spec';
 import { getDefaultProperties } from '@/types/compose-spec';
-import { getContrastingTextColor } from '@/lib/utils';
 import * as icons from 'lucide-react';
 
 interface ButtonViewProps {

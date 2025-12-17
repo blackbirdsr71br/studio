@@ -58,6 +58,7 @@ export function TextView({ properties }: TextViewProps) {
     textAlign: textAlign.toLowerCase() as 'left' | 'center' | 'right' | 'justify' | 'start' | 'end',
     textDecorationLine: textDecoration === 'LineThrough' ? 'line-through' : textDecoration.toLowerCase(),
     fontFamily: getFontFamilyVariable(fontFamily || 'Inter'), // Apply the font family via CSS variable
+    color: textColor || 'var(--m3-on-surface)',
   };
 
   if (backgroundColor) {
@@ -73,14 +74,7 @@ export function TextView({ properties }: TextViewProps) {
       style.backgroundColor = backgroundColor;
     }
   }
-
-  // Use explicit textColor if provided, otherwise use the effective foreground color from the container.
-  if (textColor) {
-    style.color = textColor;
-  } else if (!style.backgroundClip) { // Only set color if it's not a text gradient
-    style.color = 'var(--effective-foreground-color, var(--m3-on-surface))';
-  }
-
+  
   if (properties.fillMaxWidth) {
     style.width = '100%';
     style.display = 'block';
