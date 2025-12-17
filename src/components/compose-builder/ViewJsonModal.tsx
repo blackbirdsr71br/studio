@@ -71,7 +71,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
   const [publishCustomJsonParameterKey, setPublishCustomJsonParameterKey] = useState<string>("CUSTOM_COMMAND_JSON_V1");
   const [isPublishingCustomJson, setIsPublishingCustomJson] = useState(false);
 
-  const { activeDesign, customComponentTemplates, overwriteComponents } = useDesign();
+  const { activeDesign, customComponentTemplates, overwriteComponents, m3Theme } = useDesign();
   const { toast } = useToast();
   const { resolvedTheme } = useTheme();
 
@@ -100,7 +100,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     setSyntaxError(null);
     setValidationErrors([]);
     try {
-      const jsonStr = await getDesignComponentsAsJsonAction(activeDesign.components, customComponentTemplates, includeDefaultValues);
+      const jsonStr = await getDesignComponentsAsJsonAction(activeDesign.components, customComponentTemplates, includeDefaultValues, m3Theme);
       if (jsonStr.startsWith("Error:")) {
         setCanvasJsonError(jsonStr);
         setCanvasJsonString("");
@@ -114,7 +114,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     } finally {
       setIsCanvasJsonLoading(false);
     }
-  }, [activeTab, activeDesign, customComponentTemplates, includeDefaultValues]);
+  }, [activeTab, activeDesign, customComponentTemplates, includeDefaultValues, m3Theme]);
 
   const handleGenerateCustomJsonFromCanvas = useCallback(async () => {
     if (!activeDesign) return;
@@ -122,7 +122,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     setCustomJsonFromCanvasError(null);
     setCustomJsonFromCanvasString("");
     try {
-      const result = await convertCanvasToCustomJsonAction(activeDesign.components, customComponentTemplates, includeCustomJsonDefaults);
+      const result = await convertCanvasToCustomJsonAction(activeDesign.components, customComponentTemplates, includeCustomJsonDefaults, m3Theme);
       if (result.customJsonString) {
         // Format the single-line JSON string to be pretty-printed
         const parsed = JSON.parse(result.customJsonString);
@@ -137,7 +137,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
     } finally {
       setIsCustomJsonFromCanvasLoading(false);
     }
-  }, [activeDesign, customComponentTemplates, includeCustomJsonDefaults]);
+  }, [activeDesign, customComponentTemplates, includeCustomJsonDefaults, m3Theme]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -375,7 +375,7 @@ export const ViewJsonModal = forwardRef<ViewJsonModalRef, {}>((_props, ref) => {
 
     setIsPublishingCanvasJson(true);
     try {
-      const result = await publishToRemoteConfigAction(activeDesign.components, customComponentTemplates, publishCanvasJsonParameterKey.trim(), includeDefaultValues);
+      const result = await publishToRemoteConfigAction(activeDesign.components, customComponentTemplates, publishCanvasJsonParameterKey.trim(), includeDefaultValues, m3Theme);
       if (result.success) {
         toast({
           title: "Publish Successful",

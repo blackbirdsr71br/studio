@@ -6,7 +6,7 @@ import { generateJsonFromComposeCommands } from '@/ai/flows/generate-json-from-c
 import { convertCanvasToCustomJson } from '@/ai/flows/convert-canvas-to-custom-json-flow';
 import type { GenerateImageFromHintInput, GenerateJsonFromComposeCommandsInput, ConvertCanvasToCustomJsonInput } from '@/types/ai-spec';
 
-import type { DesignComponent, CustomComponentTemplate, BaseComponentProps, ComponentType } from '@/types/compose-spec';
+import type { DesignComponent, CustomComponentTemplate, BaseComponentProps, ComponentType, M3Colors, M3Theme } from '@/types/compose-spec';
 import { ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, CORE_SCAFFOLD_ELEMENT_IDS, getDefaultProperties, propertyDefinitions } from '@/types/compose-spec';
 import { getRemoteConfig, isAdminInitialized } from '@/lib/firebaseAdmin';
 import { promises as fs } from 'fs';
@@ -133,12 +133,37 @@ const PREFERRED_PROPERTY_ORDER = [
   'columns', 'rows',
 ];
 
+const getThemeColorForComponentProp = (
+  themeColors: M3Colors,
+  componentType: ComponentType | string,
+  propName: keyof BaseComponentProps
+): string | undefined => {
+    switch(componentType) {
+        case 'Button':
+            if (propName === 'backgroundColor') return themeColors.primary;
+            if (propName === 'textColor') return themeColors.onPrimary;
+            break;
+        case 'Card':
+        case 'TopAppBar':
+        case 'BottomNavigationBar':
+            if (propName === 'backgroundColor') return themeColors.surface;
+            if (propName === 'contentColor') return themeColors.onSurface;
+            break;
+        case 'Text':
+            if (propName === 'textColor') return themeColors.onSurface;
+            break;
+    }
+    return undefined;
+};
+
+
 // Helper for "View JSON" modal (hierarchical, children in properties.children)
 const buildContentComponentTreeForModalJson = (
   allComponents: DesignComponent[],
   customComponentTemplates: CustomComponentTemplate[],
   currentParentIdForContext: string,
-  includeDefaultValues: boolean
+  includeDefaultValues: boolean,
+  m3Theme: M3Theme | undefined
 ): ModalJsonNode[] => {
   const parentComponent = allComponents.find(c => c.id === currentParentIdForContext);
   const childIds = parentComponent?.properties.children || [];
@@ -165,6 +190,13 @@ const buildContentComponentTreeForModalJson = (
               const defaultValue = defaultProps[def.name];
               fullProps[def.name] = defaultValue === undefined ? null : defaultValue;
           }
+           // New logic to inject theme colors for undefined color properties
+          if (m3Theme && def.type === 'color' && fullProps[def.name] === undefined) {
+              const themeColor = getThemeColorForComponentProp(m3Theme.lightColors, component.type, def.name as keyof BaseComponentProps);
+              if (themeColor) {
+                  fullProps[def.name] = themeColor;
+              }
+          }
       });
       if (propDefs.some(d => d.name === 'cornerRadiusTopLeft') && !('cornerRadius' in fullProps)) {
           fullProps['cornerRadius'] = defaultProps['cornerRadius'] === undefined ? null : defaultProps['cornerRadius'];
@@ -184,6 +216,20 @@ const buildContentComponentTreeForModalJson = (
           cleaned[key] = value;
         }
       }
+      
+      // Inject theme colors if specific color props are missing
+      if (m3Theme) {
+        const propsToCheck: (keyof BaseComponentProps)[] = ['backgroundColor', 'textColor', 'contentColor'];
+        propsToCheck.forEach(propName => {
+            if (cleaned[propName] === undefined) {
+                const themeColor = getThemeColorForComponentProp(m3Theme.lightColors, component.type, propName);
+                if (themeColor) {
+                    cleaned[propName] = themeColor;
+                }
+            }
+        });
+      }
+
 
       const defaultNumericPropsToOmitIfZero = [
         'padding', 'paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd',
@@ -275,7 +321,7 @@ const buildContentComponentTreeForModalJson = (
     }
 
     if (Array.isArray(component.properties.children) && component.properties.children.length > 0) {
-      const childrenObjectNodes = buildContentComponentTreeForModalJson(allComponents, customComponentTemplates, component.id, includeDefaultValues);
+      const childrenObjectNodes = buildContentComponentTreeForModalJson(allComponents, customComponentTemplates, component.id, includeDefaultValues, m3Theme);
       if (childrenObjectNodes.length > 0) {
         node.properties.children = childrenObjectNodes as any;
       }
@@ -287,14 +333,16 @@ const buildContentComponentTreeForModalJson = (
 export async function getDesignComponentsAsJsonAction(
   allComponents: DesignComponent[],
   customComponentTemplates: CustomComponentTemplate[],
-  includeDefaultValues: boolean = false
+  includeDefaultValues: boolean = false,
+  m3Theme?: M3Theme
 ): Promise<string> {
   try {
     const modalJsonTree = buildContentComponentTreeForModalJson(
         allComponents,
         customComponentTemplates,
         DEFAULT_CONTENT_LAZY_COLUMN_ID,
-        includeDefaultValues
+        includeDefaultValues,
+        m3Theme
     );
     return JSON.stringify(modalJsonTree, null, 2);
   } catch (error) {
@@ -310,7 +358,8 @@ export async function publishToRemoteConfigAction(
   components: DesignComponent[],
   customComponentTemplates: CustomComponentTemplate[], 
   parameterKey: string,
-  includeDefaultValues: boolean
+  includeDefaultValues: boolean,
+  m3Theme?: M3Theme
 ): Promise<{ success: boolean; message: string; version?: string }> {
   if (!isAdminInitialized()) {
     return { success: false, message: 'Firebase Admin SDK not initialized. Publishing is disabled.' };
@@ -325,7 +374,7 @@ export async function publishToRemoteConfigAction(
   }
   
   try {
-    const designJsonString = await getDesignComponentsAsJsonAction(components, customComponentTemplates, includeDefaultValues);
+    const designJsonString = await getDesignComponentsAsJsonAction(components, customComponentTemplates, includeDefaultValues, m3Theme);
     
     if (designJsonString.startsWith("Error:")) {
       return { success: false, message: `Failed to generate JSON for publishing: ${designJsonString}` };
@@ -470,10 +519,11 @@ export async function generateJsonFromTextAction(
 export async function convertCanvasToCustomJsonAction(
   allComponents: DesignComponent[],
   customComponentTemplates: CustomComponentTemplate[],
-  includeDefaultValues: boolean
+  includeDefaultValues: boolean,
+  m3Theme?: M3Theme
 ): Promise<{ customJsonString?: string; error?: string }> {
   try {
-    const canvasContentJsonString = await getDesignComponentsAsJsonAction(allComponents, customComponentTemplates, includeDefaultValues);
+    const canvasContentJsonString = await getDesignComponentsAsJsonAction(allComponents, customComponentTemplates, includeDefaultValues, m3Theme);
 
     if (canvasContentJsonString.startsWith("Error:")) {
         return { error: "Failed to prepare canvas data for conversion: " + canvasContentJsonString };

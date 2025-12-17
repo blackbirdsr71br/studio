@@ -35,7 +35,7 @@ export const PublishConfigModal = forwardRef<PublishConfigModalRef, PublishConfi
   const [parameterKey, setParameterKey] = useState<string>("COMPOSE_DESIGN_JSON_V2");
   const [includeDefaultValues, setIncludeDefaultValues] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
-  const { activeDesign, customComponentTemplates } = useDesign();
+  const { activeDesign, customComponentTemplates, m3Theme } = useDesign();
   const { toast } = useToast();
 
   useImperativeHandle(ref, () => ({
@@ -78,7 +78,7 @@ export const PublishConfigModal = forwardRef<PublishConfigModalRef, PublishConfi
 
     setIsPublishing(true);
     try {
-      const result = await publishToRemoteConfigAction(components, customComponentTemplates, parameterKey.trim(), includeDefaultValues);
+      const result = await publishToRemoteConfigAction(components, customComponentTemplates, parameterKey.trim(), includeDefaultValues, m3Theme);
       if (result.success) {
         toast({
           title: "Publish Successful",
