@@ -1,3 +1,4 @@
+
 'use client';
 import type { DesignComponent, ComponentType as OriginalComponentType, BaseComponentProps } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from '../component-renderer/RenderedComponentWrapper';
@@ -94,7 +95,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   const effectivePaddingTop = paddingTop ?? padding ?? defaultAllSidesPadding ;
   let effectivePaddingBottom = paddingBottom ?? padding ?? defaultAllSidesPadding;
   const effectivePaddingStart = paddingStart ?? padding ?? defaultAllSidesPadding;
-  const effectivePaddingEnd = paddingEnd ?? padding ?? defaultAllSidesPadding;
+  const effectivePaddingEnd = paddingEnd ?? defaultAllSidesPadding;
 
 
   if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID && component.parentId === ROOT_SCAFFOLD_ID) {
