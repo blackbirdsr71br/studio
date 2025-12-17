@@ -88,7 +88,7 @@ const defaultDarkColors: M3Colors = {
   onError: '#601410',
   errorContainer: '#8C1D18',
   onErrorContainer: '#F9DEDC',
-background: '#1C1B1F',
+  background: '#1C1B1F',
   onBackground: '#E6E1E5',
   surface: '#1C1B1F',
   onSurface: '#E6E1E5',
@@ -183,7 +183,7 @@ export const ThemeEditorModal = forwardRef<ThemeEditorModalRef, {}>((props, ref)
             : 'private val CustomLightColors = CustomColors()';
 
         const customDarkColorsImpl = customDarkColors.length > 0
-            ? `private val CustomDarkColors = CustomColors(\n${customDarkColors.map(c => `    ${c.name.toLowerCase()} = ${toComposeColor(c.color)}`).join(',\n')}\n)`
+            ? `private val CustomDarkColors = CustomColors(\n${customDarkColors.map((c, i) => `    ${c.name.toLowerCase()} = ${toComposeColor(customDarkColors[i]?.color || '#000000')}`).join(',\n')}\n)`
             : 'private val CustomDarkColors = CustomColors()';
 
         const themeFileContent = `
@@ -271,20 +271,30 @@ fun AppTheme(
   };
   
     const handleAddCustomColor = () => {
-        const lightName = `custom${customLightColors.length + 1}`;
-        const darkName = `custom${customDarkColors.length + 1}`;
-
-        setCustomLightColors([...customLightColors, { name: lightName, color: '#FFC0CB' }]);
-        setCustomDarkColors([...customDarkColors, { name: darkName, color: '#806065'}]);
+        const nextIndex = customLightColors.length + 1;
+        const newName = `custom${nextIndex}`;
+        setCustomLightColors([...customLightColors, { name: newName, color: '#FFC0CB' }]);
+        setCustomDarkColors([...customDarkColors, { name: newName, color: '#806065'}]);
     };
     
     const handleUpdateCustomColor = (index: number, field: 'name' | 'color', value: string, theme: 'light' | 'dark') => {
-        const setCustomColors = theme === 'light' ? setCustomLightColors : setCustomDarkColors;
-        const customColors = theme === 'light' ? customLightColors : customDarkColors;
-
-        const updated = [...customColors];
-        updated[index] = { ...updated[index], [field]: value };
-        setCustomColors(updated);
+        if (theme === 'light') {
+            const updatedLight = [...customLightColors];
+            updatedLight[index] = { ...updatedLight[index], [field]: value };
+            setCustomLightColors(updatedLight);
+            // Sync name change to dark theme
+            if (field === 'name') {
+                const updatedDark = [...customDarkColors];
+                if(updatedDark[index]) {
+                  updatedDark[index].name = value;
+                  setCustomDarkColors(updatedDark);
+                }
+            }
+        } else {
+            const updatedDark = [...customDarkColors];
+            updatedDark[index] = { ...updatedDark[index], [field]: value };
+            setCustomDarkColors(updatedDark);
+        }
     };
 
     const handleRemoveCustomColor = (index: number) => {
@@ -344,7 +354,7 @@ fun AppTheme(
             <div>
                 <h3 className="text-base font-semibold mb-3 text-foreground">Custom Colors</h3>
                 <div className="space-y-4">
-                    {customColors.map((custom, index) => (
+                    {customLightColors.map((custom, index) => (
                         <div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 p-3 border rounded-md relative">
                              <div className="flex items-center justify-between gap-4">
                                 <Label htmlFor={`custom-name-${theme}-${index}`} className="text-xs">Name</Label>
@@ -352,9 +362,10 @@ fun AppTheme(
                                     id={`custom-name-${theme}-${index}`}
                                     type="text"
                                     value={custom.name}
-                                    onChange={(e) => handleUpdateCustomColor(index, 'name', e.target.value.replace(/[^a-zA-Z0-9]/g, ''), theme)}
+                                    onChange={(e) => handleUpdateCustomColor(index, 'name', e.target.value.replace(/[^a-zA-Z0-9]/g, ''), 'light')}
                                     className="h-7 w-24 text-xs"
                                     placeholder="e.g., success"
+                                    disabled={theme === 'dark'}
                                 />
                             </div>
                              <div className="flex items-center justify-between gap-4">
@@ -363,14 +374,14 @@ fun AppTheme(
                                      <Input
                                         id={`custom-color-input-${theme}-${index}`}
                                         type="color"
-                                        value={custom.color}
+                                        value={customColors[index]?.color || ''}
                                         onChange={(e) => handleUpdateCustomColor(index, 'color', e.target.value, theme)}
                                         className="h-7 w-8 p-1"
                                     />
                                     <Input
                                         id={`custom-color-hex-${theme}-${index}`}
                                         type="text"
-                                        value={custom.color}
+                                        value={customColors[index]?.color || ''}
                                         onChange={(e) => handleUpdateCustomColor(index, 'color', e.target.value, theme)}
                                         className="h-7 w-24 text-xs"
                                     />
