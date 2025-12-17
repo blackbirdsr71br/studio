@@ -46,10 +46,11 @@ export function LayoutPreview({ layout }: LayoutPreviewProps) {
             transform: `translate(-50%, -50%) scale(${scale})`,
         }}
       >
-          <MobileFrame isPreview={true} themeOverride={m3Theme}>
+          <MobileFrame isPreview={true} themeOverride={m3Theme} getComponentById={getLayoutComponentById}>
             <RenderedComponentWrapper
                 component={rootComponent}
                 isPreview={true}
+                getComponentById={getLayoutComponentById}
             />
           </MobileFrame>
       </div>

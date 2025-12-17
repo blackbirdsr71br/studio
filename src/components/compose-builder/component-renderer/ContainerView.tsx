@@ -14,6 +14,7 @@ interface ContainerViewProps {
   childrenComponents: DesignComponent[];
   isRow: boolean;
   isPreview?: boolean;
+  getComponentById: (id: string) => DesignComponent | undefined;
 }
 
 const isNumericValue = (value: any): boolean => {
@@ -48,8 +49,8 @@ const processDimension = (
   return defaultValueIfUndefined.toString();
 };
 
-export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, isPreview = false }: ContainerViewProps) {
-  const { customComponentTemplates, getComponentById } = useDesign();
+export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, isPreview = false, getComponentById }: ContainerViewProps) {
+  const { customComponentTemplates } = useDesign();
   const { resolvedTheme } = useTheme();
 
   let effectiveType: OriginalComponentType | string = component.type;
@@ -347,6 +348,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
                   key={child.id} 
                   component={child} 
                   isPreview={isPreview}
+                  getComponentById={getComponentById}
               />
             ))
           )}

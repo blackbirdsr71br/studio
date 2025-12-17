@@ -1,15 +1,16 @@
+
 'use client';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext'; // For main UI theme
-import { useDesign } from '@/contexts/DesignContext'; // For M3 canvas theme
-import { defaultDarkColors, defaultLightColors, M3Theme } from '@/types/compose-spec';
+import { defaultDarkColors, defaultLightColors, M3Theme, DesignComponent } from '@/types/compose-spec';
 
 interface MobileFrameProps {
   children: ReactNode;
   className?: string;
   isPreview?: boolean;
   themeOverride?: M3Theme; // Allow passing a specific theme for previews
+  getComponentById?: (id: string) => DesignComponent | undefined; // Pass getter for previews
 }
 
 // Target screen dimensions: 432px width, 896px height
@@ -26,10 +27,9 @@ export const FRAME_HEIGHT = SCREEN_HEIGHT_TARGET + (FRAME_BODY_PADDING * 2) + SP
 
 export function MobileFrame({ children, className, isPreview = false, themeOverride }: MobileFrameProps) {
   const { resolvedTheme } = useTheme(); // For the editor's UI theme (light/dark)
-  const designContext = useDesign();     // For the canvas's M3 theme
   
   // Use the override if provided (for previews), otherwise use the context theme.
-  const m3Theme = themeOverride || designContext.m3Theme;
+  const m3Theme = themeOverride;
 
   const frameBodyColor = resolvedTheme === 'dark' ? 'bg-neutral-300' : 'bg-neutral-900';
   const speakerBarColor = resolvedTheme === 'dark' ? 'bg-neutral-400' : 'bg-neutral-950';

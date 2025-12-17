@@ -41,10 +41,11 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
         }}
       >
         {/* We wrap with a simplified MobileFrame to inject the theme context */}
-        <MobileFrame isPreview={true} themeOverride={m3Theme}>
+        <MobileFrame isPreview={true} themeOverride={m3Theme} getComponentById={getTemplateComponentById}>
             <RenderedComponentWrapper
                 component={rootComponent}
                 isPreview={true}
+                getComponentById={getTemplateComponentById}
             />
         </MobileFrame>
       </div>
