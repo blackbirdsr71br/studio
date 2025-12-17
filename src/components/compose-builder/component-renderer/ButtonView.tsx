@@ -1,4 +1,3 @@
-
 'use client';
 import type { BaseComponentProps } from '@/types/compose-spec';
 import { getDefaultProperties } from '@/types/compose-spec';
@@ -59,8 +58,8 @@ export function ButtonView({ properties }: ButtonViewProps) {
   } = allProps;
 
   const style: React.CSSProperties = {
-    backgroundColor: backgroundColor || 'hsl(var(--primary))',
-    color: textColor || 'hsl(var(--primary-foreground))',
+    backgroundColor: backgroundColor || 'var(--m3-primary)',
+    color: textColor || 'var(--m3-on-primary)',
     fontSize: `${fontSize}px`,
     paddingTop: `${paddingTop ?? padding ?? 8}px`,
     paddingBottom: `${paddingBottom ?? padding ?? 8}px`,

@@ -197,6 +197,69 @@ export interface SingleDesign {
   } | null;
 }
 
+export interface M3Colors {
+  primary: string;
+  onPrimary: string;
+  primaryContainer: string;
+  onPrimaryContainer: string;
+  secondary: string;
+  onSecondary: string;
+  secondaryContainer: string;
+  onSecondaryContainer: string;
+  tertiary: string;
+  onTertiary: string;
+  tertiaryContainer: string;
+  onTertiaryContainer: string;
+  error: string;
+  onError: string;
+  errorContainer: string;
+  onErrorContainer: string;
+  background: string;
+  onBackground: string;
+  surface: string;
+  onSurface: string;
+  surfaceVariant: string;
+  onSurfaceVariant: string;
+  outline: string;
+}
+
+export interface CustomColor {
+  name: string;
+  color: string;
+}
+
+export interface TextStyle {
+  fontFamily: string;
+  fontWeight: 'Normal' | 'Medium' | 'Bold';
+  fontSize: number;
+}
+
+export interface M3Typography {
+  displayLarge: TextStyle;
+  displayMedium: TextStyle;
+  displaySmall: TextStyle;
+  headlineLarge: TextStyle;
+  headlineMedium: TextStyle;
+  headlineSmall: TextStyle;
+  titleLarge: TextStyle;
+  titleMedium: TextStyle;
+  titleSmall: TextStyle;
+  bodyLarge: TextStyle;
+  bodyMedium: TextStyle;
+  bodySmall: TextStyle;
+  labelLarge: TextStyle;
+  labelMedium: TextStyle;
+  labelSmall: TextStyle;
+}
+
+export interface M3Shapes {
+  extraSmall: number;
+  small: number;
+  medium: number;
+  large: number;
+  extraLarge: number;
+}
+
 
 export interface DesignState {
   designs: SingleDesign[];
@@ -204,6 +267,14 @@ export interface DesignState {
   customComponentTemplates: CustomComponentTemplate[];
   savedLayouts: SavedLayout[];
   galleryImages: GalleryImage[];
+  m3Theme: {
+    lightColors: M3Colors;
+    darkColors: M3Colors;
+    customLightColors: any[];
+    customDarkColors: any[];
+    typography: M3Typography;
+    shapes: M3Shapes;
+  };
 }
 
 export const isContainerType = (type: ComponentType | string, customTemplates: CustomComponentTemplate[] = []): boolean => {
@@ -251,7 +322,6 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         children: [DEFAULT_CONTENT_LAZY_COLUMN_ID],
       };
     case 'Text':
-      const textDefaults = { ...getDefaultProperties('Text'), ...properties };
       return {
         ...commonLayout,
         text: 'Sample Text',
@@ -273,7 +343,6 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         ...defaultClickableBehavior,
       };
     case 'Button':
-      const buttonDefaults = { ...getDefaultProperties('Button'), ...properties };
       return {
         ...commonLayout,
         text: 'Click Me',
@@ -549,6 +618,57 @@ export const getComponentDisplayName = (type: ComponentType | string): string =>
       }
       return 'Unknown Component';
   }
+};
+
+export const availableFonts = [ 'Inter', 'Roboto', 'Lato', 'Oswald', 'Merriweather', 'Playfair Display', 'Source Code Pro', 'Poppins', 'Montserrat', 'Raleway', 'Nunito', 'Open Sans', 'EB Garamond', 'DM Sans' ];
+export const availableFontWeights = ['Normal', 'Medium', 'Bold'];
+
+export const defaultLightColors: M3Colors = {
+    primary: '#6750A4', onPrimary: '#FFFFFF', primaryContainer: '#EADDFF', onPrimaryContainer: '#21005D',
+    secondary: '#625B71', onSecondary: '#FFFFFF', secondaryContainer: '#E8DEF8', onSecondaryContainer: '#1D192B',
+    tertiary: '#7D5260', onTertiary: '#FFFFFF', tertiaryContainer: '#FFD8E4', onTertiaryContainer: '#31111D',
+    error: '#B3261E', onError: '#FFFFFF', errorContainer: '#F9DEDC', onErrorContainer: '#410E0B',
+    background: '#FEF7FF', onBackground: '#1D1B20',
+    surface: '#FEF7FF', onSurface: '#1D1B20',
+    surfaceVariant: '#E7E0EC', onSurfaceVariant: '#49454F',
+    outline: '#79747E',
+};
+
+export const defaultDarkColors: M3Colors = {
+    primary: '#D0BCFF', onPrimary: '#381E72', primaryContainer: '#4F378B', onPrimaryContainer: '#EADDFF',
+    secondary: '#CCC2DC', onSecondary: '#332D41', secondaryContainer: '#4A4458', onSecondaryContainer: '#E8DEF8',
+    tertiary: '#EFB8C8', onTertiary: '#492532', tertiaryContainer: '#633B48', onTertiaryContainer: '#FFD8E4',
+    error: '#F2B8B5', onError: '#601410', errorContainer: '#8C1D18', onErrorContainer: '#F9DEDC',
+    background: '#141218', onBackground: '#E6E1E5',
+    surface: '#141218', onSurface: '#E6E1E5',
+    surfaceVariant: '#49454F', onSurfaceVariant: '#CAC4D0',
+    outline: '#938F99',
+};
+
+export const defaultTypography: M3Typography = {
+    displayLarge: { fontFamily: 'Roboto', fontWeight: 'Normal', fontSize: 57 },
+    displayMedium: { fontFamily: 'Roboto', fontWeight: 'Normal', fontSize: 45 },
+    displaySmall: { fontFamily: 'Roboto', fontWeight: 'Normal', fontSize: 36 },
+    headlineLarge: { fontFamily: 'Roboto', fontWeight: 'Normal', fontSize: 32 },
+    headlineMedium: { fontFamily: 'Roboto', fontWeight: 'Normal', fontSize: 28 },
+    headlineSmall: { fontFamily: 'Roboto', fontWeight: 'Normal', fontSize: 24 },
+    titleLarge: { fontFamily: 'Roboto', fontWeight: 'Normal', fontSize: 22 },
+    titleMedium: { fontFamily: 'Roboto', fontWeight: 'Medium', fontSize: 16 },
+    titleSmall: { fontFamily: 'Roboto', fontWeight: 'Medium', fontSize: 14 },
+    bodyLarge: { fontFamily: 'Roboto', fontWeight: 'Normal', fontSize: 16 },
+    bodyMedium: { fontFamily: 'Roboto', fontWeight: 'Normal', fontSize: 14 },
+    bodySmall: { fontFamily: 'Roboto', fontWeight: 'Normal', fontSize: 12 },
+    labelLarge: { fontFamily: 'Roboto', fontWeight: 'Medium', fontSize: 14 },
+    labelMedium: { fontFamily: 'Roboto', fontWeight: 'Medium', fontSize: 12 },
+    labelSmall: { fontFamily: 'Roboto', fontWeight: 'Medium', fontSize: 11 },
+};
+
+export const defaultShapes: M3Shapes = {
+    extraSmall: 4,
+    small: 8,
+    medium: 12,
+    large: 16,
+    extraLarge: 28,
 };
 
 const ColorStringSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").or(z.literal('transparent'));
@@ -939,4 +1059,5 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
   ],
 };
 
+    
     

@@ -1,5 +1,3 @@
-
-
 'use client';
 import type { DesignComponent, ComponentType as OriginalComponentType, BaseComponentProps } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from '../component-renderer/RenderedComponentWrapper';
@@ -144,7 +142,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     height: '100%',
     boxSizing: 'border-box',
     position: 'relative', 
-    border: (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID || (effectiveType as string).startsWith('Lazy') || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar' || effectiveType === 'DropdownMenu') ? 'none' : ((effectiveType === 'Card') ? '1px solid hsl(var(--border) / 0.5)' : '1px dashed hsl(var(--border) / 0.3)'),
+    border: '1px solid var(--m3-outline, hsl(var(--border) / 0.5))',
     minWidth: '20px',
     minHeight: '20px',
     boxShadow: elevation > 0 ? `0 ${elevation}px ${elevation * 2}px rgba(0,0,0,0.1)` : 'none'
@@ -189,9 +187,10 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     } else if (typeof containerBackgroundColor === 'string') {
       baseStyle.backgroundColor = containerBackgroundColor;
     }
-  } else if (['Card', 'TopAppBar', 'BottomNavigationBar', 'Column', 'Row', 'Box', 'LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid'].includes(effectiveType)) {
-    baseStyle.backgroundColor = 'hsl(var(--card))';
+  } else if (['Card', 'TopAppBar', 'BottomNavigationBar'].includes(effectiveType)) {
+    baseStyle.backgroundColor = 'var(--m3-surface, hsl(var(--card)))';
   }
+
 
   if (explicitContentColor && typeof explicitContentColor === 'string' && explicitContentColor.trim() !== '') {
     (baseStyle as any)['--effective-foreground-color'] = explicitContentColor;
@@ -202,8 +201,8 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     baseStyle.color = contrastingColor;
   } else {
     if (effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar' || effectiveType === 'DropdownMenu') {
-      (baseStyle as any)['--effective-foreground-color'] = 'hsl(var(--card-foreground))';
-      baseStyle.color = 'hsl(var(--card-foreground))';
+      (baseStyle as any)['--effective-foreground-color'] = 'var(--m3-on-surface, hsl(var(--card-foreground)))';
+      baseStyle.color = 'var(--m3-on-surface, hsl(var(--card-foreground)))';
     }
   }
 
@@ -211,7 +210,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     if (typeof containerBackgroundColor === 'string') {
         baseStyle.backgroundColor = containerBackgroundColor;
     } else {
-        baseStyle.backgroundColor = 'transparent';
+        baseStyle.backgroundColor = 'var(--m3-background, transparent)';
     }
     baseStyle.width = '100%';
     baseStyle.height = 'auto';
@@ -239,8 +238,8 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   const dropdownButtonElement = effectiveType === 'DropdownMenu' ? (
     <div
       style={{
-        backgroundColor: effectiveProperties.backgroundColor as string || 'hsl(var(--primary))',
-        color: explicitContentColor || getContrastingTextColor(effectiveProperties.backgroundColor as string || 'hsl(var(--primary))'),
+        backgroundColor: effectiveProperties.backgroundColor as string || 'var(--m3-primary)',
+        color: explicitContentColor || 'var(--m3-on-primary)',
         padding: `${effectiveProperties.paddingTop ?? effectiveProperties.padding ?? 8}px ${effectiveProperties.paddingEnd ?? effectiveProperties.padding ?? 12}px ${effectiveProperties.paddingBottom ?? effectiveProperties.padding ?? 8}px ${effectiveProperties.paddingStart ?? effectiveProperties.padding ?? 12}px`,
         borderRadius: `${effectiveProperties.cornerRadius ?? 4}px`,
         display: 'flex',

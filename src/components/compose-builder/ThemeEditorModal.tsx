@@ -14,67 +14,10 @@ import { Separator } from '../ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
+import type { M3Colors, CustomColor, M3Typography, M3Shapes, TextStyle } from '@/types/compose-spec';
+import { availableFonts, availableFontWeights } from '@/types/compose-spec';
+import { useDesign } from '@/contexts/DesignContext';
 
-// --- TYPE DEFINITIONS ---
-
-interface M3Colors {
-  primary: string; onPrimary: string; primaryContainer: string; onPrimaryContainer: string;
-  secondary: string; onSecondary: string; secondaryContainer: string; onSecondaryContainer: string;
-  tertiary: string; onTertiary: string; tertiaryContainer: string; onTertiaryContainer: string;
-  error: string; onError: string; errorContainer: string; onErrorContainer: string;
-  background: string; onBackground: string;
-  surface: string; onSurface: string; surfaceVariant: string; onSurfaceVariant: string;
-  outline: string;
-}
-
-interface CustomColor { name: string; color: string; }
-
-interface TextStyle { fontFamily: string; fontWeight: 'Normal' | 'Medium' | 'Bold'; fontSize: number; }
-
-interface M3Typography {
-  displayLarge: TextStyle;
-  headlineMedium: TextStyle;
-  titleMedium: TextStyle;
-  bodyLarge: TextStyle;
-  labelSmall: TextStyle;
-}
-
-interface M3Shapes { small: number; medium: number; large: number; }
-
-// --- DEFAULTS ---
-
-const defaultLightColors: M3Colors = {
-  primary: '#6750A4', onPrimary: '#FFFFFF', primaryContainer: '#EADDFF', onPrimaryContainer: '#21005D',
-  secondary: '#625B71', onSecondary: '#FFFFFF', secondaryContainer: '#E8DEF8', onSecondaryContainer: '#1D192B',
-  tertiary: '#7D5260', onTertiary: '#FFFFFF', tertiaryContainer: '#FFD8E4', onTertiaryContainer: '#31111D',
-  error: '#B3261E', onError: '#FFFFFF', errorContainer: '#F9DEDC', onErrorContainer: '#410E0B',
-  background: '#FFFBFE', onBackground: '#1C1B1F',
-  surface: '#FFFBFE', onSurface: '#1C1B1F', surfaceVariant: '#E7E0EC', onSurfaceVariant: '#49454F',
-  outline: '#79747E',
-};
-
-const defaultDarkColors: M3Colors = {
-  primary: '#D0BCFF', onPrimary: '#381E72', primaryContainer: '#4F378B', onPrimaryContainer: '#EADDFF',
-  secondary: '#CCC2DC', onSecondary: '#332D41', secondaryContainer: '#4A4458', onSecondaryContainer: '#E8DEF8',
-  tertiary: '#EFB8C8', onTertiary: '#492532', tertiaryContainer: '#633B48', onTertiaryContainer: '#FFD8E4',
-  error: '#F2B8B5', onError: '#601410', errorContainer: '#8C1D18', onErrorContainer: '#F9DEDC',
-  background: '#1C1B1F', onBackground: '#E6E1E5',
-  surface: '#1C1B1F', onSurface: '#E6E1E5', surfaceVariant: '#49454F', onSurfaceVariant: '#CAC4D0',
-  outline: '#938F99',
-};
-
-const defaultTypography: M3Typography = {
-    displayLarge: { fontFamily: 'Roboto', fontWeight: 'Normal', fontSize: 57 },
-    headlineMedium: { fontFamily: 'Roboto', fontWeight: 'Normal', fontSize: 28 },
-    titleMedium: { fontFamily: 'Roboto', fontWeight: 'Medium', fontSize: 16 },
-    bodyLarge: { fontFamily: 'Roboto', fontWeight: 'Normal', fontSize: 16 },
-    labelSmall: { fontFamily: 'Roboto', fontWeight: 'Medium', fontSize: 11 },
-};
-
-const defaultShapes: M3Shapes = { small: 8, medium: 12, large: 16, };
-
-const availableFonts = [ 'Roboto', 'Lato', 'Oswald', 'Merriweather', 'Playfair Display', 'Source Code Pro', 'Poppins', 'Montserrat', 'Raleway', 'Nunito', 'Open Sans', 'EB Garamond', 'DM Sans', 'Inter' ];
-const availableFontWeights: ('Normal' | 'Medium' | 'Bold')[] = ['Normal', 'Medium', 'Bold'];
 
 // --- SUB-COMPONENTS ---
 
@@ -176,6 +119,7 @@ const ThemePreview: React.FC<{ colors: M3Colors; customColors: CustomColor[], ty
     }, [colors, customColors, typography, shapes]);
 
     return (
+      <ScrollArea className="h-full">
         <div className="w-full h-full p-4 rounded-lg transition-colors duration-200" style={{ backgroundColor: 'var(--preview-background)', color: 'var(--preview-on-background)', ...dynamicStyles }}>
             <h3 style={{ 
                 fontFamily: 'var(--font-family-headlineMedium)', 
@@ -223,6 +167,7 @@ const ThemePreview: React.FC<{ colors: M3Colors; customColors: CustomColor[], ty
                 </CardContent>
             </Card>
         </div>
+      </ScrollArea>
     );
 };
 
@@ -239,19 +184,14 @@ export const ThemeEditorModal = forwardRef<ThemeEditorModalRef, {}>((props, ref)
   const [activeThemeTab, setActiveThemeTab] = useState<'light' | 'dark'>('light');
   const [activeEditorTab, setActiveEditorTab] = useState<'colors' | 'typography' | 'shapes'>('colors');
   
-  const [lightColors, setLightColors] = useState<M3Colors>(defaultLightColors);
-  const [darkColors, setDarkColors] = useState<M3Colors>(defaultDarkColors);
-  const [customLightColors, setCustomLightColors] = useState<CustomColor[]>([]);
-  const [customDarkColors, setCustomDarkColors] = useState<CustomColor[]>([]);
-  const [typography, setTypography] = useState<M3Typography>(defaultTypography);
-  const [shapes, setShapes] = useState<M3Shapes>(defaultShapes);
+  const { m3Theme, setM3Theme } = useDesign();
 
   useImperativeHandle(ref, () => ({
     openModal: () => {
-      setLightColors(defaultLightColors); setDarkColors(defaultDarkColors);
-      setCustomLightColors([]); setCustomDarkColors([]);
-      setTypography(defaultTypography); setShapes(defaultShapes);
-      setActiveThemeTab('light'); setActiveEditorTab('colors');
+      // The state is now managed by the context, so we don't need to reset it here.
+      // We can just ensure the tabs are on their default state.
+      setActiveThemeTab('light');
+      setActiveEditorTab('colors');
       setIsOpen(true);
     }
   }));
@@ -259,12 +199,13 @@ export const ThemeEditorModal = forwardRef<ThemeEditorModalRef, {}>((props, ref)
   const handleGenerateThemeFile = async () => {
     setIsGenerating(true);
     try {
+        const { lightColors, darkColors, typography, shapes } = m3Theme;
         const toComposeColor = (hex: string) => `Color(0xFF${hex.substring(1).toUpperCase()})`;
         const toFontWeight = (w: 'Normal' | 'Medium' | 'Bold') => w === 'Normal' ? 'FontWeight.Normal' : w === 'Medium' ? 'FontWeight.Medium' : 'FontWeight.Bold';
 
         const lightColorScheme = Object.entries(lightColors).map(([n, c]) => `    ${n} = ${toComposeColor(c)}`).join(',\n');
         const darkColorScheme = Object.entries(darkColors).map(([n, c]) => `    ${n} = ${toComposeColor(c)}`).join(',\n');
-        const typographyStyles = (Object.keys(typography) as Array<keyof M3Typography>).map(key => `    ${key} = TextStyle(\n        fontFamily = ${typography[key].fontFamily},\n        fontWeight = ${toFontWeight(typography[key].fontWeight)},\n        fontSize = ${typography[key].fontSize}.sp\n    )`).join(',\n');
+        const typographyStyles = (Object.keys(typography) as Array<keyof M3Typography>).map(key => `    ${key} = TextStyle(\n        fontFamily = FontFamily.Default, // TODO: Replace with actual font\n        fontWeight = ${toFontWeight(typography[key].fontWeight)},\n        fontSize = ${typography[key].fontSize}.sp\n    )`).join(',\n');
         const shapesDef = (Object.keys(shapes) as Array<keyof M3Shapes>).map(key => `    ${key} = RoundedCornerShape(${shapes[key]}.dp)`).join(',\n');
         
         const themeFileContent = `
@@ -274,8 +215,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -317,43 +256,76 @@ fun AppTheme(useDarkTheme: Boolean = isSystemInDarkTheme(), content: @Composable
   };
   
     const handleAddCustomColor = () => {
-        const nextIndex = customLightColors.length + 1;
+        const nextIndex = m3Theme.customLightColors.length + 1;
         const newName = `custom${nextIndex}`;
-        setCustomLightColors([...customLightColors, { name: newName, color: '#FFC0CB' }]);
-        setCustomDarkColors([...customDarkColors, { name: newName, color: '#806065'}]);
+        setM3Theme(prev => ({
+            ...prev,
+            customLightColors: [...prev.customLightColors, { name: newName, color: '#FFC0CB' }],
+            customDarkColors: [...prev.customDarkColors, { name: newName, color: '#806065'}],
+        }));
     };
     
     const handleUpdateCustomColor = (index: number, field: 'name' | 'color', value: string, theme: 'light' | 'dark') => {
-        if (theme === 'light') {
-            const updated = [...customLightColors];
-            const oldName = updated[index].name;
-            updated[index] = { ...updated[index], [field]: value };
-            setCustomLightColors(updated);
-            if (field === 'name') {
-                const darkIndex = customDarkColors.findIndex(c => c.name === oldName);
-                if(darkIndex !== -1) { const updatedDark = [...customDarkColors]; updatedDark[darkIndex].name = value; setCustomDarkColors(updatedDark); }
+        setM3Theme(prev => {
+            const newTheme = { ...prev };
+            if (theme === 'light') {
+                const updated = [...newTheme.customLightColors];
+                const oldName = updated[index].name;
+                updated[index] = { ...updated[index], [field]: value };
+                newTheme.customLightColors = updated;
+                // Sync name change to dark theme
+                if (field === 'name') {
+                    const darkIndex = newTheme.customDarkColors.findIndex(c => c.name === oldName);
+                    if(darkIndex !== -1) { 
+                        const updatedDark = [...newTheme.customDarkColors]; 
+                        updatedDark[darkIndex].name = value; 
+                        newTheme.customDarkColors = updatedDark;
+                    }
+                }
+            } else {
+                const updated = [...newTheme.customDarkColors]; 
+                updated[index] = { ...updated[index], [field]: value }; 
+                newTheme.customDarkColors = updated;
             }
-        } else {
-            const updated = [...customDarkColors]; updated[index] = { ...updated[index], [field]: value }; setCustomDarkColors(updated);
-        }
+            return newTheme;
+        });
     };
 
     const handleRemoveCustomColor = (index: number) => {
-        const colorToRemove = customLightColors[index];
-        setCustomLightColors(customLightColors.filter((_, i) => i !== index));
-        setCustomDarkColors(customDarkColors.filter((c) => c.name !== colorToRemove.name));
+        setM3Theme(prev => {
+            const colorToRemove = prev.customLightColors[index];
+            return {
+                ...prev,
+                customLightColors: prev.customLightColors.filter((_, i) => i !== index),
+                customDarkColors: prev.customDarkColors.filter((c) => c.name !== colorToRemove.name),
+            }
+        });
     };
 
   const createColorStateUpdater = (theme: 'light' | 'dark') => {
-    const setColors = theme === 'light' ? setLightColors : setDarkColors;
-    const colors = theme === 'light' ? lightColors : darkColors;
-    return (key: keyof M3Colors, value: string) => { setColors({ ...colors, [key]: value }); };
+    return (key: keyof M3Colors, value: string) => { 
+        setM3Theme(prev => ({
+            ...prev,
+            [theme === 'light' ? 'lightColors' : 'darkColors']: {
+                ...prev[theme === 'light' ? 'lightColors' : 'darkColors'],
+                [key]: value,
+            }
+        }));
+    };
   }
 
+  const handleTypographyChange = (typography: M3Typography) => {
+    setM3Theme(prev => ({ ...prev, typography }));
+  };
+
+  const handleShapesChange = (shapes: M3Shapes) => {
+      setM3Theme(prev => ({ ...prev, shapes }));
+  };
+
   const renderColorSection = (theme: 'light' | 'dark') => {
-    const colors = theme === 'light' ? lightColors : darkColors;
+    const colors = theme === 'light' ? m3Theme.lightColors : m3Theme.darkColors;
     const setColor = createColorStateUpdater(theme);
-    const currentCustomColors = theme === 'light' ? customLightColors : customDarkColors;
+    const currentCustomColors = theme === 'light' ? m3Theme.customLightColors : m3Theme.customDarkColors;
 
     return (
         <div className="space-y-6">
@@ -366,8 +338,8 @@ fun AppTheme(useDarkTheme: Boolean = isSystemInDarkTheme(), content: @Composable
             <div>
                 <h3 className="text-base font-semibold mb-3 text-foreground">Custom Colors</h3>
                 <div className="space-y-4">
-                    {customLightColors.map((custom, index) => {
-                        const currentCustomColor = theme === 'light' ? customLightColors[index] : customDarkColors.find(c => c.name === custom.name);
+                    {m3Theme.customLightColors.map((custom, index) => {
+                        const currentCustomColor = theme === 'light' ? m3Theme.customLightColors[index] : m3Theme.customDarkColors.find(c => c.name === custom.name);
                         return (
                           <div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 p-3 border rounded-md relative">
                               <div className="flex items-center justify-between gap-4">
@@ -392,8 +364,8 @@ fun AppTheme(useDarkTheme: Boolean = isSystemInDarkTheme(), content: @Composable
     );
   }
 
-  const currentColorsForPreview = activeThemeTab === 'light' ? lightColors : darkColors;
-  const currentCustomColorsForPreview = activeThemeTab === 'light' ? customLightColors : customDarkColors;
+  const currentColorsForPreview = activeThemeTab === 'light' ? m3Theme.lightColors : m3Theme.darkColors;
+  const currentCustomColorsForPreview = activeThemeTab === 'light' ? m3Theme.customLightColors : m3Theme.customDarkColors;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -417,8 +389,8 @@ fun AppTheme(useDarkTheme: Boolean = isSystemInDarkTheme(), content: @Composable
                                     <TabsContent value="dark" forceMount={true} className={activeThemeTab === 'dark' ? 'block' : 'hidden'}>{renderColorSection('dark')}</TabsContent>
                                 </Tabs>
                             </TabsContent>
-                            <TabsContent value="typography"><TypographyEditor typography={typography} setTypography={setTypography} /></TabsContent>
-                            <TabsContent value="shapes"><ShapeEditor shapes={shapes} setShapes={setShapes} /></TabsContent>
+                            <TabsContent value="typography"><TypographyEditor typography={m3Theme.typography} setTypography={handleTypographyChange} /></TabsContent>
+                            <TabsContent value="shapes"><ShapeEditor shapes={m3Theme.shapes} setShapes={handleShapesChange} /></TabsContent>
                         </div>
                     </ScrollArea>
                 </Tabs>
@@ -426,9 +398,9 @@ fun AppTheme(useDarkTheme: Boolean = isSystemInDarkTheme(), content: @Composable
             
              <div className="flex flex-col min-h-0 bg-muted/30 rounded-lg">
                 <div className="p-2 border-b shrink-0"><h3 className="text-sm font-semibold text-center">Live Preview</h3></div>
-                <ScrollArea className="flex-grow">
-                    <ThemePreview colors={currentColorsForPreview} customColors={currentCustomColorsForPreview} typography={typography} shapes={shapes} />
-                </ScrollArea>
+                
+                <ThemePreview colors={currentColorsForPreview} customColors={currentCustomColorsForPreview} typography={m3Theme.typography} shapes={m3Theme.shapes} />
+                
             </div>
         </div>
         

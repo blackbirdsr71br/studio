@@ -1,4 +1,3 @@
-
 'use client';
 import type { BaseComponentProps } from '@/types/compose-spec';
 import { getDefaultProperties } from '@/types/compose-spec';
@@ -75,10 +74,11 @@ export function TextView({ properties }: TextViewProps) {
     }
   }
 
-  if (textColor !== undefined && !style.backgroundClip) {
+  if (textColor) {
     style.color = textColor;
   } else if (!style.backgroundClip) {
-    style.color = 'var(--effective-foreground-color, hsl(var(--foreground)))';
+    // If no specific text color, use the one provided by the container or the M3 theme default
+    style.color = 'var(--effective-foreground-color, var(--m3-on-surface, hsl(var(--foreground))))';
   }
 
   if (properties.fillMaxWidth) {

@@ -4,8 +4,10 @@
 
 import type { ReactNode} from 'react';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import type { DesignComponent, DesignState, ComponentType, BaseComponentProps, CustomComponentTemplate, SavedLayout, GalleryImage, SingleDesign } from '@/types/compose-spec';
-import { getDefaultProperties, CUSTOM_COMPONENT_TYPE_PREFIX, isContainerType as isContainerTypeUtil, getComponentDisplayName, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, CORE_SCAFFOLD_ELEMENT_IDS, CUSTOM_TEMPLATES_COLLECTION, SAVED_LAYOUTS_COLLECTION, GALLERY_IMAGES_COLLECTION, DESIGNS_COLLECTION, MAIN_DESIGN_DOC_ID } from '@/types/compose-spec';
+import type { DesignComponent, DesignState, ComponentType, BaseComponentProps, CustomComponentTemplate, SavedLayout, GalleryImage, SingleDesign, M3Colors, M3Typography, M3Shapes } from '@/types/compose-spec';
+import {
+    getDefaultProperties, CUSTOM_COMPONENT_TYPE_PREFIX, isContainerType as isContainerTypeUtil, getComponentDisplayName, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, CORE_SCAFFOLD_ELEMENT_IDS, CUSTOM_TEMPLATES_COLLECTION, SAVED_LAYOUTS_COLLECTION, GALLERY_IMAGES_COLLECTION, defaultLightColors, defaultDarkColors, defaultTypography, defaultShapes
+} from '@/types/compose-spec';
 import { db } from '@/lib/firebase';
 import { collection, doc, setDoc, getDocs, deleteDoc, query, orderBy, onSnapshot, Unsubscribe } from "firebase/firestore";
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +21,18 @@ interface DesignContextType extends DesignState {
   setActiveDesign: (designId: string) => void;
   updateDesignName: (designId: string, newName: string) => void;
   activeDesign: SingleDesign | undefined;
+
+  // M3 Theme state and updater
+  m3Theme: {
+    lightColors: M3Colors;
+    darkColors: M3Colors;
+    customLightColors: any[]; // Define more strictly if needed
+    customDarkColors: any[]; // Define more strictly if needed
+    typography: M3Typography;
+    shapes: M3Shapes;
+  };
+  setM3Theme: React.Dispatch<React.SetStateAction<DesignContextType['m3Theme']>>;
+
 
   // Existing functions, now adapted for multi-tab
   addComponent: (typeOrTemplateId: ComponentType | string, parentId?: string | null, dropPosition?: { x: number; y: number }, index?: number) => void;
@@ -101,13 +115,13 @@ const createNewDesign = (id: string, name: string, components?: DesignComponent[
 });
 
 
-const initialDesignState: DesignState = {
+const createInitialDesignState = (): DesignState => ({
   designs: [createNewDesign('design-1', 'Untitled-1')],
   activeDesignId: 'design-1',
   customComponentTemplates: [],
   savedLayouts: [],
   galleryImages: [],
-};
+});
 
 
 const flattenComponentsFromModalJson = (
@@ -314,7 +328,16 @@ function sanitizeForFirebase(data: any): any {
 
 
 export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [designState, setDesignState] = React.useState<DesignState>(initialDesignState);
+  const [designState, setDesignState] = React.useState<DesignState>(createInitialDesignState());
+  const [m3Theme, setM3Theme] = useState<DesignContextType['m3Theme']>({
+      lightColors: defaultLightColors,
+      darkColors: defaultDarkColors,
+      customLightColors: [],
+      customDarkColors: [],
+      typography: defaultTypography,
+      shapes: defaultShapes,
+  });
+
   const [isClient, setIsClient] = React.useState(false);
   const { toast } = useToast();
   const [zoomLevel, setZoomLevel] = useState(0.7);
@@ -1276,6 +1299,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const contextValue: DesignContextType = {
     ...designState,
+    m3Theme,
+    setM3Theme,
     activeDesign,
     addNewDesign, closeDesign, setActiveDesign, updateDesignName,
     addComponent, deleteComponent, selectComponent, updateComponent, updateComponentPosition,
@@ -1292,13 +1317,24 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   if (!isClient) {
-    const dummyContext = {
-      ...initialDesignState,
-      activeDesign: initialDesignState.designs[0],
-      getComponentById: (id: string) => initialDesignState.designs[0].components.find(c => c.id === id)
+    const dummyContext: Partial<DesignContextType> = {
+        ...createInitialDesignState(),
+        activeDesign: createInitialDesignState().designs[0],
+        m3Theme: {
+            lightColors: defaultLightColors,
+            darkColors: defaultDarkColors,
+            customLightColors: [],
+            customDarkColors: [],
+            typography: defaultTypography,
+            shapes: defaultShapes,
+        },
+        getComponentById: (id: string) => createInitialDesignState().designs[0].components.find(c => c.id === id),
+        setM3Theme: () => {},
+        setZoomLevel: () => {},
+        zoomLevel: 1,
     };
     return (
-      <DesignContext.Provider value={dummyContext as any}>
+      <DesignContext.Provider value={dummyContext as DesignContextType}>
         {children}
       </DesignContext.Provider>
     );
