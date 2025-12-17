@@ -30,7 +30,7 @@ import { useToast } from '@/hooks/use-toast';
 import { generateImageFromHintAction } from '@/app/actions';
 import { Separator } from '../ui/separator';
 import type { ImageSourceModalRef } from './ImageSourceModal';
-import type { BaseComponentProps, ClickAction, M3Colors } from '@/types/compose-spec';
+import type { BaseComponentProps, ClickAction, M3Colors, LinearGradient } from '@/types/compose-spec';
 import { ComponentTreeView } from './ComponentTreeView';
 import { DataBindingPanel } from './DataBindingPanel';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -50,8 +50,6 @@ const PREFERRED_GROUP_ORDER = ['Layout', 'Appearance', 'Content', 'Behavior'];
 const isLazyContainerType = (type: string) => 
     ['LazyColumn', 'LazyRow', 'LazyVerticalGrid', 'LazyHorizontalGrid'].includes(type);
 
-// This helper function centralizes the logic for determining which theme color a property corresponds to.
-// It's used both for displaying the effective color and for updating the theme.
 const getThemeColorKeyForComponentProp = (
   componentType: ComponentType | string,
   propName: keyof BaseComponentProps
@@ -90,7 +88,6 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
   const [newTemplateName, setNewTemplateName] = useState("");
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   
-  // State for static child generation
   const [staticChildType, setStaticChildType] = useState<string>('Card');
   const [staticChildCount, setStaticChildCount] = useState<number>(5);
   const [isGeneratingStatic, setIsGeneratingStatic] = useState(false);
@@ -145,7 +142,7 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
   }
   const componentPropsDef = (propertyDefinitions[componentPropsDefSourceType as ComponentType] || []) as (Omit<ComponentProperty, 'value'> & { group: string })[];
 
- const handlePropertyChange = (propName: keyof BaseComponentProps, value: string | number | boolean | ClickAction | null) => {
+ const handlePropertyChange = (propName: keyof BaseComponentProps, value: string | number | boolean | ClickAction | LinearGradient | null) => {
     let actualValue: any = value;
     const propDefinition = componentPropsDef.find(p => p.name === propName);
     
@@ -166,28 +163,28 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
         updates.fillMaxSize = isChecked && otherPropValue;
     }
 
+    // This updates the component's own properties
     updateComponent(selectedComponent.id, { properties: updates });
     
-    // --- Two-way binding logic ---
-    // If the changed property is a color and it has a corresponding theme color key...
+    // --- START: Bidirectional Theme Synchronization Logic ---
     if (propDefinition?.type === 'color' && typeof value === 'string') {
         const themeColorKey = getThemeColorKeyForComponentProp(componentPropsDefSourceType, propName);
         if (themeColorKey) {
-            // Update the theme in the context. This will trigger updates everywhere.
-            setM3Theme(prevTheme => ({
-                ...prevTheme,
-                lightColors: {
-                    ...prevTheme.lightColors,
-                    [themeColorKey]: value,
-                },
-                 // Optionally, update dark theme too or have a more complex logic
-                darkColors: {
-                    ...prevTheme.darkColors,
-                    [themeColorKey]: value,
-                }
-            }));
+            setM3Theme(prevTheme => {
+                const newColors = { ...prevTheme.lightColors, [themeColorKey]: value };
+                // Optionally update dark theme too, or have more complex logic.
+                // For simplicity, we can mirror the change.
+                const newDarkColors = { ...prevTheme.darkColors, [themeColorKey]: value };
+                
+                return {
+                    ...prevTheme,
+                    lightColors: newColors,
+                    darkColors: newDarkColors,
+                };
+            });
         }
     }
+    // --- END: Bidirectional Theme Synchronization Logic ---
 };
 
   
@@ -289,7 +286,6 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
           const updates: Partial<BaseComponentProps> = { cornerRadiusTopLeft: undefined, cornerRadiusTopRight: undefined, cornerRadiusBottomRight: undefined, cornerRadiusBottomLeft: undefined, cornerRadius: undefined };
 
           if (strValue === '') {
-               // Let's clear all corner properties
           } else {
               const numValue = parseFloat(strValue);
               if (!isNaN(numValue) && numValue >= 0) {
@@ -336,12 +332,11 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
               propertyGroups.push(group);
           }
       }
-
+      
       let currentValue = selectedComponent.properties[propDef.name];
-      // If the property is a color and it's undefined, get it from the theme
       if (propDef.type === 'color' && currentValue === undefined) {
           const themeColorKey = getThemeColorKeyForComponentProp(componentPropsDefSourceType, propDef.name as keyof BaseComponentProps);
-          if (themeColorKey) {
+          if (themeColorKey && m3Theme) {
               currentValue = m3Theme.lightColors[themeColorKey];
           }
       }
