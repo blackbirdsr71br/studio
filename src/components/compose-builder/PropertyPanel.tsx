@@ -167,20 +167,24 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
     updateComponent(selectedComponent.id, { properties: updates });
     
     // --- START: Bidirectional Theme Synchronization Logic ---
-    if (propDefinition?.type === 'color' && typeof value === 'string') {
-        const themeColorKey = getThemeColorKeyForComponentProp(componentPropsDefSourceType, propName);
+    if (propDefinition?.type === 'color' && typeof value === 'string' && value) {
+        const themeColorKey = getThemeColorKeyForComponentProp(componentPropsDefSourceType, propName as keyof BaseComponentProps);
         if (themeColorKey) {
             setM3Theme(prevTheme => {
-                const newColors = { ...prevTheme.lightColors, [themeColorKey]: value };
-                // Optionally update dark theme too, or have more complex logic.
-                // For simplicity, we can mirror the change.
+                // To support both light/dark theme editing in the future,
+                // we'll update both for now for simplicity.
+                const newLightColors = { ...prevTheme.lightColors, [themeColorKey]: value };
                 const newDarkColors = { ...prevTheme.darkColors, [themeColorKey]: value };
                 
-                return {
-                    ...prevTheme,
-                    lightColors: newColors,
-                    darkColors: newDarkColors,
-                };
+                // Only update if the color has actually changed
+                if (prevTheme.lightColors[themeColorKey] !== value) {
+                    return {
+                        ...prevTheme,
+                        lightColors: newLightColors,
+                        darkColors: newDarkColors,
+                    };
+                }
+                return prevTheme;
             });
         }
     }
@@ -334,15 +338,23 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
       }
       
       let currentValue = selectedComponent.properties[propDef.name];
-      if (propDef.type === 'color' && currentValue === undefined) {
+
+      // **** START: THE CRITICAL FIX ****
+      // If the component's own property value is undefined, and it's a color property,
+      // deduce the color from the M3 theme. This ensures the property panel shows the
+      // color that is actually being rendered on the canvas.
+      if (currentValue === undefined && propDef.type === 'color') {
           const themeColorKey = getThemeColorKeyForComponentProp(componentPropsDefSourceType, propDef.name as keyof BaseComponentProps);
           if (themeColorKey && m3Theme) {
+              // Assuming we are designing for the light theme in the editor for now
               currentValue = m3Theme.lightColors[themeColorKey];
           }
       }
+      // If still undefined, fallback to the component's default property value.
       if(currentValue === undefined) {
         currentValue = getDefaultProperties(componentPropsDefSourceType as ComponentType)[propDef.name as keyof BaseComponentProps]
       }
+      // **** END: THE CRITICAL FIX ****
       
       const editorElement = (
         <PropertyEditor
