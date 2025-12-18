@@ -128,7 +128,7 @@ function CustomComponentsList() {
 
 
 function LayoutsList() {
-    const { savedLayouts, isLoadingLayouts, loadLayout, deleteLayout, loadLayoutForEditing } = useDesign();
+    const { savedLayouts, isLoadingLayouts, loadLayout, deleteLayout, loadLayoutForEditing, customComponentTemplates, m3Theme } = useDesign();
 
     const handleLoad = (layout: SavedLayout) => {
         if (window.confirm(`This will replace your current canvas. Are you sure you want to load the layout "${layout.name}"?`)) {
@@ -178,7 +178,7 @@ function LayoutsList() {
                         </div>
                     </div>
                     <div className="w-full aspect-[9/16] bg-muted/30 rounded-md overflow-hidden relative border">
-                        <LayoutPreview layout={layout} />
+                        <LayoutPreview layout={layout} customComponentTemplates={customComponentTemplates} m3Theme={m3Theme} />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
                     </div>
                 </div>

@@ -4,8 +4,8 @@
 import React from 'react';
 import type { CustomComponentTemplate, DesignComponent, M3Theme } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from './component-renderer/RenderedComponentWrapper';
-import { useDesign } from '@/contexts/DesignContext';
 import { MobileFrame } from './MobileFrame';
+import { useDesign } from '@/contexts/DesignContext';
 
 interface TemplatePreviewProps {
   template: CustomComponentTemplate;
@@ -27,6 +27,18 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
   const componentWidth = typeof rootComponent.properties.width === 'number' ? rootComponent.properties.width : 200;
   const componentHeight = typeof rootComponent.properties.height === 'number' ? rootComponent.properties.height : 150;
   
+  const passThroughProps = {
+      getComponentById: getTemplateComponentById,
+      customComponentTemplates: [], // No nested templates in previews for now
+      activeDesignId: null,
+      zoomLevel: 1,
+      // Dummy functions for preview
+      selectComponent: () => {},
+      addComponent: () => {},
+      moveComponent: () => {},
+      updateComponent: () => {},
+  };
+
   return (
     <div 
         className="w-full h-full flex items-center justify-center bg-background"
@@ -41,11 +53,11 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
         }}
       >
         {/* We wrap with a simplified MobileFrame to inject the theme context */}
-        <MobileFrame isPreview={true} themeOverride={m3Theme} getComponentById={getTemplateComponentById}>
+        <MobileFrame isPreview={true} themeOverride={m3Theme}>
             <RenderedComponentWrapper
                 component={rootComponent}
                 isPreview={true}
-                getComponentById={getTemplateComponentById}
+                {...passThroughProps}
             />
         </MobileFrame>
       </div>

@@ -1,25 +1,32 @@
-
 'use client';
 
 import type { DesignComponent, CustomComponentTemplate, BaseComponentProps } from '@/types/compose-spec';
-import { useDesign } from '@/contexts/DesignContext';
 import { cn } from '@/lib/utils';
 import { TextView } from './TextView';
 import { ButtonView } from './ButtonView';
 import { ImageView } from './ImageView';
 import { ContainerView } from './ContainerView';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useDrag, useDrop } from 'react-dnd';
+import { useDrag, useDrop, type DndProvider } from 'react-dnd';
 import { ItemTypes } from '@/lib/dnd-types';
-import { isContainerType, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID, CORE_SCAFFOLD_ELEMENT_IDS } from '@/types/compose-spec';
+import { isContainerType, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID, CORE_SCAFFOLD_ELEMENT_IDS, getComponentDisplayName, isCustomComponentType } from '@/types/compose-spec';
 import { CheckboxView } from './CheckboxView';
 import { RadioButtonView } from './RadioButtonView';
+
 
 interface RenderedComponentWrapperProps {
   component: DesignComponent;
   isPreview?: boolean;
-  getComponentById: (id: string) => DesignComponent | undefined; // Pass getter as prop
+  getComponentById: (id: string) => DesignComponent | undefined; 
+  customComponentTemplates: CustomComponentTemplate[];
+  activeDesignId: string | null;
+  zoomLevel: number;
+  selectComponent: (id: string) => void;
+  addComponent: (typeOrTemplateId: string, parentId: string | null, dropPosition?: { x: number; y: number }, index?: number) => void;
+  moveComponent: (draggedId: string, newParentId: string | null, newIndex?: number) => void;
+  updateComponent: (id: string, updates: { properties: Partial<BaseComponentProps> }) => void;
 }
+
 
 interface DraggedCanvasItem {
   id: string;
@@ -81,9 +88,18 @@ const getDimensionValue = (
     return 'auto';
 };
   
-export function RenderedComponentWrapper({ component, isPreview = false, getComponentById }: RenderedComponentWrapperProps) {
-  // Only get functions from context, no state that would cause re-renders in previews
-  const { activeDesign, zoomLevel, selectComponent, addComponent, moveComponent, updateComponent, customComponentTemplates } = useDesign();
+export function RenderedComponentWrapper({ 
+  component, 
+  isPreview = false,
+  getComponentById,
+  customComponentTemplates,
+  activeDesignId,
+  zoomLevel,
+  selectComponent,
+  addComponent,
+  moveComponent,
+  updateComponent,
+ }: RenderedComponentWrapperProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [dropIndicator, setDropIndicator] = useState<DropIndicatorPosition>(null);
   const [isResizing, setIsResizing] = useState(false);
@@ -202,7 +218,7 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
 
   drag(drop(ref));
 
-  const isSelected = !isPreview && activeDesign?.selectedComponentId === component.id;
+  const isSelected = !isPreview && activeDesignId === component.id;
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -294,6 +310,17 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
     const childrenToRender = (component.properties.children || [])
       .map(id => getComponentById(id))
       .filter(Boolean) as DesignComponent[];
+
+    const passThroughProps = {
+      getComponentById,
+      customComponentTemplates,
+      activeDesignId,
+      zoomLevel,
+      selectComponent,
+      addComponent,
+      moveComponent,
+      updateComponent,
+    };
     
     switch (component.type) {
       case 'Scaffold':
@@ -302,13 +329,13 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
         const bottomBarChild = childrenToRender.find(c => c.type === 'BottomNavigationBar' || c.id === DEFAULT_BOTTOM_NAV_BAR_ID);
         
         return (
-          <div className="flex flex-col w-full h-full bg-[var(--scaffold-bg-color)]" style={{'--scaffold-bg-color': component.properties.backgroundColor || 'var(--m3-background)'} as React.CSSProperties}>
+          <div className="flex flex-col w-full h-full bg-[var(--m3-background)]" style={{'--scaffold-bg-color': component.properties.backgroundColor || 'var(--m3-background)'} as React.CSSProperties}>
             {topBarChild && (
               <div style={{ flexShrink: 0, width: '100%', height: `${topBarChild.properties.height || 56}px` }} className="flex w-full">
                 <RenderedComponentWrapper 
                     component={topBarChild} 
                     isPreview={isPreview}
-                    getComponentById={getComponentById}
+                    {...passThroughProps}
                 />
               </div>
             )}
@@ -320,7 +347,7 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
                 <RenderedComponentWrapper 
                     component={contentChild} 
                     isPreview={isPreview}
-                    getComponentById={getComponentById}
+                    {...passThroughProps}
                 />
               </div>
             )}
@@ -329,7 +356,7 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
                  <RenderedComponentWrapper 
                     component={bottomBarChild} 
                     isPreview={isPreview}
-                    getComponentById={getComponentById}
+                    {...passThroughProps}
                  />
               </div>
             )}
@@ -352,7 +379,7 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
       case 'LazyColumn': 
       case 'AnimatedContent':
       case 'DropdownMenu': // Add DropdownMenu here to be treated as a vertical container
-        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={false} isPreview={isPreview} getComponentById={getComponentById} />;
+        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={false} isPreview={isPreview} passThroughProps={passThroughProps} />;
 
       case 'Row':
       case 'LazyRow':
@@ -360,7 +387,7 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
       case 'LazyHorizontalGrid':
       case 'TopAppBar': 
       case 'BottomNavigationBar':
-        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={true} isPreview={isPreview} getComponentById={getComponentById} />;
+        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={true} isPreview={isPreview} passThroughProps={passThroughProps} />;
       
       case 'Spacer':
         const width = component.properties.width ?? 8;
@@ -383,7 +410,7 @@ export function RenderedComponentWrapper({ component, isPreview = false, getComp
              const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
              if (rootTemplateComponent) {
                 const isTemplateRootRowLike = ['Row', 'LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar'].includes(rootTemplateComponent.type);
-                return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isTemplateRootRowLike} isPreview={isPreview} getComponentById={getComponentById} />;
+                return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isTemplateRootRowLike} isPreview={isPreview} passThroughProps={passThroughProps} />;
              }
            }
         }

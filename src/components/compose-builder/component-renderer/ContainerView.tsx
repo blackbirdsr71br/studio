@@ -1,9 +1,7 @@
-
 'use client';
-import type { DesignComponent, ComponentType as OriginalComponentType, BaseComponentProps } from '@/types/compose-spec';
+import type { DesignComponent, ComponentType as OriginalComponentType, BaseComponentProps, CustomComponentTemplate } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from '../component-renderer/RenderedComponentWrapper';
 import { getComponentDisplayName, DEFAULT_CONTENT_LAZY_COLUMN_ID, isCustomComponentType, ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID, getDefaultProperties } from '@/types/compose-spec';
-import { useDesign } from '@/contexts/DesignContext';
 import { cn } from '@/lib/utils';
 import { TextView } from './TextView'; 
 import { useTheme } from '@/contexts/ThemeContext';
@@ -14,7 +12,16 @@ interface ContainerViewProps {
   childrenComponents: DesignComponent[];
   isRow: boolean;
   isPreview?: boolean;
-  getComponentById: (id: string) => DesignComponent | undefined;
+  passThroughProps: {
+      getComponentById: (id: string) => DesignComponent | undefined;
+      customComponentTemplates: CustomComponentTemplate[];
+      activeDesignId: string | null;
+      zoomLevel: number;
+      selectComponent: (id: string) => void;
+      addComponent: (typeOrTemplateId: string, parentId: string | null, dropPosition?: { x: number; y: number }, index?: number) => void;
+      moveComponent: (draggedId: string, newParentId: string | null, newIndex?: number) => void;
+      updateComponent: (id: string, updates: { properties: Partial<BaseComponentProps> }) => void;
+  }
 }
 
 const isNumericValue = (value: any): boolean => {
@@ -49,8 +56,8 @@ const processDimension = (
   return defaultValueIfUndefined.toString();
 };
 
-export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, isPreview = false, getComponentById }: ContainerViewProps) {
-  const { customComponentTemplates } = useDesign();
+export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, isPreview = false, passThroughProps }: ContainerViewProps) {
+  const { customComponentTemplates } = passThroughProps;
   const { resolvedTheme } = useTheme();
 
   let effectiveType: OriginalComponentType | string = component.type;
@@ -348,7 +355,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
                   key={child.id} 
                   component={child} 
                   isPreview={isPreview}
-                  getComponentById={getComponentById}
+                  {...passThroughProps}
               />
             ))
           )}

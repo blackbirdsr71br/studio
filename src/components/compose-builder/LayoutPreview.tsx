@@ -2,18 +2,18 @@
 'use client';
 
 import React from 'react';
-import type { SavedLayout, DesignComponent, M3Theme } from '@/types/compose-spec';
+import type { SavedLayout, DesignComponent, M3Theme, CustomComponentTemplate } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from './component-renderer/RenderedComponentWrapper';
 import { ROOT_SCAFFOLD_ID } from '@/types/compose-spec';
 import { MobileFrame, FRAME_WIDTH, FRAME_HEIGHT } from './MobileFrame';
-import { useDesign } from '@/contexts/DesignContext';
 
 interface LayoutPreviewProps {
   layout: SavedLayout;
+  customComponentTemplates: CustomComponentTemplate[];
+  m3Theme?: M3Theme;
 }
 
-export function LayoutPreview({ layout }: LayoutPreviewProps) {
-  const { m3Theme } = useDesign(); // Get the current theme from context
+export function LayoutPreview({ layout, customComponentTemplates, m3Theme }: LayoutPreviewProps) {
 
   const getLayoutComponentById = (id: string): DesignComponent | undefined => {
     return layout.components.find(c => c.id === id);
@@ -31,6 +31,19 @@ export function LayoutPreview({ layout }: LayoutPreviewProps) {
   // Calculate the scale factor to fit the entire MobileFrame within the preview container width
   const scale = previewContainerWidth / FRAME_WIDTH;
 
+  const passThroughProps = {
+      getComponentById: getLayoutComponentById,
+      customComponentTemplates,
+      activeDesignId: null,
+      zoomLevel: scale,
+      // Dummy functions for preview
+      selectComponent: () => {},
+      addComponent: () => {},
+      moveComponent: () => {},
+      updateComponent: () => {},
+  };
+
+
   return (
     <div 
         className="w-full h-full flex items-center justify-center overflow-hidden bg-background relative"
@@ -46,11 +59,11 @@ export function LayoutPreview({ layout }: LayoutPreviewProps) {
             transform: `translate(-50%, -50%) scale(${scale})`,
         }}
       >
-          <MobileFrame isPreview={true} themeOverride={m3Theme} getComponentById={getLayoutComponentById}>
+          <MobileFrame isPreview={true} themeOverride={m3Theme}>
             <RenderedComponentWrapper
                 component={rootComponent}
                 isPreview={true}
-                getComponentById={getLayoutComponentById}
+                {...passThroughProps}
             />
           </MobileFrame>
       </div>
