@@ -140,7 +140,8 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
       if (rootTemplateComponent) componentPropsDefSourceType = rootTemplateComponent.type;
     }
   }
-  const componentPropsDef = (propertyDefinitions[componentPropsDefSourceType as ComponentType] || []) as (Omit<ComponentProperty, 'value'> & { group: string })[];
+  const componentPropsDef = (propertyDefinitions[componentPropsDefSourceType as ComponentType] || [])
+    .filter(prop => !prop.showIf || prop.showIf(selectedComponent.properties)) as (Omit<ComponentProperty, 'value'> & { group: string })[];
 
  const handlePropertyChange = (propName: keyof BaseComponentProps, value: string | number | boolean | ClickAction | LinearGradient | null) => {
     let actualValue: any = value;
@@ -549,3 +550,4 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     </aside>
   );
 }
+

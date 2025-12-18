@@ -1,4 +1,5 @@
 
+
 'use client';
 import type { DesignComponent, ComponentType as OriginalComponentType, BaseComponentProps, CustomComponentTemplate } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from '../component-renderer/RenderedComponentWrapper';
@@ -99,6 +100,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     fillMaxHeight,
     dataSource,
     carouselOrientation,
+    carouselStyle,
     carouselContentPadding,
   } = effectiveProperties;
 
@@ -286,21 +288,26 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
      delete childrenContainerStyle.flexDirection;
   }
    if (effectiveType === 'Carousel') {
-    childrenContainerStyle.overflowX = carouselOrientation === 'Horizontal' ? 'auto' : 'hidden';
-    childrenContainerStyle.overflowY = carouselOrientation === 'Vertical' ? 'auto' : 'hidden';
-    childrenContainerStyle.flexDirection = carouselOrientation === 'Horizontal' ? 'row' : 'column';
-    childrenContainerStyle.flexWrap = 'nowrap';
-    childrenContainerStyle.scrollSnapType = carouselOrientation === 'Horizontal' ? 'x mandatory' : 'y mandatory';
-    if(carouselContentPadding > 0){
+    if (carouselStyle === 'Pager') {
+        childrenContainerStyle.overflowX = carouselOrientation === 'Horizontal' ? 'auto' : 'hidden';
+        childrenContainerStyle.overflowY = carouselOrientation === 'Vertical' ? 'auto' : 'hidden';
+        childrenContainerStyle.flexDirection = carouselOrientation === 'Horizontal' ? 'row' : 'column';
+        childrenContainerStyle.flexWrap = 'nowrap';
+        childrenContainerStyle.scrollSnapType = carouselOrientation === 'Horizontal' ? 'x mandatory' : 'y mandatory';
         childrenContainerStyle.paddingLeft = `${carouselContentPadding}px`;
         childrenContainerStyle.paddingRight = `${carouselContentPadding}px`;
+    } else { // MultiBrowse
+        childrenContainerStyle.overflowX = 'auto';
+        childrenContainerStyle.overflowY = 'hidden';
+        childrenContainerStyle.flexDirection = 'row';
+        childrenContainerStyle.flexWrap = 'nowrap';
     }
   }
 
 
   // The base container is always a column now, to stack the dropdown button and the children
   baseStyle.flexDirection = 'column';
-  if (isLazyRowType) {
+  if (isLazyRowType || (effectiveType === 'Carousel' && carouselStyle === 'MultiBrowse')) {
     baseStyle.flexDirection = 'row';
     childrenContainerStyle.flexDirection = 'row';
     childrenContainerStyle.flexWrap = 'nowrap';
@@ -368,15 +375,21 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
               {(!isDataBound && effectiveType === 'LazyHorizontalGrid' && effectiveProperties.rows) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.rows})</span>}
             </div>
           ) : (
-             childrenComponents.map(child => (
-                <div key={child.id} style={{scrollSnapAlign: 'start', flexShrink: 0}}>
-                    <RenderedComponentWrapper 
-                        component={child} 
-                        isPreview={isPreview}
-                        {...passThroughProps}
-                    />
-                </div>
-            ))
+             childrenComponents.map(child => {
+                const childWrapperStyle: React.CSSProperties = { flexShrink: 0, scrollSnapAlign: 'start' };
+                 if (effectiveType === 'Carousel' && carouselStyle === 'MultiBrowse') {
+                    childWrapperStyle.width = `${effectiveProperties.preferredItemWidth}px`;
+                }
+                return (
+                    <div key={child.id} style={childWrapperStyle}>
+                        <RenderedComponentWrapper 
+                            component={child} 
+                            isPreview={isPreview}
+                            {...passThroughProps}
+                        />
+                    </div>
+                );
+             })
           )}
       </div>
     </div>

@@ -54,6 +54,7 @@ export interface ComponentProperty {
   label: string;
   placeholder?: string;
   group: 'Layout' | 'Appearance' | 'Content' | 'Behavior' | 'Slots' | 'Save' | 'Group' | 'Children Generation' | 'Carousel Settings';
+  showIf?: (props: BaseComponentProps) => boolean;
 }
 
 export interface ClickAction {
@@ -138,8 +139,10 @@ export interface BaseComponentProps {
   enabled?: boolean; // For interactive components
   
   // New Carousel properties
+  carouselStyle?: 'Pager' | 'MultiBrowse';
   carouselOrientation?: 'Horizontal' | 'Vertical';
   carouselContentPadding?: number; // For peeking items
+  preferredItemWidth?: number; // For MultiBrowseCarousel
 
   // Properties for Scaffold structure, used by AI generation
   topBarId?: string; // ID of the TopAppBar component
@@ -469,14 +472,16 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
       return {
         ...commonLayout,
         children: [],
-        width: undefined, // Default to fill available space
+        width: undefined,
         height: 200,
         fillMaxWidth: true,
+        carouselStyle: 'Pager',
         carouselOrientation: 'Horizontal',
-        carouselContentPadding: 16, // For peeking items
+        carouselContentPadding: 0,
         itemSpacing: 8,
         verticalAlignment: 'CenterVertically',
         userScrollEnabled: true,
+        preferredItemWidth: 186,
       };
     case 'LazyColumn':
       const isContentArea = componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID;
@@ -983,7 +988,9 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'onClickAction', type: 'action', label: 'Click Action', group: 'Behavior' },
   ],
   Carousel: [
-    { name: 'carouselOrientation', type: 'enum', label: 'Orientation', group: 'Carousel Settings', options: [{ label: 'Horizontal', value: 'Horizontal' }, { label: 'Vertical', value: 'Vertical' }] },
+    { name: 'carouselStyle', type: 'enum', label: 'Carousel Style', group: 'Carousel Settings', options: [{ label: 'Paginador', value: 'Pager' }, { label: 'Multi-Navegación', value: 'MultiBrowse' }] },
+    { name: 'carouselOrientation', type: 'enum', label: 'Orientation', group: 'Carousel Settings', options: [{ label: 'Horizontal', value: 'Horizontal' }, { label: 'Vertical', value: 'Vertical' }], showIf: (props) => props.carouselStyle === 'Pager' },
+    { name: 'preferredItemWidth', type: 'number', label: 'Ancho Preferido del Ítem (dp)', group: 'Carousel Settings', placeholder: 'e.g., 186', showIf: (props) => props.carouselStyle === 'MultiBrowse' },
     { name: 'itemSpacing', type: 'number', label: 'Item Spacing (dp)', group: 'Carousel Settings', placeholder: 'e.g., 8' },
     { name: 'carouselContentPadding', type: 'number', label: 'Content Padding (dp)', group: 'Carousel Settings', placeholder: 'e.g., 16' },
     { name: 'verticalAlignment', type: 'enum', label: 'Vertical Alignment', group: 'Layout', options: [{ label: 'Top', value: 'Top' }, { label: 'Center Vertically', value: 'CenterVertically' }, { label: 'Bottom', value: 'Bottom' }] },
@@ -1099,4 +1106,5 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
 
     
     
+
 
