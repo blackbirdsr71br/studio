@@ -6,7 +6,9 @@ import type { ReactNode} from 'react';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { DesignComponent, DesignState, ComponentType, BaseComponentProps, CustomComponentTemplate, SavedLayout, GalleryImage, SingleDesign, M3Colors, M3Typography, M3Shapes } from '@/types/compose-spec';
 import {
-    getDefaultProperties, CUSTOM_COMPONENT_TYPE_PREFIX, isContainerType as isContainerTypeUtil, getComponentDisplayName, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, CORE_SCAFFOLD_ELEMENT_IDS, CUSTOM_TEMPLATES_COLLECTION, SAVED_LAYOUTS_COLLECTION, GALLERY_IMAGES_COLLECTION, defaultLightColors, defaultDarkColors, defaultTypography, defaultShapes
+    getDefaultProperties, CUSTOM_COMPONENT_TYPE_PREFIX, isContainerType as isContainerTypeUtil, getComponentDisplayName, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, CORE_SCAFFOLD_ELEMENT_IDS, CUSTOM_TEMPLATES_COLLECTION, SAVED_LAYOUTS_COLLECTION, GALLERY_IMAGES_COLLECTION, defaultLightColors, defaultDarkColors, defaultTypography, defaultShapes,
+    APP_THEME_COLLECTION,
+    M3_THEME_DOC_ID
 } from '@/types/compose-spec';
 import { db } from '@/lib/firebase';
 import { collection, doc, setDoc, getDocs, deleteDoc, query, orderBy, onSnapshot, Unsubscribe } from "firebase/firestore";
@@ -116,8 +118,6 @@ const createNewDesign = (id: string, name: string, components?: DesignComponent[
     editingLayoutInfo: null,
 });
 
-
-const M3_THEME_STORAGE_KEY = "compose-builder-m3-theme";
 
 const defaultThemeState = {
   lightColors: defaultLightColors,
@@ -359,21 +359,30 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   // --- M3 Theme Persistence ---
   const { m3Theme, activeM3ThemeScheme } = designState;
 
+  // Debounced function to save the theme to Firestore
+  const debouncedSaveTheme = useDebouncedCallback((themeToSave: DesignContextType['m3Theme']) => {
+      if (db) {
+          const themeDocRef = doc(db, APP_THEME_COLLECTION, M3_THEME_DOC_ID);
+          // We use setDoc with merge:true to be safe, although we are saving the whole object.
+          setDoc(themeDocRef, sanitizeForFirebase(themeToSave), { merge: true }).catch(error => {
+              console.error("Failed to save theme to Firestore:", error);
+              toast({
+                  title: "Theme Save Error",
+                  description: "Could not save theme changes to the cloud.",
+                  variant: "destructive"
+              });
+          });
+      }
+  }, 500); // 500ms debounce delay
+
   const setM3Theme = (
     updater: React.SetStateAction<DesignContextType['m3Theme']>
   ) => {
     setDesignState(prev => {
       const newM3Theme = typeof updater === 'function' ? updater(prev.m3Theme) : updater;
       if (newM3Theme !== prev.m3Theme) {
-        // Also save to localStorage upon update
-        try {
-            if (typeof window !== 'undefined') {
-                const themeToSave = JSON.stringify(newM3Theme);
-                localStorage.setItem(M3_THEME_STORAGE_KEY, themeToSave);
-            }
-        } catch (error) {
-            console.error("Failed to save theme to localStorage", error);
-        }
+        // Save to Firestore upon update
+        debouncedSaveTheme(newM3Theme);
         return { ...prev, m3Theme: newM3Theme };
       }
       return prev;
@@ -384,21 +393,34 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setDesignState(prev => ({...prev, activeM3ThemeScheme: scheme}));
   }
 
-  // Effect to load theme from localStorage, ONLY on the client after hydration
+  // Effect to load theme from Firestore, ONLY on the client after hydration
   useEffect(() => {
-    try {
-        const savedTheme = localStorage.getItem(M3_THEME_STORAGE_KEY);
-        if (savedTheme) {
-            const parsed = JSON.parse(savedTheme);
-            // Basic validation
-            if (parsed.lightColors && parsed.darkColors && parsed.typography && parsed.shapes) {
-                setDesignState(prev => ({...prev, m3Theme: parsed }));
-            }
+    if (db) {
+      const themeDocRef = doc(db, APP_THEME_COLLECTION, M3_THEME_DOC_ID);
+      const unsubscribe = onSnapshot(themeDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const loadedTheme = docSnap.data();
+          // Basic validation
+          if (loadedTheme.lightColors && loadedTheme.darkColors && loadedTheme.typography && loadedTheme.shapes) {
+            setDesignState(prev => ({...prev, m3Theme: loadedTheme as DesignContextType['m3Theme'] }));
+          }
+        } else {
+          console.log("No custom theme found in Firestore, using default.");
+          // Optionally, save the default theme to Firestore if it doesn't exist
+          setDoc(themeDocRef, sanitizeForFirebase(defaultThemeState)).catch(e => console.error("Could not save initial default theme:", e));
         }
-    } catch (error) {
-        console.error("Failed to load or parse theme from localStorage", error);
+      }, (error) => {
+        console.error("Error loading theme from Firestore:", error);
+        toast({
+          title: "Theme Load Error",
+          description: "Could not load theme from the cloud.",
+          variant: "destructive"
+        });
+      });
+
+      return () => unsubscribe(); // Cleanup subscription on unmount
     }
-  }, []);
+  }, [toast]);
 
   
   // Wrapper for state updates to manage history for the active design
@@ -1382,6 +1404,7 @@ export const useDesign = (): DesignContextType => {
 };
 
 export { DesignContext };
+
 
 
 

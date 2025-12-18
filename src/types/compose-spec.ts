@@ -37,6 +37,8 @@ export const MAIN_DESIGN_DOC_ID = "main-design-doc";
 export const CUSTOM_TEMPLATES_COLLECTION = "custom-component-templates";
 export const SAVED_LAYOUTS_COLLECTION = "saved-layouts";
 export const GALLERY_IMAGES_COLLECTION = "gallery-images";
+export const APP_THEME_COLLECTION = "app-theme";
+export const M3_THEME_DOC_ID = "m3-theme";
 
 
 export interface ComponentPropertyOption {
@@ -523,6 +525,10 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         selfAlign: undefined,
         clickable: false,
         onClickAction: undefined,
+      };
+    case 'Scaffold':
+      return {
+        backgroundColor: 'transparent',
       };
     case 'TopAppBar': // New default for TopAppBar
       return {
