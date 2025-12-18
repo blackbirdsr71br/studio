@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { DesignComponent, CustomComponentTemplate, BaseComponentProps } from '@/types/compose-spec';
