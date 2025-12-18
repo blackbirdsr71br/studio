@@ -255,52 +255,67 @@ fun AppTheme(useDarkTheme: Boolean = isSystemInDarkTheme(), content: @Composable
     }
   };
   
-    const handleAddCustomColor = () => {
-        const nextIndex = m3Theme.customLightColors.length + 1;
+  const handleAddCustomColor = () => {
+    setM3Theme(prev => {
+        const nextIndex = (prev.customLightColors?.length || 0) + 1;
         const newName = `custom${nextIndex}`;
-        setM3Theme(prev => ({
+        return {
             ...prev,
-            customLightColors: [...prev.customLightColors, { name: newName, color: '#FFC0CB' }],
-            customDarkColors: [...prev.customDarkColors, { name: newName, color: '#806065'}],
-        }));
-    };
-    
-    const handleUpdateCustomColor = (index: number, field: 'name' | 'color', value: string, theme: 'light' | 'dark') => {
-        setM3Theme(prev => {
-            const newTheme = { ...prev };
-            if (theme === 'light') {
-                const updated = [...newTheme.customLightColors];
-                const oldName = updated[index].name;
-                updated[index] = { ...updated[index], [field]: value };
-                newTheme.customLightColors = updated;
-                // Sync name change to dark theme
-                if (field === 'name') {
-                    const darkIndex = newTheme.customDarkColors.findIndex(c => c.name === oldName);
-                    if(darkIndex !== -1) { 
-                        const updatedDark = [...newTheme.customDarkColors]; 
-                        updatedDark[darkIndex].name = value; 
-                        newTheme.customDarkColors = updatedDark;
-                    }
-                }
-            } else {
-                const updated = [...newTheme.customDarkColors]; 
-                updated[index] = { ...updated[index], [field]: value }; 
-                newTheme.customDarkColors = updated;
-            }
-            return newTheme;
-        });
-    };
+            customLightColors: [...(prev.customLightColors || []), { name: newName, color: '#FFC0CB' }],
+            customDarkColors: [...(prev.customDarkColors || []), { name: newName, color: '#806065' }],
+        };
+    });
+  };
 
-    const handleRemoveCustomColor = (index: number) => {
-        setM3Theme(prev => {
-            const colorToRemove = prev.customLightColors[index];
-            return {
-                ...prev,
-                customLightColors: prev.customLightColors.filter((_, i) => i !== index),
-                customDarkColors: prev.customDarkColors.filter((c) => c.name !== colorToRemove.name),
-            }
-        });
-    };
+  const handleUpdateCustomColor = (index: number, field: 'name' | 'color', value: string, theme: 'light' | 'dark') => {
+      setM3Theme(prev => {
+          const newTheme = { ...prev };
+          if (theme === 'light') {
+              const updated = [...(newTheme.customLightColors || [])];
+              const oldName = updated[index].name;
+              updated[index] = { ...updated[index], [field]: value };
+              newTheme.customLightColors = updated;
+              
+              if (field === 'name') {
+                  const darkIndex = (newTheme.customDarkColors || []).findIndex(c => c.name === oldName);
+                  if (darkIndex !== -1) {
+                      const updatedDark = [...newTheme.customDarkColors];
+                      updatedDark[darkIndex] = { ...updatedDark[darkIndex], name: value };
+                      newTheme.customDarkColors = updatedDark;
+                  }
+              }
+          } else { // dark
+              const lightNameToMatch = (newTheme.customLightColors || [])[index]?.name;
+              if(lightNameToMatch) {
+                const darkIndex = (newTheme.customDarkColors || []).findIndex(c => c.name === lightNameToMatch);
+                if (darkIndex !== -1) {
+                    const updatedDark = [...newTheme.customDarkColors];
+                    updatedDark[darkIndex] = { ...updatedDark[darkIndex], [field]: value };
+                    newTheme.customDarkColors = updatedDark;
+                }
+              }
+          }
+          return newTheme;
+      });
+  };
+
+  const handleRemoveCustomColor = (index: number) => {
+      setM3Theme(prev => {
+          const lightColors = [...(prev.customLightColors || [])];
+          const colorToRemove = lightColors.splice(index, 1)[0];
+          
+          let darkColors = prev.customDarkColors || [];
+          if (colorToRemove) {
+              darkColors = darkColors.filter(c => c.name !== colorToRemove.name);
+          }
+          
+          return {
+              ...prev,
+              customLightColors: lightColors,
+              customDarkColors: darkColors,
+          };
+      });
+  };
 
   const createColorStateUpdater = (theme: 'light' | 'dark') => {
     return (key: keyof M3Colors, value: string) => { 
@@ -325,7 +340,7 @@ fun AppTheme(useDarkTheme: Boolean = isSystemInDarkTheme(), content: @Composable
   const renderColorSection = (theme: 'light' | 'dark') => {
     const colors = theme === 'light' ? m3Theme.lightColors : m3Theme.darkColors;
     const setColor = createColorStateUpdater(theme);
-    const currentCustomColors = theme === 'light' ? m3Theme.customLightColors : m3Theme.customDarkColors;
+    const currentCustomColors = theme === 'light' ? (m3Theme.customLightColors || []) : (m3Theme.customDarkColors || []);
 
     return (
         <div className="space-y-6">
@@ -338,26 +353,26 @@ fun AppTheme(useDarkTheme: Boolean = isSystemInDarkTheme(), content: @Composable
             <div>
                 <h3 className="text-base font-semibold mb-3 text-foreground">Custom Colors</h3>
                 <div className="space-y-4">
-                    {m3Theme.customLightColors.map((custom, index) => {
-                        const currentCustomColor = theme === 'light' ? m3Theme.customLightColors[index] : m3Theme.customDarkColors.find(c => c.name === custom.name);
+                    {(m3Theme.customLightColors || []).map((_, index) => {
+                        const customColor = currentCustomColors[index];
                         return (
                           <div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 p-3 border rounded-md relative">
                               <div className="flex items-center justify-between gap-4">
                                 <Label htmlFor={`custom-name-${theme}-${index}`} className="text-xs">Name</Label>
-                                <Input id={`custom-name-${theme}-${index}`} type="text" value={custom.name} onChange={(e) => handleUpdateCustomColor(index, 'name', e.target.value.replace(/[^a-zA-Z0-9]/g, ''), 'light')} className="h-7 w-24 text-xs" placeholder="e.g., success" disabled={theme === 'dark'}/>
+                                <Input id={`custom-name-${theme}-${index}`} type="text" value={customColor?.name || ''} onChange={(e) => handleUpdateCustomColor(index, 'name', e.target.value.replace(/[^a-zA-Z0-9]/g, ''), 'light')} className="h-7 w-24 text-xs" placeholder="e.g., success" disabled={theme === 'dark'}/>
                             </div>
                               <div className="flex items-center justify-between gap-4">
                                 <Label htmlFor={`custom-color-${theme}-${index}`} className="text-xs">Color</Label>
                                 <div className="flex items-center gap-2">
-                                      <Input id={`custom-color-input-${theme}-${index}`} type="color" value={currentCustomColor?.color || ''} onChange={(e) => handleUpdateCustomColor(index, 'color', e.target.value, theme)} className="h-7 w-8 p-1"/>
-                                    <Input id={`custom-color-hex-${theme}-${index}`} type="text" value={currentCustomColor?.color || ''} onChange={(e) => handleUpdateCustomColor(index, 'color', e.target.value, theme)} className="h-7 w-24 text-xs"/>
+                                      <Input id={`custom-color-input-${theme}-${index}`} type="color" value={customColor?.color || '#000000'} onChange={(e) => handleUpdateCustomColor(index, 'color', e.target.value, theme)} className="h-7 w-8 p-1"/>
+                                    <Input id={`custom-color-hex-${theme}-${index}`} type="text" value={customColor?.color || ''} onChange={(e) => handleUpdateCustomColor(index, 'color', e.target.value, theme)} className="h-7 w-24 text-xs"/>
                                 </div>
                             </div>
                             {theme === 'light' && ( <div className="absolute -top-3 -right-2"><Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 rounded-full" onClick={() => handleRemoveCustomColor(index)}><Trash2 className="h-4 w-4" /></Button></div>)}
                         </div>
                         )
                     })}
-                    <Button variant="outline" size="sm" onClick={handleAddCustomColor} className="w-full"><Plus className="mr-2 h-4 w-4" /> Add Custom Color</Button>
+                    {theme === 'light' && <Button variant="outline" size="sm" onClick={handleAddCustomColor} className="w-full"><Plus className="mr-2 h-4 w-4" /> Add Custom Color</Button>}
                 </div>
             </div>
         </div>
@@ -365,7 +380,7 @@ fun AppTheme(useDarkTheme: Boolean = isSystemInDarkTheme(), content: @Composable
   }
 
   const currentColorsForPreview = activeM3ThemeScheme === 'light' ? m3Theme.lightColors : m3Theme.darkColors;
-  const currentCustomColorsForPreview = activeM3ThemeScheme === 'light' ? m3Theme.customLightColors : m3Theme.customDarkColors;
+  const currentCustomColorsForPreview = activeM3ThemeScheme === 'light' ? (m3Theme.customLightColors || []) : (m3Theme.customDarkColors || []);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
