@@ -1324,67 +1324,66 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
     if (window.confirm(`This will replace all existing children in the selected container. Are you sure you want to generate ${count} new children?`)) {
       updateActiveDesignWithHistory(ad => {
         let { components, nextId } = deepClone(ad);
-        
         const parentIdx = components.findIndex(c => c.id === parentId);
         if (parentIdx === -1) return null;
 
-        // Clear data source properties to ensure this is a static generation
-        const parentProps = components[parentIdx].properties;
-        delete parentProps.dataSource;
-        delete parentProps.dataBindings;
-        delete parentProps.childrenTemplate;
+        const oldChildrenIds = new Set(components[parentIdx].properties.children || []);
+        components = components.filter(c => !oldChildrenIds.has(c.id));
 
-        // Remove existing children
-        const childrenToRemove = new Set(parentProps.children || []);
-        components = components.filter(c => !childrenToRemove.has(c.id));
-        
+        const parentComponent = components.find(c => c.id === parentId);
+        if (!parentComponent) return null; // Should not happen after filtering
+        parentComponent.properties.children = [];
+
         let currentNextId = nextId;
         const newChildRootIds: string[] = [];
-
+        
         for (let i = 0; i < count; i++) {
-          if (childTypeOrTemplateId.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
-            const template = designState.customComponentTemplates.find(t => t.templateId === childTypeOrTemplateId);
-            if (template) {
-              const idMap: Record<string, string> = {};
-              const newTemplateComponents: DesignComponent[] = deepClone(template.componentTree).map((c: DesignComponent) => {
-                const newId = `comp-${currentNextId++}`;
-                idMap[c.id] = newId;
-                return { ...c, id: newId };
-              });
+            let componentsToAdd: DesignComponent[] = [];
+            if (childTypeOrTemplateId.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
+                const template = designState.customComponentTemplates.find(t => t.templateId === childTypeOrTemplateId);
+                if (template) {
+                    const idMap: Record<string, string> = {};
+                    const newTemplateComponents = deepClone(template.componentTree).map((c: DesignComponent) => {
+                        const newId = `comp-${currentNextId++}`;
+                        idMap[c.id] = newId;
+                        return { ...c, id: newId };
+                    });
 
-              newTemplateComponents.forEach(c => {
-                  c.parentId = c.parentId ? idMap[c.parentId] : null;
-                  if (c.properties.children) {
-                      c.properties.children = c.properties.children.map(childId => idMap[childId]);
-                  }
-              });
-              
-              const rootOfPasted = newTemplateComponents.find(c => c.parentId === null)!;
-              rootOfPasted.parentId = parentId;
-              rootOfPasted.templateIdRef = template.templateId;
-              rootOfPasted.name = `${template.name} ${i + 1}`;
-              
-              newChildRootIds.push(rootOfPasted.id);
-              components.push(...newTemplateComponents);
+                    newTemplateComponents.forEach(c => {
+                        c.parentId = c.parentId ? idMap[c.parentId] : null;
+                        if (c.properties.children) {
+                            c.properties.children = c.properties.children.map(childId => idMap[childId]);
+                        }
+                    });
+
+                    const rootOfPasted = newTemplateComponents.find(c => c.parentId === null)!;
+                    rootOfPasted.parentId = parentId;
+                    rootOfPasted.templateIdRef = template.templateId;
+                    rootOfPasted.name = `${template.name} ${i + 1}`;
+                    newChildRootIds.push(rootOfPasted.id);
+                    componentsToAdd.push(...newTemplateComponents);
+                }
+            } else {
+                const newId = `comp-${currentNextId++}`;
+                newChildRootIds.push(newId);
+                componentsToAdd.push({
+                    id: newId,
+                    type: childTypeOrTemplateId as ComponentType,
+                    name: `${getComponentDisplayName(childTypeOrTemplateId as ComponentType)} ${i + 1}`,
+                    properties: { ...getDefaultProperties(childTypeOrTemplateId as ComponentType, newId) },
+                    parentId: parentId,
+                });
             }
-          } else {
-            const newId = `comp-${currentNextId++}`;
-            newChildRootIds.push(newId);
-            components.push({
-              id: newId,
-              type: childTypeOrTemplateId as ComponentType,
-              name: `${getComponentDisplayName(childTypeOrTemplateId as ComponentType)} ${newId.split('-')[1]}`,
-              properties: { ...getDefaultProperties(childTypeOrTemplateId as ComponentType, newId) },
-              parentId: parentId,
-            });
-          }
+            components.push(...componentsToAdd);
+        }
+        
+        const finalParent = components.find(c => c.id === parentId);
+        if (finalParent) {
+            finalParent.properties.children = newChildRootIds;
         }
 
-        const finalParentIdx = components.findIndex(c => c.id === parentId);
-        components[finalParentIdx].properties.children = newChildRootIds;
-        
         return {
-          components: components,
+          components,
           nextId: currentNextId,
           selectedComponentId: ad.selectedComponentId
         };
