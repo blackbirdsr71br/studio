@@ -11,7 +11,7 @@ import {
     M3_THEME_DOC_ID
 } from '@/types/compose-spec';
 import { db } from '@/lib/firebase';
-import { collection, doc, setDoc, getDocs, deleteDoc, query, orderBy, onSnapshot, Unsubscribe } from "firebase/firestore";
+import { collection, doc, setDoc, getDocs, deleteDoc, query, orderBy, onSnapshot, Unsubscribe, getDoc } from "firebase/firestore";
 import { useToast } from '@/hooks/use-toast';
 import { useDebouncedCallback } from 'use-debounce';
 import { fetchAndAnalyzeEndpoint } from '@/app/actions';
@@ -68,6 +68,9 @@ interface DesignContextType extends DesignState {
   isLoadingCustomTemplates: boolean;
   isLoadingLayouts: boolean;
   
+  // Carousel Wizard
+  openCarouselWizard: (carouselId: string) => void;
+
   // Zoom functionality
   zoomLevel: number;
   setZoomLevel: React.Dispatch<React.SetStateAction<number>>;
@@ -116,6 +119,7 @@ const createNewDesign = (id: string, name: string, components?: DesignComponent[
     clipboard: null,
     editingTemplateInfo: null,
     editingLayoutInfo: null,
+    carouselWizardState: { isOpen: false, carouselId: null },
 });
 
 
@@ -349,6 +353,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [zoomLevel, setZoomLevel] = useState(0.7);
   const [isLoadingCustomTemplates, setIsLoadingCustomTemplates] = useState(true);
   const [isLoadingLayouts, setIsLoadingLayouts] = useState(true);
+  const carouselWizardModalRef = useRef<{ openModal: (carouselId: string) => void }>(null);
+
 
   // This ref now stores the state of the *non-editing* designs when entering an editing mode.
   const mainDesignTabsStateRef = useRef<SingleDesign[]>([]);
@@ -407,7 +413,11 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         } else {
           console.log("No custom theme found in Firestore, using default.");
           // Optionally, save the default theme to Firestore if it doesn't exist
-          setDoc(themeDocRef, sanitizeForFirebase(defaultThemeState)).catch(e => console.error("Could not save initial default theme:", e));
+          getDoc(themeDocRef).then(doc => {
+            if (!doc.exists()) {
+               setDoc(themeDocRef, sanitizeForFirebase(defaultThemeState)).catch(e => console.error("Could not save initial default theme:", e));
+            }
+          });
         }
       }, (error) => {
         console.error("Error loading theme from Firestore:", error);
@@ -584,6 +594,12 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     (id: string) => activeDesign?.components.find(comp => comp.id === id),
     [activeDesign]
   );
+
+  const openCarouselWizard = useCallback((carouselId: string) => {
+    if (carouselWizardModalRef.current) {
+        carouselWizardModalRef.current.openModal(carouselId);
+    }
+  }, []);
   
   const addComponent = React.useCallback((
     typeOrTemplateId: ComponentType | string,
@@ -665,10 +681,14 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             }
         }
       }
+
+      if (typeOrTemplateId === 'Carousel') {
+        setTimeout(() => openCarouselWizard(finalSelectedComponentId), 50);
+      }
       
       return { components: updatedComponentsList, nextId: currentNextId, selectedComponentId: finalSelectedComponentId };
     });
-  }, [updateActiveDesignWithHistory, designState.customComponentTemplates]);
+  }, [updateActiveDesignWithHistory, designState.customComponentTemplates, openCarouselWizard]);
 
  const generateChildrenFromDataSource = useCallback(async (parentId: string) => {
     if (!activeDesign) return;
@@ -1163,6 +1183,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           rootComponentId: template.rootComponentId,
         },
         editingLayoutInfo: null,
+        carouselWizardState: { isOpen: false, carouselId: null },
       };
       return {
         ...prev,
@@ -1235,6 +1256,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             name: layout.name,
         },
         editingTemplateInfo: null,
+        carouselWizardState: { isOpen: false, carouselId: null },
       };
       return {
         ...prev,
@@ -1385,6 +1407,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     generateStaticChildren,
     isLoadingCustomTemplates,
     isLoadingLayouts,
+    openCarouselWizard,
     zoomLevel, setZoomLevel,
   };
 
@@ -1404,6 +1427,7 @@ export const useDesign = (): DesignContextType => {
 };
 
 export { DesignContext };
+
 
 
 

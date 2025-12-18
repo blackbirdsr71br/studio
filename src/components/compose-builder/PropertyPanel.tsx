@@ -20,7 +20,7 @@ import {
   isContainerType as isContainerTypeUtil,
 } from '@/types/compose-spec';
 import { PropertyEditor } from './PropertyEditor';
-import { Trash2, Sparkles, Loader2, Upload, Search, Save, CopyPlus, Plus } from 'lucide-react';
+import { Trash2, Sparkles, Loader2, Upload, Search, Save, CopyPlus, Plus, Settings } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
@@ -44,7 +44,7 @@ interface PropertyPanelProps {
   imageSourceModalRef: React.RefObject<ImageSourceModalRef>;
 }
 
-const PREFERRED_GROUP_ORDER = ['Layout', 'Appearance', 'Content', 'Behavior'];
+const PREFERRED_GROUP_ORDER = ['Layout', 'Appearance', 'Content', 'Carousel Settings', 'Behavior'];
 
 
 const isLazyContainerType = (type: string) => 
@@ -78,7 +78,7 @@ const getThemeColorKeyForComponentProp = (
 
 
 function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
-  const { activeDesign, getComponentById, updateComponent, deleteComponent, customComponentTemplates, saveSelectedAsCustomTemplate, generateStaticChildren, m3Theme, setM3Theme, activeM3ThemeScheme } = useDesign();
+  const { activeDesign, getComponentById, updateComponent, deleteComponent, customComponentTemplates, saveSelectedAsCustomTemplate, generateStaticChildren, m3Theme, setM3Theme, activeM3ThemeScheme, openCarouselWizard } = useDesign();
   const selectedComponentId = activeDesign?.selectedComponentId;
   const selectedComponent = selectedComponentId ? getComponentById(selectedComponentId) : null;
   const { toast } = useToast();
@@ -421,6 +421,15 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
           <Input id="componentName" type="text" value={selectedComponent.name || ''} onChange={handleNameChange} className="h-8 text-sm mt-1.5" disabled={isCoreScaffoldElement} />
         </div>
 
+        {selectedComponent.type === 'Carousel' && (
+            <div className="mb-4 shrink-0">
+                <Button onClick={() => openCarouselWizard(selectedComponent.id)} className="w-full">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Configure Carousel
+                </Button>
+            </div>
+        )}
+
         {isLazyContainerType(selectedComponent.type) && (
             <Accordion type="single" collapsible className="w-full mb-4 shrink-0 border-b">
                 <AccordionItem value="item-1">
@@ -550,4 +559,5 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     </aside>
   );
 }
+
 

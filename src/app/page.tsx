@@ -19,6 +19,7 @@ import { MobileFrame, FRAME_WIDTH, FRAME_HEIGHT } from '@/components/compose-bui
 import { useToast } from '@/hooks/use-toast';
 import { DesignTabs } from '@/components/compose-builder/DesignTabs';
 import { DEFAULT_CONTENT_LAZY_COLUMN_ID } from '@/types/compose-spec';
+import { CarouselWizardModal, type CarouselWizardModalRef } from '@/components/compose-builder/CarouselWizardModal';
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 2.0;
@@ -84,6 +85,7 @@ function MainApp() {
   const imageSourceModalRef = useRef<ImageSourceModalRef>(null);
   const publishConfigModalRef = useRef<PublishConfigModalRef>(null);
   const saveLayoutModalRef = useRef<SaveLayoutModalRef>(null);
+  const carouselWizardModalRef = useRef<CarouselWizardModalRef>(null);
 
 
   useEffect(() => {
@@ -153,6 +155,7 @@ function MainApp() {
       <ImageSourceModal ref={imageSourceModalRef} />
       <PublishConfigModal ref={publishConfigModalRef} />
       <SaveLayoutModal ref={saveLayoutModalRef} />
+      <CarouselWizardModal ref={carouselWizardModalRef} />
     </>
   );
 }
@@ -167,4 +170,3 @@ export default function ComposeBuilderPage() {
   );
 }
 
-    
