@@ -77,7 +77,11 @@ function KeyboardShortcuts() {
   return null;
 }
 
-function MainApp() {
+interface MainAppProps {
+  carouselWizardModalRef: React.RefObject<CarouselWizardModalRef>;
+}
+
+function MainApp({ carouselWizardModalRef }: MainAppProps) {
   const { activeDesign, getComponentById, zoomLevel = 1, setZoomLevel } = useDesign();
   const generateModalRef = useRef<GenerateCodeModalRef>(null);
   const viewJsonModalRef = useRef<ViewJsonModalRef>(null);
@@ -85,8 +89,7 @@ function MainApp() {
   const imageSourceModalRef = useRef<ImageSourceModalRef>(null);
   const publishConfigModalRef = useRef<PublishConfigModalRef>(null);
   const saveLayoutModalRef = useRef<SaveLayoutModalRef>(null);
-  const carouselWizardModalRef = useRef<CarouselWizardModalRef>(null);
-
+  
 
   useEffect(() => {
     const mainElement = document.querySelector('main');
@@ -166,7 +169,7 @@ export default function ComposeBuilderPage() {
   return (
     <DndProvider backend={HTML5Backend}>
       <DesignProvider carouselWizardModalRef={carouselWizardModalRef}>
-        <MainApp />
+        <MainApp carouselWizardModalRef={carouselWizardModalRef} />
       </DesignProvider>
     </DndProvider>
   );
