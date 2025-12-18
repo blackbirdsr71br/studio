@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useRef, ChangeEvent } from 'react';
+import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { useDesign } from '@/contexts/DesignContext';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -91,6 +91,54 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
   const [staticChildType, setStaticChildType] = useState<string>('Card');
   const [staticChildCount, setStaticChildCount] = useState<number>(5);
   const [isGeneratingStatic, setIsGeneratingStatic] = useState(false);
+
+  // --- THE DEFINITIVE FIX ---
+  // This effect synchronizes the component's state with the theme.
+  useEffect(() => {
+    if (!selectedComponent || !m3Theme) return;
+
+    let componentPropsDefSourceType = selectedComponent.type;
+    if (selectedComponent.templateIdRef) {
+        const template = customComponentTemplates.find(t => t.templateId === selectedComponent.templateIdRef);
+        const rootTemplateComponent = template?.componentTree.find(c => c.id === template.rootComponentId);
+        if (rootTemplateComponent) componentPropsDefSourceType = rootTemplateComponent.type;
+    }
+    const componentPropsDef = (propertyDefinitions[componentPropsDefSourceType as ComponentType] || []) as (Omit<ComponentProperty, 'value'> & { group: string })[];
+    
+    let updatesToSync: Partial<BaseComponentProps> = {};
+
+    componentPropsDef.forEach(propDef => {
+        if (propDef.type === 'color') {
+            const propName = propDef.name as keyof BaseComponentProps;
+            const currentValue = selectedComponent.properties[propName];
+
+            // If the component's color property is not set, it should inherit from the theme.
+            // We explicitly set it here to ensure the state is consistent.
+            if (currentValue === undefined || currentValue === null) {
+                const themeColorKey = getThemeColorKeyForComponentProp(componentPropsDefSourceType, propName);
+                if (themeColorKey) {
+                    // Assuming light theme for now. This could be adapted for dark theme awareness.
+                    const themeColor = m3Theme.lightColors[themeColorKey];
+                    if(themeColor) {
+                       updatesToSync[propName] = themeColor;
+                    }
+                }
+            }
+        }
+    });
+    
+    // If there are updates to sync, apply them to the component state.
+    // This will trigger a re-render and ensure the canvas reflects the theme.
+    if (Object.keys(updatesToSync).length > 0) {
+        updateComponent(selectedComponent.id, { properties: updatesToSync });
+    }
+
+  // NOTE: We only run this when the theme or selected component changes.
+  // We explicitly exclude `updateComponent` and `selectedComponent.properties` to avoid infinite loops.
+  // The logic inside handles the state synchronization correctly.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [m3Theme, selectedComponentId, customComponentTemplates]);
+  // --- END OF THE FIX ---
   
   const handleSaveAsTemplate = async () => {
     if (!selectedComponentId) {
@@ -339,22 +387,15 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
       
       let currentValue = selectedComponent.properties[propDef.name];
 
-      // **** START: THE CRITICAL FIX ****
-      // If the component's own property value is undefined, and it's a color property,
-      // deduce the color from the M3 theme. This ensures the property panel shows the
-      // color that is actually being rendered on the canvas.
       if (currentValue === undefined && propDef.type === 'color') {
           const themeColorKey = getThemeColorKeyForComponentProp(componentPropsDefSourceType, propDef.name as keyof BaseComponentProps);
           if (themeColorKey && m3Theme) {
-              // Assuming we are designing for the light theme in the editor for now
               currentValue = m3Theme.lightColors[themeColorKey];
           }
       }
-      // If still undefined, fallback to the component's default property value.
       if(currentValue === undefined) {
         currentValue = getDefaultProperties(componentPropsDefSourceType as ComponentType)[propDef.name as keyof BaseComponentProps]
       }
-      // **** END: THE CRITICAL FIX ****
       
       const editorElement = (
         <PropertyEditor
@@ -559,3 +600,5 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     </aside>
   );
 }
+
+    
