@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import type { ReactNode} from 'react';
@@ -119,7 +118,6 @@ const createNewDesign = (id: string, name: string, components?: DesignComponent[
     clipboard: null,
     editingTemplateInfo: null,
     editingLayoutInfo: null,
-    carouselWizardState: { isOpen: false, carouselId: null },
 });
 
 
@@ -353,7 +351,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [zoomLevel, setZoomLevel] = useState(0.7);
   const [isLoadingCustomTemplates, setIsLoadingCustomTemplates] = useState(true);
   const [isLoadingLayouts, setIsLoadingLayouts] = useState(true);
-  const carouselWizardModalRef = useRef<{ openModal: (carouselId: string) => void }>(null);
+  const carouselWizardModalRef = useRef<{ openModal: (carouselId: string) => void } | null>(null);
 
 
   // This ref now stores the state of the *non-editing* designs when entering an editing mode.
@@ -596,10 +594,13 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   );
 
   const openCarouselWizard = useCallback((carouselId: string) => {
-    if (carouselWizardModalRef.current) {
-        carouselWizardModalRef.current.openModal(carouselId);
+    const wizardRef = (children as any)?.props?.carouselWizardModalRef;
+    if (wizardRef && wizardRef.current) {
+        wizardRef.current.openModal(carouselId);
+    } else {
+        console.error("CarouselWizardModal ref not passed to DesignProvider!");
     }
-  }, []);
+  }, [children]);
   
   const addComponent = React.useCallback((
     typeOrTemplateId: ComponentType | string,
@@ -1183,7 +1184,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           rootComponentId: template.rootComponentId,
         },
         editingLayoutInfo: null,
-        carouselWizardState: { isOpen: false, carouselId: null },
       };
       return {
         ...prev,
@@ -1256,7 +1256,6 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             name: layout.name,
         },
         editingTemplateInfo: null,
-        carouselWizardState: { isOpen: false, carouselId: null },
       };
       return {
         ...prev,
@@ -1427,8 +1426,3 @@ export const useDesign = (): DesignContextType => {
 };
 
 export { DesignContext };
-
-
-
-
-

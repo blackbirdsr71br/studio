@@ -161,12 +161,20 @@ function MainApp() {
 }
 
 export default function ComposeBuilderPage() {
+  // We have to define the ref here and pass it down to both the provider and the component.
+  const carouselWizardModalRef = useRef<CarouselWizardModalRef>(null);
+
   return (
     <DndProvider backend={HTML5Backend}>
-      <DesignProvider>
+      {/* Pass the ref to the provider */}
+      <DesignProvider carouselWizardModalRef={carouselWizardModalRef}>
         <MainApp />
+        {/* The ref is already connected to the modal in MainApp, but if we need to render it here, it would be:
+            <CarouselWizardModal ref={carouselWizardModalRef} /> 
+            However, it's better to keep it within MainApp for layout consistency. Let's adjust MainApp to accept it.
+            For simplicity and to keep MainApp self-contained, let's adjust how the provider gets the ref.
+         */}
       </DesignProvider>
     </DndProvider>
   );
 }
-
