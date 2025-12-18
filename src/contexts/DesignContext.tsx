@@ -119,32 +119,15 @@ const createNewDesign = (id: string, name: string, components?: DesignComponent[
 
 const M3_THEME_STORAGE_KEY = "compose-builder-m3-theme";
 
-const getInitialM3Theme = () => {
-  try {
-    if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem(M3_THEME_STORAGE_KEY);
-      if (savedTheme) {
-        // Basic validation before parsing
-        const parsed = JSON.parse(savedTheme);
-        if (parsed.lightColors && parsed.darkColors && parsed.typography && parsed.shapes) {
-          return parsed;
-        }
-      }
-    }
-  } catch (error) {
-    console.error("Failed to load or parse theme from localStorage", error);
-  }
-
-  // Return default theme if nothing is saved or if there's an error
-  return {
-    lightColors: defaultLightColors,
-    darkColors: defaultDarkColors,
-    customLightColors: [],
-    customDarkColors: [],
-    typography: defaultTypography,
-    shapes: defaultShapes,
-  };
+const defaultThemeState = {
+  lightColors: defaultLightColors,
+  darkColors: defaultDarkColors,
+  customLightColors: [],
+  customDarkColors: [],
+  typography: defaultTypography,
+  shapes: defaultShapes,
 };
+
 
 const createInitialDesignState = (): DesignState => ({
   designs: [createNewDesign('design-1', 'Untitled-1')],
@@ -153,7 +136,7 @@ const createInitialDesignState = (): DesignState => ({
   savedLayouts: [],
   galleryImages: [],
   activeM3ThemeScheme: 'light',
-  m3Theme: getInitialM3Theme(),
+  m3Theme: defaultThemeState,
 });
 
 
@@ -382,6 +365,15 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setDesignState(prev => {
       const newM3Theme = typeof updater === 'function' ? updater(prev.m3Theme) : updater;
       if (newM3Theme !== prev.m3Theme) {
+        // Also save to localStorage upon update
+        try {
+            if (typeof window !== 'undefined') {
+                const themeToSave = JSON.stringify(newM3Theme);
+                localStorage.setItem(M3_THEME_STORAGE_KEY, themeToSave);
+            }
+        } catch (error) {
+            console.error("Failed to save theme to localStorage", error);
+        }
         return { ...prev, m3Theme: newM3Theme };
       }
       return prev;
@@ -392,17 +384,22 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setDesignState(prev => ({...prev, activeM3ThemeScheme: scheme}));
   }
 
-  // Effect to save theme to localStorage whenever it changes
+  // Effect to load theme from localStorage, ONLY on the client after hydration
   useEffect(() => {
     try {
-        if (typeof window !== 'undefined') {
-            const themeToSave = JSON.stringify(m3Theme);
-            localStorage.setItem(M3_THEME_STORAGE_KEY, themeToSave);
+        const savedTheme = localStorage.getItem(M3_THEME_STORAGE_KEY);
+        if (savedTheme) {
+            const parsed = JSON.parse(savedTheme);
+            // Basic validation
+            if (parsed.lightColors && parsed.darkColors && parsed.typography && parsed.shapes) {
+                setDesignState(prev => ({...prev, m3Theme: parsed }));
+            }
         }
     } catch (error) {
-        console.error("Failed to save theme to localStorage", error);
+        console.error("Failed to load or parse theme from localStorage", error);
     }
-  }, [m3Theme]);
+  }, []);
+
   
   // Wrapper for state updates to manage history for the active design
   const updateActiveDesignWithHistory = useCallback((
@@ -1385,5 +1382,6 @@ export const useDesign = (): DesignContextType => {
 };
 
 export { DesignContext };
+
 
 
