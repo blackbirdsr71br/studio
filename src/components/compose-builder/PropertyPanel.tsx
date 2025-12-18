@@ -78,7 +78,7 @@ const getThemeColorKeyForComponentProp = (
 
 
 function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
-  const { activeDesign, getComponentById, updateComponent, deleteComponent, customComponentTemplates, saveSelectedAsCustomTemplate, generateStaticChildren, m3Theme, setM3Theme } = useDesign();
+  const { activeDesign, getComponentById, updateComponent, deleteComponent, customComponentTemplates, saveSelectedAsCustomTemplate, generateStaticChildren, m3Theme, setM3Theme, activeM3ThemeScheme } = useDesign();
   const selectedComponentId = activeDesign?.selectedComponentId;
   const selectedComponent = selectedComponentId ? getComponentById(selectedComponentId) : null;
   const { toast } = useToast();
@@ -171,17 +171,13 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
         const themeColorKey = getThemeColorKeyForComponentProp(componentPropsDefSourceType, propName as keyof BaseComponentProps);
         if (themeColorKey) {
             setM3Theme(prevTheme => {
-                // To support both light/dark theme editing in the future,
-                // we'll update both for now for simplicity.
-                const newLightColors = { ...prevTheme.lightColors, [themeColorKey]: value };
-                const newDarkColors = { ...prevTheme.darkColors, [themeColorKey]: value };
-                
-                // Only update if the color has actually changed
-                if (prevTheme.lightColors[themeColorKey] !== value) {
+                const currentScheme = activeM3ThemeScheme === 'dark' ? 'darkColors' : 'lightColors';
+                const newColors = { ...prevTheme[currentScheme], [themeColorKey]: value };
+
+                if (prevTheme[currentScheme][themeColorKey] !== value) {
                     return {
                         ...prevTheme,
-                        lightColors: newLightColors,
-                        darkColors: newDarkColors,
+                        [currentScheme]: newColors,
                     };
                 }
                 return prevTheme;
@@ -342,8 +338,8 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
       if (currentValue === undefined && propDef.type === 'color') {
           const themeColorKey = getThemeColorKeyForComponentProp(componentPropsDefSourceType, propDef.name as keyof BaseComponentProps);
           if (themeColorKey && m3Theme) {
-              // TODO: Check which theme (light/dark) is active on the canvas, not just the editor UI.
-              currentValue = m3Theme.lightColors[themeColorKey];
+              const currentColorScheme = activeM3ThemeScheme === 'dark' ? m3Theme.darkColors : m3Theme.lightColors;
+              currentValue = currentColorScheme[themeColorKey];
           }
       }
       if(currentValue === undefined) {
@@ -553,4 +549,3 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     </aside>
   );
 }
-
