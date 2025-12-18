@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useImperativeHandle, forwardRef, useMemo } from 'react';
@@ -181,16 +182,15 @@ export const ThemeEditorModal = forwardRef<ThemeEditorModalRef, {}>((props, ref)
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
-  const [activeThemeTab, setActiveThemeTab] = useState<'light' | 'dark'>('light');
   const [activeEditorTab, setActiveEditorTab] = useState<'colors' | 'typography' | 'shapes'>('colors');
   
-  const { m3Theme, setM3Theme } = useDesign();
+  const { m3Theme, setM3Theme, activeM3ThemeScheme, setActiveM3ThemeScheme } = useDesign();
 
   useImperativeHandle(ref, () => ({
     openModal: () => {
       // The state is now managed by the context, so we don't need to reset it here.
       // We can just ensure the tabs are on their default state.
-      setActiveThemeTab('light');
+      setActiveM3ThemeScheme('light');
       setActiveEditorTab('colors');
       setIsOpen(true);
     }
@@ -364,8 +364,8 @@ fun AppTheme(useDarkTheme: Boolean = isSystemInDarkTheme(), content: @Composable
     );
   }
 
-  const currentColorsForPreview = activeThemeTab === 'light' ? m3Theme.lightColors : m3Theme.darkColors;
-  const currentCustomColorsForPreview = activeThemeTab === 'light' ? m3Theme.customLightColors : m3Theme.customDarkColors;
+  const currentColorsForPreview = activeM3ThemeScheme === 'light' ? m3Theme.lightColors : m3Theme.darkColors;
+  const currentCustomColorsForPreview = activeM3ThemeScheme === 'light' ? m3Theme.customLightColors : m3Theme.customDarkColors;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -383,10 +383,10 @@ fun AppTheme(useDarkTheme: Boolean = isSystemInDarkTheme(), content: @Composable
                     <ScrollArea className="flex-grow min-h-0 -mr-4">
                         <div className="p-1 pr-4">
                             <TabsContent value="colors">
-                                <Tabs value={activeThemeTab} onValueChange={(v) => setActiveThemeTab(v as any)}>
+                                <Tabs value={activeM3ThemeScheme} onValueChange={(v) => setActiveM3ThemeScheme(v as 'light' | 'dark')}>
                                     <TabsList className="grid w-full grid-cols-2 mb-4"><TabsTrigger value="light">Light Scheme</TabsTrigger><TabsTrigger value="dark">Dark Scheme</TabsTrigger></TabsList>
-                                    <TabsContent value="light" forceMount={true} className={activeThemeTab === 'light' ? 'block' : 'hidden'}>{renderColorSection('light')}</TabsContent>
-                                    <TabsContent value="dark" forceMount={true} className={activeThemeTab === 'dark' ? 'block' : 'hidden'}>{renderColorSection('dark')}</TabsContent>
+                                    <TabsContent value="light" forceMount={true} className={activeM3ThemeScheme === 'light' ? 'block' : 'hidden'}>{renderColorSection('light')}</TabsContent>
+                                    <TabsContent value="dark" forceMount={true} className={activeM3ThemeScheme === 'dark' ? 'block' : 'hidden'}>{renderColorSection('dark')}</TabsContent>
                                 </Tabs>
                             </TabsContent>
                             <TabsContent value="typography"><TypographyEditor typography={m3Theme.typography} setTypography={handleTypographyChange} /></TabsContent>

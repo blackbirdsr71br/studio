@@ -32,6 +32,8 @@ interface DesignContextType extends DesignState {
     shapes: M3Shapes;
   };
   setM3Theme: React.Dispatch<React.SetStateAction<DesignContextType['m3Theme']>>;
+  activeM3ThemeScheme: 'light' | 'dark';
+  setActiveM3ThemeScheme: (scheme: 'light' | 'dark') => void;
 
 
   // Existing functions, now adapted for multi-tab
@@ -121,6 +123,7 @@ const createInitialDesignState = (): DesignState => ({
   customComponentTemplates: [],
   savedLayouts: [],
   galleryImages: [],
+  activeM3ThemeScheme: 'light',
   m3Theme: {
     lightColors: defaultLightColors,
     darkColors: defaultDarkColors,
@@ -1297,6 +1300,7 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const contextValue: DesignContextType = {
     ...designState,
     setM3Theme: (theme) => setDesignState(prev => ({...prev, m3Theme: typeof theme === 'function' ? theme(prev.m3Theme) : theme})),
+    setActiveM3ThemeScheme: (scheme) => setDesignState(prev => ({...prev, activeM3ThemeScheme: scheme })),
     activeDesign,
     addNewDesign, closeDesign, setActiveDesign, updateDesignName,
     addComponent, deleteComponent, selectComponent, updateComponent, updateComponentPosition,
@@ -1328,3 +1332,4 @@ export const useDesign = (): DesignContextType => {
 };
 
 export { DesignContext };
+

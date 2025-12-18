@@ -267,6 +267,7 @@ export interface DesignState {
   customComponentTemplates: CustomComponentTemplate[];
   savedLayouts: SavedLayout[];
   galleryImages: GalleryImage[];
+  activeM3ThemeScheme: 'light' | 'dark';
   m3Theme: {
     lightColors: M3Colors;
     darkColors: M3Colors;
