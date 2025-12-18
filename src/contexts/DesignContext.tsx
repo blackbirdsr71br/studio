@@ -33,7 +33,7 @@ interface DesignContextType extends DesignState {
   };
   setM3Theme: React.Dispatch<React.SetStateAction<DesignContextType['m3Theme']>>;
   activeM3ThemeScheme: 'light' | 'dark';
-  setActiveM3ThemeScheme: (scheme: 'light' | 'dark') => void;
+  setActiveM3ThemeScheme: React.Dispatch<React.SetStateAction<'light' | 'dark'>>;
 
 
   // Existing functions, now adapted for multi-tab
@@ -117,6 +117,35 @@ const createNewDesign = (id: string, name: string, components?: DesignComponent[
 });
 
 
+const M3_THEME_STORAGE_KEY = "compose-builder-m3-theme";
+
+const getInitialM3Theme = () => {
+  try {
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem(M3_THEME_STORAGE_KEY);
+      if (savedTheme) {
+        // Basic validation before parsing
+        const parsed = JSON.parse(savedTheme);
+        if (parsed.lightColors && parsed.darkColors && parsed.typography && parsed.shapes) {
+          return parsed;
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Failed to load or parse theme from localStorage", error);
+  }
+
+  // Return default theme if nothing is saved or if there's an error
+  return {
+    lightColors: defaultLightColors,
+    darkColors: defaultDarkColors,
+    customLightColors: [],
+    customDarkColors: [],
+    typography: defaultTypography,
+    shapes: defaultShapes,
+  };
+};
+
 const createInitialDesignState = (): DesignState => ({
   designs: [createNewDesign('design-1', 'Untitled-1')],
   activeDesignId: 'design-1',
@@ -124,14 +153,7 @@ const createInitialDesignState = (): DesignState => ({
   savedLayouts: [],
   galleryImages: [],
   activeM3ThemeScheme: 'light',
-  m3Theme: {
-    lightColors: defaultLightColors,
-    darkColors: defaultDarkColors,
-    customLightColors: [],
-    customDarkColors: [],
-    typography: defaultTypography,
-    shapes: defaultShapes,
-  },
+  m3Theme: getInitialM3Theme(),
 });
 
 
@@ -351,6 +373,37 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   // Find the active design
   const activeDesign = designState.designs.find(d => d.id === designState.activeDesignId);
 
+  // --- M3 Theme Persistence ---
+  const { m3Theme, activeM3ThemeScheme } = designState;
+
+  const setM3Theme = (
+    updater: React.SetStateAction<DesignContextType['m3Theme']>
+  ) => {
+    setDesignState(prev => {
+      const newM3Theme = typeof updater === 'function' ? updater(prev.m3Theme) : updater;
+      if (newM3Theme !== prev.m3Theme) {
+        return { ...prev, m3Theme: newM3Theme };
+      }
+      return prev;
+    });
+  };
+  
+  const setActiveM3ThemeScheme = (scheme: 'light' | 'dark') => {
+      setDesignState(prev => ({...prev, activeM3ThemeScheme: scheme}));
+  }
+
+  // Effect to save theme to localStorage whenever it changes
+  useEffect(() => {
+    try {
+        if (typeof window !== 'undefined') {
+            const themeToSave = JSON.stringify(m3Theme);
+            localStorage.setItem(M3_THEME_STORAGE_KEY, themeToSave);
+        }
+    } catch (error) {
+        console.error("Failed to save theme to localStorage", error);
+    }
+  }, [m3Theme]);
+  
   // Wrapper for state updates to manage history for the active design
   const updateActiveDesignWithHistory = useCallback((
     updater: (activeDesign: SingleDesign) => Partial<Omit<SingleDesign, 'id' | 'name'>> | null
@@ -1299,8 +1352,8 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const contextValue: DesignContextType = {
     ...designState,
-    setM3Theme: (theme) => setDesignState(prev => ({...prev, m3Theme: typeof theme === 'function' ? theme(prev.m3Theme) : theme})),
-    setActiveM3ThemeScheme: (scheme) => setDesignState(prev => ({...prev, activeM3ThemeScheme: scheme })),
+    setM3Theme,
+    setActiveM3ThemeScheme,
     activeDesign,
     addNewDesign, closeDesign, setActiveDesign, updateDesignName,
     addComponent, deleteComponent, selectComponent, updateComponent, updateComponentPosition,
@@ -1332,4 +1385,5 @@ export const useDesign = (): DesignContextType => {
 };
 
 export { DesignContext };
+
 
