@@ -6,6 +6,7 @@ import {
   MousePointerSquareDashed,
   Box,
   CreditCard,
+  View, // For Carousel
   GalleryVertical,
   GalleryHorizontal,
   Grid3x3,
@@ -32,6 +33,7 @@ export const getComponentIcon = (type: ComponentType | string): LucideIcon => {
         case 'Row': return Rows;
         case 'Box': return Box;
         case 'Card': return CreditCard;
+        case 'Carousel': return View;
         case 'LazyColumn': return GalleryVertical;
         case 'LazyRow': return GalleryHorizontal;
         case 'LazyVerticalGrid': return Grid3x3;

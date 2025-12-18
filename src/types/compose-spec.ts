@@ -10,6 +10,7 @@ export type ComponentType =
   | 'Image'
   | 'Box'
   | 'Card'
+  | 'Carousel' // Added
   | 'LazyColumn'
   | 'LazyRow'
   | 'LazyVerticalGrid'
@@ -52,7 +53,7 @@ export interface ComponentProperty {
   options?: ComponentPropertyOption[];
   label: string;
   placeholder?: string;
-  group: 'Layout' | 'Appearance' | 'Content' | 'Behavior' | 'Slots' | 'Save' | 'Group' | 'Children Generation';
+  group: 'Layout' | 'Appearance' | 'Content' | 'Behavior' | 'Slots' | 'Save' | 'Group' | 'Children Generation' | 'Carousel Settings';
 }
 
 export interface ClickAction {
@@ -135,6 +136,10 @@ export interface BaseComponentProps {
   checked?: boolean; // For Checkbox
   selected?: boolean; // For RadioButton
   enabled?: boolean; // For interactive components
+  
+  // New Carousel properties
+  carouselOrientation?: 'Horizontal' | 'Vertical';
+  carouselContentPadding?: number; // For peeking items
 
   // Properties for Scaffold structure, used by AI generation
   topBarId?: string; // ID of the TopAppBar component
@@ -284,7 +289,7 @@ export const isContainerType = (type: ComponentType | string, customTemplates: C
     if (typeof type !== 'string') return false;
 
     const standardContainerTypes: (ComponentType | string)[] = [
-        'Scaffold', 'Column', 'Row', 'Box', 'Card', 'LazyColumn', 'LazyRow',
+        'Scaffold', 'Column', 'Row', 'Box', 'Card', 'Carousel', 'LazyColumn', 'LazyRow',
         'LazyVerticalGrid', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar',
         'AnimatedContent', 'DropdownMenu'
     ];
@@ -460,6 +465,19 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         selfAlign: 'Inherit',
         ...defaultClickableBehavior,
       };
+    case 'Carousel':
+      return {
+        ...commonLayout,
+        children: [],
+        width: undefined, // Default to fill available space
+        height: 200,
+        fillMaxWidth: true,
+        carouselOrientation: 'Horizontal',
+        carouselContentPadding: 16, // For peeking items
+        itemSpacing: 8,
+        verticalAlignment: 'CenterVertically',
+        userScrollEnabled: true,
+      };
     case 'LazyColumn':
       const isContentArea = componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID;
       return {
@@ -611,6 +629,7 @@ export const getComponentDisplayName = (type: ComponentType | string): string =>
     case 'Box': return 'Box (Container)';
     case 'Group': return 'Group (Container)';
     case 'Card': return 'Card (Container)';
+    case 'Carousel': return 'Carousel';
     case 'LazyColumn': return 'Lazy Column';
     case 'LazyRow': return 'Lazy Row';
     case 'LazyVerticalGrid': return 'Lazy Vertical Grid';
@@ -963,6 +982,18 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'clickable', type: 'boolean', label: 'Clickable', group: 'Behavior' },
     { name: 'onClickAction', type: 'action', label: 'Click Action', group: 'Behavior' },
   ],
+  Carousel: [
+    { name: 'carouselOrientation', type: 'enum', label: 'Orientation', group: 'Carousel Settings', options: [{ label: 'Horizontal', value: 'Horizontal' }, { label: 'Vertical', value: 'Vertical' }] },
+    { name: 'itemSpacing', type: 'number', label: 'Item Spacing (dp)', group: 'Carousel Settings', placeholder: 'e.g., 8' },
+    { name: 'carouselContentPadding', type: 'number', label: 'Content Padding (dp)', group: 'Carousel Settings', placeholder: 'e.g., 16' },
+    { name: 'verticalAlignment', type: 'enum', label: 'Vertical Alignment', group: 'Layout', options: [{ label: 'Top', value: 'Top' }, { label: 'Center Vertically', value: 'CenterVertically' }, { label: 'Bottom', value: 'Bottom' }] },
+    { name: 'width', type: 'number', label: 'Width (dp)', group: 'Layout' },
+    { name: 'height', type: 'number', label: 'Height (dp)', group: 'Layout' },
+    { name: 'fillMaxWidth', type: 'boolean', label: 'Fill Max Width', group: 'Layout' },
+    { name: 'fillMaxHeight', type: 'boolean', label: 'Fill Max Height', group: 'Layout' },
+    { name: 'fillMaxSize', type: 'boolean', label: 'Fill Max Size', group: 'Layout' },
+    { name: 'userScrollEnabled', type: 'boolean', label: 'Enable Scrolling', group: 'Behavior' },
+  ],
   LazyColumn: [
     { name: 'verticalArrangement', type: 'enum', label: 'Vertical Arrangement', group: 'Layout', options: [{ label: 'Top', value: 'Top' }, { label: 'Bottom', value: 'Bottom' }, { label: 'Center', value: 'Center' }, { label: 'Space Around', value: 'SpaceAround' }, { label: 'Space Between', value: 'SpaceBetween' }, { label: 'Space Evenly', value: 'SpaceEvenly' }] },
     { name: 'horizontalAlignment', type: 'enum', label: 'Horizontal Alignment', group: 'Layout', options: [{ label: 'Start', value: 'Start' }, { label: 'Center Horizontally', value: 'CenterHorizontally' }, { label: 'End', value: 'End' }] },
@@ -1068,3 +1099,4 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
 
     
     
+

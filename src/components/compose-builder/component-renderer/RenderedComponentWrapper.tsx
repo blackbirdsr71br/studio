@@ -380,6 +380,7 @@ export function RenderedComponentWrapper({
       case 'LazyColumn': 
       case 'AnimatedContent':
       case 'DropdownMenu': // Add DropdownMenu here to be treated as a vertical container
+      case 'Carousel':
         return <ContainerView component={component} childrenComponents={childrenToRender} isRow={false} isPreview={isPreview} passThroughProps={passThroughProps} />;
 
       case 'Row':
@@ -432,7 +433,7 @@ export function RenderedComponentWrapper({
               if (rootOfTemplate) effectiveParentType = rootOfTemplate.type;
           }
       }
-      parentIsRowLike = ['LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar', 'Row'].includes(effectiveParentType);
+      parentIsRowLike = ['LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar', 'Row', 'Carousel'].includes(effectiveParentType);
       parentIsColumnLike = ['LazyColumn', 'LazyVerticalGrid', 'Column', 'Card', 'Box', 'Scaffold', 'DropdownMenu'].includes(effectiveParentType);
   }
 

@@ -16,6 +16,7 @@ import {
   MousePointerSquareDashed,
   Box,
   CreditCard,
+  View, // Carousel icon
   GalleryVertical,
   GalleryHorizontal,
   Grid3x3,
@@ -50,6 +51,7 @@ const availableBaseComponents: { type: ComponentType; icon: React.ElementType }[
   { type: "Row", icon: Rows },
   { type: "Box", icon: Box },
   { type: "Card", icon: CreditCard },
+  { type: "Carousel", icon: View },
   { type: "AnimatedContent", icon: Film },
   { type: "LazyColumn", icon: GalleryVertical },
   { type: "LazyRow", icon: GalleryHorizontal },

@@ -1,3 +1,4 @@
+
 'use client';
 import type { DesignComponent, ComponentType as OriginalComponentType, BaseComponentProps, CustomComponentTemplate } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from '../component-renderer/RenderedComponentWrapper';
@@ -97,6 +98,8 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     fillMaxWidth, 
     fillMaxHeight,
     dataSource,
+    carouselOrientation,
+    carouselContentPadding,
   } = effectiveProperties;
 
   const defaultAllSidesPadding = 0;
@@ -125,7 +128,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   let finalFlexDirection: 'row' | 'column';
   if (effectiveType === 'Row' || effectiveType === 'LazyRow' || effectiveType === 'LazyHorizontalGrid' || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar') {
     finalFlexDirection = 'row';
-  } else if (effectiveType === 'Column' || effectiveType === 'LazyColumn' || effectiveType === 'LazyVerticalGrid' || effectiveType === 'Card' || effectiveType === 'Box' || effectiveType === 'AnimatedContent' || effectiveType === 'DropdownMenu') {
+  } else if (effectiveType === 'Column' || effectiveType === 'LazyColumn' || effectiveType === 'LazyVerticalGrid' || effectiveType === 'Card' || effectiveType === 'Box' || effectiveType === 'AnimatedContent' || effectiveType === 'DropdownMenu' || effectiveType === 'Carousel') {
     finalFlexDirection = 'column';
   } else {
     finalFlexDirection = isRowPropHint ? 'row' : 'column'; 
@@ -282,6 +285,18 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
      childrenContainerStyle.gridAutoFlow = 'column';
      delete childrenContainerStyle.flexDirection;
   }
+   if (effectiveType === 'Carousel') {
+    childrenContainerStyle.overflowX = carouselOrientation === 'Horizontal' ? 'auto' : 'hidden';
+    childrenContainerStyle.overflowY = carouselOrientation === 'Vertical' ? 'auto' : 'hidden';
+    childrenContainerStyle.flexDirection = carouselOrientation === 'Horizontal' ? 'row' : 'column';
+    childrenContainerStyle.flexWrap = 'nowrap';
+    childrenContainerStyle.scrollSnapType = carouselOrientation === 'Horizontal' ? 'x mandatory' : 'y mandatory';
+    if(carouselContentPadding > 0){
+        childrenContainerStyle.paddingLeft = `${carouselContentPadding}px`;
+        childrenContainerStyle.paddingRight = `${carouselContentPadding}px`;
+    }
+  }
+
 
   // The base container is always a column now, to stack the dropdown button and the children
   baseStyle.flexDirection = 'column';
@@ -319,6 +334,9 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
         default: baseStyle.justifyContent = 'flex-start'; baseStyle.alignItems = 'flex-start';
       }
       break;
+    case 'Carousel':
+        baseStyle.alignItems = effectiveProperties.verticalAlignment ? { 'Top': 'flex-start', 'CenterVertically': 'center', 'Bottom': 'flex-end' }[effectiveProperties.verticalAlignment] || 'center' : 'center';
+        break;
     case 'TopAppBar':
     case 'BottomNavigationBar':
       baseStyle.flexDirection = 'row';
@@ -351,12 +369,13 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
             </div>
           ) : (
              childrenComponents.map(child => (
-              <RenderedComponentWrapper 
-                  key={child.id} 
-                  component={child} 
-                  isPreview={isPreview}
-                  {...passThroughProps}
-              />
+                <div key={child.id} style={{scrollSnapAlign: 'start', flexShrink: 0}}>
+                    <RenderedComponentWrapper 
+                        component={child} 
+                        isPreview={isPreview}
+                        {...passThroughProps}
+                    />
+                </div>
             ))
           )}
       </div>
