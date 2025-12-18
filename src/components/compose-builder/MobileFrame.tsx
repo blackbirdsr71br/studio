@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext'; // For main UI theme
-import { defaultDarkColors, defaultLightColors, type M3Theme, type DesignComponent } from '@/types/compose-spec';
+import { defaultDarkColors, defaultLightColors, type M3Theme } from '@/types/compose-spec';
 import { useDesign } from '@/contexts/DesignContext'; // Import useDesign
 
 interface MobileFrameProps {
@@ -26,18 +26,18 @@ export const FRAME_WIDTH = SCREEN_WIDTH_TARGET + (FRAME_BODY_PADDING * 2);
 export const FRAME_HEIGHT = SCREEN_HEIGHT_TARGET + (FRAME_BODY_PADDING * 2) + SPEAKER_BAR_HEIGHT + SPEAKER_BAR_MARGIN_BOTTOM;
 
 export function MobileFrame({ children, className, isPreview = false, themeOverride }: MobileFrameProps) {
-  const { resolvedTheme } = useTheme(); // For the editor's UI theme (light/dark)
+  const { resolvedTheme: editorTheme } = useTheme(); 
   const { m3Theme: contextM3Theme } = useDesign(); // Get theme from DesignContext
 
   // Use the override if provided (for previews), otherwise use the context theme.
   const m3Theme = themeOverride || contextM3Theme;
 
-  const frameBodyColor = resolvedTheme === 'dark' ? 'bg-neutral-300' : 'bg-neutral-900';
-  const speakerBarColor = resolvedTheme === 'dark' ? 'bg-neutral-400' : 'bg-neutral-950';
+  const frameBodyColor = editorTheme === 'dark' ? 'bg-neutral-300' : 'bg-neutral-900';
+  const speakerBarColor = editorTheme === 'dark' ? 'bg-neutral-400' : 'bg-neutral-950';
 
   // Defensive check: If m3Theme is not ready, use default fallbacks.
   const themeSource = m3Theme || { lightColors: defaultLightColors, darkColors: defaultDarkColors };
-  const canvasTheme = resolvedTheme === 'dark' ? themeSource.darkColors : themeSource.lightColors;
+  const canvasTheme = editorTheme === 'dark' ? themeSource.darkColors : themeSource.lightColors;
 
   // Create CSS variables from the M3 theme to be injected into the canvas
   const m3StyleVariables: React.CSSProperties = {
