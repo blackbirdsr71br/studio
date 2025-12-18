@@ -14,6 +14,7 @@ import { collection, doc, setDoc, getDocs, deleteDoc, query, orderBy, onSnapshot
 import { useToast } from '@/hooks/use-toast';
 import { useDebouncedCallback } from 'use-debounce';
 import { fetchAndAnalyzeEndpoint } from '@/app/actions';
+import type { CarouselWizardModalRef } from '@/components/compose-builder/CarouselWizardModal';
 
 interface DesignContextType extends DesignState {
   // New tab management functions
@@ -344,14 +345,17 @@ function sanitizeForFirebase(data: any): any {
   return newObj;
 }
 
+interface DesignProviderProps {
+  children: ReactNode;
+  carouselWizardModalRef: React.RefObject<CarouselWizardModalRef>;
+}
 
-export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carouselWizardModalRef }) => {
   const [designState, setDesignState] = React.useState<DesignState>(createInitialDesignState());
   const { toast } = useToast();
   const [zoomLevel, setZoomLevel] = useState(0.7);
   const [isLoadingCustomTemplates, setIsLoadingCustomTemplates] = useState(true);
   const [isLoadingLayouts, setIsLoadingLayouts] = useState(true);
-  const carouselWizardModalRef = useRef<{ openModal: (carouselId: string) => void } | null>(null);
 
 
   // This ref now stores the state of the *non-editing* designs when entering an editing mode.
@@ -594,13 +598,12 @@ export const DesignProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   );
 
   const openCarouselWizard = useCallback((carouselId: string) => {
-    const wizardRef = (children as any)?.props?.carouselWizardModalRef;
-    if (wizardRef && wizardRef.current) {
-        wizardRef.current.openModal(carouselId);
+    if (carouselWizardModalRef?.current) {
+        carouselWizardModalRef.current.openModal(carouselId);
     } else {
-        console.error("CarouselWizardModal ref not passed to DesignProvider!");
+        console.error("CarouselWizardModal ref not available in DesignContext!");
     }
-  }, [children]);
+  }, [carouselWizardModalRef]);
   
   const addComponent = React.useCallback((
     typeOrTemplateId: ComponentType | string,
