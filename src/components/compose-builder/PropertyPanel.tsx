@@ -30,10 +30,11 @@ import { useToast } from '@/hooks/use-toast';
 import { generateImageFromHintAction } from '@/app/actions';
 import { Separator } from '../ui/separator';
 import type { ImageSourceModalRef } from './ImageSourceModal';
-import type { BaseComponentProps, ClickAction, M3Colors, LinearGradient } from '@/types/compose-spec';
+import type { BaseComponentProps, ClickAction, M3Colors, M3Shapes, M3Typography, TextStyle, LinearGradient } from '@/types/compose-spec';
 import { ComponentTreeView } from './ComponentTreeView';
 import { DataBindingPanel } from './DataBindingPanel';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { ThemePropertySelector } from './ThemePropertySelector';
 
 
 interface GroupedProperties {
@@ -75,6 +76,19 @@ const getThemeColorKeyForComponentProp = (
     }
     return null;
 };
+
+const getThemeShapeKeyForComponent = (
+  componentType: ComponentType | string
+): keyof M3Shapes | null => {
+    switch(componentType) {
+        case 'Button': return 'extraSmall';
+        case 'Image':
+        case 'Box': return 'small';
+        case 'Card': return 'large';
+        case 'DropdownMenu': return 'medium';
+    }
+    return null;
+}
 
 
 function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
@@ -188,6 +202,35 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
     // --- END: Bidirectional Theme Synchronization Logic ---
 };
 
+  const handleApplyTypographyStyle = (styleName: keyof M3Typography) => {
+    if (!m3Theme) return;
+    const style = m3Theme.typography[styleName];
+    if (style) {
+        updateComponent(selectedComponent.id, {
+            properties: {
+                fontFamily: style.fontFamily,
+                fontWeight: style.fontWeight,
+                fontSize: style.fontSize,
+            }
+        });
+    }
+  };
+
+  const handleApplyShapeStyle = (shapeName: keyof M3Shapes) => {
+    if (!m3Theme) return;
+    const size = m3Theme.shapes[shapeName];
+    if (typeof size === 'number') {
+        updateComponent(selectedComponent.id, {
+            properties: {
+                cornerRadius: size,
+                cornerRadiusTopLeft: size,
+                cornerRadiusTopRight: size,
+                cornerRadiusBottomLeft: size,
+                cornerRadiusBottomRight: size,
+            }
+        });
+    }
+  };
   
     const handleNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
        updateComponent(selectedComponent.id, { name: event.target.value });
@@ -275,7 +318,25 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
     }
     
     const shouldShowCornerRadiusGroup = ['Image', 'Box', 'Card'].includes(sourceComponentForShapeType) || (sourceComponentForShapeType === 'Button' && selectedComponent.properties.shape === 'RoundedCorner');
+    const isTextComponent = sourceComponentForShapeType === 'Text';
 
+    // Add Typography selector for Text components
+    if (isTextComponent) {
+        if (!groupedProperties['Content']) { groupedProperties['Content'] = []; propertyGroups.push('Content'); }
+        groupedProperties['Content'].push(
+            <div key="typography-style-selector" className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                    <Label htmlFor="typography-style-select" className="text-xs">Theme Typography Style</Label>
+                    <ThemePropertySelector
+                        type="typography"
+                        onSelect={(value) => handleApplyTypographyStyle(value as keyof M3Typography)}
+                    />
+                </div>
+                <Separator className="my-3 bg-sidebar-border/50" />
+            </div>
+        );
+    }
+    
     if (shouldShowCornerRadiusGroup) {
       const { cornerRadiusTopLeft, cornerRadiusTopRight, cornerRadiusBottomRight, cornerRadiusBottomLeft } = selectedComponent.properties;
       const allCornersHaveValue = typeof cornerRadiusTopLeft === 'number' && typeof cornerRadiusTopRight === 'number' && typeof cornerRadiusBottomRight === 'number' && typeof cornerRadiusBottomLeft === 'number';
@@ -303,7 +364,13 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
       const allCornersEditor = (
         <React.Fragment key="cornerRadiusAllFragment">
           <div className="space-y-1.5">
-              <Label htmlFor="prop-cornerRadiusAll" className="text-xs font-semibold">Corner Radius (All dp)</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="prop-cornerRadiusAll" className="text-xs font-semibold">Corner Radius (All dp)</Label>
+                <ThemePropertySelector
+                    type="shape"
+                    onSelect={(value) => handleApplyShapeStyle(value as keyof M3Shapes)}
+                />
+              </div>
               <Input id="prop-cornerRadiusAll" type="number" min={0} value={allCornersValue} onChange={handleAllCornersChange} placeholder={allCornersHaveValue && !allCornersAreEqual ? "Mixed" : "e.g., 8"} className="h-8 text-sm" />
           </div>
           <Separator className="my-3 bg-sidebar-border/50" />
@@ -336,13 +403,29 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
       
       let currentValue = selectedComponent.properties[propDef.name];
 
-      if (currentValue === undefined && propDef.type === 'color') {
+      // --- Start of theme value resolution ---
+      if (currentValue === undefined) {
+        if (propDef.type === 'color') {
           const themeColorKey = getThemeColorKeyForComponentProp(componentPropsDefSourceType, propDef.name as keyof BaseComponentProps);
           if (themeColorKey && m3Theme) {
-              const currentColorScheme = activeM3ThemeScheme === 'dark' ? m3Theme.darkColors : m3Theme.lightColors;
-              currentValue = currentColorScheme[themeColorKey];
+            const currentColorScheme = activeM3ThemeScheme === 'dark' ? m3Theme.darkColors : m3Theme.lightColors;
+            currentValue = currentColorScheme[themeColorKey];
           }
+        } else if (propDef.name === 'cornerRadius') {
+            const themeShapeKey = getThemeShapeKeyForComponent(componentPropsDefSourceType);
+            if (themeShapeKey && m3Theme) {
+                currentValue = m3Theme.shapes[themeShapeKey];
+            }
+        } else if (['fontSize', 'fontFamily', 'fontWeight'].includes(propDef.name) && componentPropsDefSourceType === 'Text') {
+            // By default, text components can use bodyLarge style
+            const textStyle = m3Theme?.typography.bodyLarge;
+            if (textStyle) {
+                currentValue = textStyle[propDef.name as keyof TextStyle];
+            }
+        }
       }
+      // --- End of theme value resolution ---
+
       if(currentValue === undefined) {
         currentValue = getDefaultProperties(componentPropsDefSourceType as ComponentType)[propDef.name as keyof BaseComponentProps]
       }
@@ -559,5 +642,6 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     </aside>
   );
 }
+
 
 

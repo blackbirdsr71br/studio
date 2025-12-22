@@ -11,6 +11,7 @@ import type { ComponentProperty, ComponentPropertyOption, ClickAction, LinearGra
 import { Button } from '../ui/button';
 import { Droplet, XCircle, Plus, Trash2 } from 'lucide-react';
 import { Slider } from '../ui/slider';
+import { ThemePropertySelector } from './ThemePropertySelector';
 
 interface PropertyEditorProps {
   property: Omit<ComponentProperty, 'value'>; // Definition of the property
@@ -115,7 +116,13 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
 
           {!isGradient ? (
              <div className="space-y-1.5">
-                <Label htmlFor={`${id}-solid`} className="text-xs">Solid Color</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor={`${id}-solid`} className="text-xs">Solid Color</Label>
+                  <ThemePropertySelector
+                      type="color"
+                      onSelect={(value) => onChange(value as string)}
+                  />
+                </div>
                 <div className="flex items-center gap-2">
                     <Input id={`${id}-solid-color`} type="color" value={solidColor === 'transparent' ? '#ffffff' : solidColor} onChange={e => onChange(e.target.value)} className="h-8 w-10 p-1" />
                     <Input id={`${id}-solid-hex`} type="text" value={solidColor} onChange={e => onChange(e.target.value)} placeholder="#RRGGBB" className="h-8 text-sm flex-grow" />
@@ -196,7 +203,15 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
        const numValue = currentValue;
       return (
         <div className="space-y-1.5">
-          <Label htmlFor={id} className="text-xs">{property.label}</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor={id} className="text-xs">{property.label}</Label>
+            {property.name.toLowerCase().includes('radius') && (
+                <ThemePropertySelector
+                    type="shape"
+                    onSelect={(value) => onChange(value as number)}
+                />
+            )}
+          </div>
           <Input
             id={id}
             type="number"
@@ -216,7 +231,13 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
        const textValue = isNull ? '' : (currentValue as string || '');
       return (
         <div className="space-y-1.5">
-          <Label htmlFor={id} className="text-xs">{property.label}</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor={id} className="text-xs">{property.label}</Label>
+            <ThemePropertySelector
+              type="color"
+              onSelect={(value) => onChange(value as string)}
+            />
+          </div>
           <div className="flex items-center gap-2">
             <Input
               id={id}
