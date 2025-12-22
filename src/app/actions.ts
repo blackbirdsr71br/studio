@@ -28,9 +28,18 @@ export async function generateProjectFromTemplatesAction(
         if (!componentTree) {
             return { error: "Could not find the root scaffold component to build the component tree." };
         }
+
+        // Find the main content area (LazyColumn) to pass to the generator.
+        // The MVI architecture already provides the Scaffold, TopAppBar, etc.
+        // We only need to generate the content *inside* the main screen area.
+        const contentAreaNode = findComponentInTree(componentTree, DEFAULT_CONTENT_LAZY_COLUMN_ID);
         
-        // This now generates a version of the code adapted for the MVI architecture
-        const composableCode = generateComposableCode(componentTree, components, customComponentTemplates, true);
+        if (!contentAreaNode) {
+            return { error: "Could not find the main content area (LazyColumn) in the component tree."};
+        }
+
+        // Generate the composable code for the *content* only, adapted for the MVI architecture.
+        const composableCode = generateComposableCode(contentAreaNode, components, customComponentTemplates, true);
 
         const templates = getProjectTemplates({
             packageId,
@@ -101,7 +110,7 @@ export async function generateJetpackComposeCodeAction(
         return { error: "Could not find the root scaffold component to build the component tree." };
       }
 
-      // Generate the single Composable file.
+      // Generate the single Composable file. For this action, we generate the full scaffold.
       const composableCode = generateComposableCode(componentTree, components, customComponentTemplates, false);
 
       // Return the single file in the expected format.
@@ -144,6 +153,25 @@ const buildComponentTree = (
   }
 
   return componentWithChildren;
+};
+
+// Helper to find a specific component within a tree
+const findComponentInTree = (
+  node: DesignComponent,
+  targetId: string
+): DesignComponent | null => {
+  if (node.id === targetId) {
+    return node;
+  }
+  if (Array.isArray(node.properties.children)) {
+    for (const child of node.properties.children) {
+      const found = findComponentInTree(child as DesignComponent, targetId);
+      if (found) {
+        return found;
+      }
+    }
+  }
+  return null;
 };
 
 

@@ -114,10 +114,10 @@ function generateComposable(
     let childrenString = "";
     if (isContainer) {
         childrenString = ` {\n`;
+        // For MVI LazyColumn, we don't hardcode items but expect them from the state.
+        // But for the generator, we'll just render the children directly inside.
         if (type.startsWith("Lazy")) {
-             childrenString += `${indent(level + 1)}items(items) { item ->\n`;
-             childrenString += `${indent(level + 2)}// Replace with your item rendering logic\n`;
-             childrenString += `${indent(level + 1)}}\n`;
+             childrenString += (children as DesignComponent[]).map(child => generateComposable(child, isMvi, level + 1)).join('\n');
         } else {
             childrenString += (children as DesignComponent[]).map(child => generateComposable(child, isMvi, level + 1)).join('\n');
         }
@@ -143,6 +143,7 @@ export function generateComposableCode(
 
     if (isMvi) {
         // This is the implementation for the full MVI project structure
+        // It now receives the content node (e.g., LazyColumn) and generates its content.
         return `
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -156,27 +157,40 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import org.json.JSONArray
 import org.json.JSONObject
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.Brush
 
 @Composable
 fun DynamicScreen(
     layoutJson: String,
     onComponentClick: (action: String, value: String) -> Unit
 ) {
-    // This is a placeholder for a real JSON parser.
-    // In a production app, you'd parse the layoutJson and dynamically build the UI.
-    // For this generated code, we embed the structure directly.
-    GeneratedContent(onComponentClick)
+    // A full implementation would parse layoutJson and dynamically build composables.
+    // For this generated project, we embed the designed structure directly below
+    // as it's more stable and immediately usable.
+    // The ViewModel fetches the JSON, but it's used here as a trigger to recompose.
+    if (layoutJson.isNotBlank() && layoutJson != "[]") {
+        GeneratedContent(onComponentClick)
+    } else {
+        // Optional: Show a loading or empty state if JSON is empty
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("No layout content found.")
+        }
+    }
 }
 
 @Composable
 private fun GeneratedContent(onComponentClick: (action: String, value: String) -> Unit) {
-    // This is where the user's designed layout starts.
+    // The root component passed to this generator is the content area (e.g., LazyColumn).
+    // The generator will now correctly render its children.
 ${mainComposableBody}
 }
 `;
     }
 
-    // Original single-file generation logic
+    // Original single-file generation logic (for the simple "Generate File" button)
     return `
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -193,6 +207,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import androidx.compose.ui.Alignment
 
 // Assuming AppTheme is defined elsewhere.
 // This is a placeholder.
@@ -206,7 +221,7 @@ fun AppTheme(content: @Composable () -> Unit) {
 @Composable
 fun GeneratedScreen() {
     AppTheme {
-        ${mainComposableBody}
+${mainComposableBody}
     }
 }
 `;
