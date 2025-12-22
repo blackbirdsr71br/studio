@@ -28,10 +28,13 @@ export async function generateProjectFromTemplatesAction(
         if (!componentTree) {
             return { error: "Could not find the root scaffold component to build the component tree." };
         }
+        
+        // This now generates a version of the code adapted for the MVI architecture
+        const composableCode = generateComposableCode(componentTree, components, customComponentTemplates, true);
 
         const templates = getProjectTemplates({
             packageId,
-            composableCode: generateComposableCode(componentTree, components, customComponentTemplates),
+            composableCode,
             m3Theme,
         });
 
@@ -99,7 +102,7 @@ export async function generateJetpackComposeCodeAction(
       }
 
       // Generate the single Composable file.
-      const composableCode = generateComposableCode(componentTree, components, customComponentTemplates);
+      const composableCode = generateComposableCode(componentTree, components, customComponentTemplates, false);
 
       // Return the single file in the expected format.
       return {

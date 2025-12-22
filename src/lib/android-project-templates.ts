@@ -18,6 +18,10 @@ export const getProjectTemplates = (options: TemplateOptions): Record<string, st
         'build.gradle.kts': getBuildGradleKts(),
         'app/build.gradle.kts': getAppBuildGradleKts(packageId),
         'settings.gradle.kts': getSettingsGradleKts(),
+        'gradle/libs.versions.toml': getLibsVersionsToml(),
+
+        // Proguard
+        'app/proguard-rules.pro': getAppProguard(),
 
         // Manifest
         [`app/src/main/AndroidManifest.xml`]: getAndroidManifest(packageId),
@@ -34,12 +38,12 @@ export const getProjectTemplates = (options: TemplateOptions): Record<string, st
         [`app/src/main/java/${packagePath}/domain/usecase/GetScreenLayoutUseCase.kt`]: getGetScreenLayoutUseCase(packageId),
 
         // Data Layer
-        [`app/src/main/java/${packagePath}/data/repository/ScreenRepositoryImpl.kt`]: getScreenRepositoryImpl(packageId),
+        [`app/srcs/main/java/${packagePath}/data/repository/ScreenRepositoryImpl.kt`]: getScreenRepositoryImpl(packageId),
         [`app/src/main/java/${packagePath}/data/remote/RemoteConfigApi.kt`]: getRemoteConfigApi(packageId),
         
         // Presentation Layer (MVI)
         [`app/src/main/java/${packagePath}/presentation/base/BaseViewModel.kt`]: getBaseViewModel(packageId),
-        [`app/src/main/java/${packagePath}/presentation/base/ViewContract.kt`]: getViewContract(packageId),
+        [`app/srcsrc/main/java/${packagePath}/presentation/base/ViewContract.kt`]: getViewContract(packageId),
         [`app/src/main/java/${packagePath}/presentation/screens/generated/GeneratedScreenContract.kt`]: getGeneratedScreenContract(packageId),
         [`app/src/main/java/${packagePath}/presentation/screens/generated/GeneratedScreenViewModel.kt`]: getGeneratedScreenViewModel(packageId),
         [`app/src/main/java/${packagePath}/presentation/screens/generated/GeneratedScreen.kt`]: getGeneratedScreenUi(packageId, composableCode),
@@ -48,6 +52,10 @@ export const getProjectTemplates = (options: TemplateOptions): Record<string, st
         [`app/src/main/java/${packagePath}/ui/theme/Theme.kt`]: themeFileContent,
         [`app/src/main/java/${packagePath}/ui/theme/Color.kt`]: getColorKt(packageId),
         [`app/src/main/java/${packagePath}/ui/theme/Type.kt`]: getTypeKt(packageId),
+
+        // Resources
+        'app/src/main/res/values/strings.xml': getStringsXml(),
+        'app/src/main/res/values/themes.xml': getThemesXml(),
     };
 };
 
@@ -132,6 +140,7 @@ dependencies {
     // Coroutines
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.coroutines.play.services)
 
     // ViewModel
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -173,6 +182,63 @@ dependencyResolutionManagement {
 
 rootProject.name = "GeneratedApp"
 include(":app")
+`;
+
+const getLibsVersionsToml = () => `
+[versions]
+activityCompose = "1.9.0"
+androidApplication = "8.2.2"
+composeBom = "2024.02.02"
+coreKtx = "1.13.1"
+espressoCore = "3.5.1"
+firebaseBom = "33.1.1"
+googleServices = "4.4.2"
+junit = "4.13.2"
+junitVersion = "1.1.5"
+kotlin = "1.9.0"
+kotlinxCoroutinesCore = "1.7.3"
+kotlinxCoroutinesPlayServices = "1.7.3"
+lifecycleRuntimeKtx = "2.8.1"
+koin = "3.5.6"
+coil = "2.6.0"
+
+[libraries]
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
+androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
+androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
+androidx-espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "espressoCore" }
+androidx-junit = { module = "androidx.test.ext:junit", version.ref = "junitVersion" }
+androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycleRuntimeKtx" }
+androidx-lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycleRuntimeKtx" }
+androidx-material3 = { module = "androidx.compose.material3:material3" }
+androidx-ui = { module = "androidx.compose.ui:ui" }
+androidx-ui-graphics = { module = "androidx.compose.ui:ui-graphics" }
+androidx-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
+androidx-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
+androidx-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
+androidx-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
+firebase-config-ktx = { module = "com.google.firebase:firebase-config-ktx" }
+junit = { module = "junit:junit", version.ref = "junit" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinxCoroutinesCore" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
+kotlinx-coroutines-play-services = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "kotlinxCoroutinesPlayServices" }
+koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
+koin-androidx-compose = { module = "io.insert-koin:koin-androidx-compose", version.ref = "koin" }
+coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "androidApplication" }
+jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+`;
+
+
+const getAppProguard = () => `
+-keep class io.koin.** { *; }
+-keep class org.koin.** { *; }
+-keep class com.google.firebase.remoteconfig.** { *; }
 `;
 
 const getAndroidManifest = (packageId: string) => `
@@ -296,12 +362,14 @@ const getGetScreenLayoutUseCase = (packageId: string) => `
 package ${packageId}.domain.usecase
 
 import ${packageId}.domain.repository.ScreenRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class GetScreenLayoutUseCase(
     private val repository: ScreenRepository
 ) {
-    suspend operator fun invoke(): Result<String> {
-        return repository.getScreenLayoutJson()
+    suspend operator fun invoke(): Result<String> = withContext(Dispatchers.IO) {
+        repository.getScreenLayoutJson()
     }
 }
 `;
@@ -333,41 +401,28 @@ import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import kotlinx.coroutines.tasks.await
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
+import com.google.firebase.remoteconfig.ktx.remoteConfigSettings
 
 private const val LAYOUT_KEY = "COMPOSE_DESIGN_JSON_V2"
-private const val MINIMUM_FETCH_INTERVAL_SECONDS = 3600L
+// Use a short interval for development, but increase for production
+private const val MINIMUM_FETCH_INTERVAL_SECONDS = 60L 
 
 class RemoteConfigApi(private val remoteConfig: FirebaseRemoteConfig) {
 
     init {
-        remoteConfig.setConfigSettingsAsync(
-            com.google.firebase.remoteconfig.ktx.remoteConfigSettings {
+        val configSettings = remoteConfigSettings {
                 minimumFetchIntervalInSeconds = MINIMUM_FETCH_INTERVAL_SECONDS
             }
-        )
+        remoteConfig.setConfigSettingsAsync(configSettings)
     }
 
     suspend fun getScreenLayoutJson(): String {
-        return suspendCoroutine { continuation ->
-            remoteConfig.fetchAndActivate()
-                .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        val json = remoteConfig.getString(LAYOUT_KEY)
-                        if (json.isNotEmpty()) {
-                            continuation.resume(json)
-                        } else {
-                            continuation.resume("[]") // Return empty JSON array if key is missing
-                        }
-                    } else {
-                        // Fallback to cached value or default
-                        val json = remoteConfig.getString(LAYOUT_KEY)
-                        if (json.isNotEmpty()) {
-                            continuation.resume(json)
-                        } else {
-                             continuation.resume("[]")
-                        }
-                    }
-                }
+        return try {
+            remoteConfig.fetchAndActivate().await()
+            remoteConfig.getString(LAYOUT_KEY).ifEmpty { "[]" }
+        } catch (e: Exception) {
+            // Fallback to cached value on failure
+            remoteConfig.getString(LAYOUT_KEY).ifEmpty { "[]" }
         }
     }
 }
@@ -414,7 +469,8 @@ abstract class BaseViewModel<Event : UiEvent, State : UiState, Effect : UiEffect
     abstract fun handleEvent(event: Event)
 
     fun setEvent(event: Event) {
-        viewModelScope.launch { _event.emit(event) }
+        val newEvent = event
+        viewModelScope.launch { _event.emit(newEvent) }
     }
 
     protected fun setState(reduce: State.() -> State) {
@@ -432,13 +488,13 @@ abstract class BaseViewModel<Event : UiEvent, State : UiState, Effect : UiEffect
 const getViewContract = (packageId: string) => `
 package ${packageId}.presentation.base
 
-// Represents the UI state of a screen.
+// Represents the immutable UI state of a screen.
 interface UiState
 
-// Represents a user interaction event.
+// Represents a user interaction or an action from the UI.
 interface UiEvent
 
-// Represents a one-time side effect that should be handled by the UI.
+// Represents a one-time side effect that should be handled by the UI (e.g., navigation, showing a toast).
 interface UiEffect
 `;
 
@@ -453,6 +509,7 @@ class GeneratedScreenContract {
 
     sealed class Event : UiEvent {
         object OnFetchLayout : Event()
+        data class OnComponentClick(val action: String, val value: String) : Event()
     }
 
     data class State(
@@ -463,6 +520,8 @@ class GeneratedScreenContract {
 
     sealed class Effect : UiEffect {
         data class ShowToast(val message: String) : Effect()
+        data class Navigate(val route: String) : Effect()
+        data class LogCustomEvent(val name: String, val params: String) : Effect()
     }
 }
 `;
@@ -470,22 +529,30 @@ class GeneratedScreenContract {
 const getGeneratedScreenViewModel = (packageId: string) => `
 package ${packageId}.presentation.screens.generated
 
+import androidx.lifecycle.viewModelScope
 import ${packageId}.domain.usecase.GetScreenLayoutUseCase
 import ${packageId}.presentation.base.BaseViewModel
+import kotlinx.coroutines.launch
 
 class GeneratedScreenViewModel(
     private val getScreenLayoutUseCase: GetScreenLayoutUseCase
 ) : BaseViewModel<GeneratedScreenContract.Event, GeneratedScreenContract.State, GeneratedScreenContract.Effect>() {
 
+    init {
+        // Automatically fetch layout when the ViewModel is created
+        setEvent(GeneratedScreenContract.Event.OnFetchLayout)
+    }
+
     override fun createInitialState() = GeneratedScreenContract.State(
         isLoading = true,
-        layoutJson = "",
+        layoutJson = "[]", // Start with an empty array
         error = null
     )
 
     override fun handleEvent(event: GeneratedScreenContract.Event) {
         when (event) {
             is GeneratedScreenContract.Event.OnFetchLayout -> fetchLayout()
+            is GeneratedScreenContract.Event.OnComponentClick -> handleComponentClick(event.action, event.value)
         }
     }
 
@@ -495,14 +562,17 @@ class GeneratedScreenViewModel(
             getScreenLayoutUseCase().onSuccess { json ->
                 setState { copy(isLoading = false, layoutJson = json) }
             }.onFailure {
-                setState { copy(isLoading = false, error = it.message) }
-                setEffect { GeneratedScreenContract.Effect.ShowToast(it.message ?: "An unknown error occurred") }
+                setState { copy(isLoading = false, error = it.message ?: "An unknown error occurred") }
             }
         }
     }
     
-    init {
-        setEvent(GeneratedScreenContract.Event.OnFetchLayout)
+    private fun handleComponentClick(action: String, value: String) {
+        when (action) {
+            "SHOW_TOAST" -> setEffect { GeneratedScreenContract.Effect.ShowToast(value) }
+            "NAVIGATE" -> setEffect { GeneratedScreenContract.Effect.Navigate(value) }
+            "CUSTOM_EVENT" -> setEffect { GeneratedScreenContract.Effect.LogCustomEvent(value, "{}") }
+        }
     }
 }
 `;
@@ -510,6 +580,7 @@ class GeneratedScreenViewModel(
 const getGeneratedScreenUi = (packageId: string, composableCode: string) => `
 package ${packageId}.presentation.screens.generated
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -539,6 +610,15 @@ fun GeneratedScreen(
                 is GeneratedScreenContract.Effect.ShowToast -> {
                     Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
                 }
+                is GeneratedScreenContract.Effect.Navigate -> {
+                    // TODO: Implement your navigation logic here
+                    Log.d("Navigation", "Navigate to: \${effect.route}")
+                    Toast.makeText(context, "Navigate to: \${effect.route}", Toast.LENGTH_SHORT).show()
+                }
+                is GeneratedScreenContract.Effect.LogCustomEvent -> {
+                     // TODO: Implement your analytics logic here
+                    Log.d("CustomEvent", "Event: \${effect.name}, Params: \${effect.params}")
+                }
             }
         }.collect()
     }
@@ -552,16 +632,22 @@ fun GeneratedScreen(
                 modifier = Modifier.align(Alignment.Center)
             )
         } else {
-            // This is where your generated code from the canvas is rendered
-            DynamicScreen()
+            // The JSON from Remote Config is used here to render the dynamic screen
+            DynamicScreen(
+                layoutJson = state.layoutJson,
+                onComponentClick = { action, value ->
+                    viewModel.setEvent(GeneratedScreenContract.Event.OnComponentClick(action, value))
+                }
+            )
         }
     }
 }
 
 // Your generated composables will be placed below by the generator.
 // The code below is a direct translation of your canvas design.
+// It has been adapted to accept the JSON from the ViewModel.
 
-${composableCode.replace('fun GeneratedScreen()', 'fun DynamicScreen()')}
+${composableCode}
 `;
 
 const getColorKt = (packageId: string) => `
@@ -599,8 +685,22 @@ val Typography = Typography(
 )
 `;
 
+const getStringsXml = () => `
+<resources>
+    <string name="app_name">GeneratedApp</string>
+</resources>
+`;
+
+const getThemesXml = () => `
+<resources>
+    <style name="Theme.GeneratedApp" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
+`;
+
+
 function generateThemeFile(packageId: string, m3Theme?: M3Theme): string {
   if (!m3Theme) {
+    // Fallback to a default theme if not provided
     return `
 package ${packageId}.ui.theme
 
@@ -634,23 +734,15 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun AppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
+    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }
 
@@ -666,18 +758,29 @@ fun AppTheme(
   const toComposeColor = (hex: string) => `Color(0xFF${hex.substring(1).toUpperCase()})`;
 
   const lightColors = Object.entries(m3Theme.lightColors).map(([name, color]) => `    ${name} = ${toComposeColor(color)}`).join(',\n');
-  const darkColors = Object.entries(m3Theme.darkColors).map(([name, color]) => `    ${toComposeColor(color)}`).join(',\n');
+  const darkColors = Object.entries(m3Theme.darkColors).map(([name, color]) => `    ${name} = ${toComposeColor(color)}`).join(',\n');
+  
+  const toFontWeight = (w: 'Normal' | 'Medium' | 'Bold') => w === 'Normal' ? 'FontWeight.Normal' : w === 'Medium' ? 'FontWeight.Medium' : 'FontWeight.Bold';
+  
+  const typographyStyles = (Object.keys(m3Theme.typography) as Array<keyof typeof m3Theme.typography>).map(key => `    ${key} = TextStyle(\n        fontFamily = FontFamily.Default, // TODO: Replace with actual font\n        fontWeight = ${toFontWeight(m3Theme.typography[key].fontWeight)},\n        fontSize = ${m3Theme.typography[key].fontSize}.sp\n    )`).join(',\n');
+  const shapesDef = (Object.keys(m3Theme.shapes) as Array<keyof typeof m3Theme.shapes>).map(key => `    ${key} = RoundedCornerShape(${m3Theme.shapes[key]}.dp)`).join(',\n');
 
   return `
 package ${packageId}.ui.theme
 
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 
 // This is a generated file. Modifications may be overwritten.
@@ -690,6 +793,15 @@ private val DarkColorScheme = darkColorScheme(
 ${darkColors}
 )
 
+private val AppShapes = Shapes(
+${shapesDef}
+)
+
+private val AppTypography = Typography(
+${typographyStyles}
+)
+
+
 @Composable
 fun AppTheme(
     useDarkTheme: Boolean = isSystemInDarkTheme(),
@@ -701,14 +813,14 @@ fun AppTheme(
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = colors.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = useDarkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !useDarkTheme
         }
     }
     
     MaterialTheme(
         colorScheme = colors,
-        typography = Typography,
-        shapes = Shapes,
+        typography = AppTypography,
+        shapes = AppShapes,
         content = content
     )
 }
