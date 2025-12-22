@@ -199,22 +199,47 @@ export const ThemeEditorModal = forwardRef<ThemeEditorModalRef, {}>((props, ref)
   const handleGenerateThemeFile = async () => {
     setIsGenerating(true);
     try {
-        const { lightColors, darkColors, typography, shapes } = m3Theme;
+        const { lightColors, darkColors, customLightColors = [], customDarkColors = [], typography, shapes } = m3Theme;
         const toComposeColor = (hex: string) => `Color(0xFF${hex.substring(1).toUpperCase()})`;
         const toFontWeight = (w: 'Normal' | 'Medium' | 'Bold') => w === 'Normal' ? 'FontWeight.Normal' : w === 'Medium' ? 'FontWeight.Medium' : 'FontWeight.Bold';
 
         const lightColorScheme = Object.entries(lightColors).map(([n, c]) => `    ${n} = ${toComposeColor(c)}`).join(',\n');
         const darkColorScheme = Object.entries(darkColors).map(([n, c]) => `    ${n} = ${toComposeColor(c)}`).join(',\n');
+        
+        const customColorClassProperties = customLightColors.map(c => `    val ${c.name}: Color`).join(',\n');
+        const customColorClass = customLightColors.length > 0
+            ? `@Immutable\ndata class CustomColors(\n${customColorClassProperties}\n)`
+            : '';
+
+        const lightCustomColors = customLightColors.map(c => `    ${c.name} = ${toComposeColor(c.color)}`).join(',\n');
+        const darkCustomColors = customDarkColors.map(c => `    ${c.name} = ${toComposeColor(c.color)}`).join(',\n');
+        
+        const customColorInstances = customLightColors.length > 0
+            ? `val LightCustomColors = CustomColors(\n${lightCustomColors}\n)\n\nval DarkCustomColors = CustomColors(\n${darkCustomColors}\n)`
+            : '';
+            
+        const localComposition = customLightColors.length > 0
+            ? `val LocalCustomColors = staticCompositionLocalOf { LightCustomColors }`
+            : '';
+            
+        const themeExtension = customLightColors.length > 0
+            ? `val MaterialTheme.customColors: CustomColors\n    @Composable\n    @ReadOnlyComposable\n    get() = LocalCustomColors.current`
+            : '';
+            
         const typographyStyles = (Object.keys(typography) as Array<keyof M3Typography>).map(key => `    ${key} = TextStyle(\n        fontFamily = FontFamily.Default, // TODO: Replace with actual font\n        fontWeight = ${toFontWeight(typography[key].fontWeight)},\n        fontSize = ${typography[key].fontSize}.sp\n    )`).join(',\n');
         const shapesDef = (Object.keys(shapes) as Array<keyof M3Shapes>).map(key => `    ${key} = RoundedCornerShape(${shapes[key]}.dp)`).join(',\n');
         
+        const compositionProvider = customLightColors.length > 0
+            ? `    CompositionLocalProvider(LocalCustomColors provides customColors) { content() }`
+            : `    content()`;
+
         const themeFileContent = `
 package com.example.app.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -222,20 +247,34 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+// This is a generated file. Modifications may be overwritten.
+
 // Font Families (assuming you have them in res/font)
 // val Inter = FontFamily(...)
 
 private val LightColorScheme = lightColorScheme(\n${lightColorScheme}\n)
 private val DarkColorScheme = darkColorScheme(\n${darkColorScheme}\n)
 
+${customColorClass}
+
+${customColorInstances}
+
+${localComposition}
+
 private val AppShapes = Shapes(\n${shapesDef}\n)
 
 private val AppTypography = Typography(\n${typographyStyles}\n)
 
+${themeExtension}
+
 @Composable
 fun AppTheme(useDarkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
     val colors = if (useDarkTheme) DarkColorScheme else LightColorScheme
-    MaterialTheme(colorScheme = colors, typography = AppTypography, shapes = AppShapes, content = content)
+    val customColors = if (useDarkTheme) DarkCustomColors else LightCustomColors
+    
+    MaterialTheme(colorScheme = colors, typography = AppTypography, shapes = AppShapes) {
+    ${compositionProvider}
+    }
 }`;
 
       const blob = new Blob([themeFileContent.trim()], { type: 'text/plain;charset=utf-8' });
