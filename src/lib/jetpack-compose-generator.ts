@@ -139,36 +139,39 @@ export function generateComposableCode(
 ): string {
     if (!componentTree) return "// No root component found to generate code.";
 
-    const mainComposableBody = generateComposable(componentTree, isMvi, 2);
+    const mainComposableBody = generateComposable(componentTree, isMvi, 1);
 
     if (isMvi) {
+        // This is the implementation for the full MVI project structure
         return `
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import org.json.JSONArray
+import org.json.JSONObject
+
 @Composable
 fun DynamicScreen(
     layoutJson: String,
     onComponentClick: (action: String, value: String) -> Unit
 ) {
-    // TODO: Here you would parse the layoutJson and dynamically build the UI.
-    // For now, we are embedding the code directly for demonstration.
-    // This part should be replaced with a dynamic parser in a real app.
-    
-    // The composable below is a representation of the layout.
-    // In a real MVI setup, it would be generated based on the layoutJson.
-    Scaffold(
-        modifier = Modifier.fillMaxSize()
-    ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
-            // This is where the generated content would be dynamically placed
-            // For this example, we directly call a representation of it.
-            GeneratedContent(onComponentClick)
-        }
-    }
+    // This is a placeholder for a real JSON parser.
+    // In a production app, you'd parse the layoutJson and dynamically build the UI.
+    // For this generated code, we embed the structure directly.
+    GeneratedContent(onComponentClick)
 }
 
 @Composable
 private fun GeneratedContent(onComponentClick: (action: String, value: String) -> Unit) {
     // This is where the user's designed layout starts.
-    ${mainComposableBody}
+${mainComposableBody}
 }
 `;
     }

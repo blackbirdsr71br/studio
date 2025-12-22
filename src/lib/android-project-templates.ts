@@ -38,12 +38,12 @@ export const getProjectTemplates = (options: TemplateOptions): Record<string, st
         [`app/src/main/java/${packagePath}/domain/usecase/GetScreenLayoutUseCase.kt`]: getGetScreenLayoutUseCase(packageId),
 
         // Data Layer
-        [`app/srcs/main/java/${packagePath}/data/repository/ScreenRepositoryImpl.kt`]: getScreenRepositoryImpl(packageId),
+        [`app/src/main/java/${packagePath}/data/repository/ScreenRepositoryImpl.kt`]: getScreenRepositoryImpl(packageId),
         [`app/src/main/java/${packagePath}/data/remote/RemoteConfigApi.kt`]: getRemoteConfigApi(packageId),
         
         // Presentation Layer (MVI)
         [`app/src/main/java/${packagePath}/presentation/base/BaseViewModel.kt`]: getBaseViewModel(packageId),
-        [`app/srcsrc/main/java/${packagePath}/presentation/base/ViewContract.kt`]: getViewContract(packageId),
+        [`app/src/main/java/${packagePath}/presentation/base/ViewContract.kt`]: getViewContract(packageId),
         [`app/src/main/java/${packagePath}/presentation/screens/generated/GeneratedScreenContract.kt`]: getGeneratedScreenContract(packageId),
         [`app/src/main/java/${packagePath}/presentation/screens/generated/GeneratedScreenViewModel.kt`]: getGeneratedScreenViewModel(packageId),
         [`app/src/main/java/${packagePath}/presentation/screens/generated/GeneratedScreen.kt`]: getGeneratedScreenUi(packageId, composableCode),
