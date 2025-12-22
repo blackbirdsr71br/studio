@@ -81,7 +81,7 @@ export const GenerateCodeModal = forwardRef<GenerateCodeModalRef, {}>((props, re
 
   const handleDownload = () => {
     if (generatedCode) {
-      const blob = new Blob([generatedCode], { type: 'text/plain;charset=utf-8' });
+      const blob = new Blob([generatedCode], { type: 'text/plain;charset=utf-t' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = 'GeneratedScreen.kt';
