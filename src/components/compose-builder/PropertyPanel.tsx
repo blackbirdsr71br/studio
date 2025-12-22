@@ -181,25 +181,19 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
     // This updates the component's own properties
     updateComponent(selectedComponent.id, { properties: updates });
     
-    // --- START: Bidirectional Theme Synchronization Logic ---
-    if (propDefinition?.type === 'color' && typeof value === 'string' && value) {
+    if (propDefinition?.type === 'color' && typeof value === 'string' && value.startsWith('#')) {
         const themeColorKey = getThemeColorKeyForComponentProp(componentPropsDefSourceType, propName as keyof BaseComponentProps);
         if (themeColorKey) {
             setM3Theme(prevTheme => {
-                const currentScheme = activeM3ThemeScheme === 'dark' ? 'darkColors' : 'lightColors';
-                const newColors = { ...prevTheme[currentScheme], [themeColorKey]: value };
-
-                if (prevTheme[currentScheme][themeColorKey] !== value) {
-                    return {
-                        ...prevTheme,
-                        [currentScheme]: newColors,
-                    };
+                const currentSchemeKey = activeM3ThemeScheme === 'dark' ? 'darkColors' : 'lightColors';
+                if (prevTheme[currentSchemeKey][themeColorKey] !== value) {
+                    const newColors = { ...prevTheme[currentSchemeKey], [themeColorKey]: value };
+                    return { ...prevTheme, [currentSchemeKey]: newColors };
                 }
                 return prevTheme;
             });
         }
     }
-    // --- END: Bidirectional Theme Synchronization Logic ---
 };
 
   const handleApplyTypographyStyle = (styleName: keyof M3Typography) => {
@@ -320,7 +314,6 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
     const shouldShowCornerRadiusGroup = ['Image', 'Box', 'Card'].includes(sourceComponentForShapeType) || (sourceComponentForShapeType === 'Button' && selectedComponent.properties.shape === 'RoundedCorner');
     const isTextComponent = sourceComponentForShapeType === 'Text';
 
-    // Add Typography selector for Text components
     if (isTextComponent) {
         if (!groupedProperties['Content']) { groupedProperties['Content'] = []; propertyGroups.push('Content'); }
         groupedProperties['Content'].push(
@@ -380,7 +373,7 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
       groupedProperties['Appearance'].push(allCornersEditor);
     }
     
-        componentPropsDef.forEach((propDef) => {
+    componentPropsDef.forEach((propDef) => {
       if (propDef.name === 'onClickAction' && !selectedComponent.properties.clickable) {
         return;
       }
@@ -402,9 +395,9 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
       }
       
       let currentValue = selectedComponent.properties[propDef.name];
+      const hasLocalOverride = currentValue !== undefined;
 
-      // --- Start of theme value resolution ---
-      if (currentValue === undefined) {
+      if (!hasLocalOverride) {
         if (propDef.type === 'color') {
           const themeColorKey = getThemeColorKeyForComponentProp(componentPropsDefSourceType, propDef.name as keyof BaseComponentProps);
           if (themeColorKey && m3Theme) {
@@ -417,14 +410,12 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
                 currentValue = m3Theme.shapes[themeShapeKey];
             }
         } else if (['fontSize', 'fontFamily', 'fontWeight'].includes(propDef.name) && componentPropsDefSourceType === 'Text') {
-            // By default, text components can use bodyLarge style
             const textStyle = m3Theme?.typography.bodyLarge;
             if (textStyle) {
                 currentValue = textStyle[propDef.name as keyof TextStyle];
             }
         }
       }
-      // --- End of theme value resolution ---
 
       if(currentValue === undefined) {
         currentValue = getDefaultProperties(componentPropsDefSourceType as ComponentType)[propDef.name as keyof BaseComponentProps]
@@ -642,6 +633,7 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     </aside>
   );
 }
+
 
 
 

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React from 'react';
@@ -8,6 +9,14 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Palette, Type as TypeIcon, Shapes } from 'lucide-react';
 import type { M3Colors, M3Typography, M3Shapes } from '@/types/compose-spec';
 import { ScrollArea } from '../ui/scroll-area';
+import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+
 
 type SelectorType = 'color' | 'typography' | 'shape';
 
@@ -20,6 +29,26 @@ const toTitleCase = (str: string) => {
   return str.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase());
 };
 
+const ColorSwatch = ({ name, color, onSelect }: { name: string, color: string, onSelect: (color: string) => void }) => (
+    <TooltipProvider delayDuration={100}>
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <button
+                    className="w-full flex flex-col items-center gap-1.5 p-2 rounded-md hover:bg-accent/20 transition-colors"
+                    onClick={() => onSelect(color)}
+                >
+                    <div className="w-8 h-8 rounded-full border-2 border-border" style={{ backgroundColor: color }} />
+                    <span className="text-xs text-center text-muted-foreground truncate w-full">{toTitleCase(name)}</span>
+                </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+                <p>{toTitleCase(name)} ({color})</p>
+            </TooltipContent>
+        </Tooltip>
+    </TooltipProvider>
+);
+
+
 export const ThemePropertySelector: React.FC<ThemePropertySelectorProps> = ({ type, onSelect }) => {
   const { m3Theme, activeM3ThemeScheme } = useDesign();
   
@@ -30,28 +59,24 @@ export const ThemePropertySelector: React.FC<ThemePropertySelectorProps> = ({ ty
         const customColors = activeM3ThemeScheme === 'light' ? m3Theme.customLightColors : m3Theme.customDarkColors;
         
         return (
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground px-2">Theme Colors</p>
-            <div className="grid grid-cols-2 gap-1">
-              {(Object.keys(colors) as Array<keyof M3Colors>).map((key) => (
-                <Button key={key} variant="ghost" className="h-7 justify-start text-xs px-2" onClick={() => onSelect(colors[key])}>
-                  <div className="w-3 h-3 rounded-full mr-2 border" style={{ backgroundColor: colors[key] }} />
-                  {toTitleCase(key)}
-                </Button>
-              ))}
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground px-1 mb-1">Theme Colors</p>
+              <div className="grid grid-cols-4 gap-1">
+                {(Object.keys(colors) as Array<keyof M3Colors>).map((key) => (
+                  <ColorSwatch key={key} name={key} color={colors[key]} onSelect={onSelect} />
+                ))}
+              </div>
             </div>
             {customColors && customColors.length > 0 && (
-              <>
-                <p className="text-xs font-medium text-muted-foreground px-2 pt-2">Custom Colors</p>
-                <div className="grid grid-cols-2 gap-1">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground px-1 mb-1 pt-2 border-t">Custom Colors</p>
+                <div className="grid grid-cols-4 gap-1">
                   {customColors.map((customColor) => (
-                    <Button key={customColor.name} variant="ghost" className="h-7 justify-start text-xs px-2" onClick={() => onSelect(customColor.color)}>
-                      <div className="w-3 h-3 rounded-full mr-2 border" style={{ backgroundColor: customColor.color }} />
-                      {customColor.name}
-                    </Button>
+                    <ColorSwatch key={customColor.name} name={customColor.name} color={customColor.color} onSelect={onSelect} />
                   ))}
                 </div>
-              </>
+              </div>
             )}
           </div>
         );
@@ -71,7 +96,7 @@ export const ThemePropertySelector: React.FC<ThemePropertySelectorProps> = ({ ty
         return (
           <div className="space-y-1">
             {(Object.keys(m3Theme.shapes) as Array<keyof M3Shapes>).map(key => (
-               <Button key={key} variant="ghost" className="w-full h-8 justify-start text-xs" onClick={() => onSelect(key)}>
+               <Button key={key} variant="ghost" className="w-full h-8 justify-start text-xs" onClick={() => onSelect(m3Theme.shapes[key])}>
                 {toTitleCase(key)} ({m3Theme.shapes[key]} dp)
               </Button>
             ))}
@@ -91,6 +116,8 @@ export const ThemePropertySelector: React.FC<ThemePropertySelectorProps> = ({ ty
       default: return null;
     }
   };
+  
+  const popoverWidth = type === 'color' ? 'w-80' : 'w-64';
 
   return (
     <Popover>
@@ -99,7 +126,7 @@ export const ThemePropertySelector: React.FC<ThemePropertySelectorProps> = ({ ty
           {getIcon()}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-0">
+      <PopoverContent className={cn("p-0", popoverWidth)}>
         <ScrollArea className="max-h-72 p-2">
             {renderContent()}
         </ScrollArea>
