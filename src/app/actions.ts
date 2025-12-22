@@ -13,6 +13,43 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { hexToHslCssString } from '@/lib/utils';
 import { generateComposableCode } from '@/lib/jetpack-compose-generator';
+import { getProjectTemplates } from '@/lib/android-project-templates';
+import JSZip from 'jszip';
+
+
+export async function generateProjectFromTemplatesAction(
+    packageId: string,
+    components: DesignComponent[],
+    customComponentTemplates: CustomComponentTemplate[],
+    m3Theme?: M3Theme
+): Promise<{ files?: Record<string, string>; error?: string; zip?: string }> {
+    try {
+        const componentTree = buildComponentTree(components, ROOT_SCAFFOLD_ID);
+        if (!componentTree) {
+            return { error: "Could not find the root scaffold component to build the component tree." };
+        }
+
+        const templates = getProjectTemplates({
+            packageId,
+            composableCode: generateComposableCode(componentTree, components, customComponentTemplates),
+            m3Theme,
+        });
+
+        const zip = new JSZip();
+        for (const [filePath, content] of Object.entries(templates)) {
+            zip.file(filePath, content);
+        }
+
+        const zipContent = await zip.generateAsync({ type: "base64" });
+
+        return { zip: zipContent };
+    } catch (error) {
+        console.error("Error generating project from templates:", error);
+        const message = error instanceof Error ? error.message : "An unknown error occurred while generating the project.";
+        return { error: message };
+    }
+}
+
 
 // Helper function to remove properties with empty string or null values
 const cleanEmptyOrNullProperties = (properties: Record<string, any>): Record<string, any> => {
@@ -556,5 +593,3 @@ export async function convertCanvasToCustomJsonAction(
     return { error: message };
   }
 }
-
-    
