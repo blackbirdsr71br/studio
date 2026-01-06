@@ -64,7 +64,7 @@ export const ThemePropertySelector: React.FC<ThemePropertySelectorProps> = ({ ty
               <p className="text-xs font-medium text-muted-foreground px-1 mb-1">Theme Colors</p>
               <div className="grid grid-cols-4 gap-1">
                 {(Object.keys(colors) as Array<keyof M3Colors>).map((key) => (
-                  <ColorSwatch key={key} name={key} color={colors[key]} onSelect={onSelect} />
+                  <ColorSwatch key={key} name={key} color={colors[key]} onSelect={onSelect as (color: string) => void} />
                 ))}
               </div>
             </div>
@@ -73,7 +73,7 @@ export const ThemePropertySelector: React.FC<ThemePropertySelectorProps> = ({ ty
                 <p className="text-xs font-medium text-muted-foreground px-1 mb-1 pt-2 border-t">Custom Colors</p>
                 <div className="grid grid-cols-4 gap-1">
                   {customColors.map((customColor) => (
-                    <ColorSwatch key={customColor.name} name={customColor.name} color={customColor.color} onSelect={onSelect} />
+                    <ColorSwatch key={customColor.name} name={customColor.name} color={customColor.color} onSelect={onSelect as (color: string) => void} />
                   ))}
                 </div>
               </div>
