@@ -395,7 +395,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
     case 'Checkbox':
         return {
             ...commonLayout,
-            width: 155, height: 50, padding: 4,
+            width: 155, height: 35, padding: 4,
             text: 'Checkbox Label',
             checked: false,
             enabled: true,
@@ -404,7 +404,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
     case 'RadioButton':
         return {
             ...commonLayout,
-            width: 155, height: 50, padding: 4,
+            width: 155, height: 35, padding: 4,
             text: 'Radio Option',
             selected: false,
             enabled: true,
@@ -1139,6 +1139,7 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
 
     
     
+
 
 
 
