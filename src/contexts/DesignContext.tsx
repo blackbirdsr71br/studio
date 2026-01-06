@@ -613,9 +613,9 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
   ) => {
     updateActiveDesignWithHistory(activeDesign => {
       let { components: updatedComponentsList, nextId: currentNextId } = deepClone(activeDesign);
-
+  
       let finalSelectedComponentId = '';
-      let componentsToAdd: DesignComponent[] = [];
+      const componentsToAdd: DesignComponent[] = [];
       let effectiveParentId = parentIdOrNull;
   
       if (typeOrTemplateId === 'TopAppBar') effectiveParentId = ROOT_SCAFFOLD_ID;
@@ -627,72 +627,80 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
       if (!parentComponent || !isContainerTypeUtil(parentComponent.type, designState.customComponentTemplates)) {
         effectiveParentId = DEFAULT_CONTENT_LAZY_COLUMN_ID;
       }
-
+  
+      const newId = `comp-${currentNextId++}`;
+      finalSelectedComponentId = newId;
+      const newComponentBase: DesignComponent = {
+        id: newId,
+        type: typeOrTemplateId as ComponentType, // Assume standard for now
+        name: `${getComponentDisplayName(typeOrTemplateId as ComponentType)} ${newId.split('-')[1]}`,
+        properties: { ...getDefaultProperties(typeOrTemplateId as ComponentType, newId) },
+        parentId: effectiveParentId,
+      };
+  
       if (typeOrTemplateId.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
         const template = designState.customComponentTemplates.find(t => t.templateId === typeOrTemplateId);
         if (template) {
           const idMap: Record<string, string> = {};
           const newTemplateComponents: DesignComponent[] = deepClone(template.componentTree).map((c: DesignComponent) => {
-              const newId = `comp-${currentNextId++}`;
-              idMap[c.id] = newId;
-              return { ...c, id: newId };
+            const newId = `comp-${currentNextId++}`;
+            idMap[c.id] = newId;
+            return { ...c, id: newId };
           });
-
+  
           newTemplateComponents.forEach(c => {
-              c.parentId = c.parentId ? idMap[c.parentId] : null;
-              if (c.properties.children) {
-                  c.properties.children = c.properties.children.map(childId => idMap[childId]);
-              }
+            c.parentId = c.parentId ? idMap[c.parentId] : null;
+            if (c.properties.children) {
+              c.properties.children = c.properties.children.map(childId => idMap[childId]);
+            }
           });
-          
+  
           const rootOfPasted = newTemplateComponents.find(c => c.parentId === null)!;
           rootOfPasted.parentId = effectiveParentId;
           rootOfPasted.templateIdRef = template.templateId; // Add the reference
           rootOfPasted.name = template.name;
-          
+  
           finalSelectedComponentId = rootOfPasted.id;
           componentsToAdd.push(...newTemplateComponents);
-
         } else {
-            console.error(`Template with ID ${typeOrTemplateId} not found!`);
-            return null;
+          console.error(`Template with ID ${typeOrTemplateId} not found!`);
+          return null;
         }
-
-      } else { // Standard component
-          const newId = `comp-${currentNextId++}`;
-          finalSelectedComponentId = newId;
-          componentsToAdd.push({
-            id: newId,
-            type: typeOrTemplateId as ComponentType,
-            name: `${getComponentDisplayName(typeOrTemplateId as ComponentType)} ${newId.split('-')[1]}`,
-            properties: { ...getDefaultProperties(typeOrTemplateId as ComponentType, newId) },
-            parentId: effectiveParentId,
-          });
+      } else {
+        // Explicitly set background for LazyRow/LazyColumn
+        if (typeOrTemplateId === 'LazyRow' || typeOrTemplateId === 'LazyColumn') {
+            const currentScheme = designState.activeM3ThemeScheme === 'dark' ? designState.m3Theme.darkColors : designState.m3Theme.lightColors;
+            newComponentBase.properties.backgroundColor = currentScheme.surface;
+        }
+        componentsToAdd.push(newComponentBase);
       }
-      
+  
       updatedComponentsList.push(...componentsToAdd);
   
       if (effectiveParentId) {
         const parentIdx = updatedComponentsList.findIndex(c => c.id === effectiveParentId);
         if (parentIdx !== -1) {
-            const parent = updatedComponentsList[parentIdx];
-            if (isContainerTypeUtil(parent.type, designState.customComponentTemplates) || parent.templateIdRef) {
-                const childIdsToAdd = componentsToAdd.filter(c => c.parentId === effectiveParentId).map(c => c.id);
-                let children = [...(parent.properties.children || [])];
-                if (index !== undefined && index >= 0) children.splice(index, 0, ...childIdsToAdd);
-                else children.push(...childIdsToAdd);
-                updatedComponentsList[parentIdx] = { ...parent, properties: { ...parent.properties, children }};
+          const parent = updatedComponentsList[parentIdx];
+          if (isContainerTypeUtil(parent.type, designState.customComponentTemplates) || parent.templateIdRef) {
+            const childIdsToAdd = componentsToAdd.filter(c => c.parentId === effectiveParentId).map(c => c.id);
+            let children = [...(parent.properties.children || [])];
+            if (index !== undefined && index >= 0) {
+              children.splice(index, 0, ...childIdsToAdd);
+            } else {
+              children.push(...childIdsToAdd);
             }
+            updatedComponentsList[parentIdx] = { ...parent, properties: { ...parent.properties, children } };
+          }
         }
       }
-
+  
       if (typeOrTemplateId === 'Carousel') {
         setTimeout(() => openCarouselWizard(finalSelectedComponentId), 50);
       }
-      
+  
       return { components: updatedComponentsList, nextId: currentNextId, selectedComponentId: finalSelectedComponentId };
     });
-  }, [updateActiveDesignWithHistory, designState.customComponentTemplates, openCarouselWizard]);
+  }, [updateActiveDesignWithHistory, designState.customComponentTemplates, designState.activeM3ThemeScheme, designState.m3Theme, openCarouselWizard]);
 
  const generateChildrenFromDataSource = useCallback(async (parentId: string) => {
     if (!activeDesign) return;
