@@ -59,26 +59,26 @@ export const ThemePropertySelector: React.FC<ThemePropertySelectorProps> = ({ ty
         const customColors = activeM3ThemeScheme === 'light' ? m3Theme.customLightColors : m3Theme.customDarkColors;
         
         return (
-          <div className="space-y-3 p-2">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground px-1 mb-1">Theme Colors</p>
-              <div className="grid grid-cols-4 gap-1">
-                {(Object.keys(colors) as Array<keyof M3Colors>).map((key) => (
-                  <ColorSwatch key={key} name={key} color={colors[key]} onSelect={onSelect as (color: string) => void} />
-                ))}
-              </div>
-            </div>
-            {customColors && customColors.length > 0 && (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground px-1 mb-1 pt-2 border-t">Custom Colors</p>
+            <div className="space-y-3">
+                <div>
+                <p className="text-xs font-medium text-muted-foreground px-1 mb-1">Theme Colors</p>
                 <div className="grid grid-cols-4 gap-1">
-                  {customColors.map((customColor) => (
-                    <ColorSwatch key={customColor.name} name={customColor.name} color={customColor.color} onSelect={onSelect as (color: string) => void} />
-                  ))}
+                    {(Object.keys(colors) as Array<keyof M3Colors>).map((key) => (
+                    <ColorSwatch key={key} name={key} color={colors[key]} onSelect={onSelect as (color: string) => void} />
+                    ))}
                 </div>
-              </div>
-            )}
-          </div>
+                </div>
+                {customColors && customColors.length > 0 && (
+                <div>
+                    <p className="text-xs font-medium text-muted-foreground px-1 mb-1 pt-2 border-t">Custom Colors</p>
+                    <div className="grid grid-cols-4 gap-1">
+                    {customColors.map((customColor) => (
+                        <ColorSwatch key={customColor.name} name={customColor.name} color={customColor.color} onSelect={onSelect as (color: string) => void} />
+                    ))}
+                    </div>
+                </div>
+                )}
+            </div>
         );
 
       case 'typography':
@@ -127,8 +127,10 @@ export const ThemePropertySelector: React.FC<ThemePropertySelectorProps> = ({ ty
         </Button>
       </PopoverTrigger>
       <PopoverContent className={cn("p-0", popoverWidth)}>
-        <ScrollArea className="max-h-72">
-            {renderContent()}
+        <ScrollArea>
+           <div className="max-h-72 p-2">
+             {renderContent()}
+           </div>
         </ScrollArea>
       </PopoverContent>
     </Popover>
