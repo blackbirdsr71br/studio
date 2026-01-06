@@ -395,7 +395,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
     case 'Checkbox':
         return {
             ...commonLayout,
-            width: undefined, height: undefined, padding: 4,
+            width: 155, height: 50, padding: 4,
             text: 'Checkbox Label',
             checked: false,
             enabled: true,
@@ -404,7 +404,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
     case 'RadioButton':
         return {
             ...commonLayout,
-            width: undefined, height: undefined, padding: 4,
+            width: 155, height: 50, padding: 4,
             text: 'Radio Option',
             selected: false,
             enabled: true,
@@ -878,12 +878,12 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'text', type: 'string', label: 'Label', group: 'Content', placeholder: 'Checkbox label' },
     { name: 'checked', type: 'boolean', label: 'Checked', group: 'Behavior' },
     { name: 'enabled', type: 'boolean', label: 'Enabled', group: 'Behavior' },
-    { name: 'width', type: 'number', label: 'Width (dp)', group: 'Layout' },
-    { name: 'height', type: 'number', label: 'Height (dp)', group: 'Layout' },
+    { name: 'width', type: 'number', label: 'Width (dp)', group: 'Layout', placeholder: 'e.g., 155' },
+    { name: 'height', type: 'number', label: 'Height (dp)', group: 'Layout', placeholder: 'e.g., 50' },
     { name: 'fillMaxWidth', type: 'boolean', label: 'Fill Max Width', group: 'Layout' },
     { name: 'fillMaxHeight', type: 'boolean', label: 'Fill Max Height', group: 'Layout' },
     { name: 'fillMaxSize', type: 'boolean', label: 'Fill Max Size', group: 'Layout' },
-    { name: 'layoutWeight', type: 'number', label: 'Layout Weight', group: 'Layout', placeholder: 'e.g., 1.0' },
+    { name: 'layoutWeight', type: 'number', label: 'Layout Weight', group: 'Layout' },
     { name: 'selfAlign', type: 'enum', label: 'Self Align', group: 'Layout', options: [{label: 'Inherit', value: 'Inherit'}, {label: 'Start', value: 'Start'}, {label: 'Center', value: 'Center'}, {label: 'End', value: 'End'}] },
     { name: 'padding', type: 'number', label: 'Padding (All)', group: 'Layout' },
     { name: 'paddingTop', type: 'number', label: 'Padding Top', group: 'Layout' },
@@ -895,12 +895,12 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'text', type: 'string', label: 'Label', group: 'Content', placeholder: 'Radio button label' },
     { name: 'selected', type: 'boolean', label: 'Selected', group: 'Behavior' },
     { name: 'enabled', type: 'boolean', label: 'Enabled', group: 'Behavior' },
-    { name: 'width', type: 'number', label: 'Width (dp)', group: 'Layout' },
-    { name: 'height', type: 'number', label: 'Height (dp)', group: 'Layout' },
+    { name: 'width', type: 'number', label: 'Width (dp)', group: 'Layout', placeholder: 'e.g., 155' },
+    { name: 'height', type: 'number', label: 'Height (dp)', group: 'Layout', placeholder: 'e.g., 50' },
     { name: 'fillMaxWidth', type: 'boolean', label: 'Fill Max Width', group: 'Layout' },
     { name: 'fillMaxHeight', type: 'boolean', label: 'Fill Max Height', group: 'Layout' },
     { name: 'fillMaxSize', type: 'boolean', label: 'Fill Max Size', group: 'Layout' },
-    { name: 'layoutWeight', type: 'number', label: 'Layout Weight', group: 'Layout', placeholder: 'e.g., 1.0' },
+    { name: 'layoutWeight', type: 'number', label: 'Layout Weight', group: 'Layout' },
     { name: 'selfAlign', type: 'enum', label: 'Self Align', group: 'Layout', options: [{label: 'Inherit', value: 'Inherit'}, {label: 'Start', value: 'Start'}, {label: 'Center', value: 'Center'}, {label: 'End', value: 'End'}] },
     { name: 'padding', type: 'number', label: 'Padding (All)', group: 'Layout' },
     { name: 'paddingTop', type: 'number', label: 'Padding Top', group: 'Layout' },
@@ -1139,6 +1139,7 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
 
     
     
+
 
 
 
