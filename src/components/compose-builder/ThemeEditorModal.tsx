@@ -115,26 +115,6 @@ const ThemePreview: React.FC<{
     onColorClick: (key: keyof M3Colors | string) => void,
     highlightedKey: string | null 
 }> = ({ colors, customColors, typography, shapes, onColorClick, highlightedKey }) => {
-    const previewContainerRef = useRef<HTMLDivElement>(null);
-    const [scale, setScale] = useState(1);
-
-    useEffect(() => {
-        const calculateScale = () => {
-            if (previewContainerRef.current) {
-                const { width, height } = previewContainerRef.current.getBoundingClientRect();
-                const scaleX = width / FRAME_WIDTH;
-                const scaleY = height / FRAME_HEIGHT;
-                setScale(Math.min(scaleX, scaleY, 1)); // Ensure it doesn't scale up beyond 1
-            }
-        };
-
-        calculateScale();
-        const resizeObserver = new ResizeObserver(calculateScale);
-        if (previewContainerRef.current) {
-            resizeObserver.observe(previewContainerRef.current);
-        }
-        return () => resizeObserver.disconnect();
-    }, []);
     
     const getFontFamilyVariable = (fontName: string) => `var(--font-${fontName.toLowerCase().replace(/ /g, '-')})`;
     const getFontWeightValue = (weight: 'Normal' | 'Medium' | 'Bold') => (weight === 'Normal' ? 400 : weight === 'Medium' ? 500 : 700);
@@ -175,8 +155,8 @@ const ThemePreview: React.FC<{
 
 
     return (
-      <div ref={previewContainerRef} className="w-full h-full flex items-center justify-center bg-muted/20 rounded-lg overflow-hidden" style={dynamicStyles}>
-          <div style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}>
+      <div className="w-full h-full flex items-center justify-center bg-muted/20 rounded-lg overflow-y-auto" style={dynamicStyles}>
+          <div style={{ transform: `scale(0.8)`, transformOrigin: 'top center', paddingTop: '2rem', paddingBottom: '2rem' }}>
               <MobileFrame isPreview={true} themeOverride={{ lightColors: colors, darkColors: colors, customLightColors: [], customDarkColors: [], typography: typography, shapes: shapes }}>
                   <div className="flex flex-col w-full h-full">
                       {/* Top App Bar */}
@@ -642,18 +622,15 @@ fun AppTheme(useDarkTheme: Boolean = isSystemInDarkTheme(), content: @Composable
                 </Tabs>
             </div>
             
-             <div className="flex flex-col min-h-0">
-                <h3 className="text-sm font-semibold text-center mb-2 shrink-0">Live Preview</h3>
-                <div className="flex-grow min-h-0 relative flex items-center justify-center">
-                    <ThemePreview 
-                        colors={currentColorsForPreview} 
-                        customColors={currentCustomColorsForPreview} 
-                        typography={m3Theme.typography} 
-                        shapes={m3Theme.shapes}
-                        onColorClick={handleScrollToColor}
-                        highlightedKey={highlightedPreviewKey}
-                    />
-                </div>
+             <div className="flex-grow min-h-0 relative flex items-center justify-center overflow-y-auto">
+                <ThemePreview 
+                    colors={currentColorsForPreview} 
+                    customColors={currentCustomColorsForPreview} 
+                    typography={m3Theme.typography} 
+                    shapes={m3Theme.shapes}
+                    onColorClick={handleScrollToColor}
+                    highlightedKey={highlightedPreviewKey}
+                />
             </div>
         </div>
         
@@ -668,6 +645,7 @@ ThemeEditorModal.displayName = 'ThemeEditorModal';
     
 
     
+
 
 
 
