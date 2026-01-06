@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useImperativeHandle, forwardRef, useMemo } from 'react';
+import React, { useState, useImperativeHandle, forwardRef, useMemo, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,12 +18,13 @@ import { Slider } from '@/components/ui/slider';
 import type { M3Colors, CustomColor, M3Typography, M3Shapes, TextStyle } from '@/types/compose-spec';
 import { availableFonts, availableFontWeights } from '@/types/compose-spec';
 import { useDesign } from '@/contexts/DesignContext';
+import { cn } from '@/lib/utils';
 
 
 // --- SUB-COMPONENTS ---
 
-const ColorInput: React.FC<{ label: string; color: string; setColor: (color: string) => void; }> = ({ label, color, setColor }) => (
-    <div className="flex items-center justify-between gap-4">
+const ColorInput: React.FC<{ label: string; color: string; setColor: (color: string) => void; forwardedRef: React.Ref<HTMLDivElement> }> = ({ label, color, setColor, forwardedRef }) => (
+    <div ref={forwardedRef} className="flex items-center justify-between gap-4 rounded-md transition-all duration-300" data-color-key={label}>
         <Label htmlFor={`color-${label}`} className="text-xs whitespace-nowrap capitalize">{label.replace(/([A-Z])/g, ' $1')}</Label>
         <div className="flex items-center gap-2">
             <Input id={`color-${label}-picker`} type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-7 w-8 p-1"/>
@@ -89,7 +90,7 @@ const ShapeEditor: React.FC<{ shapes: M3Shapes, setShapes: (s: M3Shapes) => void
     </div>
 );
 
-const ThemePreview: React.FC<{ colors: M3Colors; customColors: CustomColor[], typography: M3Typography, shapes: M3Shapes }> = ({ colors, customColors, typography, shapes }) => {
+const ThemePreview: React.FC<{ colors: M3Colors; customColors: CustomColor[], typography: M3Typography, shapes: M3Shapes, onColorClick: (key: keyof M3Colors) => void }> = ({ colors, customColors, typography, shapes, onColorClick }) => {
     const getFontFamilyVariable = (fontName: string) => `var(--font-${fontName.toLowerCase().replace(/ /g, '-')})`;
     const getFontWeightValue = (weight: 'Normal' | 'Medium' | 'Bold') => (weight === 'Normal' ? 400 : weight === 'Medium' ? 500 : 700);
 
@@ -100,7 +101,9 @@ const ThemePreview: React.FC<{ colors: M3Colors; customColors: CustomColor[], ty
             '--preview-surface-variant': colors.surfaceVariant, '--preview-on-surface-variant': colors.onSurfaceVariant,
             '--preview-primary': colors.primary, '--preview-on-primary': colors.onPrimary,
             '--preview-primary-container': colors.primaryContainer, '--preview-on-primary-container': colors.onPrimaryContainer,
+            '--preview-secondary': colors.secondary, '--preview-on-secondary': colors.onSecondary,
             '--preview-secondary-container': colors.secondaryContainer, '--preview-on-secondary-container': colors.onSecondaryContainer,
+            '--preview-tertiary': colors.tertiary, '--preview-on-tertiary': colors.onTertiary,
             '--preview-tertiary-container': colors.tertiaryContainer, '--preview-on-tertiary-container': colors.onTertiaryContainer,
             '--preview-outline': colors.outline,
             '--shape-small': `${shapes.small}px`,
@@ -121,48 +124,74 @@ const ThemePreview: React.FC<{ colors: M3Colors; customColors: CustomColor[], ty
 
     return (
       <ScrollArea className="h-full">
-        <div className="w-full h-full p-4 rounded-lg transition-colors duration-200" style={{ backgroundColor: 'var(--preview-background)', color: 'var(--preview-on-background)', ...dynamicStyles }}>
+        <div 
+            className="w-full h-full p-4 rounded-lg transition-colors duration-200 cursor-pointer" 
+            style={{ backgroundColor: 'var(--preview-background)', color: 'var(--preview-on-background)', ...dynamicStyles }}
+            onClick={() => onColorClick('background')}
+            >
             <h3 style={{ 
                 fontFamily: 'var(--font-family-headlineMedium)', 
                 fontWeight: 'var(--font-weight-headlineMedium)', 
                 fontSize: 'var(--font-size-headlineMedium)'
             }}
-                className="mb-4 text-center">Live Preview</h3>
+                className="mb-4 text-center"
+                onClick={(e) => {e.stopPropagation(); onColorClick('onBackground')}}
+                >Live Preview</h3>
             
-            <Card style={{ 
-                borderRadius: 'var(--shape-large)', 
-                borderColor: 'var(--preview-outline)', 
-                backgroundColor: 'var(--preview-surface)',
-                color: 'var(--preview-on-surface)',
-            }}>
+            <Card 
+                style={{ 
+                    borderRadius: 'var(--shape-large)', 
+                    borderColor: 'var(--preview-outline)', 
+                    backgroundColor: 'var(--preview-surface)',
+                    color: 'var(--preview-on-surface)',
+                }}
+                onClick={(e) => {e.stopPropagation(); onColorClick('surface')}}
+                >
                 <CardHeader>
                     <CardTitle style={{
                         fontFamily: 'var(--font-family-titleMedium)', 
                         fontWeight: 'var(--font-weight-titleMedium)', 
                         fontSize: 'var(--font-size-titleMedium)',
                         color: 'var(--preview-on-surface)',
-                    }}>
+                    }}
+                     onClick={(e) => {e.stopPropagation(); onColorClick('onSurface')}}
+                    >
                         Example Card
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="p-4 rounded-md" style={{backgroundColor: 'var(--preview-surface-variant)', color: 'var(--preview-on-surface-variant)'}}>
+                    <div 
+                        className="p-4 rounded-md" 
+                        style={{backgroundColor: 'var(--preview-surface-variant)', color: 'var(--preview-on-surface-variant)'}}
+                        onClick={(e) => {e.stopPropagation(); onColorClick('surfaceVariant')}}
+                        >
                          <p style={{
                             fontFamily: 'var(--font-family-bodyLarge)',
                             fontWeight: 'var(--font-weight-bodyLarge)',
                             fontSize: 'var(--font-size-bodyLarge)',
-                         }}>This is a sample card to preview the theme on a surface-variant color.</p>
+                         }}
+                          onClick={(e) => {e.stopPropagation(); onColorClick('onSurfaceVariant')}}
+                         >This is a sample card to preview the theme on a surface-variant color.</p>
                     </div>
 
                     <div className="flex flex-col gap-2">
-                         <Button style={{ backgroundColor: 'var(--preview-primary)', color: 'var(--preview-on-primary)', borderRadius: 'var(--shape-small)' }}>
-                             Primary
+                         <Button 
+                            style={{ backgroundColor: 'var(--preview-primary)', color: 'var(--preview-on-primary)', borderRadius: 'var(--shape-small)' }}
+                            onClick={(e) => {e.stopPropagation(); onColorClick('primary')}}
+                            >
+                             <span onClick={(e) => {e.stopPropagation(); onColorClick('onPrimary')}}>Primary</span>
                          </Button>
-                         <Button style={{ backgroundColor: 'var(--preview-secondary-container)', color: 'var(--preview-on-secondary-container)', borderRadius: 'var(--shape-small)' }}>
-                             Secondary
+                         <Button 
+                            style={{ backgroundColor: 'var(--preview-secondary-container)', color: 'var(--preview-on-secondary-container)', borderRadius: 'var(--shape-small)' }}
+                            onClick={(e) => {e.stopPropagation(); onColorClick('secondaryContainer')}}
+                            >
+                            <span onClick={(e) => {e.stopPropagation(); onColorClick('onSecondaryContainer')}}>Secondary</span>
                          </Button>
-                         <Button style={{ backgroundColor: 'var(--preview-tertiary-container)', color: 'var(--preview-on-tertiary-container)', borderRadius: 'var(--shape-small)' }}>
-                             Tertiary
+                         <Button 
+                            style={{ backgroundColor: 'var(--preview-tertiary-container)', color: 'var(--preview-on-tertiary-container)', borderRadius: 'var(--shape-small)' }}
+                             onClick={(e) => {e.stopPropagation(); onColorClick('tertiaryContainer')}}
+                            >
+                            <span onClick={(e) => {e.stopPropagation(); onColorClick('onTertiaryContainer')}}>Tertiary</span>
                          </Button>
                     </div>
                 </CardContent>
@@ -185,16 +214,40 @@ export const ThemeEditorModal = forwardRef<ThemeEditorModalRef, {}>((props, ref)
   const [activeEditorTab, setActiveEditorTab] = useState<'colors' | 'typography' | 'shapes'>('colors');
   
   const { m3Theme, setM3Theme, activeM3ThemeScheme, setActiveM3ThemeScheme } = useDesign();
+  
+  const colorInputRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useImperativeHandle(ref, () => ({
     openModal: () => {
-      // The state is now managed by the context, so we don't need to reset it here.
-      // We can just ensure the tabs are on their default state.
       setActiveM3ThemeScheme('light');
       setActiveEditorTab('colors');
       setIsOpen(true);
     }
   }));
+
+  const handleScrollToColor = (key: keyof M3Colors) => {
+    setActiveEditorTab('colors');
+    // Ensure the correct color scheme tab (light/dark) is active before scrolling
+    const colorExistsInLight = Object.keys(m3Theme.lightColors).includes(key);
+    const colorExistsInDark = Object.keys(m3Theme.darkColors).includes(key);
+
+    if (activeM3ThemeScheme === 'dark' && !colorExistsInDark && colorExistsInLight) {
+        setActiveM3ThemeScheme('light');
+    } else if (activeM3ThemeScheme === 'light' && !colorExistsInLight && colorExistsInDark) {
+        setActiveM3ThemeScheme('dark');
+    }
+    
+    setTimeout(() => {
+        const ref = colorInputRefs.current[key];
+        if (ref) {
+            ref.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Add a temporary highlight effect
+            ref.classList.add('bg-primary/20');
+            setTimeout(() => ref.classList.remove('bg-primary/20'), 1500);
+        }
+    }, 100); // Small delay to allow tab content to render if it was hidden
+  };
+
 
   const handleGenerateThemeFile = async () => {
     setIsGenerating(true);
@@ -383,19 +436,48 @@ fun AppTheme(useDarkTheme: Boolean = isSystemInDarkTheme(), content: @Composable
 
     return (
         <div className="space-y-6">
-            <ColorGroup title="Primary"><ColorInput label="primary" color={colors.primary} setColor={(c) => setColor('primary', c)} /><ColorInput label="onPrimary" color={colors.onPrimary} setColor={(c) => setColor('onPrimary', c)} /><ColorInput label="primaryContainer" color={colors.primaryContainer} setColor={(c) => setColor('primaryContainer', c)} /><ColorInput label="onPrimaryContainer" color={colors.onPrimaryContainer} setColor={(c) => setColor('onPrimaryContainer', c)} /></ColorGroup>
-            <ColorGroup title="Secondary"><ColorInput label="secondary" color={colors.secondary} setColor={(c) => setColor('secondary', c)} /><ColorInput label="onSecondary" color={colors.onSecondary} setColor={(c) => setColor('onSecondary', c)} /><ColorInput label="secondaryContainer" color={colors.secondaryContainer} setColor={(c) => setColor('secondaryContainer', c)} /><ColorInput label="onSecondaryContainer" color={colors.onSecondaryContainer} setColor={(c) => setColor('onSecondaryContainer', c)} /></ColorGroup>
-            <ColorGroup title="Tertiary"><ColorInput label="tertiary" color={colors.tertiary} setColor={(c) => setColor('tertiary', c)} /><ColorInput label="onTertiary" color={colors.onTertiary} setColor={(c) => setColor('onTertiary', c)} /><ColorInput label="tertiaryContainer" color={colors.tertiaryContainer} setColor={(c) => setColor('tertiaryContainer', c)} /><ColorInput label="onTertiaryContainer" color={colors.onTertiaryContainer} setColor={(c) => setColor('onTertiaryContainer', c)} /></ColorGroup>
-            <ColorGroup title="Error"><ColorInput label="error" color={colors.error} setColor={(c) => setColor('error', c)} /><ColorInput label="onError" color={colors.onError} setColor={(c) => setColor('onError', c)} /><ColorInput label="errorContainer" color={colors.errorContainer} setColor={(c) => setColor('errorContainer', c)} /><ColorInput label="onErrorContainer" color={colors.onErrorContainer} setColor={(c) => setColor('onErrorContainer', c)} /></ColorGroup>
-            <ColorGroup title="Surface & Background"><ColorInput label="background" color={colors.background} setColor={(c) => setColor('background', c)} /><ColorInput label="onBackground" color={colors.onBackground} setColor={(c) => setColor('onBackground', c)} /><ColorInput label="surface" color={colors.surface} setColor={(c) => setColor('surface', c)} /><ColorInput label="onSurface" color={colors.onSurface} setColor={(c) => setColor('onSurface', c)} /><ColorInput label="surfaceVariant" color={colors.surfaceVariant} setColor={(c) => setColor('surfaceVariant', c)} /><ColorInput label="onSurfaceVariant" color={colors.onSurfaceVariant} setColor={(c) => setColor('onSurfaceVariant', c)} /><ColorInput label="outline" color={colors.outline} setColor={(c) => setColor('outline', c)} /></ColorGroup>
+            <ColorGroup title="Primary">
+                <ColorInput label="primary" color={colors.primary} setColor={(c) => setColor('primary', c)} forwardedRef={el => colorInputRefs.current['primary'] = el} />
+                <ColorInput label="onPrimary" color={colors.onPrimary} setColor={(c) => setColor('onPrimary', c)} forwardedRef={el => colorInputRefs.current['onPrimary'] = el} />
+                <ColorInput label="primaryContainer" color={colors.primaryContainer} setColor={(c) => setColor('primaryContainer', c)} forwardedRef={el => colorInputRefs.current['primaryContainer'] = el} />
+                <ColorInput label="onPrimaryContainer" color={colors.onPrimaryContainer} setColor={(c) => setColor('onPrimaryContainer', c)} forwardedRef={el => colorInputRefs.current['onPrimaryContainer'] = el} />
+            </ColorGroup>
+            <ColorGroup title="Secondary">
+                <ColorInput label="secondary" color={colors.secondary} setColor={(c) => setColor('secondary', c)} forwardedRef={el => colorInputRefs.current['secondary'] = el} />
+                <ColorInput label="onSecondary" color={colors.onSecondary} setColor={(c) => setColor('onSecondary', c)} forwardedRef={el => colorInputRefs.current['onSecondary'] = el} />
+                <ColorInput label="secondaryContainer" color={colors.secondaryContainer} setColor={(c) => setColor('secondaryContainer', c)} forwardedRef={el => colorInputRefs.current['secondaryContainer'] = el} />
+                <ColorInput label="onSecondaryContainer" color={colors.onSecondaryContainer} setColor={(c) => setColor('onSecondaryContainer', c)} forwardedRef={el => colorInputRefs.current['onSecondaryContainer'] = el} />
+            </ColorGroup>
+            <ColorGroup title="Tertiary">
+                <ColorInput label="tertiary" color={colors.tertiary} setColor={(c) => setColor('tertiary', c)} forwardedRef={el => colorInputRefs.current['tertiary'] = el} />
+                <ColorInput label="onTertiary" color={colors.onTertiary} setColor={(c) => setColor('onTertiary', c)} forwardedRef={el => colorInputRefs.current['onTertiary'] = el} />
+                <ColorInput label="tertiaryContainer" color={colors.tertiaryContainer} setColor={(c) => setColor('tertiaryContainer', c)} forwardedRef={el => colorInputRefs.current['tertiaryContainer'] = el} />
+                <ColorInput label="onTertiaryContainer" color={colors.onTertiaryContainer} setColor={(c) => setColor('onTertiaryContainer', c)} forwardedRef={el => colorInputRefs.current['onTertiaryContainer'] = el} />
+            </ColorGroup>
+            <ColorGroup title="Error">
+                <ColorInput label="error" color={colors.error} setColor={(c) => setColor('error', c)} forwardedRef={el => colorInputRefs.current['error'] = el} />
+                <ColorInput label="onError" color={colors.onError} setColor={(c) => setColor('onError', c)} forwardedRef={el => colorInputRefs.current['onError'] = el} />
+                <ColorInput label="errorContainer" color={colors.errorContainer} setColor={(c) => setColor('errorContainer', c)} forwardedRef={el => colorInputRefs.current['errorContainer'] = el} />
+                <ColorInput label="onErrorContainer" color={colors.onErrorContainer} setColor={(c) => setColor('onErrorContainer', c)} forwardedRef={el => colorInputRefs.current['onErrorContainer'] = el} />
+            </ColorGroup>
+            <ColorGroup title="Surface & Background">
+                <ColorInput label="background" color={colors.background} setColor={(c) => setColor('background', c)} forwardedRef={el => colorInputRefs.current['background'] = el} />
+                <ColorInput label="onBackground" color={colors.onBackground} setColor={(c) => setColor('onBackground', c)} forwardedRef={el => colorInputRefs.current['onBackground'] = el} />
+                <ColorInput label="surface" color={colors.surface} setColor={(c) => setColor('surface', c)} forwardedRef={el => colorInputRefs.current['surface'] = el} />
+                <ColorInput label="onSurface" color={colors.onSurface} setColor={(c) => setColor('onSurface', c)} forwardedRef={el => colorInputRefs.current['onSurface'] = el} />
+                <ColorInput label="surfaceVariant" color={colors.surfaceVariant} setColor={(c) => setColor('surfaceVariant', c)} forwardedRef={el => colorInputRefs.current['surfaceVariant'] = el} />
+                <ColorInput label="onSurfaceVariant" color={colors.onSurfaceVariant} setColor={(c) => setColor('onSurfaceVariant', c)} forwardedRef={el => colorInputRefs.current['onSurfaceVariant'] = el} />
+                <ColorInput label="outline" color={colors.outline} setColor={(c) => setColor('outline', c)} forwardedRef={el => colorInputRefs.current['outline'] = el} />
+            </ColorGroup>
             <Separator />
             <div>
                 <h3 className="text-base font-semibold mb-3 text-foreground">Custom Colors</h3>
                 <div className="space-y-4">
                     {(m3Theme.customLightColors || []).map((_, index) => {
                         const customColor = currentCustomColors[index];
+                        const key = customColor?.name || `custom-${index}`;
                         return (
-                          <div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 p-3 border rounded-md relative">
+                          <div key={index} ref={el => colorInputRefs.current[key] = el} className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 p-3 border rounded-md relative transition-all duration-300">
                               <div className="flex items-center justify-between gap-4">
                                 <Label htmlFor={`custom-name-${theme}-${index}`} className="text-xs">Name</Label>
                                 <Input id={`custom-name-${theme}-${index}`} type="text" value={customColor?.name || ''} onChange={(e) => handleUpdateCustomColor(index, 'name', e.target.value.replace(/[^a-zA-Z0-9]/g, ''), 'light')} className="h-7 w-24 text-xs" placeholder="e.g., success" disabled={theme === 'dark'}/>
@@ -439,8 +521,8 @@ fun AppTheme(useDarkTheme: Boolean = isSystemInDarkTheme(), content: @Composable
                             <TabsContent value="colors">
                                 <Tabs value={activeM3ThemeScheme} onValueChange={(v) => setActiveM3ThemeScheme(v as 'light' | 'dark')}>
                                     <TabsList className="grid w-full grid-cols-2 mb-4"><TabsTrigger value="light">Light Scheme</TabsTrigger><TabsTrigger value="dark">Dark Scheme</TabsTrigger></TabsList>
-                                    <TabsContent value="light" forceMount={true} className={activeM3ThemeScheme === 'light' ? 'block' : 'hidden'}>{renderColorSection('light')}</TabsContent>
-                                    <TabsContent value="dark" forceMount={true} className={activeM3ThemeScheme === 'dark' ? 'block' : 'hidden'}>{renderColorSection('dark')}</TabsContent>
+                                    <TabsContent value="light" forceMount={true} className={cn(activeM3ThemeScheme !== 'light' && 'hidden')}>{renderColorSection('light')}</TabsContent>
+                                    <TabsContent value="dark" forceMount={true} className={cn(activeM3ThemeScheme !== 'dark' && 'hidden')}>{renderColorSection('dark')}</TabsContent>
                                 </Tabs>
                             </TabsContent>
                             <TabsContent value="typography"><TypographyEditor typography={m3Theme.typography} setTypography={handleTypographyChange} /></TabsContent>
@@ -453,7 +535,13 @@ fun AppTheme(useDarkTheme: Boolean = isSystemInDarkTheme(), content: @Composable
              <div className="flex flex-col min-h-0 bg-muted/30 rounded-lg">
                 <div className="p-2 border-b shrink-0"><h3 className="text-sm font-semibold text-center">Live Preview</h3></div>
                 
-                <ThemePreview colors={currentColorsForPreview} customColors={currentCustomColorsForPreview} typography={m3Theme.typography} shapes={m3Theme.shapes} />
+                <ThemePreview 
+                    colors={currentColorsForPreview} 
+                    customColors={currentCustomColorsForPreview} 
+                    typography={m3Theme.typography} 
+                    shapes={m3Theme.shapes}
+                    onColorClick={handleScrollToColor}
+                />
                 
             </div>
         </div>
@@ -465,3 +553,5 @@ fun AppTheme(useDarkTheme: Boolean = isSystemInDarkTheme(), content: @Composable
 });
 
 ThemeEditorModal.displayName = 'ThemeEditorModal';
+
+    
