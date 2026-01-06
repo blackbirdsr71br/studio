@@ -64,6 +64,10 @@ const getThemeColorKeyForComponentProp = (
         case 'TopAppBar':
         case 'BottomNavigationBar':
         case 'DropdownMenu':
+        case 'LazyColumn':
+        case 'LazyRow':
+        case 'LazyVerticalGrid':
+        case 'LazyHorizontalGrid':
             if (propName === 'backgroundColor') return 'surface';
             if (propName === 'contentColor') return 'onSurface';
             break;
@@ -74,10 +78,6 @@ const getThemeColorKeyForComponentProp = (
         case 'Column':
         case 'Row':
         case 'Box':
-        case 'LazyColumn':
-        case 'LazyRow':
-        case 'LazyVerticalGrid':
-        case 'LazyHorizontalGrid':
              if (propName === 'backgroundColor') return 'background';
              break;
     }
@@ -640,6 +640,7 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     </aside>
   );
 }
+
 
 
 
