@@ -20,6 +20,8 @@ import { useToast } from '@/hooks/use-toast';
 import { DesignTabs } from '@/components/compose-builder/DesignTabs';
 import { DEFAULT_CONTENT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 import { CarouselWizardModal, type CarouselWizardModalRef } from '@/components/compose-builder/CarouselWizardModal';
+import { ThemeCodeModal, type ThemeCodeModalRef } from '@/components/compose-builder/ThemeCodeModal';
+
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 2.0;
@@ -86,6 +88,7 @@ function MainApp({ carouselWizardModalRef }: MainAppProps) {
   const generateModalRef = useRef<GenerateCodeModalRef>(null);
   const viewJsonModalRef = useRef<ViewJsonModalRef>(null);
   const themeEditorModalRef = useRef<ThemeEditorModalRef>(null);
+  const themeCodeModalRef = useRef<ThemeCodeModalRef>(null);
   const imageSourceModalRef = useRef<ImageSourceModalRef>(null);
   const publishConfigModalRef = useRef<PublishConfigModalRef>(null);
   const saveLayoutModalRef = useRef<SaveLayoutModalRef>(null);
@@ -120,6 +123,7 @@ function MainApp({ carouselWizardModalRef }: MainAppProps) {
           generateModalRef={generateModalRef}
           viewJsonModalRef={viewJsonModalRef}
           themeEditorModalRef={themeEditorModalRef}
+          themeCodeModalRef={themeCodeModalRef}
           publishConfigModalRef={publishConfigModalRef}
           saveLayoutModalRef={saveLayoutModalRef}
         />
@@ -155,6 +159,7 @@ function MainApp({ carouselWizardModalRef }: MainAppProps) {
       <GenerateCodeModal ref={generateModalRef} />
       <ViewJsonModal ref={viewJsonModalRef} />
       <ThemeEditorModal ref={themeEditorModalRef} />
+      <ThemeCodeModal ref={themeCodeModalRef} />
       <ImageSourceModal ref={imageSourceModalRef} />
       <PublishConfigModal ref={publishConfigModalRef} />
       <SaveLayoutModal ref={saveLayoutModalRef} />

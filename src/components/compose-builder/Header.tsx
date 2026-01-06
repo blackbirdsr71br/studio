@@ -4,10 +4,11 @@
 import React, { RefObject } from 'react';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from "@/components/ui/button";
-import { Code, Trash2, FileJson, UploadCloud, Palette, Undo, Redo, Copy, ClipboardPaste, Settings, Save, Library, Edit } from "lucide-react";
+import { Code, Trash2, FileJson, UploadCloud, Palette, Undo, Redo, Copy, ClipboardPaste, Settings, Save, Library, Edit, FileCode2 } from "lucide-react";
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
 import type { ViewJsonModalRef } from "./ViewJsonModal";
 import type { ThemeEditorModalRef } from "./ThemeEditorModal";
+import type { ThemeCodeModalRef } from "./ThemeCodeModal";
 import type { PublishConfigModalRef } from "./PublishConfigModal";
 import type { SaveLayoutModalRef } from "./SaveLayoutModal";
 import { useDesign } from "@/contexts/DesignContext";
@@ -29,6 +30,7 @@ interface HeaderProps {
   generateModalRef: RefObject<GenerateCodeModalRef>;
   viewJsonModalRef: RefObject<ViewJsonModalRef>;
   themeEditorModalRef: RefObject<ThemeEditorModalRef>;
+  themeCodeModalRef: RefObject<ThemeCodeModalRef>;
   publishConfigModalRef: RefObject<PublishConfigModalRef>;
   saveLayoutModalRef: RefObject<SaveLayoutModalRef>;
 }
@@ -37,6 +39,7 @@ export function Header({
   generateModalRef,
   viewJsonModalRef,
   themeEditorModalRef,
+  themeCodeModalRef,
   publishConfigModalRef,
   saveLayoutModalRef,
 }: HeaderProps) {
@@ -83,6 +86,12 @@ export function Header({
   const handleOpenThemeEditor = () => {
     if (themeEditorModalRef.current) {
       themeEditorModalRef.current.openModal();
+    }
+  };
+
+   const handleOpenThemeCode = () => {
+    if (themeCodeModalRef.current) {
+      themeCodeModalRef.current.openModal();
     }
   };
 
@@ -288,7 +297,9 @@ export function Header({
                 <p>Publish to Remote Config</p>
               </TooltipContent>
             </Tooltip>
-
+            
+            <Separator orientation="vertical" className="h-6 mx-1 bg-white/50 dark:bg-sidebar-border" />
+            
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -328,6 +339,23 @@ export function Header({
                 <SettingsPanelContent />
               </PopoverContent>
             </Popover>
+
+             <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={handleOpenThemeCode}
+                  aria-label="View Theme Code"
+                  className="text-sidebar-foreground border-sidebar-border bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                >
+                  <FileCode2 />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>View Theme Code</p>
+              </TooltipContent>
+            </Tooltip>
 
             <Tooltip>
               <TooltipTrigger asChild>
