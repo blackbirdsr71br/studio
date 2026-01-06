@@ -1,3 +1,4 @@
+
 'use client';
 import type { DesignComponent, ComponentType as OriginalComponentType, BaseComponentProps, CustomComponentTemplate, M3Theme } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from '../component-renderer/RenderedComponentWrapper';
@@ -63,14 +64,14 @@ const getThemeColorKeyForComponentBackground = (componentType: OriginalComponent
         case 'TopAppBar':
         case 'BottomNavigationBar':
         case 'DropdownMenu':
-            return 'surface';
-        case 'Scaffold':
-        case 'Column':
-        case 'Row':
         case 'LazyColumn':
         case 'LazyRow':
         case 'LazyVerticalGrid':
         case 'LazyHorizontalGrid':
+            return 'surface';
+        case 'Scaffold':
+        case 'Column':
+        case 'Row':
         case 'Box':
             return 'background';
     }
@@ -79,7 +80,6 @@ const getThemeColorKeyForComponentBackground = (componentType: OriginalComponent
 
 export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, isPreview = false, passThroughProps }: ContainerViewProps) {
   const { customComponentTemplates } = passThroughProps;
-  const { resolvedTheme } = useTheme();
   const { m3Theme, activeM3ThemeScheme } = useDesign();
 
 
@@ -417,5 +417,3 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     </div>
   );
 }
-
-    
