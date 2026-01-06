@@ -11,7 +11,7 @@ import CodeMirror from '@uiw/react-codemirror';
 import { java as javaLang } from '@codemirror/lang-java';
 import { githubLight, githubDark } from '@uiw/codemirror-theme-github';
 import { useTheme } from '@/contexts/ThemeContext';
-import type { M3Colors, M3Typography, M3Shapes } from '@/types/compose-spec';
+import type { M3Colors, M3Typography, M3Shapes, CustomColor } from '@/types/compose-spec';
 
 export interface ThemeCodeModalRef {
   openModal: () => void;
@@ -20,6 +20,8 @@ export interface ThemeCodeModalRef {
 const generateThemeFileContent = (m3Theme?: {
     lightColors: M3Colors;
     darkColors: M3Colors;
+    customLightColors: CustomColor[];
+    customDarkColors: CustomColor[];
     typography: M3Typography;
     shapes: M3Shapes;
 }): string => {
@@ -27,15 +29,40 @@ const generateThemeFileContent = (m3Theme?: {
     return "// Theme data is not available.";
   }
 
-  const { lightColors, darkColors, typography, shapes } = m3Theme;
+  const { lightColors, darkColors, customLightColors = [], customDarkColors = [], typography, shapes } = m3Theme;
   const toComposeColor = (hex: string) => `Color(0xFF${hex.substring(1).toUpperCase()})`;
   const toFontWeight = (w: 'Normal' | 'Medium' | 'Bold') => w === 'Normal' ? 'FontWeight.Normal' : w === 'Medium' ? 'FontWeight.Medium' : 'FontWeight.Bold';
 
   const lightColorScheme = Object.entries(lightColors).map(([n, c]) => `    ${n} = ${toComposeColor(c)}`).join(',\n');
   const darkColorScheme = Object.entries(darkColors).map(([n, c]) => `    ${n} = ${toComposeColor(c)}`).join(',\n');
-  
+
+  const customColorClassProperties = customLightColors.map(c => `    val ${c.name}: Color`).join(',\n');
+  const customColorClass = customLightColors.length > 0
+    ? `@Immutable\ndata class CustomColors(\n${customColorClassProperties}\n)`
+    : '';
+
+  const lightCustomColors = customLightColors.map(c => `    ${c.name} = ${toComposeColor(c.color)}`).join(',\n');
+  const darkCustomColorsForGeneration = customDarkColors.length > 0 ? customDarkColors : customLightColors.map(c => ({...c, color: '#000000'})); // Fallback
+  const darkCustomColors = darkCustomColorsForGeneration.map(c => `    ${c.name} = ${toComposeColor(c.color)}`).join(',\n');
+        
+  const customColorInstances = customLightColors.length > 0
+      ? `val LightCustomColors = CustomColors(\n${lightCustomColors}\n)\n\nval DarkCustomColors = CustomColors(\n${darkCustomColors}\n)`
+      : '';
+            
+  const localComposition = customLightColors.length > 0
+      ? `val LocalCustomColors = staticCompositionLocalOf { LightCustomColors }`
+      : '';
+            
+  const themeExtension = customLightColors.length > 0
+      ? `val MaterialTheme.customColors: CustomColors\n    @Composable\n    @ReadOnlyComposable\n    get() = LocalCustomColors.current`
+      : '';
+
   const typographyStyles = (Object.keys(typography) as Array<keyof M3Typography>).map(key => `    ${key} = TextStyle(\n        fontFamily = FontFamily.Default, // TODO: Replace with actual font\n        fontWeight = ${toFontWeight(typography[key].fontWeight)},\n        fontSize = ${typography[key].fontSize}.sp\n    )`).join(',\n');
   const shapesDef = (Object.keys(shapes) as Array<keyof M3Shapes>).map(key => `    ${key} = RoundedCornerShape(${shapes[key]}.dp)`).join(',\n');
+  
+  const compositionProvider = customLightColors.length > 0
+      ? `    CompositionLocalProvider(LocalCustomColors provides customColors) {\n        content()\n    }`
+      : `    content()`;
 
   return `
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -59,6 +86,12 @@ private val DarkColorScheme = darkColorScheme(
 ${darkColorScheme}
 )
 
+${customColorClass}
+
+${customColorInstances}
+
+${localComposition}
+
 private val AppShapes = Shapes(
 ${shapesDef}
 )
@@ -67,19 +100,23 @@ private val AppTypography = Typography(
 ${typographyStyles}
 )
 
+${themeExtension}
+
 @Composable
 fun AppTheme(
     useDarkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
     val colors = if (useDarkTheme) DarkColorScheme else LightColorScheme
+    ${customLightColors.length > 0 ? 'val customColors = if (useDarkTheme) DarkCustomColors else LightCustomColors' : ''}
     
     MaterialTheme(
         colorScheme = colors,
         typography = AppTypography,
-        shapes = AppShapes,
-        content = content
-    )
+        shapes = AppShapes
+    ) {
+    ${compositionProvider}
+    }
 }`;
 };
 
