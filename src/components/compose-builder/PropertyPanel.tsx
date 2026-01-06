@@ -64,22 +64,22 @@ const getThemeColorKeyForComponentProp = (
         case 'TopAppBar':
         case 'BottomNavigationBar':
         case 'DropdownMenu':
+             if (propName === 'backgroundColor') return 'surface';
+             if (propName === 'contentColor') return 'onSurface';
+             break;
         case 'LazyColumn':
         case 'LazyRow':
         case 'LazyVerticalGrid':
         case 'LazyHorizontalGrid':
-            if (propName === 'backgroundColor') return 'surface';
-            if (propName === 'contentColor') return 'onSurface';
+        case 'Column':
+        case 'Row':
+        case 'Box':
+        case 'Scaffold':
+            if (propName === 'backgroundColor') return 'background';
             break;
         case 'Text':
             if (propName === 'textColor') return 'onSurface';
             break;
-        case 'Scaffold':
-        case 'Column':
-        case 'Row':
-        case 'Box':
-             if (propName === 'backgroundColor') return 'background';
-             break;
     }
     return null;
 };
@@ -185,17 +185,13 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
         updates.fillMaxSize = isChecked && otherPropValue;
     }
 
-    // This updates the component's own properties
     updateComponent(selectedComponent.id, { properties: updates });
     
-    // If we're setting a concrete color value, we should also update the M3 theme
-    // if this component property is linked to a theme color.
     if (propDefinition?.type === 'color' && typeof value === 'string' && value.startsWith('#')) {
         const themeColorKey = getThemeColorKeyForComponentProp(componentPropsDefSourceType, propName as keyof BaseComponentProps);
         if (themeColorKey) {
             setM3Theme(prevTheme => {
                 const currentSchemeKey = activeM3ThemeScheme === 'dark' ? 'darkColors' : 'lightColors';
-                // Only update if the value is different, to avoid unnecessary re-renders/saves
                 if (prevTheme[currentSchemeKey][themeColorKey] !== value) {
                     const newColors = { ...prevTheme[currentSchemeKey], [themeColorKey]: value };
                     return { ...prevTheme, [currentSchemeKey]: newColors };
@@ -642,3 +638,5 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     </aside>
   );
 }
+
+    

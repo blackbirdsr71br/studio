@@ -1,13 +1,13 @@
 
-
 'use client';
-import type { DesignComponent, ComponentType as OriginalComponentType, BaseComponentProps, CustomComponentTemplate } from '@/types/compose-spec';
+import type { DesignComponent, ComponentType as OriginalComponentType, BaseComponentProps, CustomComponentTemplate, M3Theme } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from '../component-renderer/RenderedComponentWrapper';
 import { getComponentDisplayName, DEFAULT_CONTENT_LAZY_COLUMN_ID, isCustomComponentType, ROOT_SCAFFOLD_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID, getDefaultProperties } from '@/types/compose-spec';
 import { cn } from '@/lib/utils';
 import { TextView } from './TextView'; 
 import { useTheme } from '@/contexts/ThemeContext';
 import { ChevronDown } from 'lucide-react';
+import { useDesign } from '@/contexts/DesignContext';
 
 interface ContainerViewProps {
   component: DesignComponent;
@@ -58,9 +58,31 @@ const processDimension = (
   return defaultValueIfUndefined.toString();
 };
 
+const getThemeColorKeyForComponentBackground = (componentType: OriginalComponentType | string): keyof M3Theme['lightColors'] | null => {
+    switch (componentType) {
+        case 'Card':
+        case 'TopAppBar':
+        case 'BottomNavigationBar':
+        case 'DropdownMenu':
+        case 'LazyColumn':
+        case 'LazyRow':
+        case 'LazyVerticalGrid':
+        case 'LazyHorizontalGrid':
+            return 'surface';
+        case 'Scaffold':
+        case 'Column':
+        case 'Row':
+        case 'Box':
+            return 'background';
+    }
+    return null;
+}
+
 export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, isPreview = false, passThroughProps }: ContainerViewProps) {
   const { customComponentTemplates } = passThroughProps;
   const { resolvedTheme } = useTheme();
+  const { m3Theme, activeM3ThemeScheme } = useDesign();
+
 
   let effectiveType: OriginalComponentType | string = component.type;
 
@@ -90,7 +112,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     elevation,
     itemSpacing,
     reverseLayout,
-    backgroundColor: containerBackgroundColor,
+    backgroundColor: explicitBackgroundColor,
     contentColor: explicitContentColor,
     borderWidth,
     borderColor,
@@ -145,7 +167,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
 
   const baseStyle: React.CSSProperties = {
     display: 'flex',
-    flexDirection: 'column', // Base container is always a column for dropdown/children layout
+    flexDirection: 'column', 
     paddingTop: `${effectivePaddingTop}px`,
     paddingBottom: `${effectivePaddingBottom}px`,
     paddingLeft: `${effectivePaddingStart}px`,
@@ -160,19 +182,19 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     boxShadow: elevation > 0 ? `0 ${elevation}px ${elevation * 2}px rgba(0,0,0,0.1)` : 'none'
   };
   
-    if (typeof effectiveProperties.cornerRadius === 'number' && effectiveProperties.cornerRadius > 0) {
-      baseStyle.borderRadius = `${effectiveProperties.cornerRadius}px`;
-    } else if (
-        typeof effectiveProperties.cornerRadiusTopLeft === 'number' ||
-        typeof effectiveProperties.cornerRadiusTopRight === 'number' ||
-        typeof effectiveProperties.cornerRadiusBottomLeft === 'number' ||
-        typeof effectiveProperties.cornerRadiusBottomRight === 'number'
-    ) {
-        baseStyle.borderTopLeftRadius = `${effectiveProperties.cornerRadiusTopLeft || 0}px`;
-        baseStyle.borderTopRightRadius = `${effectiveProperties.cornerRadiusTopRight || 0}px`;
-        baseStyle.borderBottomLeftRadius = `${effectiveProperties.cornerRadiusBottomLeft || 0}px`;
-        baseStyle.borderBottomRightRadius = `${effectiveProperties.cornerRadiusBottomRight || 0}px`;
-    }
+  if (typeof effectiveProperties.cornerRadius === 'number' && effectiveProperties.cornerRadius > 0) {
+    baseStyle.borderRadius = `${effectiveProperties.cornerRadius}px`;
+  } else if (
+      typeof effectiveProperties.cornerRadiusTopLeft === 'number' ||
+      typeof effectiveProperties.cornerRadiusTopRight === 'number' ||
+      typeof effectiveProperties.cornerRadiusBottomLeft === 'number' ||
+      typeof effectiveProperties.cornerRadiusBottomRight === 'number'
+  ) {
+      baseStyle.borderTopLeftRadius = `${effectiveProperties.cornerRadiusTopLeft || 0}px`;
+      baseStyle.borderTopRightRadius = `${effectiveProperties.cornerRadiusTopRight || 0}px`;
+      baseStyle.borderBottomLeftRadius = `${effectiveProperties.cornerRadiusBottomLeft || 0}px`;
+      baseStyle.borderBottomRightRadius = `${effectiveProperties.cornerRadiusBottomRight || 0}px`;
+  }
 
   if (isLazyRowType) {
     baseStyle.flexDirection = 'row';
@@ -191,22 +213,22 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     }
   }
   
-  // START of change
   if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
       baseStyle.backgroundColor = resolvedTheme === 'dark' ? '#000000' : '#e7e4e4';
-  } else if (containerBackgroundColor) {
-  // END of change
-    if (typeof containerBackgroundColor === 'object' && containerBackgroundColor.type === 'linearGradient') {
-      const angle = containerBackgroundColor.angle || 0;
-      const colorStops = containerBackgroundColor.colors.join(', ');
+  } else if (explicitBackgroundColor) {
+    if (typeof explicitBackgroundColor === 'object' && explicitBackgroundColor.type === 'linearGradient') {
+      const angle = explicitBackgroundColor.angle || 0;
+      const colorStops = explicitBackgroundColor.colors.join(', ');
       baseStyle.background = `linear-gradient(${angle}deg, ${colorStops})`;
-    } else if (typeof containerBackgroundColor === 'string') {
-      baseStyle.backgroundColor = containerBackgroundColor;
+    } else if (typeof explicitBackgroundColor === 'string') {
+      baseStyle.backgroundColor = explicitBackgroundColor;
     }
-  } else if (['Card', 'TopAppBar', 'BottomNavigationBar', 'DropdownMenu'].includes(effectiveType)) {
-    baseStyle.backgroundColor = 'var(--m3-surface)';
-  } else if (component.id === ROOT_SCAFFOLD_ID) { // This now only applies to Scaffold if needed
-    baseStyle.backgroundColor = 'var(--m3-background)';
+  } else {
+    const themeColorKey = getThemeColorKeyForComponentBackground(effectiveType);
+    if (themeColorKey) {
+        const currentColorScheme = activeM3ThemeScheme === 'dark' ? m3Theme.darkColors : m3Theme.lightColors;
+        baseStyle.backgroundColor = currentColorScheme[themeColorKey];
+    }
   }
 
   baseStyle.color = explicitContentColor || 'var(--m3-on-surface)';
@@ -215,7 +237,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     baseStyle.width = '100%';
     baseStyle.height = 'auto';
     baseStyle.minHeight = '100%';
-    baseStyle.overflowY = 'auto'; // Always scrollable
+    baseStyle.overflowY = 'auto';
     delete baseStyle.overflow;
   }
 
@@ -269,7 +291,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
      flexDirection: finalFlexDirection,
      gap: `${itemSpacing}px`,
      width: '100%',
-     flexGrow: 1, // Make this container take available space
+     flexGrow: 1, 
   };
 
   if (isLazyRowType) {
@@ -280,7 +302,6 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   }
 
 
-  // Special handling for lazy containers
   if (effectiveType === 'LazyVerticalGrid') {
     childrenContainerStyle.display = 'grid';
     childrenContainerStyle.gridTemplateColumns = `repeat(${effectiveProperties.columns || 2}, 1fr)`;
@@ -309,7 +330,6 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   }
 
 
-  // The base container is always a column now, to stack the dropdown button and the children
   baseStyle.flexDirection = 'column';
   if (isLazyRowType || (effectiveType === 'Carousel' && carouselStyle === 'MultiBrowse')) {
     baseStyle.flexDirection = 'row';
@@ -319,7 +339,6 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     baseStyle.flexDirection = 'column';
   }
 
-  // The main container should have its own flex properties, independent of the children container.
   switch (effectiveType) {
     case 'Card':
     case 'AnimatedContent':
@@ -399,3 +418,5 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     </div>
   );
 }
+
+    

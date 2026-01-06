@@ -359,20 +359,15 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
   const [isLoadingLayouts, setIsLoadingLayouts] = useState(true);
 
 
-  // This ref now stores the state of the *non-editing* designs when entering an editing mode.
   const mainDesignTabsStateRef = useRef<SingleDesign[]>([]);
 
-  // Find the active design
   const activeDesign = designState.designs.find(d => d.id === designState.activeDesignId);
 
-  // --- M3 Theme Persistence ---
   const { m3Theme, activeM3ThemeScheme } = designState;
 
-  // Debounced function to save the theme to Firestore
   const debouncedSaveTheme = useDebouncedCallback((themeToSave: DesignContextType['m3Theme']) => {
       if (db) {
           const themeDocRef = doc(db, APP_THEME_COLLECTION, M3_THEME_DOC_ID);
-          // We use setDoc with merge:true to be safe, although we are saving the whole object.
           setDoc(themeDocRef, sanitizeForFirebase(themeToSave), { merge: true }).catch(error => {
               console.error("Failed to save theme to Firestore:", error);
               toast({
@@ -382,7 +377,7 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
               });
           });
       }
-  }, 500); // 500ms debounce delay
+  }, 500); 
 
   const setM3Theme = (
     updater: React.SetStateAction<DesignContextType['m3Theme']>
@@ -390,7 +385,6 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
     setDesignState(prev => {
       const newM3Theme = typeof updater === 'function' ? updater(prev.m3Theme) : updater;
       if (newM3Theme !== prev.m3Theme) {
-        // Save to Firestore upon update
         debouncedSaveTheme(newM3Theme);
         return { ...prev, m3Theme: newM3Theme };
       }
@@ -402,20 +396,17 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
       setDesignState(prev => ({...prev, activeM3ThemeScheme: scheme}));
   }
 
-  // Effect to load theme from Firestore, ONLY on the client after hydration
   useEffect(() => {
     if (db) {
       const themeDocRef = doc(db, APP_THEME_COLLECTION, M3_THEME_DOC_ID);
       const unsubscribe = onSnapshot(themeDocRef, (docSnap) => {
         if (docSnap.exists()) {
           const loadedTheme = docSnap.data();
-          // Basic validation
           if (loadedTheme.lightColors && loadedTheme.darkColors && loadedTheme.typography && loadedTheme.shapes) {
             setDesignState(prev => ({...prev, m3Theme: loadedTheme as DesignContextType['m3Theme'] }));
           }
         } else {
           console.log("No custom theme found in Firestore, using default.");
-          // Optionally, save the default theme to Firestore if it doesn't exist
           getDoc(themeDocRef).then(doc => {
             if (!doc.exists()) {
                setDoc(themeDocRef, sanitizeForFirebase(defaultThemeState)).catch(e => console.error("Could not save initial default theme:", e));
@@ -431,12 +422,11 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
         });
       });
 
-      return () => unsubscribe(); // Cleanup subscription on unmount
+      return () => unsubscribe();
     }
   }, [toast]);
 
   
-  // Wrapper for state updates to manage history for the active design
   const updateActiveDesignWithHistory = useCallback((
     updater: (activeDesign: SingleDesign) => Partial<Omit<SingleDesign, 'id' | 'name'>> | null
   ) => {
@@ -447,7 +437,7 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
       const currentActiveDesign = prev.designs[activeDesignIndex];
       const updates = updater(currentActiveDesign);
 
-      if (updates === null) return prev; // No change
+      if (updates === null) return prev; 
 
       const newHistory = [...currentActiveDesign.history, { 
           components: currentActiveDesign.components, 
@@ -485,7 +475,6 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
 
   const closeDesign = useCallback((designId: string) => {
     setDesignState(prev => {
-      // If we are closing an editing tab, just go back to the main designs.
       const designToClose = prev.designs.find(d => d.id === designId);
       if (designToClose && (designToClose.editingLayoutInfo || designToClose.editingTemplateInfo)) {
           return {
@@ -520,7 +509,6 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
   }, []);
   
   useEffect(() => {
-    // Firestore subscriptions
     const unsubscribers: Unsubscribe[] = [];
     if (db) {
         setIsLoadingCustomTemplates(true);
@@ -632,14 +620,19 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
       const newId = `comp-${currentNextId++}`;
       finalSelectedComponentId = newId;
       const defaultProps = getDefaultProperties(typeOrTemplateId as ComponentType, newId);
-
+      
       const newComponentBase: DesignComponent = {
         id: newId,
         type: typeOrTemplateId as ComponentType,
         name: `${getComponentDisplayName(typeOrTemplateId as ComponentType)} ${newId.split('-')[1]}`,
-        properties: defaultProps,
+        properties: { ...defaultProps },
         parentId: effectiveParentId,
       };
+
+      if (['Column', 'Row', 'LazyColumn', 'LazyRow'].includes(typeOrTemplateId)) {
+        const currentColorScheme = activeM3ThemeScheme === 'dark' ? m3Theme.darkColors : m3Theme.lightColors;
+        newComponentBase.properties.backgroundColor = currentColorScheme.background;
+      }
       
       if (typeOrTemplateId.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
         const template = designState.customComponentTemplates.find(t => t.templateId === typeOrTemplateId);
@@ -698,7 +691,7 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
   
       return { components: updatedComponentsList, nextId: currentNextId, selectedComponentId: finalSelectedComponentId };
     });
-  }, [updateActiveDesignWithHistory, designState.customComponentTemplates, openCarouselWizard]);
+  }, [updateActiveDesignWithHistory, designState.customComponentTemplates, openCarouselWizard, m3Theme, activeM3ThemeScheme]);
 
  const generateChildrenFromDataSource = useCallback(async (parentId: string) => {
     if (!activeDesign) return;
@@ -729,7 +722,6 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
         const parentComponentIdx = updatedComponents.findIndex(c => c.id === parentId);
         if (parentComponentIdx === -1) return null;
 
-        // Clear existing children
         const childrenToRemove = new Set(updatedComponents[parentComponentIdx].properties.children || []);
         updatedComponents = updatedComponents.filter(c => !childrenToRemove.has(c.id));
         
@@ -759,7 +751,6 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
             if (instance.properties.children) {
               instance.properties.children = instance.properties.children.map(cid => idMap[cid]);
             }
-            // Apply data bindings
             Object.keys(bindings).forEach(propPath => {
               const [componentIdInTemplate, propName] = propPath.split('.');
               
@@ -874,14 +865,13 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
 
   const clearDesign = React.useCallback(() => {
     if (activeDesign?.editingTemplateInfo || activeDesign?.editingLayoutInfo) {
-      // If editing, this is the "close" action.
       closeDesign(designState.activeDesignId);
     } else {
       updateActiveDesignWithHistory(activeDesign => ({
         components: createInitialComponents(),
         nextId: 1,
         selectedComponentId: DEFAULT_CONTENT_LAZY_COLUMN_ID,
-        history: [], // Clear history for this tab
+        history: [], 
         future: [],
       }));
     }
@@ -1434,3 +1424,5 @@ export const useDesign = (): DesignContextType => {
 };
 
 export { DesignContext };
+
+    
