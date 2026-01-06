@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ReactNode} from 'react';
@@ -102,7 +103,6 @@ const createInitialComponents = (): DesignComponent[] => {
     name: 'Top App Bar',
     properties: {
       ...getDefaultProperties('TopAppBar', DEFAULT_TOP_APP_BAR_ID),
-      title: 'Screen Title',
       children: [],
     },
     parentId: ROOT_SCAFFOLD_ID,
