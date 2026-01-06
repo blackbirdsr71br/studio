@@ -1,4 +1,3 @@
-
 'use client';
 import type { DesignComponent, ComponentType as OriginalComponentType, BaseComponentProps, CustomComponentTemplate, M3Theme } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from '../component-renderer/RenderedComponentWrapper';
@@ -64,15 +63,16 @@ const getThemeColorKeyForComponentBackground = (componentType: OriginalComponent
         case 'TopAppBar':
         case 'BottomNavigationBar':
         case 'DropdownMenu':
-        case 'LazyColumn':
-        case 'LazyRow':
-        case 'LazyVerticalGrid':
-        case 'LazyHorizontalGrid':
+        // REMOVED Lazy containers from here, they will now default to 'background'
             return 'surface';
         case 'Scaffold':
         case 'Column':
         case 'Row':
         case 'Box':
+        case 'LazyColumn':
+        case 'LazyRow':
+        case 'LazyVerticalGrid':
+        case 'LazyHorizontalGrid':
             return 'background';
     }
     return null;
@@ -81,6 +81,7 @@ const getThemeColorKeyForComponentBackground = (componentType: OriginalComponent
 export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, isPreview = false, passThroughProps }: ContainerViewProps) {
   const { customComponentTemplates } = passThroughProps;
   const { m3Theme, activeM3ThemeScheme } = useDesign();
+  const { resolvedTheme } = useTheme(); // For the special case of main content area
 
 
   let effectiveType: OriginalComponentType | string = component.type;
@@ -212,8 +213,9 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     }
   }
   
+  // --- NEW BACKGROUND COLOR LOGIC ---
   if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
-      baseStyle.backgroundColor = activeM3ThemeScheme === 'dark' ? '#000000' : '#e7e4e4';
+      baseStyle.backgroundColor = resolvedTheme === 'dark' ? '#000000' : '#e7e4e4';
   } else if (explicitBackgroundColor) {
     if (typeof explicitBackgroundColor === 'object' && explicitBackgroundColor.type === 'linearGradient') {
       const angle = explicitBackgroundColor.angle || 0;
@@ -223,21 +225,23 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       baseStyle.backgroundColor = explicitBackgroundColor;
     }
   } else {
+    // Inherit from theme
     const themeColorKey = getThemeColorKeyForComponentBackground(effectiveType);
-    if (themeColorKey) {
+    if (themeColorKey && m3Theme) {
         const currentColorScheme = activeM3ThemeScheme === 'dark' ? m3Theme.darkColors : m3Theme.lightColors;
         baseStyle.backgroundColor = currentColorScheme[themeColorKey];
     }
   }
+  // --- END NEW LOGIC ---
 
   baseStyle.color = explicitContentColor || 'var(--m3-on-surface)';
 
   if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
-    baseStyle.width = '100%';
-    baseStyle.height = 'auto';
-    baseStyle.minHeight = '100%';
-    baseStyle.overflowY = 'auto';
-    delete baseStyle.overflow;
+      baseStyle.width = '100%';
+      baseStyle.height = 'auto';
+      baseStyle.minHeight = '100%';
+      baseStyle.overflowY = 'auto';
+      delete baseStyle.overflow;
   }
 
   const isDataBound = !!dataSource?.url;

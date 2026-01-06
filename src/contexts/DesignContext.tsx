@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import type { ReactNode} from 'react';
@@ -629,7 +627,8 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
         parentId: effectiveParentId,
       };
 
-      if (['Column', 'Row', 'LazyColumn', 'LazyRow'].includes(typeOrTemplateId)) {
+      // Reset explicit background for clean containers
+      if (['Column', 'Row', 'Box'].includes(typeOrTemplateId)) {
         newComponentBase.properties.backgroundColor = undefined;
       }
       
@@ -690,7 +689,7 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
   
       return { components: updatedComponentsList, nextId: currentNextId, selectedComponentId: finalSelectedComponentId };
     });
-  }, [updateActiveDesignWithHistory, designState.customComponentTemplates, openCarouselWizard, m3Theme, activeM3ThemeScheme]);
+  }, [updateActiveDesignWithHistory, designState.customComponentTemplates, openCarouselWizard]);
 
  const generateChildrenFromDataSource = useCallback(async (parentId: string) => {
     if (!activeDesign) return;
@@ -1423,5 +1422,3 @@ export const useDesign = (): DesignContextType => {
 };
 
 export { DesignContext };
-
-    
