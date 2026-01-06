@@ -71,8 +71,15 @@ const getThemeColorKeyForComponentProp = (
             if (propName === 'textColor') return 'onSurface';
             break;
         case 'Scaffold':
-            if (propName === 'backgroundColor') return 'background';
-            break;
+        case 'Column':
+        case 'Row':
+        case 'Box':
+        case 'LazyColumn':
+        case 'LazyRow':
+        case 'LazyVerticalGrid':
+        case 'LazyHorizontalGrid':
+             if (propName === 'backgroundColor') return 'background';
+             break;
     }
     return null;
 };
@@ -633,6 +640,7 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     </aside>
   );
 }
+
 
 
 
