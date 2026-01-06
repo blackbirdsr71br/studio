@@ -195,9 +195,9 @@ const ThemePreview: React.FC<{
                     >
                         Featured Items
                     </p>
-                    <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
+                    <div className="grid grid-cols-3 gap-3">
                         {[1, 2, 3].map(i => (
-                            <div key={i} className={cn("p-3 rounded-lg shrink-0 w-32 h-20 shadow transition-all duration-200 cursor-pointer", isHighlighted(['surfaceVariant']) && highlightClass)}
+                            <div key={i} className={cn("p-3 rounded-lg aspect-[4/3] shadow transition-all duration-200 cursor-pointer", isHighlighted(['surfaceVariant']) && highlightClass)}
                                 style={{backgroundColor: 'var(--preview-surface-variant)', borderRadius: 'var(--shape-medium)'}}
                                 onClick={(e) => {e.stopPropagation(); onColorClick('surfaceVariant')}}
                             >
@@ -322,8 +322,8 @@ export const ThemeEditorModal = forwardRef<ThemeEditorModalRef, {}>((props, ref)
         if (ref) {
             ref.scrollIntoView({ behavior: 'smooth', block: 'center' });
             // Add a temporary highlight effect
-            ref.classList.add('bg-primary/20');
-            setTimeout(() => ref.classList.remove('bg-primary/20'), 1500);
+            setHighlightedPreviewKey(key);
+            setTimeout(() => setHighlightedPreviewKey(null), 1500);
         }
     }, 100); // Small delay to allow tab content to render if it was hidden
   };
@@ -638,5 +638,6 @@ ThemeEditorModal.displayName = 'ThemeEditorModal';
     
 
     
+
 
 
