@@ -13,12 +13,13 @@ import { ItemTypes } from '@/lib/dnd-types';
 import { isContainerType, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID, CORE_SCAFFOLD_ELEMENT_IDS, getComponentDisplayName, isCustomComponentType } from '@/types/compose-spec';
 import { CheckboxView } from './CheckboxView';
 import { RadioButtonView } from './RadioButtonView';
+import { useTheme } from '@/contexts/ThemeContext';
 
 
 interface RenderedComponentWrapperProps {
   component: DesignComponent;
   isPreview?: boolean;
-  getComponentById: (id: string) => DesignComponent | undefined; 
+  getComponentById: (id: string) => DesignComponent | undefined;
   customComponentTemplates: CustomComponentTemplate[];
   activeDesignId: string | null;
   zoomLevel: number;
@@ -62,14 +63,14 @@ const getDimensionValue = (
     componentType: string,
     componentId: string,
   ): string => {
-    
+
     if (properties.fillMaxSize) return '100%';
 
     const fillValue = propName === 'width' ? properties.fillMaxWidth : properties.fillMaxHeight;
     const propValue = properties[propName];
 
     if (componentId === ROOT_SCAFFOLD_ID) return '100%';
-  
+
     if (componentId === DEFAULT_TOP_APP_BAR_ID || componentType === 'TopAppBar') {
       return propName === 'width' ? '100%' : (isNumericValue(propValue) ? `${propValue}px` : '56px');
     }
@@ -79,18 +80,18 @@ const getDimensionValue = (
     if (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
       return '100%';
     }
-  
+
     if (fillValue) {
         return '100%';
     }
 
     if (isNumericValue(propValue)) return `${propValue}px`;
-    
+
     return 'auto';
 };
-  
-export function RenderedComponentWrapper({ 
-  component, 
+
+export function RenderedComponentWrapper({
+  component,
   isPreview = false,
   getComponentById,
   customComponentTemplates,
@@ -104,6 +105,7 @@ export function RenderedComponentWrapper({
   const ref = useRef<HTMLDivElement>(null);
   const [dropIndicator, setDropIndicator] = useState<DropIndicatorPosition>(null);
   const [isResizing, setIsResizing] = useState(false);
+  const { resolvedTheme } = useTheme();
   const [resizeDetails, setResizeDetails] = useState<{
     handle: HandleType;
     startX: number;
@@ -111,7 +113,7 @@ export function RenderedComponentWrapper({
     initialWidth: number;
     initialHeight: number;
   } | null>(null);
-  
+
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.CANVAS_COMPONENT_ITEM,
     item: { id: component.id, type: ItemTypes.CANVAS_COMPONENT_ITEM },
@@ -128,7 +130,7 @@ export function RenderedComponentWrapper({
         if (dropIndicator !== null) setDropIndicator(null);
         return;
       }
-      
+
       const draggedId = (item as any).id || (item as any).type;
       const targetId = component.id;
       if (draggedId === targetId || CORE_SCAFFOLD_ELEMENT_IDS.includes(targetId)) {
@@ -141,7 +143,7 @@ export function RenderedComponentWrapper({
 
       const hoverBoundingRect = ref.current.getBoundingClientRect();
       const hoverClientY = clientOffset.y - hoverBoundingRect.top;
-      
+
       let newIndicator: DropIndicatorPosition = null;
 
       if (isContainerType(component.type, customComponentTemplates)) {
@@ -184,7 +186,7 @@ export function RenderedComponentWrapper({
             setDropIndicator(null);
             return;
         }
-        
+
         const itemType = monitor.getItemType();
         const targetId = component.id;
 
@@ -212,7 +214,7 @@ export function RenderedComponentWrapper({
                 }
             }
         }
-        
+
         setDropIndicator(null);
     }
   }), [component.id, component.type, component.parentId, addComponent, moveComponent, getComponentById, customComponentTemplates, dropIndicator, isPreview]);
@@ -234,7 +236,7 @@ export function RenderedComponentWrapper({
     if (isPreview || CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id)) return;
 
     selectComponent(component.id);
-    
+
     const rect = ref.current?.getBoundingClientRect();
     if (!rect) return;
 
@@ -254,7 +256,7 @@ export function RenderedComponentWrapper({
 
       const dx = (event.clientX - resizeDetails.startX) / zoomLevel;
       const dy = (event.clientY - resizeDetails.startY) / zoomLevel;
-      
+
       const updatedProps: Record<string, any> = {};
 
       const initialUnscaledWidth = resizeDetails.initialWidth / zoomLevel;
@@ -267,9 +269,9 @@ export function RenderedComponentWrapper({
         let newWidth = initialUnscaledWidth;
         if (resizeDetails.handle.includes('e')) newWidth += dx;
         if (resizeDetails.handle.includes('w')) newWidth -= dx;
-        
+
         updatedProps.width = Math.round(Math.max(newWidth, MIN_DIMENSION));
-        updatedProps.fillMaxWidth = false; 
+        updatedProps.fillMaxWidth = false;
         updatedProps.fillMaxSize = false;
       }
 
@@ -279,7 +281,7 @@ export function RenderedComponentWrapper({
         if (resizeDetails.handle.includes('n')) newHeight -= dy;
 
         updatedProps.height = Math.round(Math.max(newHeight, MIN_DIMENSION));
-        updatedProps.fillMaxHeight = false; 
+        updatedProps.fillMaxHeight = false;
         updatedProps.fillMaxSize = false;
       }
 
@@ -312,31 +314,39 @@ export function RenderedComponentWrapper({
       .map(id => getComponentById(id))
       .filter(Boolean) as DesignComponent[];
 
-    const passThroughProps = {
-      getComponentById,
-      customComponentTemplates,
-      activeDesignId,
-      zoomLevel,
-      selectComponent,
-      addComponent,
-      moveComponent,
-      updateComponent,
+    const propsToPass = {
+        getComponentById,
+        customComponentTemplates,
+        activeDesignId,
+        zoomLevel,
+        selectComponent,
+        addComponent,
+        moveComponent,
+        updateComponent,
     };
-    
+
     switch (component.type) {
       case 'Scaffold':
         const topBarChild = childrenToRender.find(c => c.type === 'TopAppBar' || c.id === DEFAULT_TOP_APP_BAR_ID);
         const contentChild = childrenToRender.find(c => c.type === 'LazyColumn' && c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID);
         const bottomBarChild = childrenToRender.find(c => c.type === 'BottomNavigationBar' || c.id === DEFAULT_BOTTOM_NAV_BAR_ID);
         
+        const scaffoldStyle: React.CSSProperties = {};
+        if (component.id === ROOT_SCAFFOLD_ID) {
+            scaffoldStyle.backgroundColor = resolvedTheme === 'dark' ? '#000000' : '#e7e4e4';
+        } else {
+            scaffoldStyle.backgroundColor = component.properties.backgroundColor || 'var(--m3-background)';
+        }
+
+
         return (
-          <div className="flex flex-col w-full h-full bg-[var(--m3-background)]" style={{'--scaffold-bg-color': component.properties.backgroundColor || 'var(--m3-background)'} as React.CSSProperties}>
+          <div className="flex flex-col w-full h-full" style={scaffoldStyle}>
             {topBarChild && (
               <div style={{ flexShrink: 0, width: '100%', height: `${topBarChild.properties.height || 56}px` }} className="flex w-full">
-                <RenderedComponentWrapper 
-                    component={topBarChild} 
+                <RenderedComponentWrapper
+                    component={topBarChild}
                     isPreview={isPreview}
-                    {...passThroughProps}
+                    {...propsToPass}
                 />
               </div>
             )}
@@ -345,19 +355,19 @@ export function RenderedComponentWrapper({
                 style={{ flexGrow: 1, minHeight: 0, width: '100%' }}
                 className={cn("flex w-full", "overflow-y-auto overflow-x-hidden")}
               >
-                <RenderedComponentWrapper 
-                    component={contentChild} 
+                <RenderedComponentWrapper
+                    component={contentChild}
                     isPreview={isPreview}
-                    {...passThroughProps}
+                    {...propsToPass}
                 />
               </div>
             )}
             {bottomBarChild && (
               <div style={{ flexShrink: 0, width: '100%', height: `${bottomBarChild.properties.height || 56}px` }} className="flex w-full">
-                 <RenderedComponentWrapper 
-                    component={bottomBarChild} 
+                 <RenderedComponentWrapper
+                    component={bottomBarChild}
                     isPreview={isPreview}
-                    {...passThroughProps}
+                    {...propsToPass}
                  />
               </div>
             )}
@@ -373,24 +383,24 @@ export function RenderedComponentWrapper({
         return <CheckboxView properties={component.properties} />;
       case 'RadioButton':
         return <RadioButtonView properties={component.properties} />;
-      
+
       case 'Column':
       case 'Box':
       case 'Card':
-      case 'LazyColumn': 
+      case 'LazyColumn':
       case 'AnimatedContent':
-      case 'DropdownMenu': // Add DropdownMenu here to be treated as a vertical container
+      case 'DropdownMenu':
       case 'Carousel':
-        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={false} isPreview={isPreview} passThroughProps={passThroughProps} />;
+        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={false} isPreview={isPreview} passThroughProps={propsToPass} />;
 
       case 'Row':
       case 'LazyRow':
       case 'LazyVerticalGrid':
       case 'LazyHorizontalGrid':
-      case 'TopAppBar': 
+      case 'TopAppBar':
       case 'BottomNavigationBar':
-        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={true} isPreview={isPreview} passThroughProps={passThroughProps} />;
-      
+        return <ContainerView component={component} childrenComponents={childrenToRender} isRow={true} isPreview={isPreview} passThroughProps={propsToPass} />;
+
       case 'Spacer':
         const width = component.properties.width ?? 8;
         const height = component.properties.height ?? 8;
@@ -419,11 +429,11 @@ export function RenderedComponentWrapper({
         return <div className="p-2 border border-dashed border-red-500 text-xs">Unknown: {component.type}</div>;
     }
   };
-  
+
   const parent = component.parentId ? getComponentById(component.parentId) : null;
   let parentIsRowLike = false;
   let parentIsColumnLike = false;
-  
+
   if (parent) {
       let effectiveParentType = parent.type;
       if (parent.templateIdRef) {
@@ -444,7 +454,7 @@ export function RenderedComponentWrapper({
     position: 'relative',
     display: 'block',
   };
-  
+
   if (parentIsRowLike) {
     wrapperStyle.flexShrink = 0;
   }
@@ -459,27 +469,27 @@ export function RenderedComponentWrapper({
 
   if (effectiveLayoutWeight > 0) {
     wrapperStyle.flexGrow = effectiveLayoutWeight;
-    wrapperStyle.flexShrink = 1; 
-    wrapperStyle.flexBasis = '0%'; 
+    wrapperStyle.flexShrink = 1;
+    wrapperStyle.flexBasis = '0%';
   }
 
   if (parent && (isContainerType(parent.type, customComponentTemplates) || parent.templateIdRef)) {
     const selfAlignProp = component.properties.selfAlign;
 
     if (selfAlignProp && selfAlignProp !== 'Inherit') {
-      if (parentIsRowLike) { 
+      if (parentIsRowLike) {
         if (selfAlignProp === 'Start') wrapperStyle.alignSelf = 'flex-start';
         else if (selfAlignProp === 'Center') wrapperStyle.alignSelf = 'center';
         else if (selfAlignProp === 'End') wrapperStyle.alignSelf = 'flex-end';
         else if (component.properties.fillMaxHeight) wrapperStyle.alignSelf = 'stretch';
 
-      } else { 
+      } else {
         if (selfAlignProp === 'Start') wrapperStyle.alignSelf = 'flex-start';
         else if (selfAlignProp === 'Center') wrapperStyle.alignSelf = 'center';
         else if (selfAlignProp === 'End') wrapperStyle.alignSelf = 'flex-end';
         else if (component.properties.fillMaxWidth) wrapperStyle.alignSelf = 'stretch';
       }
-    } else { 
+    } else {
       if (parentIsRowLike && component.properties.fillMaxHeight) {
         wrapperStyle.alignSelf = 'stretch';
       } else if (!parentIsRowLike && (component.properties.fillMaxWidth || component.properties.fillMaxSize)) {
@@ -514,9 +524,9 @@ export function RenderedComponentWrapper({
   const canResizeHorizontally = !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxWidth && !component.properties.fillMaxSize;
   const canResizeVertically = !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxHeight && !component.properties.fillMaxSize;
   const canResize = canResizeHorizontally || canResizeVertically;
-  
+
   const isReorderTarget = isOverCurrent && canDropCurrent && dropIndicator !== null;
-  
+
   const SELECTION_OFFSET = 8;
 
   return (
@@ -525,7 +535,7 @@ export function RenderedComponentWrapper({
       style={wrapperStyle}
       className={cn(
         'border border-transparent',
-        { 
+        {
           'opacity-50': isDragging,
           'cursor-grabbing': isDragging,
           'cursor-pointer': !isDragging && (component.properties.clickable || !isPreview),
@@ -567,7 +577,7 @@ export function RenderedComponentWrapper({
                     background-color: hsl(var(--primary));
                     border: 1px solid hsl(var(--primary-foreground));
                     border-radius: 2px;
-                    z-index: 10; 
+                    z-index: 10;
                     }
                     .resize-handle.nw { cursor: nwse-resize; top: -6px; left: -6px; }
                     .resize-handle.ne { cursor: nesw-resize; top: -6px; right: -6px; }
@@ -585,7 +595,7 @@ export function RenderedComponentWrapper({
       {isReorderTarget && dropIndicator === 'top' && (
           <div className="absolute top-[-2px] left-0 right-0 h-[4px] bg-primary z-20 pointer-events-none" />
       )}
-      {renderSpecificComponent()} 
+      {renderSpecificComponent()}
       {isReorderTarget && dropIndicator === 'bottom' && (
           <div className="absolute bottom-[-2px] left-0 right-0 h-[4px] bg-primary z-20 pointer-events-none" />
       )}
