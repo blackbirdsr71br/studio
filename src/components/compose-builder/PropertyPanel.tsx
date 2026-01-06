@@ -640,10 +640,3 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     </aside>
   );
 }
-
-
-
-
-
-
-
