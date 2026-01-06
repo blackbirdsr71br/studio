@@ -153,20 +153,28 @@ const ThemePreview: React.FC<{
     }, [colors, customColors, typography, shapes]);
     
     // Determine scale to fit mobile frame into preview container
-    const availableHeight = 600; // Example height, adjust as needed
-    const availableWidth = 500; // Example width
-    const scale = Math.min(availableWidth / FRAME_WIDTH, availableHeight / FRAME_HEIGHT, 1);
+    const previewContainerRef = useRef<HTMLDivElement>(null);
+    const [scale, setScale] = useState(1);
+
+    useMemo(() => {
+        if (previewContainerRef.current) {
+            const { width, height } = previewContainerRef.current.getBoundingClientRect();
+            const scaleX = width / FRAME_WIDTH;
+            const scaleY = height / FRAME_HEIGHT;
+            setScale(Math.min(scaleX, scaleY, 1));
+        }
+    }, [previewContainerRef.current]);
 
 
     return (
-      <div className="w-full h-full flex items-center justify-center bg-muted/20" style={dynamicStyles}>
+      <div ref={previewContainerRef} className="w-full h-full flex items-center justify-center bg-muted/20" style={dynamicStyles}>
           <div style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}>
               <MobileFrame isPreview={true} themeOverride={{lightColors: colors, darkColors: colors, typography, shapes, customLightColors: [], customDarkColors: []}}>
                 <div className="flex flex-col w-full h-full">
                     {/* Top App Bar */}
                     <div 
                         className={cn("w-full h-14 flex items-center px-4 justify-between shrink-0 transition-all duration-200 cursor-pointer", isHighlighted(['primary']) && highlightClass)}
-                        style={{backgroundColor: 'var(--m3-primary)', color: 'var(--m3-on-primary)'}}
+                        style={{backgroundColor: 'var(--preview-primary)', color: 'var(--preview-on-primary)'}}
                         onClick={() => onColorClick('primary')}
                     >
                          <h3 style={{ fontFamily: 'var(--font-family-titleLarge)', fontWeight: 'var(--font-weight-titleLarge)', fontSize: 'var(--font-size-titleLarge)' }}
@@ -181,7 +189,7 @@ const ThemePreview: React.FC<{
                     {/* Main Content */}
                     <div 
                         className={cn("flex-grow p-4 space-y-4 overflow-y-auto", isHighlighted(['background']) && highlightClass)}
-                        style={{backgroundColor: 'var(--m3-background)', color: 'var(--m3-on-background)'}}
+                        style={{backgroundColor: 'var(--preview-background)', color: 'var(--preview-on-background)'}}
                         onClick={() => onColorClick('background')}
                     >
                         <h4 style={{ fontFamily: 'var(--font-family-headlineSmall)', fontWeight: 'var(--font-weight-headlineSmall)', fontSize: 'var(--font-size-headlineSmall)' }}
@@ -193,17 +201,17 @@ const ThemePreview: React.FC<{
                         
                         <div 
                             className={cn("p-4 rounded-xl shadow-md transition-all duration-200 cursor-pointer", isHighlighted(['surface', 'outline']) && highlightClass)}
-                            style={{backgroundColor: 'var(--m3-surface)', border: '1px solid var(--m3-outline)', borderRadius: 'var(--shape-large)'}}
+                            style={{backgroundColor: 'var(--preview-surface)', border: '1px solid var(--preview-outline)', borderRadius: 'var(--shape-large)'}}
                             onClick={(e) => {e.stopPropagation(); onColorClick('surface')}}
                         >
-                             <p style={{ fontFamily: 'var(--font-family-bodyLarge)', fontWeight: 'var(--font-weight-bodyLarge)', fontSize: 'var(--font-size-bodyLarge)', color: 'var(--m3-on-surface)' }}
+                             <p style={{ fontFamily: 'var(--font-family-bodyLarge)', fontWeight: 'var(--font-weight-bodyLarge)', fontSize: 'var(--font-size-bodyLarge)', color: 'var(--preview-on-surface)' }}
                                 className={cn("p-1 rounded", isHighlighted(['onSurface']) && highlightClass)}
                                 onClick={(e) => {e.stopPropagation(); onColorClick('onSurface')}}
                              >This is a card on a surface color, showing primary text.</p>
                         </div>
 
                          <div>
-                            <p style={{ fontFamily: 'var(--font-family-labelLarge)', fontWeight: 'var(--font-weight-labelLarge)', fontSize: 'var(--font-size-labelLarge)', color: 'var(--m3-secondary)' }}
+                            <p style={{ fontFamily: 'var(--font-family-labelLarge)', fontWeight: 'var(--font-weight-labelLarge)', fontSize: 'var(--font-size-labelLarge)', color: 'var(--preview-secondary)' }}
                                 className={cn("mb-2 p-1 rounded inline-block", isHighlighted(['secondary']) && highlightClass)}
                                 onClick={(e) => {e.stopPropagation(); onColorClick('secondary')}}
                             >
@@ -211,11 +219,11 @@ const ThemePreview: React.FC<{
                             </p>
                             <div className="grid grid-cols-3 gap-3">
                                 {[1, 2, 3].map(i => (
-                                    <div key={i} className={cn("p-3 rounded-lg aspect-[4/3] shadow transition-all duration-200 cursor-pointer", isHighlighted(['surfaceVariant']) && highlightClass)}
-                                        style={{backgroundColor: 'var(--m3-surface-variant)', borderRadius: 'var(--shape-medium)'}}
+                                    <div key={i} className={cn("p-3 rounded-lg aspect-square shadow transition-all duration-200 cursor-pointer", isHighlighted(['surfaceVariant']) && highlightClass)}
+                                        style={{backgroundColor: 'var(--preview-surface-variant)', borderRadius: 'var(--shape-medium)'}}
                                         onClick={(e) => {e.stopPropagation(); onColorClick('surfaceVariant')}}
                                     >
-                                        <p style={{ fontFamily: 'var(--font-family-labelMedium)', fontWeight: 'var(--font-weight-labelMedium)', fontSize: 'var(--font-size-labelMedium)', color: 'var(--m3-on-surface-variant)'}}
+                                        <p style={{ fontFamily: 'var(--font-family-labelMedium)', fontWeight: 'var(--font-weight-labelMedium)', fontSize: 'var(--font-size-labelMedium)', color: 'var(--preview-on-surface-variant)'}}
                                          className={cn("p-1 rounded", isHighlighted(['onSurfaceVariant']) && highlightClass)}
                                          onClick={(e) => {e.stopPropagation(); onColorClick('onSurfaceVariant')}}
                                         >Item {i}</p>
@@ -225,13 +233,13 @@ const ThemePreview: React.FC<{
                         </div>
 
                          <div className="flex items-center gap-2 pt-2">
-                             <Button style={{ backgroundColor: 'var(--m3-primary-container)', color: 'var(--m3-on-primary-container)', borderRadius: 'var(--shape-extra-large)' }}
+                             <Button style={{ backgroundColor: 'var(--preview-primary-container)', color: 'var(--preview-on-primary-container)', borderRadius: 'var(--shape-extra-large)' }}
                                 className={cn("flex-1 transition-all duration-200 cursor-pointer", isHighlighted(['primaryContainer']) && highlightClass)}
                                 onClick={(e) => {e.stopPropagation(); onColorClick('primaryContainer')}}
                              >
                                 <span className={cn("p-1 rounded", isHighlighted(['onPrimaryContainer']) && highlightClass)} onClick={(e) => {e.stopPropagation(); onColorClick('onPrimaryContainer')}}>Accept</span>
                              </Button>
-                             <Button style={{ backgroundColor: 'var(--m3-secondary-container)', color: 'var(--m3-on-secondary-container)', borderRadius: 'var(--shape-extra-large)' }}
+                             <Button style={{ backgroundColor: 'var(--preview-secondary-container)', color: 'var(--preview-on-secondary-container)', borderRadius: 'var(--shape-extra-large)' }}
                                 className={cn("flex-1 transition-all duration-200 cursor-pointer", isHighlighted(['secondaryContainer']) && highlightClass)}
                                 onClick={(e) => {e.stopPropagation(); onColorClick('secondaryContainer')}}
                              >
@@ -241,7 +249,7 @@ const ThemePreview: React.FC<{
                         
                          <div
                             className={cn("p-3 flex items-center justify-center rounded-lg shadow-inner transition-all duration-200 cursor-pointer", isHighlighted(['tertiaryContainer']) && highlightClass)}
-                            style={{backgroundColor: 'var(--m3-tertiary-container)', color: 'var(--m3-on-tertiary-container)', borderRadius: 'var(--shape-medium)'}}
+                            style={{backgroundColor: 'var(--preview-tertiary-container)', color: 'var(--preview-on-tertiary-container)', borderRadius: 'var(--shape-medium)'}}
                             onClick={(e) => {e.stopPropagation(); onColorClick('tertiaryContainer')}}
                         >
                              <Heart size={16} className="mr-2" />
@@ -258,32 +266,32 @@ const ThemePreview: React.FC<{
                     {/* Bottom Navigation Bar */}
                      <div 
                         className={cn("w-full h-16 flex items-center justify-around shrink-0 shadow-inner transition-all duration-200 cursor-pointer", isHighlighted(['surface']) && highlightClass)}
-                        style={{backgroundColor: 'var(--m3-surface)', borderTop: '1px solid var(--m3-outline)'}}
+                        style={{backgroundColor: 'var(--preview-surface)', borderTop: '1px solid var(--preview-outline)'}}
                          onClick={() => onColorClick('surface')}
                     >
                          <div className="flex flex-col items-center gap-1">
                              <div className={cn("p-1 rounded", isHighlighted(['primary']) && highlightClass)} onClick={(e) => {e.stopPropagation(); onColorClick('primary')}}>
-                                <Home size={24} style={{color: 'var(--m3-primary)'}} />
+                                <Home size={24} style={{color: 'var(--preview-primary)'}} />
                              </div>
-                             <p style={{ fontFamily: 'var(--font-family-labelSmall)', fontWeight: 'var(--font-weight-labelSmall)', fontSize: 'var(--font-size-labelSmall)', color: 'var(--m3-primary)' }}
+                             <p style={{ fontFamily: 'var(--font-family-labelSmall)', fontWeight: 'var(--font-weight-labelSmall)', fontSize: 'var(--font-size-labelSmall)', color: 'var(--preview-primary)' }}
                                 className={cn("p-1 rounded", isHighlighted(['primary']) && highlightClass)}
                                 onClick={(e) => {e.stopPropagation(); onColorClick('primary')}}
                              >Home</p>
                          </div>
                          <div className="flex flex-col items-center gap-1">
                             <div className={cn("p-1 rounded", isHighlighted(['onSurfaceVariant']) && highlightClass)} onClick={(e) => {e.stopPropagation(); onColorClick('onSurfaceVariant')}}>
-                                <Star size={24} style={{color: 'var(--m3-on-surface-variant)'}} />
+                                <Star size={24} style={{color: 'var(--preview-on-surface-variant)'}} />
                              </div>
-                            <p style={{ fontFamily: 'var(--font-family-labelSmall)', fontWeight: 'var(--font-weight-labelSmall)', fontSize: 'var(--font-size-labelSmall)', color: 'var(--m3-on-surface-variant)' }}
+                            <p style={{ fontFamily: 'var(--font-family-labelSmall)', fontWeight: 'var(--font-weight-labelSmall)', fontSize: 'var(--font-size-labelSmall)', color: 'var(--preview-on-surface-variant)' }}
                                  className={cn("p-1 rounded", isHighlighted(['onSurfaceVariant']) && highlightClass)}
                                 onClick={(e) => {e.stopPropagation(); onColorClick('onSurfaceVariant')}}
                             >Favorites</p>
                          </div>
                          <div className="flex flex-col items-center gap-1">
                              <div className={cn("p-1 rounded", isHighlighted(['onSurfaceVariant']) && highlightClass)} onClick={(e) => {e.stopPropagation(); onColorClick('onSurfaceVariant')}}>
-                                <Settings size={24} style={{color: 'var(--m3-on-surface-variant)'}} />
+                                <Settings size={24} style={{color: 'var(--preview-on-surface-variant)'}} />
                             </div>
-                            <p style={{ fontFamily: 'var(--font-family-labelSmall)', fontWeight: 'var(--font-weight-labelSmall)', fontSize: 'var(--font-size-labelSmall)', color: 'var(--m3-on-surface-variant)' }}
+                            <p style={{ fontFamily: 'var(--font-family-labelSmall)', fontWeight: 'var(--font-weight-labelSmall)', fontSize: 'var(--font-size-labelSmall)', color: 'var(--preview-on-surface-variant)' }}
                                 className={cn("p-1 rounded", isHighlighted(['onSurfaceVariant']) && highlightClass)}
                                 onClick={(e) => {e.stopPropagation(); onColorClick('onSurfaceVariant')}}
                             >Settings</p>
@@ -653,6 +661,7 @@ ThemeEditorModal.displayName = 'ThemeEditorModal';
     
 
     
+
 
 
 
