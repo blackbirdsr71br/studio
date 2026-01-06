@@ -402,8 +402,8 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
       }
       
       let currentValue = selectedComponent.properties[propDef.name];
-      // This is the key logic change. If the property is not set on the component,
-      // derive its value from the theme.
+      
+      // If the property is not set on the component, derive its value from the theme.
       if (currentValue === undefined) {
         if (propDef.type === 'color') {
           const themeColorKey = getThemeColorKeyForComponentProp(componentPropsDefSourceType, propDef.name as keyof BaseComponentProps);
