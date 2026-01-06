@@ -64,6 +64,10 @@ const getThemeColorKeyForComponentProp = (
         case 'TopAppBar':
         case 'BottomNavigationBar':
         case 'DropdownMenu':
+        case 'LazyColumn':
+        case 'LazyRow':
+        case 'LazyVerticalGrid':
+        case 'LazyHorizontalGrid':
             if (propName === 'backgroundColor') return 'surface';
             if (propName === 'contentColor') return 'onSurface';
             break;
@@ -74,10 +78,6 @@ const getThemeColorKeyForComponentProp = (
         case 'Column':
         case 'Row':
         case 'Box':
-        case 'LazyColumn':
-        case 'LazyRow':
-        case 'LazyVerticalGrid':
-        case 'LazyHorizontalGrid':
              if (propName === 'backgroundColor') return 'background';
              break;
     }
@@ -402,9 +402,9 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
       }
       
       let currentValue = selectedComponent.properties[propDef.name];
-      const hasLocalOverride = currentValue !== undefined;
-
-      if (!hasLocalOverride) {
+      // This is the key logic change. If the property is not set on the component,
+      // derive its value from the theme.
+      if (currentValue === undefined) {
         if (propDef.type === 'color') {
           const themeColorKey = getThemeColorKeyForComponentProp(componentPropsDefSourceType, propDef.name as keyof BaseComponentProps);
           if (themeColorKey && m3Theme) {
@@ -424,6 +424,7 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
         }
       }
 
+      // If still undefined, use the spec's default
       if(currentValue === undefined) {
         currentValue = getDefaultProperties(componentPropsDefSourceType as ComponentType)[propDef.name as keyof BaseComponentProps]
       }

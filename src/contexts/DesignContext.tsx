@@ -640,8 +640,8 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
         parentId: effectiveParentId,
       };
       
-      const layoutComponentsToColor: ComponentType[] = ['LazyColumn', 'LazyRow', 'Row', 'Column'];
-      if (layoutComponentsToColor.includes(typeOrTemplateId as ComponentType)) {
+      const layoutContainers: ComponentType[] = ['Column', 'Row', 'LazyColumn', 'LazyRow'];
+      if (layoutContainers.includes(typeOrTemplateId as ComponentType)) {
           const currentScheme = designState.activeM3ThemeScheme === 'dark' ? designState.m3Theme.darkColors : designState.m3Theme.lightColors;
           newComponentBase.properties.backgroundColor = currentScheme.background;
       }
