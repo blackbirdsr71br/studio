@@ -6,7 +6,9 @@ import type { DesignComponent, DesignState, ComponentType, BaseComponentProps, C
 import {
     getDefaultProperties, CUSTOM_COMPONENT_TYPE_PREFIX, isContainerType as isContainerTypeUtil, getComponentDisplayName, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, CORE_SCAFFOLD_ELEMENT_IDS, CUSTOM_TEMPLATES_COLLECTION, SAVED_LAYOUTS_COLLECTION, GALLERY_IMAGES_COLLECTION, defaultLightColors, defaultDarkColors, defaultTypography, defaultShapes,
     APP_THEME_COLLECTION,
-    M3_THEME_DOC_ID
+    M3_THEME_DOC_ID,
+    DEFAULT_TOP_APP_BAR_ID,
+    DEFAULT_BOTTOM_NAV_BAR_ID
 } from '@/types/compose-spec';
 import { db } from '@/lib/firebase';
 import { collection, doc, setDoc, getDocs, deleteDoc, query, orderBy, onSnapshot, Unsubscribe, getDoc } from "firebase/firestore";
@@ -89,10 +91,23 @@ const createInitialComponents = (): DesignComponent[] => {
     name: 'Root Scaffold',
     properties: {
       ...getDefaultProperties('Scaffold', ROOT_SCAFFOLD_ID),
-      children: [DEFAULT_CONTENT_LAZY_COLUMN_ID],
+      children: [DEFAULT_TOP_APP_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_BOTTOM_NAV_BAR_ID],
     },
     parentId: null,
   };
+
+  const topAppBar: DesignComponent = {
+    id: DEFAULT_TOP_APP_BAR_ID,
+    type: 'TopAppBar',
+    name: 'Top App Bar',
+    properties: {
+      ...getDefaultProperties('TopAppBar', DEFAULT_TOP_APP_BAR_ID),
+      title: 'Screen Title',
+      children: [],
+    },
+    parentId: ROOT_SCAFFOLD_ID,
+  };
+
   const contentLazyColumn: DesignComponent = {
     id: DEFAULT_CONTENT_LAZY_COLUMN_ID,
     type: 'LazyColumn',
@@ -103,7 +118,19 @@ const createInitialComponents = (): DesignComponent[] => {
     },
     parentId: ROOT_SCAFFOLD_ID,
   };
-  return [rootScaffold, contentLazyColumn];
+
+  const bottomNavBar: DesignComponent = {
+    id: DEFAULT_BOTTOM_NAV_BAR_ID,
+    type: 'BottomNavigationBar',
+    name: 'Bottom Nav Bar',
+    properties: {
+      ...getDefaultProperties('BottomNavigationBar', DEFAULT_BOTTOM_NAV_BAR_ID),
+      children: [],
+    },
+    parentId: ROOT_SCAFFOLD_ID,
+  };
+
+  return [rootScaffold, topAppBar, contentLazyColumn, bottomNavBar];
 };
 
 

@@ -327,22 +327,18 @@ export function RenderedComponentWrapper({
 
     switch (component.type) {
       case 'Scaffold':
-        const topBarChild = childrenToRender.find(c => c.type === 'TopAppBar' || c.id === DEFAULT_TOP_APP_BAR_ID);
-        const contentChild = childrenToRender.find(c => c.type === 'LazyColumn' && c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID);
-        const bottomBarChild = childrenToRender.find(c => c.type === 'BottomNavigationBar' || c.id === DEFAULT_BOTTOM_NAV_BAR_ID);
+        const topBarChild = childrenToRender.find(c => c.id === DEFAULT_TOP_APP_BAR_ID);
+        const contentChild = childrenToRender.find(c => c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID);
+        const bottomBarChild = childrenToRender.find(c => c.id === DEFAULT_BOTTOM_NAV_BAR_ID);
         
-        const scaffoldStyle: React.CSSProperties = {};
-        if (component.id === ROOT_SCAFFOLD_ID) {
-            scaffoldStyle.backgroundColor = resolvedTheme === 'dark' ? '#000000' : '#e7e4e4';
-        } else {
-            scaffoldStyle.backgroundColor = component.properties.backgroundColor || 'var(--m3-background)';
-        }
-
+        const scaffoldStyle: React.CSSProperties = {
+          backgroundColor: component.properties.backgroundColor || 'var(--m3-background)'
+        };
 
         return (
           <div className="flex flex-col w-full h-full" style={scaffoldStyle}>
             {topBarChild && (
-              <div style={{ flexShrink: 0, width: '100%', height: `${topBarChild.properties.height || 56}px` }} className="flex w-full">
+              <div style={{ flexShrink: 0, width: '100%'}} className="flex w-full">
                 <RenderedComponentWrapper
                     component={topBarChild}
                     isPreview={isPreview}
@@ -363,7 +359,7 @@ export function RenderedComponentWrapper({
               </div>
             )}
             {bottomBarChild && (
-              <div style={{ flexShrink: 0, width: '100%', height: `${bottomBarChild.properties.height || 56}px` }} className="flex w-full">
+              <div style={{ flexShrink: 0, width: '100%'}} className="flex w-full">
                  <RenderedComponentWrapper
                     component={bottomBarChild}
                     isPreview={isPreview}
