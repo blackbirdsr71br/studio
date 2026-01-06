@@ -1,4 +1,3 @@
-
 'use client';
 import type { DesignComponent, ComponentType as OriginalComponentType, BaseComponentProps, CustomComponentTemplate, M3Theme } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from '../component-renderer/RenderedComponentWrapper';
@@ -64,14 +63,14 @@ const getThemeColorKeyForComponentBackground = (componentType: OriginalComponent
         case 'TopAppBar':
         case 'BottomNavigationBar':
         case 'DropdownMenu':
-        case 'LazyColumn':
-        case 'LazyRow':
-        case 'LazyVerticalGrid':
-        case 'LazyHorizontalGrid':
             return 'surface';
         case 'Scaffold':
         case 'Column':
         case 'Row':
+        case 'LazyColumn':
+        case 'LazyRow':
+        case 'LazyVerticalGrid':
+        case 'LazyHorizontalGrid':
         case 'Box':
             return 'background';
     }
@@ -214,7 +213,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   }
   
   if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
-      baseStyle.backgroundColor = resolvedTheme === 'dark' ? '#000000' : '#e7e4e4';
+      baseStyle.backgroundColor = activeM3ThemeScheme === 'dark' ? '#000000' : '#e7e4e4';
   } else if (explicitBackgroundColor) {
     if (typeof explicitBackgroundColor === 'object' && explicitBackgroundColor.type === 'linearGradient') {
       const angle = explicitBackgroundColor.angle || 0;
