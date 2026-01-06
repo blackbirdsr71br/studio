@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '../ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
+import { Slider } from "@/components/ui/slider";
 import type { M3Colors, CustomColor, M3Typography, M3Shapes, TextStyle } from '@/types/compose-spec';
 import { availableFonts, availableFontWeights } from '@/types/compose-spec';
 import { useDesign } from '@/contexts/DesignContext';
@@ -550,7 +550,7 @@ fun AppTheme(useDarkTheme: Boolean = isSystemInDarkTheme(), content: @Composable
                 <ColorInput label="errorContainer" color={colors.errorContainer} setColor={(c) => setColor('errorContainer', c)} forwardedRef={el => colorInputRefs.current['errorContainer'] = el} onFocus={() => setHighlightedPreviewKey('errorContainer')} onBlur={() => setHighlightedPreviewKey(null)} isHighlighted={highlightedEditorKey === 'errorContainer'} />
                 <ColorInput label="onErrorContainer" color={colors.onErrorContainer} setColor={(c) => setColor('onErrorContainer', c)} forwardedRef={el => colorInputRefs.current['onErrorContainer'] = el} onFocus={() => setHighlightedPreviewKey('onErrorContainer')} onBlur={() => setHighlightedPreviewKey(null)} isHighlighted={highlightedEditorKey === 'onErrorContainer'} />
             </ColorGroup>
-            <ColorGroup title="Surface & Background">
+            <ColorGroup title="Surface &amp; Background">
                 <ColorInput label="background" color={colors.background} setColor={(c) => setColor('background', c)} forwardedRef={el => colorInputRefs.current['background'] = el} onFocus={() => setHighlightedPreviewKey('background')} onBlur={() => setHighlightedPreviewKey(null)} isHighlighted={highlightedEditorKey === 'background'} />
                 <ColorInput label="onBackground" color={colors.onBackground} setColor={(c) => setColor('onBackground', c)} forwardedRef={el => colorInputRefs.current['onBackground'] = el} onFocus={() => setHighlightedPreviewKey('onBackground')} onBlur={() => setHighlightedPreviewKey(null)} isHighlighted={highlightedEditorKey === 'onBackground'} />
                 <ColorInput label="surface" color={colors.surface} setColor={(c) => setColor('surface', c)} forwardedRef={el => colorInputRefs.current['surface'] = el} onFocus={() => setHighlightedPreviewKey('surface')} onBlur={() => setHighlightedPreviewKey(null)} isHighlighted={highlightedEditorKey === 'surface'} />
@@ -657,3 +657,6 @@ ThemeEditorModal.displayName = 'ThemeEditorModal';
 
 
 
+
+
+    
