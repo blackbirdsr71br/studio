@@ -558,7 +558,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
     case 'TopAppBar': // New default for TopAppBar
       return {
         layoutWeight: 0,
-        padding: 0, paddingTop: 0, paddingBottom: 0, paddingStart: 0, paddingEnd: 0,
+        padding: 0, paddingTop: 0, paddingBottom: 0, paddingStart: 16, paddingEnd: 4,
         fillMaxWidth: true, fillMaxHeight: false, // Usually fills width
         selfAlign: undefined,
         children: [], // For action items or navigation icon
@@ -568,7 +568,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         height: 56, // Standard height
         backgroundColor: undefined, 
         contentColor: undefined,
-        itemSpacing: 8,
+        itemSpacing: 4,
         horizontalArrangement: 'Start', // For title and actions
         verticalAlignment: 'CenterVertically',
         ...defaultClickableBehavior,
@@ -609,7 +609,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         padding: 0,
         backgroundColor: undefined,
         width: 100, height: 100,
-        cornerRadiusTopLeft: 4, cornerRadiusTopRight: 4, cornerRadiusBottomRight: 4, cornerRadiusBottomLeft: 4,
+        cornerRadiusTopLeft: 4, cornerRadiusTopRight: 4, cornerRadiusBottomLeft: 4, cornerRadiusBottomRight: 4,
         selfAlign: 'Inherit',
         ...defaultClickableBehavior,
       };
@@ -1104,6 +1104,8 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'height', type: 'number', label: 'Height', group: 'Layout' },
     { name: 'itemSpacing', type: 'number', label: 'Item Spacing', group: 'Layout' },
     { name: 'horizontalArrangement', type: 'enum', label: 'Horizontal Arrangement', group: 'Layout', options: [{ label: 'Start', value: 'Start' }, { label: 'End', value: 'End' }, { label: 'Center', value: 'Center' }, { label: 'Space Around', value: 'SpaceAround' }, { label: 'Space Between', value: 'SpaceBetween' }, { label: 'Space Evenly', value: 'SpaceEvenly' }] },
+    { name: 'paddingStart', type: 'number', label: 'Padding Start', group: 'Layout', placeholder: 'e.g., 16' },
+    { name: 'paddingEnd', type: 'number', label: 'Padding End', group: 'Layout', placeholder: 'e.g., 4' },
   ],
   BottomNavigationBar: [
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
@@ -1139,6 +1141,7 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
 
     
     
+
 
 
 

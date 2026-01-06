@@ -254,12 +254,6 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       placeholderText = `This ${getComponentDisplayName(effectiveType as OriginalComponentType)} is connected to a data source. Use the "Data" panel to generate children.`;
   }
   
-  const topAppBarTitleElement = effectiveType === 'TopAppBar' && title ? (
-    <div style={{ flexShrink: 0, marginRight: (childrenComponents.length > 0 ? (itemSpacing || 8) : 0) + 'px' }} className="top-app-bar-title-container">
-      <TextView properties={{ text: title, fontSize: titleFontSize || 20, textColor: baseStyle.color as string }} />
-    </div>
-  ) : null;
-  
   const dropdownButtonElement = effectiveType === 'DropdownMenu' ? (
     <div
       style={{
@@ -374,7 +368,8 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     case 'BottomNavigationBar':
       baseStyle.flexDirection = 'row';
       baseStyle.alignItems = effectiveProperties.verticalAlignment === 'CenterVertically' ? 'center' : 'flex-start';
-      baseStyle.justifyContent = effectiveProperties.horizontalArrangement === 'SpaceAround' ? 'space-around' : 'flex-start';
+      childrenContainerStyle.alignItems = effectiveProperties.verticalAlignment === 'CenterVertically' ? 'center' : 'flex-start';
+      baseStyle.justifyContent = effectiveProperties.horizontalArrangement ? { 'Start': 'flex-start', 'End': 'flex-end', 'Center': 'center', 'SpaceAround': 'space-around', 'SpaceBetween': 'space-between', 'SpaceEvenly': 'space-evenly' }[effectiveProperties.horizontalArrangement] || 'flex-start' : 'flex-start';
       break;
   }
   
@@ -383,6 +378,11 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     placeholderStyle.gridColumn = '1 / -1';
   }
 
+  const topAppBarTitleElement = effectiveType === 'TopAppBar' && title ? (
+    <div style={{ flexShrink: 0, marginRight: 'auto' }} className="top-app-bar-title-container">
+      <TextView properties={{ text: title, fontSize: titleFontSize || 20, textColor: baseStyle.color as string, padding: 0 }} />
+    </div>
+  ) : null;
 
   return (
     <div style={baseStyle} className={containerClasses} data-container-id={component.id} data-container-type={effectiveType}>
@@ -391,10 +391,10 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
           {dropdownButtonElement}
         </div>
       )}
-      {topAppBarTitleElement}
-
+      
       <div style={childrenContainerStyle} className={cn({"p-2 space-y-1": effectiveType === 'DropdownMenu'})}>
-        {showPlaceholder ? (
+        {topAppBarTitleElement}
+        {showPlaceholder && !topAppBarTitleElement ? (
             <div style={placeholderStyle} className="flex-grow flex flex-col items-center justify-center text-muted-foreground/70 text-xs pointer-events-none p-2 text-center leading-tight">
               <span>{placeholderText}</span>
               {(!isDataBound && effectiveType === 'LazyVerticalGrid' && effectiveProperties.columns) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.columns} columns)</span>}
