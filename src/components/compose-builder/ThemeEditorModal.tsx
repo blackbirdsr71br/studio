@@ -23,15 +23,23 @@ import { cn } from '@/lib/utils';
 
 // --- SUB-COMPONENTS ---
 
-const ColorInput: React.FC<{ label: string; color: string; setColor: (color: string) => void; forwardedRef: React.Ref<HTMLDivElement> }> = ({ label, color, setColor, forwardedRef }) => (
+const ColorInput: React.FC<{
+    label: string;
+    color: string;
+    setColor: (color: string) => void;
+    forwardedRef: React.Ref<HTMLDivElement>;
+    onFocus: () => void;
+    onBlur: () => void;
+}> = ({ label, color, setColor, forwardedRef, onFocus, onBlur }) => (
     <div ref={forwardedRef} className="flex items-center justify-between gap-4 rounded-md transition-all duration-300" data-color-key={label}>
         <Label htmlFor={`color-${label}`} className="text-xs whitespace-nowrap capitalize">{label.replace(/([A-Z])/g, ' $1')}</Label>
         <div className="flex items-center gap-2">
-            <Input id={`color-${label}-picker`} type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-7 w-8 p-1"/>
-            <Input id={`color-${label}-text`} type="text" value={color} onChange={(e) => setColor(e.target.value)} className="h-7 w-24 text-xs"/>
+            <Input id={`color-${label}-picker`} type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-7 w-8 p-1" onFocus={onFocus} onBlur={onBlur} />
+            <Input id={`color-${label}-text`} type="text" value={color} onChange={(e) => setColor(e.target.value)} className="h-7 w-24 text-xs" onFocus={onFocus} onBlur={onBlur} />
         </div>
     </div>
 );
+
 
 const ColorGroup: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
     <div>
@@ -90,9 +98,20 @@ const ShapeEditor: React.FC<{ shapes: M3Shapes, setShapes: (s: M3Shapes) => void
     </div>
 );
 
-const ThemePreview: React.FC<{ colors: M3Colors; customColors: CustomColor[], typography: M3Typography, shapes: M3Shapes, onColorClick: (key: keyof M3Colors) => void }> = ({ colors, customColors, typography, shapes, onColorClick }) => {
+const ThemePreview: React.FC<{ 
+    colors: M3Colors; 
+    customColors: CustomColor[], 
+    typography: M3Typography, 
+    shapes: M3Shapes, 
+    onColorClick: (key: keyof M3Colors) => void,
+    highlightedKey: string | null 
+}> = ({ colors, customColors, typography, shapes, onColorClick, highlightedKey }) => {
     const getFontFamilyVariable = (fontName: string) => `var(--font-${fontName.toLowerCase().replace(/ /g, '-')})`;
     const getFontWeightValue = (weight: 'Normal' | 'Medium' | 'Bold') => (weight === 'Normal' ? 400 : weight === 'Medium' ? 500 : 700);
+    
+    const isHighlighted = (keys: (keyof M3Colors | string)[]) => keys.some(key => key === highlightedKey);
+
+    const highlightClass = "outline-dashed outline-2 outline-offset-2 outline-accent transition-all duration-300 shadow-[0_0_12px_2px_hsl(var(--accent))]";
 
     const dynamicStyles = useMemo(() => {
         const style: React.CSSProperties = {
@@ -125,7 +144,7 @@ const ThemePreview: React.FC<{ colors: M3Colors; customColors: CustomColor[], ty
     return (
       <ScrollArea className="h-full">
         <div 
-            className="w-full h-full p-4 rounded-lg transition-colors duration-200 cursor-pointer" 
+            className={cn("w-full h-full p-4 rounded-lg transition-all duration-200 cursor-pointer", isHighlighted(['background']) && highlightClass)} 
             style={{ backgroundColor: 'var(--preview-background)', color: 'var(--preview-on-background)', ...dynamicStyles }}
             onClick={() => onColorClick('background')}
             >
@@ -134,7 +153,7 @@ const ThemePreview: React.FC<{ colors: M3Colors; customColors: CustomColor[], ty
                 fontWeight: 'var(--font-weight-headlineMedium)', 
                 fontSize: 'var(--font-size-headlineMedium)'
             }}
-                className="mb-4 text-center"
+                className={cn("mb-4 text-center p-1 rounded", isHighlighted(['onBackground']) && highlightClass)}
                 onClick={(e) => {e.stopPropagation(); onColorClick('onBackground')}}
                 >Live Preview</h3>
             
@@ -145,6 +164,7 @@ const ThemePreview: React.FC<{ colors: M3Colors; customColors: CustomColor[], ty
                     backgroundColor: 'var(--preview-surface)',
                     color: 'var(--preview-on-surface)',
                 }}
+                className={cn("transition-all duration-200", isHighlighted(['surface', 'outline']) && highlightClass)}
                 onClick={(e) => {e.stopPropagation(); onColorClick('surface')}}
                 >
                 <CardHeader>
@@ -154,6 +174,7 @@ const ThemePreview: React.FC<{ colors: M3Colors; customColors: CustomColor[], ty
                         fontSize: 'var(--font-size-titleMedium)',
                         color: 'var(--preview-on-surface)',
                     }}
+                     className={cn("p-1 rounded", isHighlighted(['onSurface']) && highlightClass)}
                      onClick={(e) => {e.stopPropagation(); onColorClick('onSurface')}}
                     >
                         Example Card
@@ -161,7 +182,7 @@ const ThemePreview: React.FC<{ colors: M3Colors; customColors: CustomColor[], ty
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div 
-                        className="p-4 rounded-md" 
+                        className={cn("p-4 rounded-md transition-all duration-200", isHighlighted(['surfaceVariant']) && highlightClass)}
                         style={{backgroundColor: 'var(--preview-surface-variant)', color: 'var(--preview-on-surface-variant)'}}
                         onClick={(e) => {e.stopPropagation(); onColorClick('surfaceVariant')}}
                         >
@@ -170,6 +191,7 @@ const ThemePreview: React.FC<{ colors: M3Colors; customColors: CustomColor[], ty
                             fontWeight: 'var(--font-weight-bodyLarge)',
                             fontSize: 'var(--font-size-bodyLarge)',
                          }}
+                          className={cn("p-1 rounded", isHighlighted(['onSurfaceVariant']) && highlightClass)}
                           onClick={(e) => {e.stopPropagation(); onColorClick('onSurfaceVariant')}}
                          >This is a sample card to preview the theme on a surface-variant color.</p>
                     </div>
@@ -177,21 +199,24 @@ const ThemePreview: React.FC<{ colors: M3Colors; customColors: CustomColor[], ty
                     <div className="flex flex-col gap-2">
                          <Button 
                             style={{ backgroundColor: 'var(--preview-primary)', color: 'var(--preview-on-primary)', borderRadius: 'var(--shape-small)' }}
+                            className={cn(isHighlighted(['primary']) && highlightClass)}
                             onClick={(e) => {e.stopPropagation(); onColorClick('primary')}}
                             >
-                             <span onClick={(e) => {e.stopPropagation(); onColorClick('onPrimary')}}>Primary</span>
+                             <span className={cn("p-1 rounded", isHighlighted(['onPrimary']) && highlightClass)} onClick={(e) => {e.stopPropagation(); onColorClick('onPrimary')}}>Primary</span>
                          </Button>
                          <Button 
                             style={{ backgroundColor: 'var(--preview-secondary-container)', color: 'var(--preview-on-secondary-container)', borderRadius: 'var(--shape-small)' }}
+                            className={cn(isHighlighted(['secondaryContainer']) && highlightClass)}
                             onClick={(e) => {e.stopPropagation(); onColorClick('secondaryContainer')}}
                             >
-                            <span onClick={(e) => {e.stopPropagation(); onColorClick('onSecondaryContainer')}}>Secondary</span>
+                            <span className={cn("p-1 rounded", isHighlighted(['onSecondaryContainer']) && highlightClass)} onClick={(e) => {e.stopPropagation(); onColorClick('onSecondaryContainer')}}>Secondary</span>
                          </Button>
                          <Button 
                             style={{ backgroundColor: 'var(--preview-tertiary-container)', color: 'var(--preview-on-tertiary-container)', borderRadius: 'var(--shape-small)' }}
+                             className={cn(isHighlighted(['tertiaryContainer']) && highlightClass)}
                              onClick={(e) => {e.stopPropagation(); onColorClick('tertiaryContainer')}}
                             >
-                            <span onClick={(e) => {e.stopPropagation(); onColorClick('onTertiaryContainer')}}>Tertiary</span>
+                            <span className={cn("p-1 rounded", isHighlighted(['onTertiaryContainer']) && highlightClass)} onClick={(e) => {e.stopPropagation(); onColorClick('onTertiaryContainer')}}>Tertiary</span>
                          </Button>
                     </div>
                 </CardContent>
@@ -212,6 +237,7 @@ export const ThemeEditorModal = forwardRef<ThemeEditorModalRef, {}>((props, ref)
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeEditorTab, setActiveEditorTab] = useState<'colors' | 'typography' | 'shapes'>('colors');
+  const [highlightedPreviewKey, setHighlightedPreviewKey] = useState<string | null>(null);
   
   const { m3Theme, setM3Theme, activeM3ThemeScheme, setActiveM3ThemeScheme } = useDesign();
   
@@ -437,37 +463,37 @@ fun AppTheme(useDarkTheme: Boolean = isSystemInDarkTheme(), content: @Composable
     return (
         <div className="space-y-6">
             <ColorGroup title="Primary">
-                <ColorInput label="primary" color={colors.primary} setColor={(c) => setColor('primary', c)} forwardedRef={el => colorInputRefs.current['primary'] = el} />
-                <ColorInput label="onPrimary" color={colors.onPrimary} setColor={(c) => setColor('onPrimary', c)} forwardedRef={el => colorInputRefs.current['onPrimary'] = el} />
-                <ColorInput label="primaryContainer" color={colors.primaryContainer} setColor={(c) => setColor('primaryContainer', c)} forwardedRef={el => colorInputRefs.current['primaryContainer'] = el} />
-                <ColorInput label="onPrimaryContainer" color={colors.onPrimaryContainer} setColor={(c) => setColor('onPrimaryContainer', c)} forwardedRef={el => colorInputRefs.current['onPrimaryContainer'] = el} />
+                <ColorInput label="primary" color={colors.primary} setColor={(c) => setColor('primary', c)} forwardedRef={el => colorInputRefs.current['primary'] = el} onFocus={() => setHighlightedPreviewKey('primary')} onBlur={() => setHighlightedPreviewKey(null)}/>
+                <ColorInput label="onPrimary" color={colors.onPrimary} setColor={(c) => setColor('onPrimary', c)} forwardedRef={el => colorInputRefs.current['onPrimary'] = el} onFocus={() => setHighlightedPreviewKey('onPrimary')} onBlur={() => setHighlightedPreviewKey(null)}/>
+                <ColorInput label="primaryContainer" color={colors.primaryContainer} setColor={(c) => setColor('primaryContainer', c)} forwardedRef={el => colorInputRefs.current['primaryContainer'] = el} onFocus={() => setHighlightedPreviewKey('primaryContainer')} onBlur={() => setHighlightedPreviewKey(null)}/>
+                <ColorInput label="onPrimaryContainer" color={colors.onPrimaryContainer} setColor={(c) => setColor('onPrimaryContainer', c)} forwardedRef={el => colorInputRefs.current['onPrimaryContainer'] = el} onFocus={() => setHighlightedPreviewKey('onPrimaryContainer')} onBlur={() => setHighlightedPreviewKey(null)}/>
             </ColorGroup>
             <ColorGroup title="Secondary">
-                <ColorInput label="secondary" color={colors.secondary} setColor={(c) => setColor('secondary', c)} forwardedRef={el => colorInputRefs.current['secondary'] = el} />
-                <ColorInput label="onSecondary" color={colors.onSecondary} setColor={(c) => setColor('onSecondary', c)} forwardedRef={el => colorInputRefs.current['onSecondary'] = el} />
-                <ColorInput label="secondaryContainer" color={colors.secondaryContainer} setColor={(c) => setColor('secondaryContainer', c)} forwardedRef={el => colorInputRefs.current['secondaryContainer'] = el} />
-                <ColorInput label="onSecondaryContainer" color={colors.onSecondaryContainer} setColor={(c) => setColor('onSecondaryContainer', c)} forwardedRef={el => colorInputRefs.current['onSecondaryContainer'] = el} />
+                <ColorInput label="secondary" color={colors.secondary} setColor={(c) => setColor('secondary', c)} forwardedRef={el => colorInputRefs.current['secondary'] = el} onFocus={() => setHighlightedPreviewKey('secondary')} onBlur={() => setHighlightedPreviewKey(null)}/>
+                <ColorInput label="onSecondary" color={colors.onSecondary} setColor={(c) => setColor('onSecondary', c)} forwardedRef={el => colorInputRefs.current['onSecondary'] = el} onFocus={() => setHighlightedPreviewKey('onSecondary')} onBlur={() => setHighlightedPreviewKey(null)}/>
+                <ColorInput label="secondaryContainer" color={colors.secondaryContainer} setColor={(c) => setColor('secondaryContainer', c)} forwardedRef={el => colorInputRefs.current['secondaryContainer'] = el} onFocus={() => setHighlightedPreviewKey('secondaryContainer')} onBlur={() => setHighlightedPreviewKey(null)}/>
+                <ColorInput label="onSecondaryContainer" color={colors.onSecondaryContainer} setColor={(c) => setColor('onSecondaryContainer', c)} forwardedRef={el => colorInputRefs.current['onSecondaryContainer'] = el} onFocus={() => setHighlightedPreviewKey('onSecondaryContainer')} onBlur={() => setHighlightedPreviewKey(null)}/>
             </ColorGroup>
             <ColorGroup title="Tertiary">
-                <ColorInput label="tertiary" color={colors.tertiary} setColor={(c) => setColor('tertiary', c)} forwardedRef={el => colorInputRefs.current['tertiary'] = el} />
-                <ColorInput label="onTertiary" color={colors.onTertiary} setColor={(c) => setColor('onTertiary', c)} forwardedRef={el => colorInputRefs.current['onTertiary'] = el} />
-                <ColorInput label="tertiaryContainer" color={colors.tertiaryContainer} setColor={(c) => setColor('tertiaryContainer', c)} forwardedRef={el => colorInputRefs.current['tertiaryContainer'] = el} />
-                <ColorInput label="onTertiaryContainer" color={colors.onTertiaryContainer} setColor={(c) => setColor('onTertiaryContainer', c)} forwardedRef={el => colorInputRefs.current['onTertiaryContainer'] = el} />
+                <ColorInput label="tertiary" color={colors.tertiary} setColor={(c) => setColor('tertiary', c)} forwardedRef={el => colorInputRefs.current['tertiary'] = el} onFocus={() => setHighlightedPreviewKey('tertiary')} onBlur={() => setHighlightedPreviewKey(null)}/>
+                <ColorInput label="onTertiary" color={colors.onTertiary} setColor={(c) => setColor('onTertiary', c)} forwardedRef={el => colorInputRefs.current['onTertiary'] = el} onFocus={() => setHighlightedPreviewKey('onTertiary')} onBlur={() => setHighlightedPreviewKey(null)}/>
+                <ColorInput label="tertiaryContainer" color={colors.tertiaryContainer} setColor={(c) => setColor('tertiaryContainer', c)} forwardedRef={el => colorInputRefs.current['tertiaryContainer'] = el} onFocus={() => setHighlightedPreviewKey('tertiaryContainer')} onBlur={() => setHighlightedPreviewKey(null)}/>
+                <ColorInput label="onTertiaryContainer" color={colors.onTertiaryContainer} setColor={(c) => setColor('onTertiaryContainer', c)} forwardedRef={el => colorInputRefs.current['onTertiaryContainer'] = el} onFocus={() => setHighlightedPreviewKey('onTertiaryContainer')} onBlur={() => setHighlightedPreviewKey(null)}/>
             </ColorGroup>
             <ColorGroup title="Error">
-                <ColorInput label="error" color={colors.error} setColor={(c) => setColor('error', c)} forwardedRef={el => colorInputRefs.current['error'] = el} />
-                <ColorInput label="onError" color={colors.onError} setColor={(c) => setColor('onError', c)} forwardedRef={el => colorInputRefs.current['onError'] = el} />
-                <ColorInput label="errorContainer" color={colors.errorContainer} setColor={(c) => setColor('errorContainer', c)} forwardedRef={el => colorInputRefs.current['errorContainer'] = el} />
-                <ColorInput label="onErrorContainer" color={colors.onErrorContainer} setColor={(c) => setColor('onErrorContainer', c)} forwardedRef={el => colorInputRefs.current['onErrorContainer'] = el} />
+                <ColorInput label="error" color={colors.error} setColor={(c) => setColor('error', c)} forwardedRef={el => colorInputRefs.current['error'] = el} onFocus={() => setHighlightedPreviewKey('error')} onBlur={() => setHighlightedPreviewKey(null)}/>
+                <ColorInput label="onError" color={colors.onError} setColor={(c) => setColor('onError', c)} forwardedRef={el => colorInputRefs.current['onError'] = el} onFocus={() => setHighlightedPreviewKey('onError')} onBlur={() => setHighlightedPreviewKey(null)}/>
+                <ColorInput label="errorContainer" color={colors.errorContainer} setColor={(c) => setColor('errorContainer', c)} forwardedRef={el => colorInputRefs.current['errorContainer'] = el} onFocus={() => setHighlightedPreviewKey('errorContainer')} onBlur={() => setHighlightedPreviewKey(null)}/>
+                <ColorInput label="onErrorContainer" color={colors.onErrorContainer} setColor={(c) => setColor('onErrorContainer', c)} forwardedRef={el => colorInputRefs.current['onErrorContainer'] = el} onFocus={() => setHighlightedPreviewKey('onErrorContainer')} onBlur={() => setHighlightedPreviewKey(null)}/>
             </ColorGroup>
             <ColorGroup title="Surface & Background">
-                <ColorInput label="background" color={colors.background} setColor={(c) => setColor('background', c)} forwardedRef={el => colorInputRefs.current['background'] = el} />
-                <ColorInput label="onBackground" color={colors.onBackground} setColor={(c) => setColor('onBackground', c)} forwardedRef={el => colorInputRefs.current['onBackground'] = el} />
-                <ColorInput label="surface" color={colors.surface} setColor={(c) => setColor('surface', c)} forwardedRef={el => colorInputRefs.current['surface'] = el} />
-                <ColorInput label="onSurface" color={colors.onSurface} setColor={(c) => setColor('onSurface', c)} forwardedRef={el => colorInputRefs.current['onSurface'] = el} />
-                <ColorInput label="surfaceVariant" color={colors.surfaceVariant} setColor={(c) => setColor('surfaceVariant', c)} forwardedRef={el => colorInputRefs.current['surfaceVariant'] = el} />
-                <ColorInput label="onSurfaceVariant" color={colors.onSurfaceVariant} setColor={(c) => setColor('onSurfaceVariant', c)} forwardedRef={el => colorInputRefs.current['onSurfaceVariant'] = el} />
-                <ColorInput label="outline" color={colors.outline} setColor={(c) => setColor('outline', c)} forwardedRef={el => colorInputRefs.current['outline'] = el} />
+                <ColorInput label="background" color={colors.background} setColor={(c) => setColor('background', c)} forwardedRef={el => colorInputRefs.current['background'] = el} onFocus={() => setHighlightedPreviewKey('background')} onBlur={() => setHighlightedPreviewKey(null)}/>
+                <ColorInput label="onBackground" color={colors.onBackground} setColor={(c) => setColor('onBackground', c)} forwardedRef={el => colorInputRefs.current['onBackground'] = el} onFocus={() => setHighlightedPreviewKey('onBackground')} onBlur={() => setHighlightedPreviewKey(null)}/>
+                <ColorInput label="surface" color={colors.surface} setColor={(c) => setColor('surface', c)} forwardedRef={el => colorInputRefs.current['surface'] = el} onFocus={() => setHighlightedPreviewKey('surface')} onBlur={() => setHighlightedPreviewKey(null)}/>
+                <ColorInput label="onSurface" color={colors.onSurface} setColor={(c) => setColor('onSurface', c)} forwardedRef={el => colorInputRefs.current['onSurface'] = el} onFocus={() => setHighlightedPreviewKey('onSurface')} onBlur={() => setHighlightedPreviewKey(null)}/>
+                <ColorInput label="surfaceVariant" color={colors.surfaceVariant} setColor={(c) => setColor('surfaceVariant', c)} forwardedRef={el => colorInputRefs.current['surfaceVariant'] = el} onFocus={() => setHighlightedPreviewKey('surfaceVariant')} onBlur={() => setHighlightedPreviewKey(null)}/>
+                <ColorInput label="onSurfaceVariant" color={colors.onSurfaceVariant} setColor={(c) => setColor('onSurfaceVariant', c)} forwardedRef={el => colorInputRefs.current['onSurfaceVariant'] = el} onFocus={() => setHighlightedPreviewKey('onSurfaceVariant')} onBlur={() => setHighlightedPreviewKey(null)}/>
+                <ColorInput label="outline" color={colors.outline} setColor={(c) => setColor('outline', c)} forwardedRef={el => colorInputRefs.current['outline'] = el} onFocus={() => setHighlightedPreviewKey('outline')} onBlur={() => setHighlightedPreviewKey(null)}/>
             </ColorGroup>
             <Separator />
             <div>
@@ -541,6 +567,7 @@ fun AppTheme(useDarkTheme: Boolean = isSystemInDarkTheme(), content: @Composable
                     typography={m3Theme.typography} 
                     shapes={m3Theme.shapes}
                     onColorClick={handleScrollToColor}
+                    highlightedKey={highlightedPreviewKey}
                 />
                 
             </div>
@@ -553,5 +580,7 @@ fun AppTheme(useDarkTheme: Boolean = isSystemInDarkTheme(), content: @Composable
 });
 
 ThemeEditorModal.displayName = 'ThemeEditorModal';
+
+    
 
     
