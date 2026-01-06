@@ -175,7 +175,7 @@ const ThemePreview: React.FC<{
                       </div>
 
                       {/* Main Content (Scrollable) */}
-                      <div 
+                       <div 
                           className={cn("flex-grow p-4 space-y-4 overflow-y-auto", isHighlighted(['background']) && highlightClass)}
                           style={{backgroundColor: 'var(--preview-background)', color: 'var(--preview-on-background)'}}
                           onClick={() => onColorClick('background')}
@@ -645,6 +645,7 @@ ThemeEditorModal.displayName = 'ThemeEditorModal';
     
 
     
+
 
 
 
