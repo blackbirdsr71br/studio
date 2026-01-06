@@ -191,7 +191,11 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     }
   }
   
-  if (containerBackgroundColor) {
+  // START of change
+  if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
+      baseStyle.backgroundColor = resolvedTheme === 'dark' ? '#000000' : '#e7e4e4';
+  } else if (containerBackgroundColor) {
+  // END of change
     if (typeof containerBackgroundColor === 'object' && containerBackgroundColor.type === 'linearGradient') {
       const angle = containerBackgroundColor.angle || 0;
       const colorStops = containerBackgroundColor.colors.join(', ');
@@ -201,7 +205,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     }
   } else if (['Card', 'TopAppBar', 'BottomNavigationBar', 'DropdownMenu'].includes(effectiveType)) {
     baseStyle.backgroundColor = 'var(--m3-surface)';
-  } else if (component.id === ROOT_SCAFFOLD_ID || component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
+  } else if (component.id === ROOT_SCAFFOLD_ID) { // This now only applies to Scaffold if needed
     baseStyle.backgroundColor = 'var(--m3-background)';
   }
 
