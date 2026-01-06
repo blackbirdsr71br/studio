@@ -156,7 +156,7 @@ const ThemePreview: React.FC<{
 
     return (
       <div className="w-full h-full flex items-center justify-center bg-muted/20 rounded-lg overflow-y-auto" style={dynamicStyles}>
-          <div style={{ transform: `scale(0.8)`, transformOrigin: 'top center', paddingTop: '2rem', paddingBottom: '2rem' }}>
+          <div style={{ transform: `scale(0.8)`, transformOrigin: 'center', paddingTop: '2rem', paddingBottom: '2rem', width: `${FRAME_WIDTH}px`, height: `100%` }}>
               <MobileFrame isPreview={true} themeOverride={{ lightColors: colors, darkColors: colors, customLightColors: [], customDarkColors: [], typography: typography, shapes: shapes }}>
                   <div className="flex flex-col w-full h-full">
                       {/* Top App Bar */}
@@ -645,6 +645,7 @@ ThemeEditorModal.displayName = 'ThemeEditorModal';
     
 
     
+
 
 
 
