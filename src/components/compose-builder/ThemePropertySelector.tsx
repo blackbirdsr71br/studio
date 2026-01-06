@@ -59,7 +59,7 @@ export const ThemePropertySelector: React.FC<ThemePropertySelectorProps> = ({ ty
         const customColors = activeM3ThemeScheme === 'light' ? m3Theme.customLightColors : m3Theme.customDarkColors;
         
         return (
-          <div className="space-y-3">
+          <div className="space-y-3 p-2">
             <div>
               <p className="text-xs font-medium text-muted-foreground px-1 mb-1">Theme Colors</p>
               <div className="grid grid-cols-4 gap-1">
@@ -83,7 +83,7 @@ export const ThemePropertySelector: React.FC<ThemePropertySelectorProps> = ({ ty
 
       case 'typography':
         return (
-          <div className="space-y-1">
+          <div className="space-y-1 p-2">
             {(Object.keys(m3Theme.typography) as Array<keyof M3Typography>).map(key => (
               <Button key={key} variant="ghost" className="w-full h-8 justify-start text-xs" onClick={() => onSelect(key)}>
                 {toTitleCase(key)}
@@ -94,7 +94,7 @@ export const ThemePropertySelector: React.FC<ThemePropertySelectorProps> = ({ ty
 
       case 'shape':
         return (
-          <div className="space-y-1">
+          <div className="space-y-1 p-2">
             {(Object.keys(m3Theme.shapes) as Array<keyof M3Shapes>).map(key => (
                <Button key={key} variant="ghost" className="w-full h-8 justify-start text-xs" onClick={() => onSelect(m3Theme.shapes[key])}>
                 {toTitleCase(key)} ({m3Theme.shapes[key]} dp)
@@ -127,7 +127,7 @@ export const ThemePropertySelector: React.FC<ThemePropertySelectorProps> = ({ ty
         </Button>
       </PopoverTrigger>
       <PopoverContent className={cn("p-0", popoverWidth)}>
-        <ScrollArea className="max-h-72 p-2">
+        <ScrollArea className="max-h-72">
             {renderContent()}
         </ScrollArea>
       </PopoverContent>
