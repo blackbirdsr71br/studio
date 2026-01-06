@@ -64,17 +64,17 @@ const getThemeColorKeyForComponentProp = (
         case 'TopAppBar':
         case 'BottomNavigationBar':
         case 'DropdownMenu':
-             if (propName === 'backgroundColor') return 'surface';
-             if (propName === 'contentColor') return 'onSurface';
-             break;
         case 'LazyColumn':
         case 'LazyRow':
         case 'LazyVerticalGrid':
         case 'LazyHorizontalGrid':
+             if (propName === 'backgroundColor') return 'surface';
+             if (propName === 'contentColor') return 'onSurface';
+             break;
+        case 'Scaffold':
         case 'Column':
         case 'Row':
         case 'Box':
-        case 'Scaffold':
             if (propName === 'backgroundColor') return 'background';
             break;
         case 'Text':
@@ -187,19 +187,8 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
 
     updateComponent(selectedComponent.id, { properties: updates });
     
-    if (propDefinition?.type === 'color' && typeof value === 'string' && value.startsWith('#')) {
-        const themeColorKey = getThemeColorKeyForComponentProp(componentPropsDefSourceType, propName as keyof BaseComponentProps);
-        if (themeColorKey) {
-            setM3Theme(prevTheme => {
-                const currentSchemeKey = activeM3ThemeScheme === 'dark' ? 'darkColors' : 'lightColors';
-                if (prevTheme[currentSchemeKey][themeColorKey] !== value) {
-                    const newColors = { ...prevTheme[currentSchemeKey], [themeColorKey]: value };
-                    return { ...prevTheme, [currentSchemeKey]: newColors };
-                }
-                return prevTheme;
-            });
-        }
-    }
+    // Do not update the theme from the property panel. This was causing unwanted side effects.
+    // The theme editor is the single source of truth for changing the theme.
 };
 
   const handleApplyTypographyStyle = (styleName: keyof M3Typography) => {
@@ -400,9 +389,11 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
           }
       }
       
+      // THIS IS THE KEY CHANGE
+      // Determine the effective value to show in the editor
       let currentValue = selectedComponent.properties[propDef.name];
-      
       if (currentValue === undefined) {
+        // If no value is set, try to get it from the theme
         if (propDef.type === 'color') {
           const themeColorKey = getThemeColorKeyForComponentProp(componentPropsDefSourceType, propDef.name as keyof BaseComponentProps);
           if (themeColorKey && m3Theme) {
@@ -422,6 +413,7 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
         }
       }
       
+      // Fallback to spec default if still undefined
       if(currentValue === undefined) {
         currentValue = getDefaultProperties(componentPropsDefSourceType as ComponentType)[propDef.name as keyof BaseComponentProps]
       }
