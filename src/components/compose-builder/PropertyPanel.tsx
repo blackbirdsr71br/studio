@@ -188,11 +188,14 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
     // This updates the component's own properties
     updateComponent(selectedComponent.id, { properties: updates });
     
+    // If we're setting a concrete color value, we should also update the M3 theme
+    // if this component property is linked to a theme color.
     if (propDefinition?.type === 'color' && typeof value === 'string' && value.startsWith('#')) {
         const themeColorKey = getThemeColorKeyForComponentProp(componentPropsDefSourceType, propName as keyof BaseComponentProps);
         if (themeColorKey) {
             setM3Theme(prevTheme => {
                 const currentSchemeKey = activeM3ThemeScheme === 'dark' ? 'darkColors' : 'lightColors';
+                // Only update if the value is different, to avoid unnecessary re-renders/saves
                 if (prevTheme[currentSchemeKey][themeColorKey] !== value) {
                     const newColors = { ...prevTheme[currentSchemeKey], [themeColorKey]: value };
                     return { ...prevTheme, [currentSchemeKey]: newColors };
@@ -403,7 +406,6 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
       
       let currentValue = selectedComponent.properties[propDef.name];
       
-      // If the property is not set on the component, derive its value from the theme.
       if (currentValue === undefined) {
         if (propDef.type === 'color') {
           const themeColorKey = getThemeColorKeyForComponentProp(componentPropsDefSourceType, propDef.name as keyof BaseComponentProps);
@@ -423,8 +425,7 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
             }
         }
       }
-
-      // If still undefined, use the spec's default
+      
       if(currentValue === undefined) {
         currentValue = getDefaultProperties(componentPropsDefSourceType as ComponentType)[propDef.name as keyof BaseComponentProps]
       }

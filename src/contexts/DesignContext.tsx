@@ -641,12 +641,6 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
         parentId: effectiveParentId,
       };
       
-      const layoutContainers: ComponentType[] = ['Column', 'Row', 'LazyColumn', 'LazyRow'];
-      if (layoutContainers.includes(typeOrTemplateId as ComponentType)) {
-          const currentScheme = designState.activeM3ThemeScheme === 'dark' ? designState.m3Theme.darkColors : designState.m3Theme.lightColors;
-          newComponentBase.properties.backgroundColor = currentScheme.background;
-      }
-  
       if (typeOrTemplateId.startsWith(CUSTOM_COMPONENT_TYPE_PREFIX)) {
         const template = designState.customComponentTemplates.find(t => t.templateId === typeOrTemplateId);
         if (template) {
@@ -704,7 +698,7 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
   
       return { components: updatedComponentsList, nextId: currentNextId, selectedComponentId: finalSelectedComponentId };
     });
-  }, [updateActiveDesignWithHistory, designState.customComponentTemplates, designState.activeM3ThemeScheme, designState.m3Theme, openCarouselWizard]);
+  }, [updateActiveDesignWithHistory, designState.customComponentTemplates, openCarouselWizard]);
 
  const generateChildrenFromDataSource = useCallback(async (parentId: string) => {
     if (!activeDesign) return;
