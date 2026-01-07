@@ -311,7 +311,7 @@ export const ThemeEditorModal = forwardRef<ThemeEditorModalRef, {}>((props, ref)
 
   useImperativeHandle(ref, () => ({
     openModal: () => {
-      setActiveM3ThemeScheme('light');
+      setActiveM3ThemeScheme('dark');
       setActiveEditorTab('colors');
       setIsOpen(true);
     }
