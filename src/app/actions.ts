@@ -2,6 +2,7 @@
 
 
 
+
 'use server';
 import { generateImageFromHint } from '@/ai/flows/generate-image-from-hint-flow';
 import { generateJsonFromComposeCommands } from '@/ai/flows/generate-json-from-compose-commands';
@@ -137,21 +138,15 @@ const buildComponentTree = (
   const component = allComponents.find(c => c.id === componentId);
   if (!component) return null;
 
-  const componentWithChildren: DesignComponent = {
-    ...component,
-    properties: {
-      ...component.properties,
-      children: [], // Initialize children array
-    },
-  };
+  // IMPORTANT: Deep clone to avoid mutating the original state
+  const componentWithChildren: DesignComponent = JSON.parse(JSON.stringify(component));
 
-  if (Array.isArray(component.properties.children)) {
-    const childIds = component.properties.children;
-    if (Array.isArray(childIds)) {
-      componentWithChildren.properties.children = childIds
-        .map(id => buildComponentTree(allComponents, id))
-        .filter((c): c is DesignComponent => c !== null); // Ensure only valid components are included
-    }
+  if (Array.isArray(component.properties.children) && component.properties.children.length > 0) {
+    componentWithChildren.properties.children = component.properties.children
+      .map(id => buildComponentTree(allComponents, id))
+      .filter((c): c is DesignComponent => c !== null); // Ensure only valid components are included
+  } else {
+    componentWithChildren.properties.children = [];
   }
 
   return componentWithChildren;

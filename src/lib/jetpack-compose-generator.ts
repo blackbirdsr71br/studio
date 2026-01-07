@@ -63,18 +63,21 @@ function generateModifiers(props: BaseComponentProps, level: number): string {
 function generateComposable(
     component: DesignComponent,
     isMvi: boolean,
-    level: number
+    level: number,
+    allComponents: DesignComponent[],
+    customComponentTemplates: CustomComponentTemplate[]
 ): string {
     if (!component || !component.type) {
         console.warn('generateComposable called with invalid component:', component);
         return "";
     }
 
-    const { type, properties, name, children } = component;
+    const { type, properties, name } = component;
     const p = properties || {};
     
     const composableName = type;
-    const isContainer = Array.isArray(children) && children.length > 0;
+    const childIds = p.children || [];
+    const isContainer = childIds.length > 0;
 
     const modifierString = generateModifiers(p, level);
 
@@ -114,12 +117,14 @@ function generateComposable(
     let childrenString = "";
     if (isContainer) {
         childrenString = ` {\n`;
+        const childrenComps = childIds.map(id => allComponents.find(c => c.id === id)).filter(Boolean) as DesignComponent[];
+        
         if (type.startsWith("Lazy")) {
-            childrenString += (children as DesignComponent[]).map(child => 
-                `${indent(level + 1)}item {\n${generateComposable(child, isMvi, level + 2)}\n${indent(level + 1)}}`
+            childrenString += childrenComps.map(child => 
+                `${indent(level + 1)}item {\n${generateComposable(child, isMvi, level + 2, allComponents, customComponentTemplates)}\n${indent(level + 1)}}`
             ).join('\n');
         } else {
-            childrenString += (children as DesignComponent[]).map(child => generateComposable(child, isMvi, level + 1)).join('\n');
+            childrenString += childrenComps.map(child => generateComposable(child, isMvi, level + 1, allComponents, customComponentTemplates)).join('\n');
         }
         childrenString += `\n${indent(level)}}`;
     } else if (type === 'Button' && p.text) {
@@ -133,13 +138,13 @@ function generateComposable(
 
 export function generateComposableCode(
     componentTree: DesignComponent,
-    allComponents: DesignComponent[], // kept for future use if needed
-    customComponentTemplates: CustomComponentTemplate[], // kept for future use if needed
+    allComponents: DesignComponent[],
+    customComponentTemplates: CustomComponentTemplate[],
     isMvi: boolean
 ): string {
     if (!componentTree) return "// No root component found to generate code.";
 
-    const mainComposableBody = generateComposable(componentTree, isMvi, 1);
+    const mainComposableBody = generateComposable(componentTree, isMvi, 1, allComponents, customComponentTemplates);
 
     if (isMvi) {
         // This is the implementation for the full MVI project structure
