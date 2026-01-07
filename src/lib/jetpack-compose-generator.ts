@@ -1,4 +1,3 @@
-
 /**
  * @fileoverview This file contains the deterministic Jetpack Compose code generator.
  * It takes a component tree and generates a single Kotlin file with pure composables.
@@ -75,10 +74,12 @@ function generateComposable(
     const { type, properties, name } = component;
     const p = properties || {};
     
-    const composableName = type;
-    const childIds = p.children || [];
-    const isContainer = childIds.length > 0;
+    // The children are now objects in the tree, not just IDs
+    const children = (p.children || []) as DesignComponent[];
+    const isContainer = children.length > 0;
 
+    const composableName = type;
+    
     const modifierString = generateModifiers(p, level);
 
     let propsString: string[] = [];
@@ -117,14 +118,12 @@ function generateComposable(
     let childrenString = "";
     if (isContainer) {
         childrenString = ` {\n`;
-        const childrenComps = childIds.map(id => allComponents.find(c => c.id === id)).filter(Boolean) as DesignComponent[];
-        
         if (type.startsWith("Lazy")) {
-            childrenString += childrenComps.map(child => 
+            childrenString += children.map(child => 
                 `${indent(level + 1)}item {\n${generateComposable(child, isMvi, level + 2, allComponents, customComponentTemplates)}\n${indent(level + 1)}}`
             ).join('\n');
         } else {
-            childrenString += childrenComps.map(child => generateComposable(child, isMvi, level + 1, allComponents, customComponentTemplates)).join('\n');
+            childrenString += children.map(child => generateComposable(child, isMvi, level + 1, allComponents, customComponentTemplates)).join('\n');
         }
         childrenString += `\n${indent(level)}}`;
     } else if (type === 'Button' && p.text) {
@@ -138,7 +137,7 @@ function generateComposable(
 
 export function generateComposableCode(
     componentTree: DesignComponent,
-    allComponents: DesignComponent[],
+    allComponents: DesignComponent[], // Keep this for context, even if tree is hierarchical
     customComponentTemplates: CustomComponentTemplate[],
     isMvi: boolean
 ): string {
