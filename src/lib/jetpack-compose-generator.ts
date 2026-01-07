@@ -3,6 +3,7 @@
  * It takes a component tree and generates a single Kotlin file with pure composables.
  */
 import type { DesignComponent, BaseComponentProps, CustomComponentTemplate, ClickAction } from '@/types/compose-spec';
+import { DEFAULT_BOTTOM_NAV_BAR_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID } from '@/types/compose-spec';
 
 function indent(level: number): string {
     return '    '.repeat(level);
@@ -62,9 +63,7 @@ function generateModifiers(props: BaseComponentProps, level: number): string {
 function generateComposable(
     component: DesignComponent,
     isMvi: boolean,
-    level: number,
-    allComponents: DesignComponent[],
-    customComponentTemplates: CustomComponentTemplate[]
+    level: number
 ): string {
     if (!component || !component.type) {
         console.warn('generateComposable called with invalid component:', component);
@@ -74,13 +73,63 @@ function generateComposable(
     const { type, properties, name } = component;
     const p = properties || {};
     
-    // The children are now objects in the tree, not just IDs
     const children = (p.children || []) as DesignComponent[];
     const isContainer = children.length > 0;
 
-    const composableName = type;
-    
-    const modifierString = generateModifiers(p, level);
+    // --- Special Case for Scaffold ---
+    if (type === 'Scaffold') {
+        const topAppBar = children.find(c => c.id === DEFAULT_TOP_APP_BAR_ID);
+        const bottomNavBar = children.find(c => c.id === DEFAULT_BOTTOM_NAV_BAR_ID);
+        const content = children.find(c => c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID);
+
+        let scaffoldArgs: string[] = [];
+
+        if (topAppBar) {
+            scaffoldArgs.push(
+                `${indent(level + 1)}topBar = {\n${generateComposable(topAppBar, isMvi, level + 2)}\n${indent(level + 1)}}`
+            );
+        }
+        if (bottomNavBar) {
+            scaffoldArgs.push(
+                `${indent(level + 1)}bottomBar = {\n${generateComposable(bottomNavBar, isMvi, level + 2)}\n${indent(level + 1)}}`
+            );
+        }
+
+        const scaffoldParams = scaffoldArgs.length > 0 ? `(\n${scaffoldArgs.join(',\n')}\n${indent(level)})` : '()';
+
+        let contentString = '// No content defined for Scaffold';
+        if (content) {
+            // IMPORTANT: Inject the padding modifier to the main content
+            const contentProps = content.properties || {};
+            const originalModifier = generateModifiers(contentProps, level + 2);
+            
+            let combinedModifier = `modifier = Modifier.padding(innerPadding)`;
+            if (originalModifier) {
+                // Extract just the chain part from `modifier = Modifier.xyz`
+                const chain = originalModifier.substring(originalModifier.indexOf('.') + 1);
+                combinedModifier += `\n${indent(level + 3)}.${chain}`;
+            }
+
+            // We will now generate the content composable, but pass a special modifier.
+            const contentComposableWithPadding = generateComposable(
+                {
+                    ...content,
+                    // Temporarily inject the combined modifier string
+                    _injectedModifier: combinedModifier
+                },
+                isMvi,
+                level + 1
+            );
+            contentString = contentComposableWithPadding;
+        }
+
+        return `${indent(level)}Scaffold${scaffoldParams} { innerPadding ->\n${contentString}\n${indent(level)}}`;
+    }
+
+    // This is a temporary property we inject for Scaffold content generation
+    const injectedModifier = (component as any)._injectedModifier;
+
+    const modifierString = injectedModifier || generateModifiers(p, level);
 
     let propsString: string[] = [];
 
@@ -107,6 +156,10 @@ function generateComposable(
                 propsString.push(`${arrangementKey} = Arrangement.spacedBy(${p.itemSpacing}.dp)`);
             }
         }
+    } else if (type === 'TopAppBar') {
+        if (p.title) {
+            propsString.push(`title = { Text("${p.title}") }`);
+        }
     }
 
     if (modifierString) {
@@ -120,34 +173,32 @@ function generateComposable(
         childrenString = ` {\n`;
         if (type.startsWith("Lazy")) {
             childrenString += children.map(child => 
-                `${indent(level + 1)}item {\n${generateComposable(child, isMvi, level + 2, allComponents, customComponentTemplates)}\n${indent(level + 1)}}`
+                `${indent(level + 1)}item {\n${generateComposable(child, isMvi, level + 2)}\n${indent(level + 1)}}`
             ).join('\n');
         } else {
-            childrenString += children.map(child => generateComposable(child, isMvi, level + 1, allComponents, customComponentTemplates)).join('\n');
+            childrenString += children.map(child => generateComposable(child, isMvi, level + 1)).join('\n');
         }
         childrenString += `\n${indent(level)}}`;
     } else if (type === 'Button' && p.text) {
         childrenString = ` { Text("${p.text}") }`;
     }
 
-    const composableCall = type === 'Image' ? 'AsyncImage' : composableName;
+    const composableCall = type === 'Image' ? 'AsyncImage' : type;
 
     return `${indent(level)}${composableCall}${finalPropsString}${childrenString}`;
 }
 
 export function generateComposableCode(
     componentTree: DesignComponent,
-    allComponents: DesignComponent[], // Keep this for context, even if tree is hierarchical
+    allComponents: DesignComponent[], // We will not use this, the tree is self-contained now.
     customComponentTemplates: CustomComponentTemplate[],
     isMvi: boolean
 ): string {
     if (!componentTree) return "// No root component found to generate code.";
 
-    const mainComposableBody = generateComposable(componentTree, isMvi, 1, allComponents, customComponentTemplates);
+    const mainComposableBody = generateComposable(componentTree, isMvi, 1);
 
     if (isMvi) {
-        // This is the implementation for the full MVI project structure
-        // It now receives the content node (e.g., LazyColumn) and generates its content.
         return `
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -171,14 +222,9 @@ fun DynamicScreen(
     layoutJson: String,
     onComponentClick: (action: String, value: String) -> Unit
 ) {
-    // A full implementation would parse layoutJson and dynamically build composables.
-    // For this generated project, we embed the designed structure directly below
-    // as it's more stable and immediately usable.
-    // The ViewModel fetches the JSON, but it's used here as a trigger to recompose.
     if (layoutJson.isNotBlank() && layoutJson != "[]") {
         GeneratedContent(onComponentClick)
     } else {
-        // Optional: Show a loading or empty state if JSON is empty
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("No layout content found.")
         }
@@ -187,19 +233,16 @@ fun DynamicScreen(
 
 @Composable
 private fun GeneratedContent(onComponentClick: (action: String, value: String) -> Unit) {
-    // The root component passed to this generator is the content area (e.g., LazyColumn).
-    // The generator will now correctly render its children.
 ${mainComposableBody}
 }
 `;
     }
 
-    // Original single-file generation logic (for the simple "Generate File" button)
     return `
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items // <-- IMPORTANT: Ensure this is imported
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
@@ -214,8 +257,6 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import androidx.compose.ui.Alignment
 
-// Assuming AppTheme is defined elsewhere.
-// This is a placeholder.
 @Composable
 fun AppTheme(content: @Composable () -> Unit) {
     MaterialTheme {
