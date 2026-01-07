@@ -114,10 +114,10 @@ function generateComposable(
     let childrenString = "";
     if (isContainer) {
         childrenString = ` {\n`;
-        // For MVI LazyColumn, we don't hardcode items but expect them from the state.
-        // But for the generator, we'll just render the children directly inside.
         if (type.startsWith("Lazy")) {
-             childrenString += (children as DesignComponent[]).map(child => generateComposable(child, isMvi, level + 1)).join('\n');
+            childrenString += (children as DesignComponent[]).map(child => 
+                `${indent(level + 1)}item {\n${generateComposable(child, isMvi, level + 2)}\n${indent(level + 1)}}`
+            ).join('\n');
         } else {
             childrenString += (children as DesignComponent[]).map(child => generateComposable(child, isMvi, level + 1)).join('\n');
         }
