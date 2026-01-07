@@ -338,7 +338,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
     case 'Scaffold':
       return {
         fillMaxSize: true, fillMaxWidth: true, fillMaxHeight: true,
-        backgroundColor: 'transparent', // Scaffold itself usually doesn't have its own BG, relies on content
+        backgroundColor: undefined, // Scaffold relies on theme
         children: [DEFAULT_CONTENT_LAZY_COLUMN_ID],
       };
     case 'Text':
@@ -562,7 +562,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
       };
     case 'Scaffold':
       return {
-        backgroundColor: 'transparent',
+        backgroundColor: undefined,
       };
     case 'TopAppBar': // New default for TopAppBar
       return {

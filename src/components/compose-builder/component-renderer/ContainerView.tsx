@@ -143,6 +143,11 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     boxShadow: elevation > 0 ? `0 ${elevation}px ${elevation * 2}px rgba(0,0,0,0.1)` : 'none',
     overflow: 'hidden' // Main container should hide overflow
   };
+
+  if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
+    baseStyle.flexGrow = 1;
+    baseStyle.minHeight = 0;
+  }
   
   if (typeof effectiveProperties.cornerRadius === 'number' && effectiveProperties.cornerRadius > 0) {
     baseStyle.borderRadius = `${effectiveProperties.cornerRadius}px`;
