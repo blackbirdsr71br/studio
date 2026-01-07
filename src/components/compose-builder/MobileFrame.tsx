@@ -10,6 +10,12 @@ interface MobileFrameProps {
   children: ReactNode;
   className?: string;
   isPreview?: boolean;
+  themeOverride?: {
+    lightColors: M3Theme['lightColors'];
+    darkColors: M3Theme['darkColors'];
+    typography: M3Theme['typography'];
+    shapes: M3Theme['shapes'];
+  };
 }
 
 const SCREEN_WIDTH_TARGET = 432;
@@ -22,17 +28,22 @@ const SPEAKER_BAR_MARGIN_BOTTOM = 4;
 export const FRAME_WIDTH = SCREEN_WIDTH_TARGET + (FRAME_BODY_PADDING * 2);
 export const FRAME_HEIGHT = SCREEN_HEIGHT_TARGET + (FRAME_BODY_PADDING * 2) + SPEAKER_BAR_HEIGHT + SPEAKER_BAR_MARGIN_BOTTOM;
 
-export function MobileFrame({ children, className, isPreview = false }: MobileFrameProps) {
+export function MobileFrame({ children, className, isPreview = false, themeOverride }: MobileFrameProps) {
   const { resolvedTheme: editorTheme } = useTheme(); 
-  const { m3Theme: contextM3Theme } = useDesign();
+  const { m3Theme: contextM3Theme, activeM3ThemeScheme } = useDesign();
 
-  const m3Theme = contextM3Theme;
+  const m3Theme = themeOverride || contextM3Theme;
 
   const frameBodyColor = editorTheme === 'dark' ? 'bg-neutral-300' : 'bg-neutral-900';
   const speakerBarColor = editorTheme === 'dark' ? 'bg-neutral-400' : 'bg-neutral-950';
 
   const themeSource = m3Theme || { lightColors: defaultLightColors, darkColors: defaultDarkColors };
-  const canvasTheme = editorTheme === 'dark' ? themeSource.darkColors : themeSource.lightColors;
+  
+  // This is the key change: use the activeM3ThemeScheme from the design context
+  // for the main canvas, but respect the editor's theme for previews if no override.
+  const themeToUse = isPreview ? (editorTheme) : activeM3ThemeScheme;
+  const canvasTheme = themeToUse === 'dark' ? themeSource.darkColors : themeSource.lightColors;
+
 
   const m3StyleVariables: React.CSSProperties = {
     '--m3-primary': canvasTheme.primary,
