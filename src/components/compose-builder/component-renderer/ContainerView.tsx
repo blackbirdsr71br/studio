@@ -49,11 +49,8 @@ const getThemeColorKeyForComponentBackground = (componentType: OriginalComponent
 export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, isPreview = false, passThroughProps }: ContainerViewProps) {
   const { customComponentTemplates } = passThroughProps;
   const { m3Theme, activeM3ThemeScheme } = useDesign();
-  const { resolvedTheme } = useTheme();
-
 
   let effectiveType: OriginalComponentType | string = component.type;
-
   if (component.templateIdRef) {
     const template = customComponentTemplates.find(t => t.templateId === component.templateIdRef);
     if (template) {
@@ -78,16 +75,12 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     reverseLayout,
     backgroundColor: explicitBackgroundColor,
     contentColor: explicitContentColor,
-    borderWidth,
-    borderColor,
-    title, 
-    titleFontSize,
-    fillMaxWidth, 
-    fillMaxHeight,
     dataSource,
     carouselOrientation,
     carouselStyle,
     carouselContentPadding,
+    title, 
+    titleFontSize,
   } = effectiveProperties;
 
   const defaultAllSidesPadding = 0;
@@ -101,11 +94,27 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     effectivePaddingBottom += 60; 
   }
 
+  let parentIsRowLike = false;
+  if(passThroughProps.getComponentById) {
+      const parent = component.parentId ? passThroughProps.getComponentById(component.parentId) : null;
+      if (parent) {
+          let effectiveParentType = parent.type;
+          if (parent.templateIdRef) {
+              const template = customComponentTemplates.find(t => t.templateId === parent.templateIdRef);
+              if (template) {
+                  const rootOfTemplate = template.componentTree.find(c => c.id === template.rootComponentId);
+                  if (rootOfTemplate) effectiveParentType = rootOfTemplate.type;
+              }
+          }
+          parentIsRowLike = ['Row', 'LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar', 'Carousel'].includes(effectiveParentType);
+      }
+  } else {
+      parentIsRowLike = isRowPropHint;
+  }
+  
   let finalFlexDirection: 'row' | 'column';
   if (effectiveType === 'Row' || effectiveType === 'LazyRow' || effectiveType === 'LazyHorizontalGrid' || effectiveType === 'TopAppBar' || effectiveType === 'BottomNavigationBar') {
     finalFlexDirection = 'row';
-  } else if (effectiveType === 'Column' || effectiveType === 'LazyColumn' || effectiveType === 'LazyVerticalGrid' || effectiveType === 'Card' || effectiveType === 'Box' || effectiveType === 'AnimatedContent' || effectiveType === 'DropdownMenu' || effectiveType === 'Carousel') {
-    finalFlexDirection = 'column';
   } else {
     finalFlexDirection = isRowPropHint ? 'row' : 'column'; 
   }
@@ -131,7 +140,8 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     border: '1px solid var(--m3-outline, hsl(var(--border) / 0.5))',
     minWidth: '20px',
     minHeight: '20px',
-    boxShadow: elevation > 0 ? `0 ${elevation}px ${elevation * 2}px rgba(0,0,0,0.1)` : 'none'
+    boxShadow: elevation > 0 ? `0 ${elevation}px ${elevation * 2}px rgba(0,0,0,0.1)` : 'none',
+    overflow: 'hidden' // Main container should hide overflow
   };
   
   if (typeof effectiveProperties.cornerRadius === 'number' && effectiveProperties.cornerRadius > 0) {
@@ -146,22 +156,6 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       baseStyle.borderTopRightRadius = `${effectiveProperties.cornerRadiusTopRight || 0}px`;
       baseStyle.borderBottomLeftRadius = `${effectiveProperties.cornerRadiusBottomLeft || 0}px`;
       baseStyle.borderBottomRightRadius = `${effectiveProperties.cornerRadiusBottomRight || 0}px`;
-  }
-
-  if (isLazyRowType) {
-    baseStyle.flexDirection = 'row';
-    baseStyle.overflow = 'auto';
-    baseStyle.flexWrap = 'nowrap';
-  }
-
-  if (isLazyColumnType && effectiveProperties.userScrollEnabled !== false) {
-    baseStyle.overflowY = 'auto';
-  }
-
-  if (component.id !== DEFAULT_CONTENT_LAZY_COLUMN_ID && baseStyle.borderRadius) {
-    if (!((isLazyRowType || isLazyColumnType) && effectiveProperties.userScrollEnabled !== false)) {
-        baseStyle.overflow = 'hidden';
-    }
   }
   
   if (explicitBackgroundColor) {
@@ -186,8 +180,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       baseStyle.width = '100%';
       baseStyle.height = 'auto';
       baseStyle.minHeight = '100%';
-      baseStyle.overflowY = 'auto';
-      delete baseStyle.overflow;
+      baseStyle.overflow = 'visible'; // Let the parent scroll
   }
 
   const isDataBound = !!dataSource?.url;
@@ -220,14 +213,6 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       <ChevronDown size={18} />
     </div>
   ) : null;
-
-
-  const containerClasses = cn(
-    "select-none component-container",
-    {
-      'scrollbar-hidden': (baseStyle.overflow === 'auto' || baseStyle.overflowX === 'auto' || baseStyle.overflowY === 'auto')
-    }
-  );
   
   const childrenContainerStyle: React.CSSProperties = {
      display: 'flex',
@@ -236,6 +221,24 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
      width: '100%',
      flexGrow: 1, 
   };
+  
+  const scrollContainerStyle: React.CSSProperties = {
+      flexGrow: 1,
+      minHeight: 0,
+      minWidth: 0,
+      display: 'flex',
+      flexDirection: 'column',
+  };
+
+
+  if (isLazyRowType || isLazyColumnType || (effectiveType === 'Carousel' && carouselStyle === 'Pager')) {
+    scrollContainerStyle.overflow = 'auto';
+    if(isLazyRowType) {
+        childrenContainerStyle.height = '100%';
+        childrenContainerStyle.width = 'auto';
+    }
+  }
+
 
   if (isLazyRowType) {
     childrenContainerStyle.flexDirection = 'row';
@@ -243,7 +246,6 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   } else {
     childrenContainerStyle.flexWrap = 'wrap';
   }
-
 
   if (effectiveType === 'LazyVerticalGrid') {
     childrenContainerStyle.display = 'grid';
@@ -257,65 +259,58 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   }
    if (effectiveType === 'Carousel') {
     if (carouselStyle === 'Pager') {
-        childrenContainerStyle.overflowX = carouselOrientation === 'Horizontal' ? 'auto' : 'hidden';
-        childrenContainerStyle.overflowY = carouselOrientation === 'Vertical' ? 'auto' : 'hidden';
+        scrollContainerStyle.overflowX = carouselOrientation === 'Horizontal' ? 'auto' : 'hidden';
+        scrollContainerStyle.overflowY = carouselOrientation === 'Vertical' ? 'auto' : 'hidden';
+        scrollContainerStyle.scrollSnapType = carouselOrientation === 'Horizontal' ? 'x mandatory' : 'y mandatory';
         childrenContainerStyle.flexDirection = carouselOrientation === 'Horizontal' ? 'row' : 'column';
         childrenContainerStyle.flexWrap = 'nowrap';
-        childrenContainerStyle.scrollSnapType = carouselOrientation === 'Horizontal' ? 'x mandatory' : 'y mandatory';
         childrenContainerStyle.paddingLeft = `${carouselContentPadding}px`;
         childrenContainerStyle.paddingRight = `${carouselContentPadding}px`;
     } else { // MultiBrowse
-        childrenContainerStyle.overflowX = 'auto';
-        childrenContainerStyle.overflowY = 'hidden';
+        scrollContainerStyle.overflowX = 'auto';
+        scrollContainerStyle.overflowY = 'hidden';
         childrenContainerStyle.flexDirection = 'row';
         childrenContainerStyle.flexWrap = 'nowrap';
     }
   }
 
-
   baseStyle.flexDirection = 'column';
-  if (isLazyRowType || (effectiveType === 'Carousel' && carouselStyle === 'MultiBrowse')) {
-    baseStyle.flexDirection = 'row';
-    childrenContainerStyle.flexDirection = 'row';
-    childrenContainerStyle.flexWrap = 'nowrap';
-  } else if (isLazyColumnType) {
-    baseStyle.flexDirection = 'column';
-  }
-
+  
   switch (effectiveType) {
     case 'Card':
     case 'AnimatedContent':
     case 'Column':
-      baseStyle.justifyContent = effectiveProperties.verticalArrangement ? { 'Top': 'flex-start', 'Bottom': 'flex-end', 'Center': 'center', 'SpaceAround': 'space-around', 'SpaceBetween': 'space-between', 'SpaceEvenly': 'space-evenly' }[effectiveProperties.verticalArrangement] || 'flex-start' : 'flex-start';
-      baseStyle.alignItems = effectiveProperties.horizontalAlignment ? { 'Start': 'flex-start', 'CenterHorizontally': 'center', 'End': 'flex-end' }[effectiveProperties.horizontalAlignment] || 'stretch' : 'stretch';
+      childrenContainerStyle.justifyContent = effectiveProperties.verticalArrangement ? { 'Top': 'flex-start', 'Bottom': 'flex-end', 'Center': 'center', 'SpaceAround': 'space-around', 'SpaceBetween': 'space-between', 'SpaceEvenly': 'space-evenly' }[effectiveProperties.verticalArrangement] || 'flex-start' : 'flex-start';
+      childrenContainerStyle.alignItems = effectiveProperties.horizontalAlignment ? { 'Start': 'flex-start', 'CenterHorizontally': 'center', 'End': 'flex-end' }[effectiveProperties.horizontalAlignment] || 'stretch' : 'stretch';
       break;
     case 'Row':
-      baseStyle.justifyContent = effectiveProperties.horizontalArrangement ? { 'Start': 'flex-start', 'End': 'flex-end', 'Center': 'center', 'SpaceAround': 'space-around', 'SpaceBetween': 'space-between', 'SpaceEvenly': 'space-evenly' }[effectiveProperties.horizontalArrangement] || 'flex-start' : 'flex-start';
-      baseStyle.alignItems = effectiveProperties.verticalAlignment ? { 'Top': 'flex-start', 'CenterVertically': 'center', 'Bottom': 'flex-end' }[effectiveProperties.verticalAlignment] || 'stretch' : 'stretch';
+      childrenContainerStyle.justifyContent = effectiveProperties.horizontalArrangement ? { 'Start': 'flex-start', 'End': 'flex-end', 'Center': 'center', 'SpaceAround': 'space-around', 'SpaceBetween': 'space-between', 'SpaceEvenly': 'space-evenly' }[effectiveProperties.horizontalArrangement] || 'flex-start' : 'flex-start';
+      childrenContainerStyle.alignItems = effectiveProperties.verticalAlignment ? { 'Top': 'flex-start', 'CenterVertically': 'center', 'Bottom': 'flex-end' }[effectiveProperties.verticalAlignment] || 'stretch' : 'stretch';
       break;
     case 'Box':
        switch (effectiveProperties.contentAlignment) { 
-        case 'TopStart': baseStyle.justifyContent = 'flex-start'; baseStyle.alignItems = 'flex-start'; break;
-        case 'TopCenter': baseStyle.justifyContent = 'flex-start'; baseStyle.alignItems = 'center'; break;
-        case 'TopEnd': baseStyle.justifyContent = 'flex-start'; baseStyle.alignItems = 'flex-end'; break;
-        case 'CenterStart': baseStyle.justifyContent = 'center'; baseStyle.alignItems = 'flex-start'; break;
-        case 'Center': baseStyle.justifyContent = 'center'; baseStyle.alignItems = 'center'; break;
-        case 'CenterEnd': baseStyle.justifyContent = 'center'; baseStyle.alignItems = 'flex-end'; break;
-        case 'BottomStart': baseStyle.justifyContent = 'flex-end'; baseStyle.alignItems = 'flex-start'; break;
-        case 'BottomCenter': baseStyle.justifyContent = 'flex-end'; baseStyle.alignItems = 'center'; break;
-        case 'BottomEnd': baseStyle.justifyContent = 'flex-end'; baseStyle.alignItems = 'flex-end'; break;
-        default: baseStyle.justifyContent = 'flex-start'; baseStyle.alignItems = 'flex-start';
+        case 'TopStart': childrenContainerStyle.justifyContent = 'flex-start'; childrenContainerStyle.alignItems = 'flex-start'; break;
+        case 'TopCenter': childrenContainerStyle.justifyContent = 'flex-start'; childrenContainerStyle.alignItems = 'center'; break;
+        case 'TopEnd': childrenContainerStyle.justifyContent = 'flex-start'; childrenContainerStyle.alignItems = 'flex-end'; break;
+        case 'CenterStart': childrenContainerStyle.justifyContent = 'center'; childrenContainerStyle.alignItems = 'flex-start'; break;
+        case 'Center': childrenContainerStyle.justifyContent = 'center'; childrenContainerStyle.alignItems = 'center'; break;
+        case 'CenterEnd': childrenContainerStyle.justifyContent = 'center'; childrenContainerStyle.alignItems = 'flex-end'; break;
+        case 'BottomStart': childrenContainerStyle.justifyContent = 'flex-end'; childrenContainerStyle.alignItems = 'flex-start'; break;
+        case 'BottomCenter': childrenContainerStyle.justifyContent = 'flex-end'; childrenContainerStyle.alignItems = 'center'; break;
+        case 'BottomEnd': childrenContainerStyle.justifyContent = 'flex-end'; childrenContainerStyle.alignItems = 'flex-end'; break;
+        default: childrenContainerStyle.justifyContent = 'flex-start'; childrenContainerStyle.alignItems = 'flex-start';
       }
       break;
     case 'Carousel':
-        baseStyle.alignItems = effectiveProperties.verticalAlignment ? { 'Top': 'flex-start', 'CenterVertically': 'center', 'Bottom': 'flex-end' }[effectiveProperties.verticalAlignment] || 'center' : 'center';
+        childrenContainerStyle.alignItems = effectiveProperties.verticalAlignment ? { 'Top': 'flex-start', 'CenterVertically': 'center', 'Bottom': 'flex-end' }[effectiveProperties.verticalAlignment] || 'center' : 'center';
         break;
     case 'TopAppBar':
     case 'BottomNavigationBar':
       baseStyle.flexDirection = 'row';
       baseStyle.alignItems = effectiveProperties.verticalAlignment === 'CenterVertically' ? 'center' : 'flex-start';
       childrenContainerStyle.alignItems = effectiveProperties.verticalAlignment === 'CenterVertically' ? 'center' : 'flex-start';
-      baseStyle.justifyContent = effectiveProperties.horizontalArrangement ? { 'Start': 'flex-start', 'End': 'flex-end', 'Center': 'center', 'SpaceAround': 'space-around', 'SpaceBetween': 'space-between', 'SpaceEvenly': 'space-evenly' }[effectiveProperties.horizontalArrangement] || 'flex-start' : 'flex-start';
+      childrenContainerStyle.justifyContent = effectiveProperties.horizontalArrangement ? { 'Start': 'flex-start', 'End': 'flex-end', 'Center': 'center', 'SpaceAround': 'space-around', 'SpaceBetween': 'space-between', 'SpaceEvenly': 'space-evenly' }[effectiveProperties.horizontalArrangement] || 'flex-start' : 'flex-start';
+      scrollContainerStyle.flexDirection = 'row';
       break;
   }
   
@@ -331,38 +326,43 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
   ) : null;
 
   return (
-    <div style={baseStyle} className={containerClasses} data-container-id={component.id} data-container-type={effectiveType}>
+    <div style={baseStyle} className="select-none component-container" data-container-id={component.id} data-container-type={effectiveType}>
       {dropdownButtonElement && (
         <div className="flex-shrink-0">
           {dropdownButtonElement}
         </div>
       )}
       
-      <div style={childrenContainerStyle} className={cn({"p-2 space-y-1": effectiveType === 'DropdownMenu'})}>
-        {topAppBarTitleElement}
-        {showPlaceholder && !topAppBarTitleElement ? (
-            <div style={placeholderStyle} className="flex-grow flex flex-col items-center justify-center text-muted-foreground/70 text-xs pointer-events-none p-2 text-center leading-tight">
-              <span>{placeholderText}</span>
-              {(!isDataBound && effectiveType === 'LazyVerticalGrid' && effectiveProperties.columns) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.columns} columns)</span>}
-              {(!isDataBound && effectiveType === 'LazyHorizontalGrid' && effectiveProperties.rows) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.rows})</span>}
-            </div>
-          ) : (
-             childrenComponents.map(child => {
-                const childWrapperStyle: React.CSSProperties = { flexShrink: 0, scrollSnapAlign: 'start' };
-                 if (effectiveType === 'Carousel' && carouselStyle === 'MultiBrowse') {
-                    childWrapperStyle.width = `${effectiveProperties.preferredItemWidth}px`;
-                }
-                return (
-                    <div key={child.id} style={childWrapperStyle}>
-                        <RenderedComponentWrapper 
-                            component={child} 
-                            isPreview={isPreview}
-                            {...passThroughProps}
-                        />
-                    </div>
-                );
-             })
-          )}
+      <div style={scrollContainerStyle} className="scrollbar-hidden">
+        <div style={childrenContainerStyle}>
+          {topAppBarTitleElement}
+          {showPlaceholder && !topAppBarTitleElement ? (
+              <div style={placeholderStyle} className="flex-grow flex flex-col items-center justify-center text-muted-foreground/70 text-xs pointer-events-none p-2 text-center leading-tight">
+                <span>{placeholderText}</span>
+                {(!isDataBound && effectiveType === 'LazyVerticalGrid' && effectiveProperties.columns) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.columns} columns)</span>}
+                {(!isDataBound && effectiveType === 'LazyHorizontalGrid' && effectiveProperties.rows) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.rows})</span>}
+              </div>
+            ) : (
+               childrenComponents.map(child => {
+                  const childWrapperStyle: React.CSSProperties = { flexShrink: 0 };
+                   if (effectiveType === 'Carousel' && carouselStyle === 'Pager') {
+                     childWrapperStyle.scrollSnapAlign = 'start';
+                   }
+                   if (effectiveType === 'Carousel' && carouselStyle === 'MultiBrowse') {
+                      childWrapperStyle.width = `${effectiveProperties.preferredItemWidth}px`;
+                  }
+                  return (
+                      <div key={child.id} style={childWrapperStyle}>
+                          <RenderedComponentWrapper 
+                              component={child} 
+                              isPreview={isPreview}
+                              {...passThroughProps}
+                          />
+                      </div>
+                  );
+               })
+            )}
+        </div>
       </div>
     </div>
   );
