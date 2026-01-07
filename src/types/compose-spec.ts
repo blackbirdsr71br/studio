@@ -177,6 +177,7 @@ export interface SavedLayout {
   name: string;
   components: DesignComponent[];
   nextId: number;
+  iconName?: string;
   timestamp?: number; // For sorting and display
 }
 
@@ -185,6 +186,13 @@ export interface GalleryImage {
   url: string;
   timestamp: number;
 }
+
+export interface NavigationItem {
+  firestoreId: string; // ID of the SavedLayout document
+  name: string;
+  iconName: string;
+}
+
 
 export interface SingleDesign {
   id: string;
@@ -277,6 +285,7 @@ export interface DesignState {
   customComponentTemplates: CustomComponentTemplate[];
   savedLayouts: SavedLayout[];
   galleryImages: GalleryImage[];
+  navigationItems: NavigationItem[];
   activeM3ThemeScheme: 'light' | 'dark';
   m3Theme: {
     lightColors: M3Colors;
@@ -1138,12 +1147,3 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'onClickAction', type: 'action', label: 'Click Action', group: 'Behavior' },
   ],
 };
-
-    
-    
-
-
-
-
-
-

@@ -1,9 +1,10 @@
 
+
 'use client';
 
 import type { ReactNode} from 'react';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import type { DesignComponent, DesignState, ComponentType, BaseComponentProps, CustomComponentTemplate, SavedLayout, GalleryImage, SingleDesign, M3Colors, M3Typography, M3Shapes } from '@/types/compose-spec';
+import type { DesignComponent, DesignState, ComponentType, BaseComponentProps, CustomComponentTemplate, SavedLayout, GalleryImage, SingleDesign, M3Colors, M3Typography, M3Shapes, NavigationItem } from '@/types/compose-spec';
 import {
     getDefaultProperties, CUSTOM_COMPONENT_TYPE_PREFIX, isContainerType as isContainerTypeUtil, getComponentDisplayName, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, CORE_SCAFFOLD_ELEMENT_IDS, CUSTOM_TEMPLATES_COLLECTION, SAVED_LAYOUTS_COLLECTION, GALLERY_IMAGES_COLLECTION, defaultLightColors, defaultDarkColors, defaultTypography, defaultShapes,
     APP_THEME_COLLECTION,
@@ -39,6 +40,11 @@ interface DesignContextType extends DesignState {
   activeM3ThemeScheme: 'light' | 'dark';
   setActiveM3ThemeScheme: React.Dispatch<React.SetStateAction<'light' | 'dark'>>;
 
+  // Navigation items
+  navigationItems: NavigationItem[];
+  addLayoutToNavigation: (layout: SavedLayout) => void;
+  removeLayoutFromNavigation: (layoutFirestoreId: string) => void;
+  clearNavigation: () => void;
 
   // Existing functions, now adapted for multi-tab
   addComponent: (typeOrTemplateId: ComponentType | string, parentId?: string | null, dropPosition?: { x: number; y: number }, index?: number) => void;
@@ -58,7 +64,7 @@ interface DesignContextType extends DesignState {
   loadTemplateForEditing: (template: CustomComponentTemplate) => void;
   updateCustomTemplate: () => Promise<void>;
   deleteCustomTemplate: (firestoreId: string) => Promise<void>;
-  saveCurrentCanvasAsLayout: (layoutName: string) => Promise<void>;
+  saveCurrentCanvasAsLayout: (layoutName: string, iconName?: string) => Promise<void>;
   loadLayout: (layout: SavedLayout) => void;
   loadLayoutForEditing: (layout: SavedLayout) => void;
   updateLayout: () => Promise<void>;
@@ -164,6 +170,7 @@ const createInitialDesignState = (): DesignState => ({
   customComponentTemplates: [],
   savedLayouts: [],
   galleryImages: [],
+  navigationItems: [], // Initialize here
   activeM3ThemeScheme: 'light',
   m3Theme: defaultThemeState,
 });
@@ -388,7 +395,7 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
 
   const activeDesign = designState.designs.find(d => d.id === designState.activeDesignId);
 
-  const { m3Theme, activeM3ThemeScheme } = designState;
+  const { m3Theme, activeM3ThemeScheme, navigationItems } = designState;
 
   const debouncedSaveTheme = useDebouncedCallback((themeToSave: DesignContextType['m3Theme']) => {
       if (db) {
@@ -1227,7 +1234,7 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
     }
   }, [toast]);
   
-  const saveCurrentCanvasAsLayout = useCallback(async (layoutName: string) => {
+  const saveCurrentCanvasAsLayout = useCallback(async (layoutName: string, iconName?: string) => {
     if (!activeDesign) {
         toast({ title: "Error", description: "No active design to save.", variant: "destructive" });
         throw new Error("No active design to save.");
@@ -1237,6 +1244,7 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
         name: layoutName,
         components: deepClone(components),
         nextId,
+        iconName,
         timestamp: Date.now(),
     };
     try {
@@ -1295,10 +1303,13 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
         return;
     }
     const { editingLayoutInfo, components, nextId } = activeDesign;
+    const originalLayout = designState.savedLayouts.find(l => l.firestoreId === editingLayoutInfo.firestoreId);
+
     const updatedLayoutData = {
         name: editingLayoutInfo.name,
         components: components,
         nextId,
+        iconName: originalLayout?.iconName, // Preserve original icon
         timestamp: Date.now(),
     };
     try {
@@ -1310,7 +1321,7 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
         console.error("Error updating layout:", error);
         toast({ title: "Update Failed", description: "Could not update layout in Firestore.", variant: "destructive" });
     }
-  }, [activeDesign, designState.activeDesignId, toast, closeDesign]);
+  }, [activeDesign, designState.activeDesignId, toast, closeDesign, designState.savedLayouts]);
 
   const deleteLayout = useCallback(async (firestoreId: string) => {
     try {
@@ -1411,6 +1422,30 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
       });
     }
   }, [activeDesign, updateActiveDesignWithHistory, designState.customComponentTemplates]);
+  
+  // --- Navigation Logic ---
+    const addLayoutToNavigation = useCallback((layout: SavedLayout) => {
+        if (!layout.iconName) {
+            toast({ title: "Icon Needed", description: "Please edit the layout and assign an icon before adding it to navigation.", variant: "default" });
+            return;
+        }
+        setDesignState(prev => {
+            if (prev.navigationItems.some(item => item.firestoreId === layout.firestoreId)) return prev; // Already exists
+            const newItem: NavigationItem = { firestoreId: layout.firestoreId, name: layout.name, iconName: layout.iconName };
+            return { ...prev, navigationItems: [...prev.navigationItems, newItem] };
+        });
+    }, [toast]);
+
+    const removeLayoutFromNavigation = useCallback((layoutFirestoreId: string) => {
+        setDesignState(prev => ({
+            ...prev,
+            navigationItems: prev.navigationItems.filter(item => item.firestoreId !== layoutFirestoreId),
+        }));
+    }, []);
+
+    const clearNavigation = useCallback(() => {
+        setDesignState(prev => ({ ...prev, navigationItems: [] }));
+    }, []);
 
 
   const contextValue: DesignContextType = {
@@ -1418,6 +1453,10 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
     setM3Theme,
     setActiveM3ThemeScheme,
     activeDesign,
+    navigationItems,
+    addLayoutToNavigation,
+    removeLayoutFromNavigation,
+    clearNavigation,
     addNewDesign, closeDesign, setActiveDesign, updateDesignName,
     addComponent, deleteComponent, selectComponent, updateComponent, updateComponentPosition,
     getComponentById, clearDesign, overwriteComponents, moveComponent,
