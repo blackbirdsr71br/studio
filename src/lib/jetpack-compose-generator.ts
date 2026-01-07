@@ -195,6 +195,7 @@ ${mainComposableBody}
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items // <-- IMPORTANT: Ensure this is imported
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
@@ -219,7 +220,7 @@ fun AppTheme(content: @Composable () -> Unit) {
 }
 
 @Composable
-fun GeneratedScreen() {
+fun GeneratedScreen(onComponentClick: (action: String, value: String) -> Unit = { _, _ -> }) {
     AppTheme {
 ${mainComposableBody}
     }
