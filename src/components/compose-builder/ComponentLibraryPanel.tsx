@@ -165,9 +165,9 @@ function LayoutsList() {
           {savedLayouts.map((layout) => {
               return (
                 <div key={layout.firestoreId} className="border border-sidebar-border rounded-lg bg-card shadow-sm hover:shadow-md p-2 space-y-2">
-                    <div className="flex justify-between items-start">
-                        <p className="text-sm font-medium text-sidebar-foreground flex-1 break-words pr-2">{layout.name}</p>
-                        <div className="flex items-center gap-1 shrink-0 z-10">
+                    <div className="flex justify-between items-start gap-2">
+                        <p className="text-sm font-medium text-sidebar-foreground flex-1 break-words pr-1 pt-1">{layout.name}</p>
+                        <div className="flex flex-col items-center gap-1 shrink-0 z-10">
                             <Button variant="ghost" size="icon" className="h-6 w-6" title="Load Layout" onClick={() => handleLoad(layout)}>
                                 <Download className="h-3.5 w-3.5" />
                             </Button>
