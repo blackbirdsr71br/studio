@@ -32,6 +32,12 @@ import {
   CheckSquare,
   CircleDot,
   MenuSquare, // Added
+  User,
+  Settings,
+  LayoutGrid,
+  Home,
+  Star,
+  Heart,
 } from "lucide-react";
 import { Button } from '../ui/button';
 import { LayoutPreview } from './LayoutPreview';
@@ -130,7 +136,7 @@ function CustomComponentsList() {
 
 
 function LayoutsList() {
-    const { savedLayouts, isLoadingLayouts, loadLayout, deleteLayout, loadLayoutForEditing, customComponentTemplates, m3Theme } = useDesign();
+    const { savedLayouts, isLoadingLayouts, loadLayout, deleteLayout, loadLayoutForEditing, customComponentTemplates, m3Theme, addLayoutToNavigation, removeLayoutFromNavigation, navigationItems } = useDesign();
 
     const handleLoad = (layout: SavedLayout) => {
         if (window.confirm(`This will replace your current canvas. Are you sure you want to load the layout "${layout.name}"?`)) {
@@ -145,6 +151,15 @@ function LayoutsList() {
     const handleDelete = (layout: SavedLayout) => {
         if (window.confirm(`Are you sure you want to delete the layout "${layout.name}"? This cannot be undone.`)) {
             deleteLayout(layout.firestoreId);
+        }
+    };
+
+    const handleToggleNavigation = (layout: SavedLayout) => {
+        const isInNav = navigationItems.some(item => item.firestoreId === layout.firestoreId);
+        if (isInNav) {
+            removeLayoutFromNavigation(layout.firestoreId);
+        } else {
+            addLayoutToNavigation(layout);
         }
     };
     
@@ -163,26 +178,33 @@ function LayoutsList() {
     return (
       <div className="space-y-4">
           {savedLayouts.map((layout) => {
+              const isInNav = navigationItems.some(item => item.firestoreId === layout.firestoreId);
+              const IconForNav = layout.iconName ? (getComponentIcon(layout.iconName as any) || Star) : Star;
+
               return (
-                <div key={layout.firestoreId} className="border border-sidebar-border rounded-lg bg-card shadow-sm hover:shadow-md p-2 space-y-2">
-                    <div className="flex justify-between items-start gap-2">
-                        <p className="text-sm font-medium text-sidebar-foreground flex-1 break-words pr-1 pt-1">{layout.name}</p>
-                        <div className="flex flex-col items-center gap-1 shrink-0 z-10">
-                            <Button variant="ghost" size="icon" className="h-6 w-6" title="Load Layout" onClick={() => handleLoad(layout)}>
-                                <Download className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-6 w-6" title="Edit Layout" onClick={() => handleEdit(layout)}>
-                                <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10" title="Delete Layout" onClick={() => handleDelete(layout)}>
-                                <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                        </div>
+                <div key={layout.firestoreId} className="border border-sidebar-border rounded-lg bg-card shadow-sm hover:shadow-md p-2 space-y-2 flex flex-col">
+                    <p className="text-sm font-medium text-sidebar-foreground flex-1 break-words pr-1 pt-1">{layout.name}</p>
+                    <div className="flex justify-end items-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" title="Load Layout" onClick={() => handleLoad(layout)}>
+                            <Download className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" title="Edit Layout" onClick={() => handleEdit(layout)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10" title="Delete Layout" onClick={() => handleDelete(layout)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                     </div>
+
                     <div className="w-full aspect-[9/16] bg-muted/30 rounded-md overflow-hidden relative border">
                         <LayoutPreview layout={layout} customComponentTemplates={customComponentTemplates} m3Theme={m3Theme} />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
                     </div>
+                    
+                    <Button variant={isInNav ? "secondary" : "outline"} size="sm" className="w-full mt-2 h-8 text-xs" onClick={() => handleToggleNavigation(layout)}>
+                        <IconForNav className="mr-2 h-3.5 w-3.5"/>
+                        {isInNav ? 'Remove from Nav' : 'Add to Nav'}
+                    </Button>
                 </div>
               );
           })}
@@ -197,7 +219,7 @@ export function ComponentLibraryPanel() {
   const validLayoutsCount = savedLayouts.filter(l => l && l.firestoreId).length;
 
   return (
-    <aside className="w-64 border-r bg-sidebar p-4 flex flex-col shrink-0">
+    <aside className="w-72 border-r bg-sidebar p-4 flex flex-col shrink-0">
       <h2 className="text-xl font-semibold mb-2 text-sidebar-foreground font-headline">Components</h2>
       <TooltipProvider delayDuration={200}>
         <Tabs defaultValue="standard" className="flex-grow flex flex-col min-h-0">
