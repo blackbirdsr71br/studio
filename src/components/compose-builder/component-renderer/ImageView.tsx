@@ -23,7 +23,6 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
 
   const src = (rawSrc && rawSrc.trim() !== '') ? rawSrc : 'https://placehold.co/300x200.png';
   
-  // Determine if a "real" image has been provided by the user, excluding placeholders.
   const hasRealImage = rawSrc && rawSrc.trim() !== '' && !rawSrc.startsWith('https://placehold.co');
 
   const effectivePaddingTop = paddingTop ?? padding ?? 0;
@@ -32,15 +31,9 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
   const effectivePaddingEnd = paddingEnd ?? 0;
 
   const containerStyle: React.CSSProperties = {
-    // This div now sits inside a 'display: block' wrapper.
-    // It needs to fill the wrapper's height to be visible.
     height: '100%',
     display: 'block',
     boxSizing: 'border-box',
-    // NEW LOGIC:
-    // 1. If user provides a specific background color, use it.
-    // 2. If a real image is present, the background should be transparent.
-    // 3. Otherwise (it's a placeholder), use a muted color to ensure visibility.
     backgroundColor: backgroundColor ? backgroundColor : (hasRealImage ? 'transparent' : 'hsl(var(--muted))'),
     paddingTop: `${effectivePaddingTop}px`,
     paddingBottom: `${effectivePaddingBottom}px`,

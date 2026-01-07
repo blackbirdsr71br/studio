@@ -325,18 +325,28 @@ export function RenderedComponentWrapper({
         updateComponent,
     };
 
+    let effectiveType = component.type;
+    let isRowLike = ['Row', 'LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar', 'Carousel'].includes(effectiveType);
+    if (component.templateIdRef) {
+        const template = customComponentTemplates.find(t => t.templateId === component.templateIdRef);
+        if(template) {
+            const rootOfTemplate = template.componentTree.find(c => c.id === template.rootComponentId);
+            if (rootOfTemplate) {
+                effectiveType = rootOfTemplate.type;
+                isRowLike = ['Row', 'LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar', 'Carousel'].includes(effectiveType);
+            }
+        }
+    }
+
+
     switch (component.type) {
       case 'Scaffold':
         const topBarChild = childrenToRender.find(c => c.id === DEFAULT_TOP_APP_BAR_ID);
         const contentChild = childrenToRender.find(c => c.id === DEFAULT_CONTENT_LAZY_COLUMN_ID);
         const bottomBarChild = childrenToRender.find(c => c.id === DEFAULT_BOTTOM_NAV_BAR_ID);
         
-        const scaffoldStyle: React.CSSProperties = {
-          backgroundColor: component.properties.backgroundColor || 'var(--m3-background)'
-        };
-
         return (
-          <div className="flex flex-col w-full h-full" style={scaffoldStyle}>
+          <div className="flex flex-col w-full h-full bg-[var(--m3-background)]" style={{'--scaffold-bg-color': component.properties.backgroundColor || 'var(--m3-background)'} as React.CSSProperties}>
             {topBarChild && (
               <div style={{ flexShrink: 0, width: '100%'}} className="flex w-full">
                 <RenderedComponentWrapper
@@ -379,7 +389,7 @@ export function RenderedComponentWrapper({
         return <CheckboxView properties={component.properties} />;
       case 'RadioButton':
         return <RadioButtonView properties={component.properties} />;
-
+      
       case 'Column':
       case 'Box':
       case 'Card':
@@ -398,13 +408,11 @@ export function RenderedComponentWrapper({
         return <ContainerView component={component} childrenComponents={childrenToRender} isRow={true} isPreview={isPreview} passThroughProps={propsToPass} />;
 
       case 'Spacer':
-        const width = component.properties.width ?? 8;
-        const height = component.properties.height ?? 8;
         return (
           <div
             style={{
-              width: `${width}px`,
-              height: `${height}px`,
+              width: `${component.properties.width ?? 8}px`,
+              height: `${component.properties.height ?? 8}px`,
               flexShrink: 0,
             }}
             className="select-none"
@@ -413,14 +421,7 @@ export function RenderedComponentWrapper({
 
       default:
         if (component.templateIdRef) {
-           const template = customComponentTemplates.find(t => t.templateId === component.templateIdRef);
-           if (template) {
-             const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
-             if (rootTemplateComponent) {
-                const isTemplateRootRowLike = ['Row', 'LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar'].includes(rootTemplateComponent.type);
-                return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isTemplateRootRowLike} isPreview={isPreview} passThroughProps={passThroughProps} />;
-             }
-           }
+           return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isRowLike} isPreview={isPreview} passThroughProps={passThroughProps} />;
         }
         return <div className="p-2 border border-dashed border-red-500 text-xs">Unknown: {component.type}</div>;
     }
@@ -428,7 +429,6 @@ export function RenderedComponentWrapper({
 
   const parent = component.parentId ? getComponentById(component.parentId) : null;
   let parentIsRowLike = false;
-  let parentIsColumnLike = false;
 
   if (parent) {
       let effectiveParentType = parent.type;
@@ -439,8 +439,7 @@ export function RenderedComponentWrapper({
               if (rootOfTemplate) effectiveParentType = rootOfTemplate.type;
           }
       }
-      parentIsRowLike = ['LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar', 'Row', 'Carousel'].includes(effectiveParentType);
-      parentIsColumnLike = ['LazyColumn', 'LazyVerticalGrid', 'Column', 'Card', 'Box', 'Scaffold', 'DropdownMenu'].includes(effectiveParentType);
+      parentIsRowLike = ['Row', 'LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar', 'Carousel'].includes(effectiveParentType);
   }
 
   const wrapperStyle: React.CSSProperties = {
@@ -453,61 +452,36 @@ export function RenderedComponentWrapper({
 
   if (parentIsRowLike) {
     wrapperStyle.flexShrink = 0;
-  }
-
-  let effectiveLayoutWeight = component.properties.layoutWeight || 0;
-  if (parentIsRowLike && (component.properties.fillMaxWidth || component.properties.fillMaxSize)) {
-    effectiveLayoutWeight = Math.max(effectiveLayoutWeight, 1);
-  }
-  if (parentIsColumnLike && (component.properties.fillMaxHeight || component.properties.fillMaxSize)) {
-    effectiveLayoutWeight = Math.max(effectiveLayoutWeight, 1);
-  }
-
-  if (effectiveLayoutWeight > 0) {
-    wrapperStyle.flexGrow = effectiveLayoutWeight;
-    wrapperStyle.flexShrink = 1;
-    wrapperStyle.flexBasis = '0%';
+    if (component.properties.layoutWeight && component.properties.layoutWeight > 0) {
+        wrapperStyle.flexGrow = component.properties.layoutWeight;
+        wrapperStyle.flexBasis = 0;
+    }
+  } else { // Column-like parent
+    if (component.properties.layoutWeight && component.properties.layoutWeight > 0) {
+        wrapperStyle.flexGrow = component.properties.layoutWeight;
+        wrapperStyle.flexBasis = 0;
+    }
   }
 
   if (parent && (isContainerType(parent.type, customComponentTemplates) || parent.templateIdRef)) {
     const selfAlignProp = component.properties.selfAlign;
-
     if (selfAlignProp && selfAlignProp !== 'Inherit') {
-      if (parentIsRowLike) {
-        if (selfAlignProp === 'Start') wrapperStyle.alignSelf = 'flex-start';
-        else if (selfAlignProp === 'Center') wrapperStyle.alignSelf = 'center';
-        else if (selfAlignProp === 'End') wrapperStyle.alignSelf = 'flex-end';
-        else if (component.properties.fillMaxHeight) wrapperStyle.alignSelf = 'stretch';
-
-      } else {
-        if (selfAlignProp === 'Start') wrapperStyle.alignSelf = 'flex-start';
-        else if (selfAlignProp === 'Center') wrapperStyle.alignSelf = 'center';
-        else if (selfAlignProp === 'End') wrapperStyle.alignSelf = 'flex-end';
-        else if (component.properties.fillMaxWidth) wrapperStyle.alignSelf = 'stretch';
-      }
-    } else {
-      if (parentIsRowLike && component.properties.fillMaxHeight) {
-        wrapperStyle.alignSelf = 'stretch';
-      } else if (!parentIsRowLike && (component.properties.fillMaxWidth || component.properties.fillMaxSize)) {
-        wrapperStyle.alignSelf = 'stretch';
-      }
+      const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
+      wrapperStyle.alignSelf = alignMap[selfAlignProp as keyof typeof alignMap] || 'auto';
     }
   }
 
-  if (component.id === ROOT_SCAFFOLD_ID) {
-    wrapperStyle.backgroundColor = component.properties.backgroundColor || 'transparent';
-  }
-
-  const hasCornerRadius = (component.properties.cornerRadiusTopLeft || 0) > 0 ||
+  const hasCornerRadius = (component.properties.cornerRadius || 0) > 0 ||
+                          (component.properties.cornerRadiusTopLeft || 0) > 0 ||
                           (component.properties.cornerRadiusTopRight || 0) > 0 ||
                           (component.properties.cornerRadiusBottomRight || 0) > 0 ||
                           (component.properties.cornerRadiusBottomLeft || 0) > 0;
 
   if (hasCornerRadius) {
-    wrapperStyle.borderTopLeftRadius = `${component.properties.cornerRadiusTopLeft || 0}px`;
-    wrapperStyle.borderTopRightRadius = `${component.properties.cornerRadiusTopRight || 0}px`;
-    wrapperStyle.borderBottomRightRadius = `${component.properties.cornerRadiusBottomRight || 0}px`;
-    wrapperStyle.borderBottomLeftRadius = `${component.properties.cornerRadiusBottomLeft || 0}px`;
+    wrapperStyle.borderTopLeftRadius = `${component.properties.cornerRadiusTopLeft ?? component.properties.cornerRadius ?? 0}px`;
+    wrapperStyle.borderTopRightRadius = `${component.properties.cornerRadiusTopRight ?? component.properties.cornerRadius ?? 0}px`;
+    wrapperStyle.borderBottomRightRadius = `${component.properties.cornerRadiusBottomRight ?? component.properties.cornerRadius ?? 0}px`;
+    wrapperStyle.borderBottomLeftRadius = `${component.properties.cornerRadiusBottomLeft ?? component.properties.cornerRadius ?? 0}px`;
     if (component.type === 'Image') {
       wrapperStyle.overflow = 'hidden';
     }

@@ -1,3 +1,4 @@
+
 'use client';
 import type { DesignComponent, ComponentType as OriginalComponentType, BaseComponentProps, CustomComponentTemplate, M3Theme } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from '../component-renderer/RenderedComponentWrapper';
@@ -25,45 +26,12 @@ interface ContainerViewProps {
   }
 }
 
-const isNumericValue = (value: any): boolean => {
-  if (value === null || value === undefined || typeof value === 'boolean') {
-    return false;
-  }
-  if (typeof value === 'number' && !isNaN(value)) {
-    return true;
-  }
-  if (typeof value === 'string' && value.trim() !== '') {
-    return !isNaN(Number(value));
-  }
-  return false;
-};
-
-const processDimension = (
-  dimValue: string | number | undefined,
-  defaultValueIfUndefined: string | number | undefined,
-): string => {
-  if (typeof dimValue === 'number') return `${dimValue}px`;
-  if (dimValue === 'match_parent') return '100%';
-  if (dimValue === 'wrap_content') return 'auto';
-  if (typeof dimValue === 'string' && isNumericValue(dimValue)) return `${Number(dimValue)}px`;
-  if (typeof dimValue === 'string' && dimValue.endsWith('%')) return dimValue;
-
-  if (defaultValueIfUndefined === undefined) return 'auto';
-
-  if (typeof defaultValueIfUndefined === 'number') return `${defaultValueIfUndefined}px`;
-  if (defaultValueIfUndefined === 'match_parent') return '100%';
-  if (defaultValueIfUndefined === 'wrap_content') return 'auto';
-  
-  return defaultValueIfUndefined.toString();
-};
-
 const getThemeColorKeyForComponentBackground = (componentType: OriginalComponentType | string): keyof M3Theme['lightColors'] | null => {
     switch (componentType) {
         case 'Card':
         case 'TopAppBar':
         case 'BottomNavigationBar':
         case 'DropdownMenu':
-        // REMOVED Lazy containers from here, they will now default to 'background'
             return 'surface';
         case 'Scaffold':
         case 'Column':
@@ -81,7 +49,7 @@ const getThemeColorKeyForComponentBackground = (componentType: OriginalComponent
 export function ContainerView({ component, childrenComponents, isRow: isRowPropHint, isPreview = false, passThroughProps }: ContainerViewProps) {
   const { customComponentTemplates } = passThroughProps;
   const { m3Theme, activeM3ThemeScheme } = useDesign();
-  const { resolvedTheme } = useTheme(); // For the special case of main content area
+  const { resolvedTheme } = useTheme();
 
 
   let effectiveType: OriginalComponentType | string = component.type;
@@ -92,11 +60,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       const rootTemplateComponent = template.componentTree.find(c => c.id === template.rootComponentId);
       if (rootTemplateComponent) {
         effectiveType = rootTemplateComponent.type; 
-      } else {
-        console.warn(`Root component for template ${component.templateIdRef} not found in its tree.`);
       }
-    } else {
-        console.warn(`Custom template with ID ${component.templateIdRef} not found.`);
     }
   }
   
@@ -135,18 +99,6 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
 
   if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID && component.parentId === ROOT_SCAFFOLD_ID) {
     effectivePaddingBottom += 60; 
-  }
-
-  const { width: defaultWidth, height: defaultHeight } = defaultProps;
-
-  let styleWidth = processDimension(effectiveProperties.width, defaultWidth);
-  let styleHeight = processDimension(effectiveProperties.height, defaultHeight);
-
-  if (fillMaxWidth) {
-    styleWidth = '100%';
-  }
-  if (fillMaxHeight) {
-    styleHeight = '100%';
   }
 
   let finalFlexDirection: 'row' | 'column';
@@ -206,17 +158,13 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     baseStyle.overflowY = 'auto';
   }
 
-
   if (component.id !== DEFAULT_CONTENT_LAZY_COLUMN_ID && baseStyle.borderRadius) {
     if (!((isLazyRowType || isLazyColumnType) && effectiveProperties.userScrollEnabled !== false)) {
         baseStyle.overflow = 'hidden';
     }
   }
   
-  // --- NEW BACKGROUND COLOR LOGIC ---
-  if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
-      baseStyle.backgroundColor = resolvedTheme === 'dark' ? '#000000' : '#e7e4e4';
-  } else if (explicitBackgroundColor) {
+  if (explicitBackgroundColor) {
     if (typeof explicitBackgroundColor === 'object' && explicitBackgroundColor.type === 'linearGradient') {
       const angle = explicitBackgroundColor.angle || 0;
       const colorStops = explicitBackgroundColor.colors.join(', ');
@@ -225,15 +173,13 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
       baseStyle.backgroundColor = explicitBackgroundColor;
     }
   } else {
-    // Inherit from theme
     const themeColorKey = getThemeColorKeyForComponentBackground(effectiveType);
     if (themeColorKey && m3Theme) {
         const currentColorScheme = activeM3ThemeScheme === 'dark' ? m3Theme.darkColors : m3Theme.lightColors;
         baseStyle.backgroundColor = currentColorScheme[themeColorKey];
     }
   }
-  // --- END NEW LOGIC ---
-
+  
   baseStyle.color = explicitContentColor || 'var(--m3-on-surface)';
 
   if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {

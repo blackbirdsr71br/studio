@@ -23,26 +23,6 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
   
   const rootComponent = getTemplateComponentById(template.rootComponentId);
 
-  if (!rootComponent) {
-    return <div className="p-2 text-xs text-destructive">Preview Error: Root component not found.</div>;
-  }
-  
-  // Use a default size if not specified, which is common for custom components
-  const componentWidth = typeof rootComponent.properties.width === 'number' ? rootComponent.properties.width : 200;
-  const componentHeight = typeof rootComponent.properties.height === 'number' ? rootComponent.properties.height : 150;
-  
-  const passThroughProps = {
-      getComponentById: getTemplateComponentById,
-      customComponentTemplates: [], // No nested templates in previews for now
-      activeDesignId: null,
-      zoomLevel: 1,
-      // Dummy functions for preview
-      selectComponent: () => {},
-      addComponent: () => {},
-      moveComponent: () => {},
-      updateComponent: () => {},
-  };
-
   const m3StyleVariables = useMemo(() => {
     const themeSource = m3Theme || { lightColors: defaultLightColors, darkColors: defaultDarkColors };
     const canvasTheme = editorTheme === 'dark' ? themeSource.darkColors : themeSource.lightColors;
@@ -64,6 +44,23 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
     return styles;
   }, [m3Theme, editorTheme]);
 
+  if (!rootComponent) {
+    return <div className="p-2 text-xs text-destructive">Preview Error: Root component not found.</div>;
+  }
+  
+  const componentWidth = typeof rootComponent.properties.width === 'number' ? rootComponent.properties.width : 200;
+  const componentHeight = typeof rootComponent.properties.height === 'number' ? rootComponent.properties.height : 150;
+  
+  const passThroughProps = {
+      getComponentById: getTemplateComponentById,
+      customComponentTemplates: [], 
+      activeDesignId: null,
+      zoomLevel: 1,
+      selectComponent: () => {},
+      addComponent: () => {},
+      moveComponent: () => {},
+      updateComponent: () => {},
+  };
 
   return (
     <div 
@@ -75,7 +72,6 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
         style={{
             width: `${componentWidth}px`,
             height: `${componentHeight}px`,
-            // Calculate a safe scale that fits the component inside the preview area (220x60px)
             transform: `scale(${Math.min(220 / (componentWidth || 1), 58 / (componentHeight || 1))})`,
             transformOrigin: 'center center'
         }}
