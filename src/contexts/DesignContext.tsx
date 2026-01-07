@@ -170,8 +170,8 @@ const createInitialDesignState = (): DesignState => ({
   customComponentTemplates: [],
   savedLayouts: [],
   galleryImages: [],
-  navigationItems: [], // Initialize here
-  activeM3ThemeScheme: 'light',
+  navigationItems: [],
+  activeM3ThemeScheme: 'dark',
   m3Theme: defaultThemeState,
 });
 
