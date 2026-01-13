@@ -21,6 +21,7 @@ import { DesignTabs } from '@/components/compose-builder/DesignTabs';
 import { DEFAULT_CONTENT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 import { CarouselWizardModal, type CarouselWizardModalRef } from '@/components/compose-builder/CarouselWizardModal';
 import { ThemeCodeModal, type ThemeCodeModalRef } from '@/components/compose-builder/ThemeCodeModal';
+import { CustomDragLayer } from '@/components/compose-builder/CustomDragLayer';
 
 
 const MIN_ZOOM = 0.25;
@@ -118,6 +119,7 @@ function MainApp({ carouselWizardModalRef }: MainAppProps) {
   return (
     <>
       <KeyboardShortcuts />
+      <CustomDragLayer />
       <div className="flex flex-col h-screen overflow-hidden bg-background">
         <Header
           generateModalRef={generateModalRef}

@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { ComponentType } from "@/types/compose-spec";
@@ -8,6 +7,8 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { useDrag } from 'react-dnd';
 import { ItemTypes } from '@/lib/dnd-types';
 import { cn } from "@/lib/utils";
+import { getEmptyImage } from "react-dnd-html5-backend";
+import { useEffect } from "react";
 
 interface DraggableComponentItemProps {
   type: ComponentType | string;
@@ -23,13 +24,18 @@ export function DraggableComponentItem({ type, Icon, displayName, isCustomCompon
     return null;
   }
   
-  const [{ isDragging }, drag] = useDrag(() => ({
+  const [{ isDragging }, drag, preview] = useDrag(() => ({
     type: ItemTypes.COMPONENT_LIBRARY_ITEM,
-    item: { type }, 
+    item: { type, isCustomComponent }, // Pass isCustomComponent in the item
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
   }));
+
+  // IMPORTANT: This hides the default browser drag preview so we can use our custom one.
+  useEffect(() => {
+    preview(getEmptyImage(), { captureDraggingState: true });
+  }, [preview]);
 
   const nameForDisplay = displayName || getComponentDisplayName(type);
 
