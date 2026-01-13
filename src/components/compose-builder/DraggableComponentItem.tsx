@@ -34,8 +34,12 @@ export function DraggableComponentItem({ type, Icon, displayName, isCustomCompon
 
   // IMPORTANT: This hides the default browser drag preview so we can use our custom one.
   useEffect(() => {
-    preview(getEmptyImage(), { captureDraggingState: true });
-  }, [preview]);
+    // Only hide the default preview for custom components because we are using a custom drag layer for them.
+    // For standard components, let the browser generate its default preview.
+    if (isCustomComponent) {
+      preview(getEmptyImage(), { captureDraggingState: true });
+    }
+  }, [preview, isCustomComponent]);
 
   const nameForDisplay = displayName || getComponentDisplayName(type);
 
