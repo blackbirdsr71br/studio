@@ -26,6 +26,10 @@ interface DesignContextType extends DesignState {
   setActiveDesign: (designId: string) => void;
   updateDesignName: (designId: string, newName: string) => void;
   activeDesign: SingleDesign | undefined;
+  
+  // View mode
+  activeView: 'design' | 'navigation';
+  setActiveView: (view: 'design' | 'navigation') => void;
 
   // M3 Theme state and updater
   m3Theme: {
@@ -167,6 +171,7 @@ const defaultThemeState = {
 const createInitialDesignState = (): DesignState => ({
   designs: [createNewDesign('design-1', 'Untitled-1')],
   activeDesignId: 'design-1',
+  activeView: 'design',
   customComponentTemplates: [],
   savedLayouts: [],
   galleryImages: [],
@@ -395,7 +400,7 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
 
   const activeDesign = designState.designs.find(d => d.id === designState.activeDesignId);
 
-  const { m3Theme, activeM3ThemeScheme, navigationItems } = designState;
+  const { m3Theme, activeM3ThemeScheme, navigationItems, activeView } = designState;
 
   const debouncedSaveTheme = useDebouncedCallback((themeToSave: DesignContextType['m3Theme']) => {
       if (db) {
@@ -427,6 +432,10 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
   const setActiveM3ThemeScheme = (scheme: 'light' | 'dark') => {
       setDesignState(prev => ({...prev, activeM3ThemeScheme: scheme}));
   }
+  
+  const setActiveView = (view: 'design' | 'navigation') => {
+    setDesignState(prev => ({ ...prev, activeView: view }));
+  };
 
   useEffect(() => {
     if (db) {
@@ -1453,6 +1462,8 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
     setM3Theme,
     setActiveM3ThemeScheme,
     activeDesign,
+    activeView,
+    setActiveView,
     navigationItems,
     addLayoutToNavigation,
     removeLayoutFromNavigation,
@@ -1488,3 +1499,4 @@ export const useDesign = (): DesignContextType => {
 };
 
 export { DesignContext };
+

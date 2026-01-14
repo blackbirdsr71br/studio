@@ -282,6 +282,7 @@ export interface M3Shapes {
 export interface DesignState {
   designs: SingleDesign[];
   activeDesignId: string;
+  activeView: 'design' | 'navigation';
   customComponentTemplates: CustomComponentTemplate[];
   savedLayouts: SavedLayout[];
   galleryImages: GalleryImage[];
@@ -460,7 +461,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         padding: 0,
         backgroundColor: undefined,
         width: 100, height: 100,
-        cornerRadiusTopLeft: 4, cornerRadiusTopRight: 4, cornerRadiusBottomRight: 4, cornerRadiusBottomLeft: 4,
+        cornerRadiusTopLeft: 4, cornerRadiusTopRight: 4, cornerRadiusBottomLeft: 4, cornerRadiusBottomRight: 4,
         selfAlign: 'Inherit',
         ...defaultClickableBehavior,
       };
@@ -1147,3 +1148,4 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'onClickAction', type: 'action', label: 'Click Action', group: 'Behavior' },
   ],
 };
+
