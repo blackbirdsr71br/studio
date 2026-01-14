@@ -4,7 +4,7 @@
 import React, { RefObject } from 'react';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from "@/components/ui/button";
-import { Code, Trash2, FileJson, UploadCloud, Palette, Undo, Redo, Copy, ClipboardPaste, Settings, Save, Library, Edit, FileCode2 } from "lucide-react";
+import { Code, Trash2, FileJson, UploadCloud, Palette, Undo, Redo, Copy, ClipboardPaste, Settings, Save, Library, Edit, FileCode2, LayoutGrid } from "lucide-react";
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
 import type { ViewJsonModalRef } from "./ViewJsonModal";
 import type { ThemeEditorModalRef } from "./ThemeEditorModal";
@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Separator } from '../ui/separator';
 import { CORE_SCAFFOLD_ELEMENT_IDS, DEFAULT_CONTENT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 import { ZoomControls } from './ZoomControls';
+import { cn } from '@/lib/utils';
 
 
 interface HeaderProps {
@@ -49,6 +50,9 @@ export function Header({
     undo, redo, copyComponent, pasteComponent,
     updateCustomTemplate,
     updateLayout,
+    activeView,
+    setActiveView,
+    navigationItems,
   } = useDesign();
   const { toast } = useToast();
 
@@ -158,7 +162,7 @@ export function Header({
       </div>
 
        <div className="flex-grow flex items-center justify-center">
-            <ZoomControls />
+            {activeView === 'design' && <ZoomControls />}
        </div>
       
       <div className="flex items-center gap-2 px-6">
@@ -277,24 +281,6 @@ export function Header({
               </TooltipTrigger>
               <TooltipContent>
                 <p>{isEditing ? "Exit Editing Mode" : "Clear Canvas"}</p>
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  onClick={handleOpenPublishConfigModal}
-                  disabled={!hasUserComponents || isEditing}
-                  aria-label="Publish to Remote Config"
-                  className="text-sidebar-foreground border-sidebar-border bg-sidebar hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:opacity-50"
-                >
-                  <UploadCloud />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Publish to Remote Config</p>
               </TooltipContent>
             </Tooltip>
             

@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useDesign } from '@/contexts/DesignContext';
 import { Button } from '@/components/ui/button';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, LayoutGrid } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 
@@ -17,7 +17,10 @@ export function DesignTabs() {
     closeDesign, 
     updateDesignName, 
     editingLayoutInfo, 
-    editingTemplateInfo 
+    editingTemplateInfo,
+    activeView,
+    setActiveView,
+    navigationItems,
   } = useDesign();
   
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
@@ -74,11 +77,11 @@ export function DesignTabs() {
         {designs.map(design => (
           <div
             key={design.id}
-            onClick={() => setActiveDesign(design.id)}
+            onClick={() => { setActiveDesign(design.id); setActiveView('design'); }}
             onDoubleClick={() => handleDoubleClick(design.id, design.name)}
             className={cn(
               "relative flex items-center justify-between px-4 border-r border-border cursor-pointer group transition-colors duration-150",
-              design.id === activeDesignId
+              design.id === activeDesignId && activeView === 'design'
                 ? 'bg-background text-foreground'
                 : 'bg-muted/50 text-muted-foreground hover:bg-muted'
             )}
@@ -112,6 +115,22 @@ export function DesignTabs() {
             )}
           </div>
         ))}
+         {navigationItems.length > 0 && (
+          <div
+            key="navigation-tab"
+            onClick={() => setActiveView('navigation')}
+            className={cn(
+              "relative flex items-center justify-between px-4 border-r border-border cursor-pointer group transition-colors duration-150",
+              activeView === 'navigation'
+                ? 'bg-background text-foreground'
+                : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+            )}
+            title="Navigation Preview"
+          >
+             <LayoutGrid className="h-4 w-4 mr-2" />
+            <span className="text-sm select-none truncate max-w-[150px]">Navigation</span>
+          </div>
+        )}
       </div>
       {!isEditingMode && (
           <Button variant="ghost" size="icon" onClick={() => addNewDesign()} className="h-full w-10 rounded-none border-l border-border text-muted-foreground hover:bg-muted hover:text-foreground">
@@ -121,4 +140,3 @@ export function DesignTabs() {
     </div>
   );
 }
-

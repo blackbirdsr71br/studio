@@ -18,8 +18,9 @@ import {
   Film,
   CheckSquare,
   CircleDot,
-  MenuSquare, // Added
+  MenuSquare,
   LayoutTemplate, // For Scaffold
+  LayoutGrid, // For Navigation Tab
 } from "lucide-react";
 import type { ComponentType } from "@/types/compose-spec";
 import type { LucideIcon } from "lucide-react";
@@ -44,8 +45,9 @@ export const getComponentIcon = (type: ComponentType | string): LucideIcon => {
         case 'AnimatedContent': return Film;
         case 'Checkbox': return CheckSquare;
         case 'RadioButton': return CircleDot;
-        case 'DropdownMenu': return MenuSquare; // Added
+        case 'DropdownMenu': return MenuSquare;
         case 'Scaffold': return LayoutTemplate;
+        case 'navigation': return LayoutGrid; // For Navigation Tab
         default: return BoxSelect; // Default for custom components
     }
 }

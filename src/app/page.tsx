@@ -22,6 +22,7 @@ import { DEFAULT_CONTENT_LAZY_COLUMN_ID } from '@/types/compose-spec';
 import { CarouselWizardModal, type CarouselWizardModalRef } from '@/components/compose-builder/CarouselWizardModal';
 import { ThemeCodeModal, type ThemeCodeModalRef } from '@/components/compose-builder/ThemeCodeModal';
 import { CustomDragLayer } from '@/components/compose-builder/CustomDragLayer';
+import { NavigationPreview } from '@/components/compose-builder/NavigationPreview';
 
 
 const MIN_ZOOM = 0.25;
@@ -85,7 +86,7 @@ interface MainAppProps {
 }
 
 function MainApp({ carouselWizardModalRef }: MainAppProps) {
-  const { activeDesign, getComponentById, zoomLevel = 1, setZoomLevel } = useDesign();
+  const { activeDesign, getComponentById, zoomLevel = 1, setZoomLevel, activeView } = useDesign();
   const generateModalRef = useRef<GenerateCodeModalRef>(null);
   const viewJsonModalRef = useRef<ViewJsonModalRef>(null);
   const themeEditorModalRef = useRef<ThemeEditorModalRef>(null);
@@ -133,27 +134,31 @@ function MainApp({ carouselWizardModalRef }: MainAppProps) {
         <div className="relative flex-grow flex flex-row overflow-hidden">
           <ComponentLibraryPanel />
           <main className="flex-grow relative grid place-items-center overflow-auto bg-muted/20 p-8">
-            <div
-              style={{
-                width: FRAME_WIDTH * zoomLevel,
-                height: FRAME_HEIGHT * zoomLevel,
-                position: 'relative',
-              }}
-            >
-              <div
-                className="transition-transform duration-150 ease-out"
-                style={{
-                  transform: `scale(${zoomLevel})`,
-                  transformOrigin: 'top left',
-                  width: `${FRAME_WIDTH}px`,
-                  height: `${FRAME_HEIGHT}px`,
-                }}
-              >
-                <MobileFrame>
-                  <DesignSurface />
-                </MobileFrame>
-              </div>
-            </div>
+            {activeView === 'design' ? (
+                <div
+                  style={{
+                    width: FRAME_WIDTH * zoomLevel,
+                    height: FRAME_HEIGHT * zoomLevel,
+                    position: 'relative',
+                  }}
+                >
+                  <div
+                    className="transition-transform duration-150 ease-out"
+                    style={{
+                      transform: `scale(${zoomLevel})`,
+                      transformOrigin: 'top left',
+                      width: `${FRAME_WIDTH}px`,
+                      height: `${FRAME_HEIGHT}px`,
+                    }}
+                  >
+                    <MobileFrame>
+                      <DesignSurface />
+                    </MobileFrame>
+                  </div>
+                </div>
+            ) : (
+                <NavigationPreview />
+            )}
           </main>
           <PropertyPanel imageSourceModalRef={imageSourceModalRef} />
         </div>
