@@ -54,7 +54,7 @@ export interface ComponentProperty {
   label: string;
   placeholder?: string;
   group: 'Layout' | 'Appearance' | 'Content' | 'Behavior' | 'Slots' | 'Save' | 'Group' | 'Children Generation' | 'Carousel Settings';
-  showIf?: (props: BaseComponentProps) => boolean;
+  showIf?: (props: BaseComponentProps, editingLayoutInfo?: SingleDesign['editingLayoutInfo']) => boolean;
 }
 
 export interface ClickAction {
@@ -212,6 +212,7 @@ export interface SingleDesign {
   editingLayoutInfo?: {
     firestoreId: string;
     name: string;
+    iconName?: string;
   } | null;
 }
 
@@ -339,8 +340,9 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
     case 'Scaffold':
       return {
         fillMaxSize: true, fillMaxWidth: true, fillMaxHeight: true,
-        backgroundColor: undefined, // Scaffold relies on theme
+        backgroundColor: undefined,
         children: [DEFAULT_CONTENT_LAZY_COLUMN_ID],
+        iconName: 'LayoutTemplate',
       };
     case 'Text':
       return {
@@ -560,10 +562,6 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         selfAlign: undefined,
         clickable: false,
         onClickAction: undefined,
-      };
-    case 'Scaffold':
-      return {
-        backgroundColor: undefined,
       };
     case 'TopAppBar': // New default for TopAppBar
       return {
@@ -1105,6 +1103,18 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
   ],
   Scaffold: [
     { name: 'backgroundColor', type: 'color', label: 'Background Color', group: 'Appearance' },
+    { 
+        name: 'iconName', 
+        type: 'enum', 
+        label: 'Icono de Navegación', 
+        group: 'Appearance', 
+        options: [
+            { label: 'Home', value: 'Home' }, { label: 'Star', value: 'Star' }, 
+            { label: 'Heart', value: 'Heart' }, { label: 'Settings', value: 'Settings' },
+            { label: 'User', value: 'User' }, { label: 'Credit Card', value: 'CreditCard' }
+        ],
+        showIf: (_, editingLayoutInfo) => !!editingLayoutInfo,
+    },
   ],
   TopAppBar: [
     { name: 'title', type: 'string', label: 'Title', group: 'Content' },
@@ -1149,3 +1159,6 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
   ],
 };
 
+
+
+    

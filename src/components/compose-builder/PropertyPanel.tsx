@@ -99,7 +99,7 @@ const getThemeShapeKeyForComponent = (
 
 
 function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
-  const { activeDesign, getComponentById, updateComponent, deleteComponent, customComponentTemplates, saveSelectedAsCustomTemplate, generateStaticChildren, m3Theme, setM3Theme, activeM3ThemeScheme, openCarouselWizard } = useDesign();
+  const { activeDesign, getComponentById, updateComponent, deleteComponent, customComponentTemplates, saveSelectedAsCustomTemplate, generateStaticChildren, m3Theme, setM3Theme, activeM3ThemeScheme, openCarouselWizard, updateLayout } = useDesign();
   const selectedComponentId = activeDesign?.selectedComponentId;
   const selectedComponent = selectedComponentId ? getComponentById(selectedComponentId) : null;
   const { toast } = useToast();
@@ -162,7 +162,7 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
     }
   }
   const componentPropsDef = (propertyDefinitions[componentPropsDefSourceType as ComponentType] || [])
-    .filter(prop => !prop.showIf || prop.showIf(selectedComponent.properties)) as (Omit<ComponentProperty, 'value'> & { group: string })[];
+    .filter(prop => !prop.showIf || prop.showIf(selectedComponent.properties, activeDesign.editingLayoutInfo)) as (Omit<ComponentProperty, 'value'> & { group: string })[];
 
  const handlePropertyChange = (propName: keyof BaseComponentProps, value: string | number | boolean | ClickAction | LinearGradient | null) => {
     let actualValue: any = value;
@@ -185,10 +185,11 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
         updates.fillMaxSize = isChecked && otherPropValue;
     }
 
+    if (activeDesign.editingLayoutInfo && propName === 'iconName') {
+        updateLayout(editingLayoutInfo => ({ ...editingLayoutInfo, iconName: actualValue as string || undefined }));
+    }
+
     updateComponent(selectedComponent.id, { properties: updates });
-    
-    // Do not update the theme from the property panel. This was causing unwanted side effects.
-    // The theme editor is the single source of truth for changing the theme.
 };
 
   const handleApplyTypographyStyle = (styleName: keyof M3Typography) => {
@@ -222,7 +223,11 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
   };
   
     const handleNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-       updateComponent(selectedComponent.id, { name: event.target.value });
+       if (activeDesign.editingLayoutInfo && selectedComponent.id === ROOT_SCAFFOLD_ID) {
+           updateLayout(editingLayoutInfo => ({ ...editingLayoutInfo, name: event.target.value }));
+       } else {
+           updateComponent(selectedComponent.id, { name: event.target.value });
+       }
     };
 
     const handleDelete = () => {
@@ -389,11 +394,14 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
           }
       }
       
-      // THIS IS THE KEY CHANGE
-      // Determine the effective value to show in the editor
-      let currentValue = selectedComponent.properties[propDef.name];
+      let currentValue;
+      if (activeDesign.editingLayoutInfo && propDef.name === 'iconName' && selectedComponent.id === ROOT_SCAFFOLD_ID) {
+          currentValue = activeDesign.editingLayoutInfo.iconName;
+      } else {
+         currentValue = selectedComponent.properties[propDef.name];
+      }
+
       if (currentValue === undefined) {
-        // If no value is set, try to get it from the theme
         if (propDef.type === 'color') {
           const themeColorKey = getThemeColorKeyForComponentProp(componentPropsDefSourceType, propDef.name as keyof BaseComponentProps);
           if (themeColorKey && m3Theme) {
@@ -413,7 +421,6 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
         }
       }
       
-      // Fallback to spec default if still undefined
       if(currentValue === undefined) {
         currentValue = getDefaultProperties(componentPropsDefSourceType as ComponentType)[propDef.name as keyof BaseComponentProps]
       }
@@ -474,11 +481,15 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
 
     const isCoreScaffoldElement = CORE_SCAFFOLD_ELEMENT_IDS.includes(selectedComponent.id) && !selectedComponent.templateIdRef;
     
+    const displayName = activeDesign.editingLayoutInfo && selectedComponent.id === ROOT_SCAFFOLD_ID
+        ? activeDesign.editingLayoutInfo.name
+        : selectedComponent.name;
+
     return (
       <div className="h-full flex flex-col">
         <div className="flex items-center justify-between mb-1 shrink-0">
-           <h2 className="text-lg font-semibold text-sidebar-foreground font-headline truncate mr-2" title={`${selectedComponent.name} (${componentDisplayName})`}>
-            {selectedComponent.name || ''}
+           <h2 className="text-lg font-semibold text-sidebar-foreground font-headline truncate mr-2" title={`${displayName} (${componentDisplayName})`}>
+            {displayName || ''}
           </h2>
           <div className="flex items-center">
             <Button variant="ghost" size="icon" onClick={handleDelete} className="text-destructive hover:bg-destructive/10 h-7 w-7" aria-label="Delete component" disabled={isCoreScaffoldElement}>
@@ -489,7 +500,7 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
         <p className="text-xs text-muted-foreground mb-3 -mt-1 shrink-0">{componentDisplayName}</p>
         <div className="mb-4 shrink-0">
           <Label htmlFor="componentName" className="text-xs">Instance Name</Label>
-          <Input id="componentName" type="text" value={selectedComponent.name || ''} onChange={handleNameChange} className="h-8 text-sm mt-1.5" disabled={isCoreScaffoldElement} />
+          <Input id="componentName" type="text" value={displayName || ''} onChange={handleNameChange} className="h-8 text-sm mt-1.5" disabled={isCoreScaffoldElement && !activeDesign.editingLayoutInfo} />
         </div>
 
         {selectedComponent.type === 'Carousel' && (
@@ -630,5 +641,7 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     </aside>
   );
 }
+
+    
 
     
