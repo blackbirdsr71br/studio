@@ -35,8 +35,8 @@ function initializeFirebaseAdmin() {
   }
 }
 
-// We are disabling Admin SDK initialization for now as it causes issues in some environments.
-// initializeFirebaseAdmin();
+// We are re-enabling Admin SDK initialization to allow publishing.
+initializeFirebaseAdmin();
 
 export const getFirebaseAdminApp = (): admin.app.App | undefined => {
   // if (!app && admin.apps.length > 0) {
@@ -46,7 +46,6 @@ export const getFirebaseAdminApp = (): admin.app.App | undefined => {
   // if (!app) {
   //    console.log('Firebase Admin SDK: getFirebaseAdminApp - app is not set and no admin.apps entries. Attempting re-initialization.');
   //    // This might happen if env vars were loaded late or something else went wrong.
-  //    // Only attempt re-init if it seems like it never got a chance.
   //    if (!process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
   //       console.warn('Firebase Admin SDK: getFirebaseAdminApp - Cannot re-initialize, FIREBASE_SERVICE_ACCOUNT_JSON still not found.');
   //    } else if (admin.apps.length === 0) { // Only if no apps are initialized at all.
