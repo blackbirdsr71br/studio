@@ -1111,7 +1111,13 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
         options: [
             { label: 'Home', value: 'Home' }, { label: 'Star', value: 'Star' }, 
             { label: 'Heart', value: 'Heart' }, { label: 'Settings', value: 'Settings' },
-            { label: 'User', value: 'User' }, { label: 'Credit Card', value: 'CreditCard' }
+            { label: 'User', value: 'User' }, { label: 'Credit Card', value: 'CreditCard' },
+            { label: 'Search', value: 'Search' }, { label: 'Mail', value: 'Mail' },
+            { label: 'Notifications', value: 'Bell' }, { label: 'Shopping Cart', value: 'ShoppingCart' },
+            { label: 'Messages', value: 'MessageSquare' }, { label: 'Explore', value: 'Compass' },
+            { label: 'Location', value: 'MapPin' }, { label: 'Work', value: 'Briefcase' },
+            { label: 'Calendar', value: 'Calendar' }, { label: 'Camera', value: 'Camera' },
+            { label: 'List', value: 'List' }
         ],
         showIf: (_, editingLayoutInfo) => !!editingLayoutInfo,
     },

@@ -3,6 +3,7 @@
 'use client';
 
 import type { ChangeEvent } from 'react';
+import React from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -12,6 +13,7 @@ import { Button } from '../ui/button';
 import { Droplet, XCircle, Plus, Trash2 } from 'lucide-react';
 import { Slider } from '../ui/slider';
 import { ThemePropertySelector } from './ThemePropertySelector';
+import { getComponentIcon } from './ComponentIconMap';
 
 interface PropertyEditorProps {
   property: Omit<ComponentProperty, 'value'>; // Definition of the property
@@ -291,6 +293,43 @@ export function PropertyEditor({ property, currentValue, onChange }: PropertyEdi
         </div>
       );
     case 'enum':
+      if (property.name === 'iconName') {
+        const Icon = currentValue ? getComponentIcon(currentValue as string) : null;
+        return (
+          <div className="space-y-1.5">
+            <Label htmlFor={id} className="text-xs">{property.label}</Label>
+            <Select value={(currentValue as string) || ''} onValueChange={handleSelectChange}>
+              <SelectTrigger id={id} className="h-8 text-sm">
+                <SelectValue placeholder={property.placeholder || "Select an icon"}>
+                  {Icon ? (
+                    <div className="flex items-center gap-2">
+                      <Icon className="h-4 w-4" />
+                      <span>{property.options?.find(o => o.value === currentValue)?.label || currentValue}</span>
+                    </div>
+                  ) : (
+                    <span>{property.placeholder || "Select an icon"}</span>
+                  )}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {(property.options as ComponentPropertyOption[] || []).map(option => {
+                  const ItemIcon = getComponentIcon(option.value);
+                  return (
+                    <SelectItem key={option.value} value={option.value}>
+                      <div className="flex items-center gap-2">
+                        <ItemIcon className="h-4 w-4" />
+                        <span>{option.label}</span>
+                      </div>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+        );
+      }
+
+      // Default enum rendering
       return (
         <div className="space-y-1.5">
           <Label htmlFor={id} className="text-xs">{property.label}</Label>
