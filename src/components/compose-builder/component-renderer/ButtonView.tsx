@@ -76,6 +76,10 @@ export function ButtonView({ properties }: ButtonViewProps) {
     gap: `${iconName && text ? iconSpacing : 0}px`
   };
 
+  if (iconPosition === 'Top' || iconPosition === 'Bottom') {
+    style.flexDirection = 'column';
+  }
+
   switch (shape) {
     case 'Rectangle':
       style.borderRadius = '0px';
@@ -121,9 +125,9 @@ export function ButtonView({ properties }: ButtonViewProps) {
 
   return (
     <div style={style} className="select-none">
-      {iconPosition === 'Start' && iconElement}
+      {(iconPosition === 'Start' || iconPosition === 'Top') && iconElement}
       {text && <span>{text}</span>}
-      {iconPosition === 'End' && iconElement}
+      {(iconPosition === 'End' || iconPosition === 'Bottom') && iconElement}
     </div>
   );
 }

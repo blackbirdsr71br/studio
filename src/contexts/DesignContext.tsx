@@ -1466,19 +1466,106 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
             toast({ title: "Icon Needed", description: "Please edit the layout and assign an icon before adding it to navigation.", variant: "default" });
             return;
         }
+        
+        // Check if the item is already in navigation
+        const isAlreadyInNav = designState.navigationItems.some(item => item.firestoreId === layout.firestoreId);
+        if (isAlreadyInNav) return;
+
         setDesignState(prev => {
-            if (prev.navigationItems.some(item => item.firestoreId === layout.firestoreId)) return prev; // Already exists
             const newItem: NavigationItem = { firestoreId: layout.firestoreId, name: layout.name, iconName: layout.iconName };
             return { ...prev, navigationItems: [...prev.navigationItems, newItem] };
         });
-    }, [toast]);
+
+        // Add a corresponding button to the BottomNavigationBar on the canvas
+        updateActiveDesignWithHistory(activeDesign => {
+        let { components: updatedComponentsList, nextId: currentNextId } = deepClone(activeDesign);
+        
+        const bottomNav = updatedComponentsList.find(c => c.id === DEFAULT_BOTTOM_NAV_BAR_ID);
+        if (!bottomNav) {
+            console.error("Bottom Navigation Bar not found in component tree!");
+            return null;
+        }
+
+        const newButtonId = `comp-${currentNextId++}`;
+        const newButton: DesignComponent = {
+            id: newButtonId,
+            type: 'Button',
+            name: layout.name,
+            parentId: DEFAULT_BOTTOM_NAV_BAR_ID,
+            properties: {
+            ...getDefaultProperties('Button', newButtonId),
+            text: layout.name,
+            iconName: layout.iconName,
+            iconPosition: 'Top',
+            layoutWeight: 1,
+            fillMaxHeight: true,
+            backgroundColor: 'transparent',
+            textColor: undefined,
+            fontSize: 12,
+            padding: 4,
+            shape: 'Rectangle',
+            elevation: 0,
+            // Custom property to link to the layout
+            linkedLayoutId: layout.firestoreId,
+            // Remove default button padding
+            paddingTop: 4,
+            paddingBottom: 4,
+            paddingStart: 4,
+            paddingEnd: 4,
+            }
+        };
+
+        updatedComponentsList.push(newButton);
+        
+        const bottomNavIndex = updatedComponentsList.findIndex(c => c.id === DEFAULT_BOTTOM_NAV_BAR_ID);
+        if (bottomNavIndex !== -1) {
+            const navChildren = updatedComponentsList[bottomNavIndex].properties.children || [];
+            updatedComponentsList[bottomNavIndex].properties.children = [...navChildren, newButtonId];
+        }
+        
+        return {
+            components: updatedComponentsList,
+            nextId: currentNextId,
+            selectedComponentId: activeDesign.selectedComponentId
+        };
+        });
+
+    }, [toast, designState.navigationItems, updateActiveDesignWithHistory]);
 
     const removeLayoutFromNavigation = useCallback((layoutFirestoreId: string) => {
-        setDesignState(prev => ({
-            ...prev,
-            navigationItems: prev.navigationItems.filter(item => item.firestoreId !== layoutFirestoreId),
-        }));
-    }, []);
+        setDesignState(prev => {
+            const isActuallyInNav = prev.navigationItems.some(item => item.firestoreId === layoutFirestoreId);
+            if (!isActuallyInNav) return prev;
+
+            // Remove component from BottomNavBar
+            updateActiveDesignWithHistory(activeDesign => {
+                let { components: updatedComponentsList } = deepClone(activeDesign);
+                
+                // Find the button to remove using the custom property
+                const childToRemove = updatedComponentsList.find(c => 
+                    c.parentId === DEFAULT_BOTTOM_NAV_BAR_ID && c.properties.linkedLayoutId === layoutFirestoreId
+                );
+
+                if (!childToRemove) return null;
+                
+                // Remove the button component itself
+                updatedComponentsList = updatedComponentsList.filter(c => c.id !== childToRemove.id);
+
+                // Remove the button's ID from the BottomNavBar's children
+                const bottomNavIndex = updatedComponentsList.findIndex(c => c.id === DEFAULT_BOTTOM_NAV_BAR_ID);
+                if (bottomNavIndex !== -1) {
+                    updatedComponentsList[bottomNavIndex].properties.children = updatedComponentsList[bottomNavIndex].properties.children?.filter(id => id !== childToRemove.id);
+                }
+
+                return { components: updatedComponentsList };
+            });
+
+            return {
+                ...prev,
+                navigationItems: prev.navigationItems.filter(item => item.firestoreId !== layoutFirestoreId),
+            };
+        });
+    }, [updateActiveDesignWithHistory]);
 
     const clearNavigation = useCallback(() => {
         setDesignState(prev => ({ ...prev, navigationItems: [] }));
@@ -1531,3 +1618,4 @@ export { DesignContext };
 
 
     
+

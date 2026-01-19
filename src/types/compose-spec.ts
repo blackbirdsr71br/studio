@@ -128,7 +128,7 @@ export interface BaseComponentProps {
   clickable?: boolean;
   onClickAction?: ClickAction; // Replaces clickId
   iconName?: string;
-  iconPosition?: 'Start' | 'End';
+  iconPosition?: 'Start' | 'End' | 'Top' | 'Bottom';
   iconSize?: number;
   iconSpacing?: number;
   animationType?: 'Fade' | 'Scale' | 'SlideFromTop' | 'SlideFromBottom' | 'SlideFromStart' | 'SlideFromEnd';
@@ -927,7 +927,7 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
   Button: [
     { name: 'text', type: 'string', label: 'Text', group: 'Content', placeholder: 'Enter button text' },
     { name: 'iconName', type: 'string', label: 'Icon Name (Lucide)', group: 'Content', placeholder: 'e.g., check, arrow-right' },
-    { name: 'iconPosition', type: 'enum', label: 'Icon Position', group: 'Content', options: [{ label: 'Start', value: 'Start' }, { label: 'End', value: 'End' }] },
+    { name: 'iconPosition', type: 'enum', label: 'Icon Position', group: 'Content', options: [{ label: 'Start', value: 'Start' }, { label: 'End', value: 'End' }, { label: 'Top', value: 'Top' }, { label: 'Bottom', value: 'Bottom' }] },
     { name: 'iconSize', type: 'number', label: 'Icon Size (dp)', group: 'Content', placeholder: '16' },
     { name: 'iconSpacing', type: 'number', label: 'Icon Spacing (dp)', group: 'Content', placeholder: '8' },
     { name: 'fontSize', type: 'number', label: 'Font Size', group: 'Content', placeholder: '14' },
