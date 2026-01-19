@@ -99,7 +99,7 @@ const getThemeShapeKeyForComponent = (
 
 
 function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
-  const { activeDesign, getComponentById, updateComponent, deleteComponent, customComponentTemplates, saveSelectedAsCustomTemplate, generateStaticChildren, m3Theme, setM3Theme, activeM3ThemeScheme, openCarouselWizard, updateLayout } = useDesign();
+  const { activeDesign, getComponentById, updateComponent, deleteComponent, customComponentTemplates, saveSelectedAsCustomTemplate, generateStaticChildren, m3Theme, setM3Theme, activeM3ThemeScheme, openCarouselWizard, updateEditingLayoutInfo } = useDesign();
   const selectedComponentId = activeDesign?.selectedComponentId;
   const selectedComponent = selectedComponentId ? getComponentById(selectedComponentId) : null;
   const { toast } = useToast();
@@ -186,7 +186,7 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
     }
 
     if (activeDesign.editingLayoutInfo && propName === 'iconName') {
-        updateLayout(editingLayoutInfo => ({ ...editingLayoutInfo, iconName: actualValue as string || undefined }));
+        updateEditingLayoutInfo(editingLayoutInfo => ({ ...editingLayoutInfo!, iconName: actualValue as string || undefined }));
     }
 
     updateComponent(selectedComponent.id, { properties: updates });
@@ -224,7 +224,7 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
   
     const handleNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
        if (activeDesign.editingLayoutInfo && selectedComponent.id === ROOT_SCAFFOLD_ID) {
-           updateLayout(editingLayoutInfo => ({ ...editingLayoutInfo, name: event.target.value }));
+           updateEditingLayoutInfo(editingLayoutInfo => ({ ...editingLayoutInfo!, name: event.target.value }));
        } else {
            updateComponent(selectedComponent.id, { name: event.target.value });
        }
@@ -641,6 +641,8 @@ export function PropertyPanel({ imageSourceModalRef }: PropertyPanelProps) {
     </aside>
   );
 }
+
+    
 
     
 

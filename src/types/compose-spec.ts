@@ -299,6 +299,70 @@ export interface DesignState {
   };
 }
 
+export interface DesignContextType extends DesignState {
+  // ... (existing properties)
+  addNewDesign: () => void;
+  closeDesign: (designId: string) => void;
+  setActiveDesign: (designId: string) => void;
+  updateDesignName: (designId: string, newName: string) => void;
+  activeDesign: SingleDesign | undefined;
+  
+  activeView: 'design' | 'navigation';
+  setActiveView: (view: 'design' | 'navigation') => void;
+
+  m3Theme: {
+    lightColors: M3Colors;
+    darkColors: M3Colors;
+    customLightColors: any[];
+    customDarkColors: any[];
+    typography: M3Typography;
+    shapes: M3Shapes;
+  };
+  setM3Theme: React.Dispatch<React.SetStateAction<DesignContextType['m3Theme']>>;
+  activeM3ThemeScheme: 'light' | 'dark';
+  setActiveM3ThemeScheme: React.Dispatch<React.SetStateAction<'light' | 'dark'>>;
+
+  navigationItems: NavigationItem[];
+  addLayoutToNavigation: (layout: SavedLayout) => void;
+  removeLayoutFromNavigation: (layoutFirestoreId: string) => void;
+  clearNavigation: () => void;
+
+  addComponent: (typeOrTemplateId: ComponentType | string, parentId?: string | null, dropPosition?: { x: number; y: number }, index?: number) => void;
+  deleteComponent: (id: string) => void;
+  selectComponent: (id: string | null) => void;
+  updateComponent: (id: string, updates: { name?: string; properties?: Partial<BaseComponentProps>; templateIdRef?: string }) => void;
+  updateComponentPosition: (id: string, position: { x: number; y: number }) => void;
+  getComponentById: (id: string) => DesignComponent | undefined;
+  overwriteComponents: (hierarchicalUserComponentsJson: any[]) => { success: boolean, error?: string };
+  moveComponent: (draggedId: string, newParentId: string | null, newIndex?: number) => void;
+  copyComponent: (id: string) => {success: boolean, message?: string};
+  pasteComponent: (targetParentId?: string | null) => {success: boolean, message?: string};
+  undo: () => void;
+  redo: () => void;
+  clearDesign: () => void;
+  saveSelectedAsCustomTemplate: (templateName: string) => Promise<void>;
+  loadTemplateForEditing: (template: CustomComponentTemplate) => void;
+  updateCustomTemplate: () => Promise<void>;
+  deleteCustomTemplate: (firestoreId: string) => Promise<void>;
+  saveCurrentCanvasAsLayout: (layoutName: string, iconName?: string) => Promise<void>;
+  loadLayout: (layout: SavedLayout) => void;
+  loadLayoutForEditing: (layout: SavedLayout) => void;
+  updateEditingLayoutInfo: (updater: (prev: SingleDesign['editingLayoutInfo']) => SingleDesign['editingLayoutInfo']) => void;
+  updateLayout: () => Promise<void>;
+  deleteLayout: (firestoreId: string) => Promise<void>;
+  addImageToGallery: (url: string) => Promise<{success: boolean, message: string}>;
+  removeImageFromGallery: (id: string) => Promise<{success: boolean, message: string}>;
+  generateChildrenFromDataSource: (parentId: string) => Promise<void>;
+  generateStaticChildren: (parentId: string, childTypeOrTemplateId: string, count: number) => void;
+  isLoadingCustomTemplates: boolean;
+  isLoadingLayouts: boolean;
+  
+  openCarouselWizard: (carouselId: string) => void;
+
+  zoomLevel: number;
+  setZoomLevel: React.Dispatch<React.SetStateAction<number>>;
+}
+
 export const isContainerType = (type: ComponentType | string, customTemplates: CustomComponentTemplate[] = []): boolean => {
     if (typeof type !== 'string') return false;
 
@@ -1166,5 +1230,7 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
 };
 
 
+
+    
 
     

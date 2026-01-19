@@ -71,6 +71,7 @@ interface DesignContextType extends DesignState {
   saveCurrentCanvasAsLayout: (layoutName: string, iconName?: string) => Promise<void>;
   loadLayout: (layout: SavedLayout) => void;
   loadLayoutForEditing: (layout: SavedLayout) => void;
+  updateEditingLayoutInfo: (updater: (prev: SingleDesign['editingLayoutInfo']) => SingleDesign['editingLayoutInfo']) => void;
   updateLayout: () => Promise<void>;
   deleteLayout: (firestoreId: string) => Promise<void>;
   addImageToGallery: (url: string) => Promise<{success: boolean, message: string}>;
@@ -124,6 +125,7 @@ const createInitialComponents = (): DesignComponent[] => {
     name: 'Main Content Area',
     properties: {
       ...getDefaultProperties('LazyColumn', DEFAULT_CONTENT_LAZY_COLUMN_ID),
+      backgroundColor: undefined,
       children: [],
     },
     parentId: ROOT_SCAFFOLD_ID,
@@ -1189,21 +1191,31 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
         return;
     }
     const { editingTemplateInfo, components } = activeDesign;
-    const updatedTemplateData = {
+
+    const rootComponentInTree = components.find(c => c.parentId === null);
+    if (!rootComponentInTree) {
+         toast({ title: "Error", description: "Template is invalid: no root component found.", variant: "destructive" });
+         return;
+    }
+
+    const updatedTemplate = {
+        templateId: editingTemplateInfo.templateId,
         name: editingTemplateInfo.name,
-        componentTree: sanitizeForFirebase(components),
+        rootComponentId: rootComponentInTree.id,
+        componentTree: components,
     };
+    
     try {
-        const templateDocRef = doc(db, CUSTOM_TEMPLATES_COLLECTION, editingTemplateInfo.firestoreId);
-        await setDoc(templateDocRef, updatedTemplateData, { merge: true });
-        toast({ title: "Success", description: `Template "${editingTemplateInfo.name}" updated.` });
+        const docRef = doc(db, CUSTOM_TEMPLATES_COLLECTION, editingTemplateInfo.firestoreId);
+        await setDoc(docRef, sanitizeForFirebase(updatedTemplate), { merge: true });
+        toast({ title: "Success", description: `Component "${editingTemplateInfo.name}" updated.` });
         closeDesign(designState.activeDesignId);
     } catch (error) {
         console.error("Error updating custom template:", error);
-        toast({ title: "Update Failed", description: "Could not update template in Firestore.", variant: "destructive" });
+        toast({ title: "Update Failed", description: "Could not update the component in Firestore.", variant: "destructive" });
     }
   }, [activeDesign, designState.activeDesignId, toast, closeDesign]);
-  
+
   const loadTemplateForEditing = useCallback((template: CustomComponentTemplate) => {
     setDesignState(prev => {
       mainDesignTabsStateRef.current = deepClone(prev.designs);
@@ -1295,6 +1307,7 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
         editingLayoutInfo: {
             firestoreId: layout.firestoreId,
             name: layout.name,
+            iconName: layout.iconName,
         },
         editingTemplateInfo: null,
       };
@@ -1306,19 +1319,34 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
     });
   }, []);
 
+  const updateEditingLayoutInfo = useCallback((updater: (prev: SingleDesign['editingLayoutInfo']) => SingleDesign['editingLayoutInfo']) => {
+    setDesignState(prev => {
+        const activeDesignIndex = prev.designs.findIndex(d => d.id === prev.activeDesignId);
+        if (activeDesignIndex === -1 || !prev.designs[activeDesignIndex].editingLayoutInfo) {
+            return prev;
+        }
+
+        const newDesigns = [...prev.designs];
+        const newActiveDesign = { ...newDesigns[activeDesignIndex] };
+        newActiveDesign.editingLayoutInfo = updater(newActiveDesign.editingLayoutInfo);
+
+        newDesigns[activeDesignIndex] = newActiveDesign;
+        return { ...prev, designs: newDesigns };
+    });
+  }, []);
+
   const updateLayout = useCallback(async () => {
     if (!activeDesign?.editingLayoutInfo || !activeDesign.editingLayoutInfo.firestoreId) {
         toast({ title: "Error", description: "No layout is currently being edited.", variant: "destructive" });
         return;
     }
     const { editingLayoutInfo, components, nextId } = activeDesign;
-    const originalLayout = designState.savedLayouts.find(l => l.firestoreId === editingLayoutInfo.firestoreId);
 
     const updatedLayoutData = {
         name: editingLayoutInfo.name,
         components: components,
         nextId,
-        iconName: originalLayout?.iconName, // Preserve original icon
+        iconName: editingLayoutInfo.iconName,
         timestamp: Date.now(),
     };
     try {
@@ -1330,8 +1358,8 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
         console.error("Error updating layout:", error);
         toast({ title: "Update Failed", description: "Could not update layout in Firestore.", variant: "destructive" });
     }
-  }, [activeDesign, designState.activeDesignId, toast, closeDesign, designState.savedLayouts]);
-
+  }, [activeDesign, designState.activeDesignId, toast, closeDesign]);
+  
   const deleteLayout = useCallback(async (firestoreId: string) => {
     try {
         await deleteDoc(doc(db, SAVED_LAYOUTS_COLLECTION, firestoreId));
@@ -1473,7 +1501,7 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
     getComponentById, clearDesign, overwriteComponents, moveComponent,
     undo, redo, copyComponent, pasteComponent, 
     saveSelectedAsCustomTemplate, loadTemplateForEditing, updateCustomTemplate, deleteCustomTemplate,
-    saveCurrentCanvasAsLayout, loadLayout, loadLayoutForEditing, updateLayout, deleteLayout,
+    saveCurrentCanvasAsLayout, loadLayout, loadLayoutForEditing, updateEditingLayoutInfo, updateLayout, deleteLayout,
     addImageToGallery, removeImageFromGallery,
     generateChildrenFromDataSource,
     generateStaticChildren,
@@ -1500,3 +1528,6 @@ export const useDesign = (): DesignContextType => {
 
 export { DesignContext };
 
+
+
+    
