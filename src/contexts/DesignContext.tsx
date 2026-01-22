@@ -1217,14 +1217,23 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
   }, [activeDesign, designState.activeDesignId, toast, closeDesign]);
 
   const loadTemplateForEditing = useCallback((template: CustomComponentTemplate) => {
+    const hydratedComponents = template.componentTree.map(component => {
+        const defaultProps = getDefaultProperties(component.type as ComponentType, component.id);
+        const mergedProperties = { ...defaultProps, ...component.properties };
+        return {
+            ...component,
+            properties: mergedProperties,
+        };
+    });
+      
     setDesignState(prev => {
       mainDesignTabsStateRef.current = deepClone(prev.designs);
       const newId = `edit-template-${template.firestoreId}`;
       const editDesign: SingleDesign = {
         id: newId,
         name: `Editing: ${template.name}`,
-        components: template.componentTree,
-        selectedComponentId: null, // Don't select anything by default
+        components: hydratedComponents, // Use hydrated components
+        selectedComponentId: null,
         nextId: 1000, // Arbitrary high number for temp IDs
         history: [],
         future: [],
@@ -1292,13 +1301,22 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
   }, []);
 
   const loadLayoutForEditing = useCallback((layout: SavedLayout) => {
+    const hydratedComponents = layout.components.map(component => {
+        const defaultProps = getDefaultProperties(component.type as ComponentType, component.id);
+        const mergedProperties = { ...defaultProps, ...component.properties };
+        return {
+            ...component,
+            properties: mergedProperties,
+        };
+    });
+
     setDesignState(prev => {
       mainDesignTabsStateRef.current = deepClone(prev.designs);
       const newId = `edit-layout-${layout.firestoreId}`;
       const editDesign: SingleDesign = {
         id: newId,
         name: `Editing: ${layout.name}`,
-        components: layout.components,
+        components: hydratedComponents,
         nextId: layout.nextId,
         selectedComponentId: null,
         history: [],
@@ -1618,5 +1636,6 @@ export { DesignContext };
 
 
     
+
 
 
