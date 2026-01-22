@@ -4,6 +4,7 @@
 
 
 
+
 'use server';
 import { generateImageFromHint } from '@/ai/flows/generate-image-from-hint-flow';
 import { generateJsonFromComposeCommands } from '@/ai/flows/generate-json-from-compose-commands';
@@ -300,19 +301,6 @@ const buildContentComponentTreeForModalJson = (
         });
       }
 
-
-      const defaultNumericPropsToOmitIfZero = [
-        'padding', 'paddingTop', 'paddingBottom', 'paddingStart', 'paddingEnd',
-        'elevation', 'borderWidth', 'itemSpacing', 'layoutWeight',
-        'cornerRadius', 'cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft',
-        'fontSize', 'iconSize', 'iconSpacing', 'animationDuration', 'maxLines', 'lineHeight'
-      ];
-      for (const key of defaultNumericPropsToOmitIfZero) {
-        if (cleaned[key] === 0) {
-          delete cleaned[key];
-        }
-      }
-
       if (cleaned.fillMaxSize === true) {
           delete cleaned.width;
           delete cleaned.height;
@@ -323,14 +311,7 @@ const buildContentComponentTreeForModalJson = (
           if (cleaned.fillMaxHeight === true) delete cleaned.height;
       }
       
-      if (cleaned.fillMaxSize === false) delete cleaned.fillMaxSize;
-      if (cleaned.fillMaxWidth === false) delete cleaned.fillMaxWidth;
-      if (cleaned.fillMaxHeight === false) delete cleaned.fillMaxHeight;
-      if (cleaned.clickable === false) delete cleaned.clickable;
-      if (cleaned.reverseLayout === false) delete cleaned.reverseLayout;
-      if (cleaned.userScrollEnabled === false) delete cleaned.userScrollEnabled;
-
-      if (typeof cleaned.padding === 'number' && cleaned.padding > 0) {
+      if (typeof cleaned.padding === 'number' && cleaned.padding >= 0) {
           delete cleaned.paddingTop;
           delete cleaned.paddingBottom;
           delete cleaned.paddingStart;
@@ -345,7 +326,7 @@ const buildContentComponentTreeForModalJson = (
         cornerRadiusTopLeft === cornerRadiusBottomLeft
       ) {
         const allCornersValue = cornerRadiusTopLeft;
-        if (allCornersValue > 0) {
+        if (allCornersValue >= 0) {
           cleaned.cornerRadius = allCornersValue;
         } else {
           delete cleaned.cornerRadius;
