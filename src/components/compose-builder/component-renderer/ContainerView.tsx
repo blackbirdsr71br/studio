@@ -81,6 +81,12 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     carouselContentPadding,
     title, 
     titleFontSize,
+    shape,
+    cornerRadius,
+    cornerRadiusTopLeft,
+    cornerRadiusTopRight,
+    cornerRadiusBottomLeft,
+    cornerRadiusBottomRight,
   } = effectiveProperties;
 
   const defaultAllSidesPadding = 0;
@@ -149,19 +155,26 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     baseStyle.minHeight = 0;
   }
   
-  if (typeof effectiveProperties.cornerRadius === 'number' && effectiveProperties.cornerRadius > 0) {
-    baseStyle.borderRadius = `${effectiveProperties.cornerRadius}px`;
-  } else if (
-      typeof effectiveProperties.cornerRadiusTopLeft === 'number' ||
-      typeof effectiveProperties.cornerRadiusTopRight === 'number' ||
-      typeof effectiveProperties.cornerRadiusBottomLeft === 'number' ||
-      typeof effectiveProperties.cornerRadiusBottomRight === 'number'
-  ) {
-      baseStyle.borderTopLeftRadius = `${effectiveProperties.cornerRadiusTopLeft || 0}px`;
-      baseStyle.borderTopRightRadius = `${effectiveProperties.cornerRadiusTopRight || 0}px`;
-      baseStyle.borderBottomLeftRadius = `${effectiveProperties.cornerRadiusBottomLeft || 0}px`;
-      baseStyle.borderBottomRightRadius = `${effectiveProperties.cornerRadiusBottomRight || 0}px`;
-  }
+    if (shape === 'Rectangle') {
+        baseStyle.borderRadius = '0px';
+    } else if (shape === 'Circle') {
+        baseStyle.borderRadius = '50%';
+        baseStyle.aspectRatio = '1 / 1';
+    } else { // RoundedCorner or undefined
+        if (typeof cornerRadius === 'number' && cornerRadius > 0) {
+            baseStyle.borderRadius = `${cornerRadius}px`;
+        } else if (
+            typeof cornerRadiusTopLeft === 'number' ||
+            typeof cornerRadiusTopRight === 'number' ||
+            typeof cornerRadiusBottomLeft === 'number' ||
+            typeof cornerRadiusBottomRight === 'number'
+        ) {
+            baseStyle.borderTopLeftRadius = `${cornerRadiusTopLeft || 0}px`;
+            baseStyle.borderTopRightRadius = `${cornerRadiusTopRight || 0}px`;
+            baseStyle.borderBottomLeftRadius = `${cornerRadiusBottomLeft || 0}px`;
+            baseStyle.borderBottomRightRadius = `${cornerRadiusBottomRight || 0}px`;
+        }
+    }
   
   if (explicitBackgroundColor) {
     if (typeof explicitBackgroundColor === 'object' && explicitBackgroundColor.type === 'linearGradient') {

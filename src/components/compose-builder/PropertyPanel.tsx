@@ -311,7 +311,11 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
       }
     }
     
-    const shouldShowCornerRadiusGroup = ['Image', 'Box', 'Card'].includes(sourceComponentForShapeType) || (sourceComponentForShapeType === 'Button' && selectedComponent.properties.shape === 'RoundedCorner');
+    const p = selectedComponent.properties;
+    const isButtonWithRoundedCorner = sourceComponentForShapeType === 'Button' && p.shape === 'RoundedCorner';
+    const isShapeableContainerWithRoundedCorner = ['Box', 'Card'].includes(sourceComponentForShapeType) && (p.shape === 'RoundedCorner' || p.shape === undefined);
+    const shouldShowCornerRadiusGroup = ['Image'].includes(sourceComponentForShapeType) || isButtonWithRoundedCorner || isShapeableContainerWithRoundedCorner;
+
     const isTextComponent = sourceComponentForShapeType === 'Text';
 
     if (isTextComponent) {
@@ -378,10 +382,10 @@ function PropertiesTab({ imageSourceModalRef }: PropertyPanelProps) {
         return;
       }
       
-      const isButtonShape = selectedComponent.type === 'Button' && selectedComponent.properties.shape === 'RoundedCorner';
-      if (propDef.name === 'cornerRadius' && (!isButtonShape || shouldShowCornerRadiusGroup)) {
-          return;
+      if (propDef.name === 'cornerRadius' && selectedComponent.properties.shape !== 'RoundedCorner') {
+        return;
       }
+
       if (['cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft'].includes(propDef.name) && !shouldShowCornerRadiusGroup) {
           return;
       }

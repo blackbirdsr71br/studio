@@ -527,6 +527,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         padding: 0,
         backgroundColor: undefined,
         width: 100, height: 100,
+        shape: 'RoundedCorner',
         cornerRadiusTopLeft: 4, cornerRadiusTopRight: 4, cornerRadiusBottomLeft: 4, cornerRadiusBottomRight: 4,
         selfAlign: 'Inherit',
         ...defaultClickableBehavior,
@@ -541,6 +542,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         padding: 16,
         backgroundColor: undefined, contentColor: null,
         width: 200, height: 150, elevation: 1,
+        shape: 'RoundedCorner',
         cornerRadiusTopLeft: 8, cornerRadiusTopRight: 8, cornerRadiusBottomRight: 8, cornerRadiusBottomLeft: 8,
         borderWidth: 0, borderColor: '#000000',
         selfAlign: 'Inherit',
@@ -1052,6 +1054,7 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'onClickAction', type: 'action', label: 'Click Action', group: 'Behavior' },
   ],
   Box: [
+    { name: 'shape', type: 'enum', label: 'Shape', group: 'Appearance', options: [{ label: 'Rounded Corner', value: 'RoundedCorner' }, { label: 'Rectangle', value: 'Rectangle' }, { label: 'Circle', value: 'Circle' }] },
     { name: 'width', type: 'number', label: 'Width (dp)', group: 'Layout' },
     { name: 'height', type: 'number', label: 'Height (dp)', group: 'Layout' },
     { name: 'fillMaxWidth', type: 'boolean', label: 'Fill Max Width', group: 'Layout' },
@@ -1069,6 +1072,7 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     { name: 'onClickAction', type: 'action', label: 'Click Action', group: 'Behavior' },
   ],
   Card: [
+    { name: 'shape', type: 'enum', label: 'Shape', group: 'Appearance', options: [{ label: 'Rounded Corner', value: 'RoundedCorner' }, { label: 'Rectangle', value: 'Rectangle' }, { label: 'Circle', value: 'Circle' }] },
     { name: 'verticalArrangement', type: 'enum', label: 'Vertical Arrangement', group: 'Layout', options: [{ label: 'Top', value: 'Top' }, { label: 'Bottom', value: 'Bottom' }, { label: 'Center', value: 'Center' }, { label: 'Space Around', value: 'SpaceAround' }, { label: 'Space Between', value: 'SpaceBetween' }, { label: 'Space Evenly', value: 'SpaceEvenly' }] },
     { name: 'horizontalAlignment', type: 'enum', label: 'Horizontal Alignment', group: 'Layout', options: [{ label: 'Start', value: 'Start' }, { label: 'Center Horizontally', value: 'CenterHorizontally' }, { label: 'End', value: 'End' }] },
     { name: 'itemSpacing', type: 'number', label: 'Item Spacing (dp)', group: 'Layout' },
@@ -1234,4 +1238,5 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     
 
     
+
 
