@@ -429,6 +429,7 @@ export function RenderedComponentWrapper({
 
   const parent = component.parentId ? getComponentById(component.parentId) : null;
   let parentIsRowLike = false;
+  let parentIsColumnLike = false;
 
   if (parent) {
       let effectiveParentType = parent.type;
@@ -440,6 +441,7 @@ export function RenderedComponentWrapper({
           }
       }
       parentIsRowLike = ['Row', 'LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar', 'Carousel'].includes(effectiveParentType);
+      parentIsColumnLike = ['LazyColumn', 'LazyVerticalGrid', 'Column', 'Card', 'Box', 'Scaffold', 'DropdownMenu'].includes(effectiveParentType);
   }
 
   const wrapperStyle: React.CSSProperties = {
@@ -465,9 +467,14 @@ export function RenderedComponentWrapper({
 
   if (parent && (isContainerType(parent.type, customComponentTemplates) || parent.templateIdRef)) {
     const selfAlignProp = component.properties.selfAlign;
+
     if (selfAlignProp && selfAlignProp !== 'Inherit') {
       const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
       wrapperStyle.alignSelf = alignMap[selfAlignProp as keyof typeof alignMap] || 'auto';
+    } else if (parentIsColumnLike && (component.properties.fillMaxWidth || component.properties.fillMaxSize)) {
+        wrapperStyle.alignSelf = 'stretch';
+    } else if (parentIsRowLike && (component.properties.fillMaxHeight || component.properties.fillMaxSize)) {
+        wrapperStyle.alignSelf = 'stretch';
     }
   }
 
