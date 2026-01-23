@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import type { ReactNode} from 'react';
@@ -1193,91 +1192,144 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
         return;
     }
 
-    setDesignState(prev => ({...prev, isUpdating: true}));
-    
-    const { editingTemplateInfo, components } = activeDesign;
+    setDesignState(prev => ({ ...prev, isUpdating: true }));
+
+    const { editingTemplateInfo, components: newTemplateComponentTree } = activeDesign;
+    const newTemplateRootComponent = newTemplateComponentTree.find(c => c.parentId === null);
+    if (!newTemplateRootComponent) {
+        toast({ title: "Save Error", description: "Template must have a root component.", variant: "destructive" });
+        setDesignState(prev => ({ ...prev, isUpdating: false }));
+        return;
+    }
+
+    const updatedTemplateDataForDb = {
+        templateId: editingTemplateInfo.templateId,
+        name: editingTemplateInfo.name,
+        rootComponentId: newTemplateRootComponent.id,
+        componentTree: newTemplateComponentTree,
+    };
 
     try {
-        const rootComponentInTree = components.find(c => c.parentId === null);
-        if (!rootComponentInTree) throw new Error("Template is invalid: no root component found.");
-
-        const updatedTemplate = {
-            templateId: editingTemplateInfo.templateId,
-            name: editingTemplateInfo.name,
-            rootComponentId: rootComponentInTree.id,
-            componentTree: components,
-        };
-
         const docRef = doc(db, CUSTOM_TEMPLATES_COLLECTION, editingTemplateInfo.firestoreId);
-        await setDoc(docRef, sanitizeForFirebase(updatedTemplate), { merge: true });
-        
+        await setDoc(docRef, sanitizeForFirebase(updatedTemplateDataForDb), { merge: true });
         toast({ title: "Update Successful", description: `Component "${editingTemplateInfo.name}" updated.` });
 
-        // --- START CASCADE ---
         const updatedTemplateId = editingTemplateInfo.templateId;
-        const updatedTemplateDefinition = {
-            ...editingTemplateInfo,
-            ...updatedTemplate,
-        };
+        const updatedTemplateDefinition = { ...editingTemplateInfo, ...updatedTemplateDataForDb };
 
-        const updateComponentTree = (componentsToUpdate: DesignComponent[]): { tree: DesignComponent[], changed: boolean } => {
-            let hasChanged = false;
-            const newTree = deepClone(componentsToUpdate).map(c => {
-                if (c.templateIdRef === updatedTemplateId) {
-                    hasChanged = true;
-                    const templateRoot = updatedTemplateDefinition.componentTree.find(comp => comp.id === updatedTemplateDefinition.rootComponentId);
-                    if (templateRoot) {
-                        const instanceChildren = c.properties.children; // Preserve instance children
-                        c.type = templateRoot.type;
-                        c.properties = { ...templateRoot.properties }; // Overwrite with template properties
-                        c.properties.children = instanceChildren; // Put back instance children
+        const replaceInstancesInTree = (
+            tree: DesignComponent[],
+            nextIdStart: number
+        ): { newTree: DesignComponent[]; nextIdEnd: number; changed: boolean } => {
+            let changed = false;
+            let currentNextId = nextIdStart;
+            let workingTree = deepClone(tree);
+
+            const instancesToUpdate = workingTree.filter(c => c.templateIdRef === updatedTemplateId);
+            if (instancesToUpdate.length === 0) {
+                return { newTree: tree, nextIdEnd: nextIdStart, changed: false };
+            }
+            changed = true;
+
+            for (const instance of instancesToUpdate) {
+                const { parentId, id: oldId, name: instanceName, properties: instanceProperties } = instance;
+                
+                const parent = workingTree.find(p => p.id === parentId);
+                const index = parent?.properties.children?.indexOf(oldId) ?? -1;
+
+                const idsToDelete = new Set<string>();
+                const queue: string[] = [oldId];
+                while (queue.length > 0) {
+                    const currentId = queue.shift()!;
+                    idsToDelete.add(currentId);
+                    workingTree.find(c => c.id === currentId)?.properties.children?.forEach(childId => queue.push(childId));
+                }
+
+                workingTree = workingTree.filter(c => !idsToDelete.has(c.id));
+                const parentToUpdate = workingTree.find(p => p.id === parentId);
+                if (parentToUpdate && index !== -1) {
+                    parentToUpdate.properties.children?.splice(index, 1);
+                }
+
+                const idMap: Record<string, string> = {};
+                const newNodes = deepClone(updatedTemplateDefinition.componentTree).map(c => {
+                    const newId = `comp-${currentNextId++}`;
+                    idMap[c.id] = newId;
+                    return { ...c, id: newId };
+                });
+                newNodes.forEach(c => {
+                    c.parentId = c.parentId ? idMap[c.parentId] : null;
+                    c.properties.children = c.properties.children?.map(childId => idMap[childId]);
+                });
+                
+                const newRoot = newNodes.find(c => !c.parentId)!;
+                newRoot.parentId = parentId;
+                newRoot.templateIdRef = updatedTemplateId;
+                newRoot.name = instanceName;
+                
+                // Preserve children added to the instance, if the root is a container
+                if (isContainerTypeUtil(newRoot.type, designState.customComponentTemplates) && Array.isArray(instanceProperties.children)) {
+                     const templateChildrenIds = new Set(newRoot.properties.children?.map(id => idMap[id]) || []);
+                     const userAddedChildren = instanceProperties.children.filter(childId => !idsToDelete.has(childId as string));
+                     newRoot.properties.children = [...(newRoot.properties.children || []), ...userAddedChildren];
+                }
+
+                workingTree.push(...newNodes);
+                const finalParent = workingTree.find(p => p.id === parentId);
+                if (finalParent) {
+                    const children = finalParent.properties.children || [];
+                    if (index !== -1) {
+                        children.splice(index, 0, newRoot.id);
+                    } else {
+                        children.push(newRoot.id);
                     }
+                    finalParent.properties.children = children;
                 }
-                return c;
-            });
-            return { tree: newTree, changed: hasChanged };
+            }
+            return { newTree: workingTree, nextIdEnd: currentNextId, changed: true };
         };
+        
+        let allLayouts = [...designState.savedLayouts];
+        let allTemplates = [...designState.customComponentTemplates];
 
-        const templateUpdatePromises = designState.customComponentTemplates
-            .filter(t => t.templateId !== updatedTemplateId)
-            .map(async (otherTemplate) => {
-                const { tree, changed } = updateComponentTree(otherTemplate.componentTree);
-                if (changed) {
-                    const newTemplateData = { ...otherTemplate, componentTree: sanitizeForFirebase(tree) };
-                    const docRef = doc(db, CUSTOM_TEMPLATES_COLLECTION, otherTemplate.firestoreId);
-                    await setDoc(docRef, newTemplateData);
-                    return 1;
-                }
-                return 0;
-            });
-            
-        const layoutUpdatePromises = designState.savedLayouts.map(async (layout) => {
-            const { tree, changed } = updateComponentTree(layout.components);
+        const layoutUpdates = allLayouts.map(async (layout) => {
+            const { newTree, nextIdEnd, changed } = replaceInstancesInTree(layout.components, layout.nextId);
             if (changed) {
-                const newLayoutData = { ...layout, components: sanitizeForFirebase(tree), timestamp: Date.now() };
-                const docRef = doc(db, SAVED_LAYOUTS_COLLECTION, layout.firestoreId);
-                await setDoc(docRef, newLayoutData);
+                const newLayoutData = { ...layout, components: sanitizeForFirebase(newTree), nextId: nextIdEnd, timestamp: Date.now() };
+                await setDoc(doc(db, SAVED_LAYOUTS_COLLECTION, layout.firestoreId), newLayoutData);
                 return 1;
             }
             return 0;
         });
-        
-        const results = await Promise.all([...templateUpdatePromises, ...layoutUpdatePromises]);
-        const updatedCount = results.reduce((acc, curr) => acc + curr, 0);
-        
+
+        const templateUpdates = allTemplates
+            .filter(t => t.templateId !== updatedTemplateId)
+            .map(async (template) => {
+                const { newTree, changed } = replaceInstancesInTree(template.componentTree, template.componentTree.length + 1000); // Use a large offset for nextId
+                if (changed) {
+                    const newTemplateData = { ...template, componentTree: sanitizeForFirebase(newTree) };
+                    await setDoc(doc(db, CUSTOM_TEMPLATES_COLLECTION, template.firestoreId), newTemplateData);
+                    return 1;
+                }
+                return 0;
+            });
+
+        const results = await Promise.all([...layoutUpdates, ...templateUpdates]);
+        const updatedCount = results.reduce((sum, current) => sum + current, 0);
+
         if (updatedCount > 0) {
-            toast({ title: "Cascade Complete", description: `${updatedCount} dependent layouts and components were also updated.` });
+            toast({ title: "Cascade Complete", description: `${updatedCount} dependent layouts/components also updated.` });
         }
-        
+
         closeDesign(designState.activeDesignId);
 
     } catch (error) {
         console.error("Error updating custom template or cascading:", error);
         toast({ title: "Update Failed", description: "Could not update the component or its dependencies.", variant: "destructive" });
     } finally {
-        setDesignState(prev => ({...prev, isUpdating: false}));
+        setDesignState(prev => ({ ...prev, isUpdating: false }));
     }
-}, [activeDesign, designState.customComponentTemplates, designState.savedLayouts, designState.activeDesignId, toast, closeDesign]);
+}, [activeDesign, toast, closeDesign, designState.activeDesignId, designState.savedLayouts, designState.customComponentTemplates]);
 
 
   const loadTemplateForEditing = useCallback((template: CustomComponentTemplate) => {
@@ -1705,3 +1757,6 @@ export { DesignContext };
 
 
 
+
+
+    
