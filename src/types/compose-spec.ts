@@ -461,7 +461,7 @@ export const getDefaultProperties = (type: ComponentType | string, componentId?:
         contentDescription: 'Placeholder Image',
         backgroundColor: null,
         width: 150,
-        height: 150,
+        height: 100,
         "data-ai-hint": "abstract pattern",
         contentScale: 'Crop',
         cornerRadiusTopLeft: 0, cornerRadiusTopRight: 0, cornerRadiusBottomRight: 0, cornerRadiusBottomLeft: 0,
@@ -1239,6 +1239,7 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     
 
     
+
 
 
 
