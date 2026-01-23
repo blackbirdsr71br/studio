@@ -450,7 +450,7 @@ export function RenderedComponentWrapper({
     transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
     height: getDimensionValue('height', component.properties, component.type, component.id),
     position: 'relative',
-    display: 'block',
+    display: 'flex', // The wrapper itself is a flex container for alignment.
   };
 
   const { selfAlign, fillMaxWidth, fillMaxHeight, fillMaxSize, layoutWeight } = component.properties;
@@ -459,32 +459,30 @@ export function RenderedComponentWrapper({
     wrapperStyle.flexShrink = 0;
   }
 
-  // Consolidated width and alignment logic
-  if (parentIsColumnLike) {
-    if (fillMaxWidth || fillMaxSize) {
-        wrapperStyle.width = '100%';
-        wrapperStyle.alignSelf = 'stretch';
-    } else {
-        wrapperStyle.width = isNumericValue(component.properties.width) ? `${component.properties.width}px` : 'auto';
-        if (selfAlign && selfAlign !== 'Inherit') {
-            const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
-            wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
-        }
-    }
-  } else {
-    wrapperStyle.width = getDimensionValue('width', component.properties, component.type, component.id);
-  }
-
-
-  if (parentIsRowLike) {
-      if (fillMaxHeight || fillMaxSize) {
-          wrapperStyle.alignSelf = 'stretch';
-      } else if (selfAlign && selfAlign !== 'Inherit') {
-          const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
-          wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
+  // --- NEW ALIGNMENT & SIZING LOGIC ---
+  
+  // The wrapper is now a flex container. We use justify-content/align-items to position the actual component.
+  // The parent ContainerView will stretch this wrapper if needed.
+  if (parent) {
+      if (parentIsColumnLike) {
+          const alignMap = { 'Start': 'flex-start', 'CenterHorizontally': 'center', 'End': 'flex-end' };
+          wrapperStyle.justifyContent = alignMap[parent.properties.horizontalAlignment as keyof typeof alignMap] || 'flex-start';
+      } else if (parentIsRowLike) {
+          const alignMap = { 'Top': 'flex-start', 'CenterVertically': 'center', 'Bottom': 'flex-end' };
+          wrapperStyle.alignItems = alignMap[parent.properties.verticalAlignment as keyof typeof alignMap] || 'flex-start';
       }
+  } else if (isTemplateRoot) {
+      // Default alignment for a root component in the editor (which acts like a column)
+      wrapperStyle.justifyContent = 'flex-start';
   }
 
+  
+  if (fillMaxWidth || fillMaxSize) {
+      wrapperStyle.width = '100%';
+  } else {
+      wrapperStyle.width = isNumericValue(component.properties.width) ? `${component.properties.width}px` : 'auto';
+  }
+  
   if (layoutWeight && layoutWeight > 0) {
     wrapperStyle.flexGrow = layoutWeight;
     wrapperStyle.flexShrink = 1;
@@ -498,7 +496,7 @@ export function RenderedComponentWrapper({
   if (parentIsColumnLike && layoutWeight && layoutWeight > 0) {
       wrapperStyle.height = '0px';
   }
-
+  // --- END OF NEW LOGIC ---
 
   const hasCornerRadius = (component.properties.cornerRadius || 0) > 0 ||
                           (component.properties.cornerRadiusTopLeft || 0) > 0 ||

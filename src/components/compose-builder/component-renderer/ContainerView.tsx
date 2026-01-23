@@ -299,13 +299,17 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     case 'AnimatedContent':
     case 'Column':
       childrenContainerStyle.justifyContent = effectiveProperties.verticalArrangement ? { 'Top': 'flex-start', 'Bottom': 'flex-end', 'Center': 'center', 'SpaceAround': 'space-around', 'SpaceBetween': 'space-between', 'SpaceEvenly': 'space-evenly' }[effectiveProperties.verticalArrangement] || 'flex-start' : 'flex-start';
-      childrenContainerStyle.alignItems = effectiveProperties.horizontalAlignment ? { 'Start': 'flex-start', 'CenterHorizontally': 'center', 'End': 'flex-end' }[effectiveProperties.horizontalAlignment] || 'stretch' : 'stretch';
+      // This is the crucial change: always stretch children horizontally in a column-like container.
+      // The alignment is now handled inside the RenderedComponentWrapper.
+      childrenContainerStyle.alignItems = 'stretch';
       break;
     case 'Row':
       childrenContainerStyle.justifyContent = effectiveProperties.horizontalArrangement ? { 'Start': 'flex-start', 'End': 'flex-end', 'Center': 'center', 'SpaceAround': 'space-around', 'SpaceBetween': 'space-between', 'SpaceEvenly': 'space-evenly' }[effectiveProperties.horizontalArrangement] || 'flex-start' : 'flex-start';
-      childrenContainerStyle.alignItems = effectiveProperties.verticalAlignment ? { 'Top': 'flex-start', 'CenterVertically': 'center', 'Bottom': 'flex-end' }[effectiveProperties.verticalAlignment] || 'stretch' : 'stretch';
+      childrenContainerStyle.alignItems = 'stretch';
       break;
     case 'Box':
+       // For Box, alignment is about placing a single item (or overlapping items), not a flow.
+       // We keep the original logic here as it's more about justification within the box area.
        switch (effectiveProperties.contentAlignment) { 
         case 'TopStart': childrenContainerStyle.justifyContent = 'flex-start'; childrenContainerStyle.alignItems = 'flex-start'; break;
         case 'TopCenter': childrenContainerStyle.justifyContent = 'flex-start'; childrenContainerStyle.alignItems = 'center'; break;
@@ -325,8 +329,8 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     case 'TopAppBar':
     case 'BottomNavigationBar':
       baseStyle.flexDirection = 'row';
-      baseStyle.alignItems = effectiveProperties.verticalAlignment === 'CenterVertically' ? 'center' : 'flex-start';
-      childrenContainerStyle.alignItems = effectiveProperties.verticalAlignment === 'CenterVertically' ? 'center' : 'flex-start';
+      baseStyle.alignItems = 'center'; // Center vertically
+      childrenContainerStyle.alignItems = 'stretch';
       childrenContainerStyle.justifyContent = effectiveProperties.horizontalArrangement ? { 'Start': 'flex-start', 'End': 'flex-end', 'Center': 'center', 'SpaceAround': 'space-around', 'SpaceBetween': 'space-between', 'SpaceEvenly': 'space-evenly' }[effectiveProperties.horizontalArrangement] || 'flex-start' : 'flex-start';
       scrollContainerStyle.flexDirection = 'row';
       break;
