@@ -459,7 +459,6 @@ export function RenderedComponentWrapper({
     wrapperStyle.flexShrink = 0;
   }
 
-  // Consolidated width and alignment logic
   if (parentIsColumnLike) {
     if (fillMaxWidth || fillMaxSize) {
         wrapperStyle.width = '100%';
@@ -474,6 +473,7 @@ export function RenderedComponentWrapper({
   } else {
     wrapperStyle.width = getDimensionValue('width', component.properties, component.type, component.id);
   }
+
 
   if (parentIsRowLike) {
       if (fillMaxHeight || fillMaxSize) {

@@ -450,8 +450,7 @@ export function RenderedComponentWrapper({
     transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
     height: getDimensionValue('height', component.properties, component.type, component.id),
     position: 'relative',
-    display: 'flex',
-    flexDirection: 'column',
+    display: 'block',
   };
 
   const { selfAlign, fillMaxWidth, fillMaxHeight, fillMaxSize, layoutWeight } = component.properties;
@@ -460,17 +459,17 @@ export function RenderedComponentWrapper({
     wrapperStyle.flexShrink = 0;
   }
 
+  // Consolidated width and alignment logic
   if (parentIsColumnLike) {
     if (fillMaxWidth || fillMaxSize) {
         wrapperStyle.width = '100%';
+        wrapperStyle.alignSelf = 'stretch';
     } else {
         wrapperStyle.width = isNumericValue(component.properties.width) ? `${component.properties.width}px` : 'auto';
-    }
-    // Alignment is handled separately now.
-    // fillMaxWidth/fillMaxSize takes precedence over selfAlign.
-    if (!(fillMaxWidth || fillMaxSize) && selfAlign && selfAlign !== 'Inherit') {
-        const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
-        wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
+        if (selfAlign && selfAlign !== 'Inherit') {
+            const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
+            wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
+        }
     }
   } else {
     wrapperStyle.width = getDimensionValue('width', component.properties, component.type, component.id);
