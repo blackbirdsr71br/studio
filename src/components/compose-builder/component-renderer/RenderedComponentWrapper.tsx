@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { DesignComponent, CustomComponentTemplate, BaseComponentProps } from '@/types/compose-spec';
@@ -430,8 +429,13 @@ export function RenderedComponentWrapper({
   const parent = component.parentId ? getComponentById(component.parentId) : null;
   let parentIsRowLike = false;
   let parentIsColumnLike = false;
+  
+  const isTemplateRoot = !parent && component.type !== 'Scaffold' && !isPreview;
 
-  if (parent) {
+  if (isTemplateRoot) {
+      // The DesignSurface itself acts as a column-like parent for template editing roots.
+      parentIsColumnLike = true;
+  } else if (parent) {
       let effectiveParentType = parent.type;
       if (parent.templateIdRef) {
           const template = customComponentTemplates.find(t => t.templateId === parent.templateIdRef);
@@ -465,7 +469,6 @@ export function RenderedComponentWrapper({
     }
   }
 
-  if (parent && (isContainerType(parent.type, customComponentTemplates) || parent.templateIdRef)) {
     const selfAlignProp = component.properties.selfAlign;
 
     if (selfAlignProp && selfAlignProp !== 'Inherit') {
@@ -476,7 +479,7 @@ export function RenderedComponentWrapper({
     } else if (parentIsRowLike && (component.properties.fillMaxHeight || component.properties.fillMaxSize)) {
         wrapperStyle.alignSelf = 'stretch';
     }
-  }
+
 
   const hasCornerRadius = (component.properties.cornerRadius || 0) > 0 ||
                           (component.properties.cornerRadiusTopLeft || 0) > 0 ||
