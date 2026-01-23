@@ -12,7 +12,6 @@ import { ItemTypes } from '@/lib/dnd-types';
 import { isContainerType, ROOT_SCAFFOLD_ID, DEFAULT_CONTENT_LAZY_COLUMN_ID, DEFAULT_TOP_APP_BAR_ID, DEFAULT_BOTTOM_NAV_BAR_ID, CORE_SCAFFOLD_ELEMENT_IDS, getComponentDisplayName, isCustomComponentType } from '@/types/compose-spec';
 import { CheckboxView } from './CheckboxView';
 import { RadioButtonView } from './RadioButtonView';
-import { useTheme } from '@/contexts/ThemeContext';
 
 
 interface RenderedComponentWrapperProps {
@@ -104,7 +103,6 @@ export function RenderedComponentWrapper({
   const ref = useRef<HTMLDivElement>(null);
   const [dropIndicator, setDropIndicator] = useState<DropIndicatorPosition>(null);
   const [isResizing, setIsResizing] = useState(false);
-  const { resolvedTheme } = useTheme();
   const [resizeDetails, setResizeDetails] = useState<{
     handle: HandleType;
     startX: number;
@@ -433,7 +431,6 @@ export function RenderedComponentWrapper({
   const isTemplateRoot = !parent && component.type !== 'Scaffold' && !isPreview;
 
   if (isTemplateRoot) {
-      // The DesignSurface itself acts as a column-like parent for template editing roots.
       parentIsColumnLike = true;
   } else if (parent) {
       let effectiveParentType = parent.type;
@@ -450,35 +447,55 @@ export function RenderedComponentWrapper({
 
   const wrapperStyle: React.CSSProperties = {
     transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
-    width: getDimensionValue('width', component.properties, component.type, component.id),
     height: getDimensionValue('height', component.properties, component.type, component.id),
     position: 'relative',
     display: 'block',
   };
 
+  const { selfAlign, fillMaxWidth, fillMaxHeight, fillMaxSize, layoutWeight } = component.properties;
+
   if (parentIsRowLike) {
     wrapperStyle.flexShrink = 0;
-    if (component.properties.layoutWeight && component.properties.layoutWeight > 0) {
-        wrapperStyle.flexGrow = component.properties.layoutWeight;
-        wrapperStyle.flexBasis = 0;
-    }
-  } else { // Column-like parent
-    if (component.properties.layoutWeight && component.properties.layoutWeight > 0) {
-        wrapperStyle.flexGrow = component.properties.layoutWeight;
-        wrapperStyle.flexBasis = 0;
-    }
   }
 
-    const { selfAlign, fillMaxWidth, fillMaxHeight, fillMaxSize } = component.properties;
-
-    if (parentIsColumnLike && (fillMaxWidth || fillMaxSize)) {
+  // Consolidated width and alignment logic
+  if (parentIsColumnLike) {
+    if (fillMaxWidth || fillMaxSize) {
+        wrapperStyle.width = '100%';
         wrapperStyle.alignSelf = 'stretch';
-    } else if (parentIsRowLike && (fillMaxHeight || fillMaxSize)) {
-        wrapperStyle.alignSelf = 'stretch';
-    } else if (selfAlign && selfAlign !== 'Inherit') {
-        const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
-        wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
+    } else {
+        wrapperStyle.width = isNumericValue(component.properties.width) ? `${component.properties.width}px` : 'auto';
+        if (selfAlign && selfAlign !== 'Inherit') {
+            const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
+            wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
+        }
     }
+  } else {
+    wrapperStyle.width = getDimensionValue('width', component.properties, component.type, component.id);
+  }
+
+  if (parentIsRowLike) {
+      if (fillMaxHeight || fillMaxSize) {
+          wrapperStyle.alignSelf = 'stretch';
+      } else if (selfAlign && selfAlign !== 'Inherit') {
+          const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
+          wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
+      }
+  }
+
+  if (layoutWeight && layoutWeight > 0) {
+    wrapperStyle.flexGrow = layoutWeight;
+    wrapperStyle.flexShrink = 1;
+    wrapperStyle.flexBasis = '0%';
+  }
+  
+  if (parentIsRowLike && layoutWeight && layoutWeight > 0) {
+      wrapperStyle.width = '0px';
+  }
+  
+  if (parentIsColumnLike && layoutWeight && layoutWeight > 0) {
+      wrapperStyle.height = '0px';
+  }
 
 
   const hasCornerRadius = (component.properties.cornerRadius || 0) > 0 ||
