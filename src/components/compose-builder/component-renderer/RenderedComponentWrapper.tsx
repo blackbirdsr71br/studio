@@ -469,15 +469,15 @@ export function RenderedComponentWrapper({
     }
   }
 
-    const selfAlignProp = component.properties.selfAlign;
+    const { selfAlign, fillMaxWidth, fillMaxHeight, fillMaxSize } = component.properties;
 
-    if (selfAlignProp && selfAlignProp !== 'Inherit') {
-      const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
-      wrapperStyle.alignSelf = alignMap[selfAlignProp as keyof typeof alignMap] || 'auto';
-    } else if (parentIsColumnLike && (component.properties.fillMaxWidth || component.properties.fillMaxSize)) {
+    if (parentIsColumnLike && (fillMaxWidth || fillMaxSize)) {
         wrapperStyle.alignSelf = 'stretch';
-    } else if (parentIsRowLike && (component.properties.fillMaxHeight || component.properties.fillMaxSize)) {
+    } else if (parentIsRowLike && (fillMaxHeight || fillMaxSize)) {
         wrapperStyle.alignSelf = 'stretch';
+    } else if (selfAlign && selfAlign !== 'Inherit') {
+        const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
+        wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
     }
 
 
