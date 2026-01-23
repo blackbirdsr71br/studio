@@ -80,6 +80,7 @@ interface DesignContextType extends DesignState {
   generateStaticChildren: (parentId: string, childTypeOrTemplateId: string, count: number) => void;
   isLoadingCustomTemplates: boolean;
   isLoadingLayouts: boolean;
+  isUpdating: boolean;
   
   // Carousel Wizard
   openCarouselWizard: (carouselId: string) => void;
@@ -178,6 +179,7 @@ const createInitialDesignState = (): DesignState => ({
   savedLayouts: [],
   galleryImages: [],
   navigationItems: [],
+  isUpdating: false,
   activeM3ThemeScheme: 'dark',
   m3Theme: defaultThemeState,
 });
@@ -402,7 +404,7 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
 
   const activeDesign = designState.designs.find(d => d.id === designState.activeDesignId);
 
-  const { m3Theme, activeM3ThemeScheme, navigationItems, activeView } = designState;
+  const { m3Theme, activeM3ThemeScheme, navigationItems, activeView, isUpdating } = designState;
 
   const debouncedSaveTheme = useDebouncedCallback((themeToSave: DesignContextType['m3Theme']) => {
       if (db) {
@@ -1186,35 +1188,97 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
   }, [activeDesign, toast]);
 
   const updateCustomTemplate = useCallback(async () => {
-    if (!activeDesign?.editingTemplateInfo || !activeDesign.editingTemplateInfo.firestoreId) {
+    if (!activeDesign?.editingTemplateInfo?.firestoreId) {
         toast({ title: "Error", description: "No template is currently being edited.", variant: "destructive" });
         return;
     }
+
+    setDesignState(prev => ({...prev, isUpdating: true}));
+    
     const { editingTemplateInfo, components } = activeDesign;
 
-    const rootComponentInTree = components.find(c => c.parentId === null);
-    if (!rootComponentInTree) {
-         toast({ title: "Error", description: "Template is invalid: no root component found.", variant: "destructive" });
-         return;
-    }
-
-    const updatedTemplate = {
-        templateId: editingTemplateInfo.templateId,
-        name: editingTemplateInfo.name,
-        rootComponentId: rootComponentInTree.id,
-        componentTree: components,
-    };
-    
     try {
+        const rootComponentInTree = components.find(c => c.parentId === null);
+        if (!rootComponentInTree) throw new Error("Template is invalid: no root component found.");
+
+        const updatedTemplate = {
+            templateId: editingTemplateInfo.templateId,
+            name: editingTemplateInfo.name,
+            rootComponentId: rootComponentInTree.id,
+            componentTree: components,
+        };
+
         const docRef = doc(db, CUSTOM_TEMPLATES_COLLECTION, editingTemplateInfo.firestoreId);
         await setDoc(docRef, sanitizeForFirebase(updatedTemplate), { merge: true });
-        toast({ title: "Success", description: `Component "${editingTemplateInfo.name}" updated.` });
+        
+        toast({ title: "Update Successful", description: `Component "${editingTemplateInfo.name}" updated.` });
+
+        // --- START CASCADE ---
+        const updatedTemplateId = editingTemplateInfo.templateId;
+        const updatedTemplateDefinition = {
+            ...editingTemplateInfo,
+            ...updatedTemplate,
+        };
+
+        const updateComponentTree = (componentsToUpdate: DesignComponent[]): { tree: DesignComponent[], changed: boolean } => {
+            let hasChanged = false;
+            const newTree = deepClone(componentsToUpdate).map(c => {
+                if (c.templateIdRef === updatedTemplateId) {
+                    hasChanged = true;
+                    const templateRoot = updatedTemplateDefinition.componentTree.find(comp => comp.id === updatedTemplateDefinition.rootComponentId);
+                    if (templateRoot) {
+                        const instanceChildren = c.properties.children; // Preserve instance children
+                        c.type = templateRoot.type;
+                        c.properties = { ...templateRoot.properties }; // Overwrite with template properties
+                        c.properties.children = instanceChildren; // Put back instance children
+                    }
+                }
+                return c;
+            });
+            return { tree: newTree, changed: hasChanged };
+        };
+
+        const templateUpdatePromises = designState.customComponentTemplates
+            .filter(t => t.templateId !== updatedTemplateId)
+            .map(async (otherTemplate) => {
+                const { tree, changed } = updateComponentTree(otherTemplate.componentTree);
+                if (changed) {
+                    const newTemplateData = { ...otherTemplate, componentTree: sanitizeForFirebase(tree) };
+                    const docRef = doc(db, CUSTOM_TEMPLATES_COLLECTION, otherTemplate.firestoreId);
+                    await setDoc(docRef, newTemplateData);
+                    return 1;
+                }
+                return 0;
+            });
+            
+        const layoutUpdatePromises = designState.savedLayouts.map(async (layout) => {
+            const { tree, changed } = updateComponentTree(layout.components);
+            if (changed) {
+                const newLayoutData = { ...layout, components: sanitizeForFirebase(tree), timestamp: Date.now() };
+                const docRef = doc(db, SAVED_LAYOUTS_COLLECTION, layout.firestoreId);
+                await setDoc(docRef, newLayoutData);
+                return 1;
+            }
+            return 0;
+        });
+        
+        const results = await Promise.all([...templateUpdatePromises, ...layoutUpdatePromises]);
+        const updatedCount = results.reduce((acc, curr) => acc + curr, 0);
+        
+        if (updatedCount > 0) {
+            toast({ title: "Cascade Complete", description: `${updatedCount} dependent layouts and components were also updated.` });
+        }
+        
         closeDesign(designState.activeDesignId);
+
     } catch (error) {
-        console.error("Error updating custom template:", error);
-        toast({ title: "Update Failed", description: "Could not update the component in Firestore.", variant: "destructive" });
+        console.error("Error updating custom template or cascading:", error);
+        toast({ title: "Update Failed", description: "Could not update the component or its dependencies.", variant: "destructive" });
+    } finally {
+        setDesignState(prev => ({...prev, isUpdating: false}));
     }
-  }, [activeDesign, designState.activeDesignId, toast, closeDesign]);
+}, [activeDesign, designState.customComponentTemplates, designState.savedLayouts, designState.activeDesignId, toast, closeDesign]);
+
 
   const loadTemplateForEditing = useCallback((template: CustomComponentTemplate) => {
     const hydratedComponents = template.componentTree.map(component => {
@@ -1232,7 +1296,7 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
       const editDesign: SingleDesign = {
         id: newId,
         name: `Editing: ${template.name}`,
-        components: hydratedComponents, // Use hydrated components
+        components: hydratedComponents,
         selectedComponentId: null,
         nextId: 1000, // Arbitrary high number for temp IDs
         history: [],
@@ -1598,6 +1662,7 @@ export const DesignProvider: React.FC<DesignProviderProps> = ({ children, carous
     activeView,
     setActiveView,
     navigationItems,
+    isUpdating,
     addLayoutToNavigation,
     removeLayoutFromNavigation,
     clearNavigation,
@@ -1636,6 +1701,7 @@ export { DesignContext };
 
 
     
+
 
 
 

@@ -4,7 +4,7 @@
 import React, { RefObject } from 'react';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from "@/components/ui/button";
-import { Code, Trash2, FileJson, UploadCloud, Palette, Undo, Redo, Copy, ClipboardPaste, Settings, Save, Library, Edit, FileCode2, LayoutGrid } from "lucide-react";
+import { Code, Trash2, FileJson, UploadCloud, Palette, Undo, Redo, Copy, ClipboardPaste, Settings, Save, Library, Edit, FileCode2, LayoutGrid, Loader2 } from "lucide-react";
 import type { GenerateCodeModalRef } from "./GenerateCodeModal";
 import type { ViewJsonModalRef } from "./ViewJsonModal";
 import type { ThemeEditorModalRef } from "./ThemeEditorModal";
@@ -53,6 +53,7 @@ export function Header({
     activeView,
     setActiveView,
     navigationItems,
+    isUpdating,
   } = useDesign();
   const { toast } = useToast();
 
@@ -170,8 +171,8 @@ export function Header({
           {isEditing && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button size="icon" className="bg-green-500 text-white hover:bg-green-600 h-9 w-9" onClick={handleUpdate}>
-                    <Save className="h-4 w-4"/> 
+                <Button size="icon" className="bg-green-500 text-white hover:bg-green-600 h-9 w-9" onClick={handleUpdate} disabled={isUpdating}>
+                    {isUpdating ? <Loader2 className="h-4 w-4 animate-spin"/> : <Save className="h-4 w-4"/>} 
                 </Button>
               </TooltipTrigger>
               <TooltipContent>

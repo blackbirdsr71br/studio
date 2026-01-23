@@ -289,6 +289,7 @@ export interface DesignState {
   galleryImages: GalleryImage[];
   navigationItems: NavigationItem[];
   activeM3ThemeScheme: 'light' | 'dark';
+  isUpdating: boolean; // For cascading updates
   m3Theme: {
     lightColors: M3Colors;
     darkColors: M3Colors;
@@ -1238,5 +1239,6 @@ export const propertyDefinitions: Record<ComponentType, (Omit<ComponentProperty,
     
 
     
+
 
 
