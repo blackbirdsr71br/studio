@@ -19,6 +19,9 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
     "data-ai-hint": aiHint = "abstract pattern",
     contentScale = "Crop",
     backgroundColor, // This is the user-defined background color from props
+    fillMaxWidth,
+    fillMaxHeight,
+    fillMaxSize,
   } = properties;
 
   const src = (rawSrc && rawSrc.trim() !== '') ? rawSrc : 'https://placehold.co/300x200.png';
@@ -31,7 +34,6 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
   const effectivePaddingEnd = paddingEnd ?? 0;
 
   const containerStyle: React.CSSProperties = {
-    height: '100%',
     display: 'block',
     boxSizing: 'border-box',
     backgroundColor: backgroundColor ? backgroundColor : (hasRealImage ? 'transparent' : 'hsl(var(--muted))'),
@@ -41,6 +43,14 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
     paddingRight: `${effectivePaddingEnd}px`,
   };
   
+  if (fillMaxWidth || fillMaxSize) {
+    containerStyle.width = '100%';
+  }
+  if (fillMaxHeight || fillMaxSize) {
+    containerStyle.height = '100%';
+  }
+
+
   const imageStyle: React.CSSProperties = {
       width: '100%',
       height: '100%',
