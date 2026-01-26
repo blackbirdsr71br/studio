@@ -434,9 +434,7 @@ export function RenderedComponentWrapper({
           wrapperStyle.flexBasis = '0%';
           wrapperStyle.height = 'auto'; // Let flex properties control height
       } else if (fillMaxHeight || fillMaxSize) {
-          wrapperStyle.flexGrow = 1;
-          wrapperStyle.flexBasis = '0%';
-          wrapperStyle.height = 'auto';
+          wrapperStyle.height = '100%';
       } else if (isNumericValue(component.properties.height)) {
           wrapperStyle.height = `${component.properties.height}px`;
       } else {
@@ -446,7 +444,7 @@ export function RenderedComponentWrapper({
       // CROSS AXIS (Horizontal)
       if (fillMaxWidth || fillMaxSize) {
           wrapperStyle.alignSelf = 'stretch';
-          wrapperStyle.width = 'auto'; 
+          wrapperStyle.width = '100%'; 
       } else {
           if (isNumericValue(component.properties.width)) {
               wrapperStyle.width = `${component.properties.width}px`;
@@ -467,9 +465,7 @@ export function RenderedComponentWrapper({
           wrapperStyle.flexBasis = '0%';
           wrapperStyle.width = 'auto'; 
       } else if (fillMaxWidth || fillMaxSize) {
-          wrapperStyle.flexGrow = 1;
-          wrapperStyle.flexBasis = '0%';
-          wrapperStyle.width = 'auto';
+          wrapperStyle.width = '100%';
       } else if (isNumericValue(component.properties.width)) {
           wrapperStyle.width = `${component.properties.width}px`;
       } else {
@@ -479,7 +475,7 @@ export function RenderedComponentWrapper({
       // CROSS AXIS (Vertical)
       if (fillMaxHeight || fillMaxSize) {
           wrapperStyle.alignSelf = 'stretch';
-          wrapperStyle.height = 'auto';
+          wrapperStyle.height = '100%';
       } else {
           if (isNumericValue(component.properties.height)) {
               wrapperStyle.height = `${component.properties.height}px`;
