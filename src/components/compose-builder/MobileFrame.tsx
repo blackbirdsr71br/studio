@@ -99,7 +99,7 @@ export function MobileFrame({ children, className, isPreview = false, themeOverr
       
       <div 
         className={cn(
-          "overflow-hidden rounded-[32px] w-full flex-grow" 
+          "overflow-hidden rounded-[32px] w-full flex-grow p-2"
         )}
          style={{ ...m3StyleVariables, backgroundColor: 'var(--m3-background)' }}
       >

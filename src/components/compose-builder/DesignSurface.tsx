@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useRef } from 'react';
@@ -48,9 +47,9 @@ export function DesignSurface() {
     <div
       ref={surfaceRef}
       className={cn(
-        "bg-background relative border-2 border-transparent", 
-        "w-full h-full", 
-        "flex flex-col overflow-hidden" 
+        "bg-background relative border-2 border-transparent -m-2", 
+        "w-[calc(100%+16px)] h-[calc(100%+16px)]", 
+        "flex flex-col"
       )}
       onClick={handleSurfaceClick}
       id="design-surface"
