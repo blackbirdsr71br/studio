@@ -393,14 +393,123 @@ export function RenderedComponentWrapper({
   };
 
   const parent = component.parentId ? getComponentById(component.parentId) : null;
+  let parentIsRowLike = false;
+  let parentIsColumnLike = false;
+  
   const isTemplateRoot = !parent && component.type !== 'Scaffold' && !isPreview;
 
+  if (isTemplateRoot) {
+      parentIsColumnLike = true;
+  } else if (parent) {
+      let effectiveParentType = parent.type;
+      if (parent.templateIdRef) {
+          const template = customComponentTemplates.find(t => t.templateId === parent.templateIdRef);
+          if (template) {
+              const rootOfTemplate = template.componentTree.find(c => c.id === template.rootComponentId);
+              if (rootOfTemplate) effectiveParentType = rootOfTemplate.type;
+          }
+      }
+      parentIsRowLike = ['Row', 'LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar', 'Carousel'].includes(effectiveParentType);
+      parentIsColumnLike = ['LazyColumn', 'LazyVerticalGrid', 'Column', 'Card', 'Box', 'Scaffold', 'DropdownMenu', 'AnimatedContent'].includes(effectiveParentType);
+  }
+  
   const wrapperStyle: React.CSSProperties = {
     position: 'relative',
     transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
     display: 'flex',
   };
 
+  const { selfAlign, fillMaxWidth, fillMaxHeight, fillMaxSize, layoutWeight } = component.properties;
+  
+  // Default flex behavior
+  wrapperStyle.flexShrink = 0;
+
+  // --- Sizing & Layout Logic ---
+  if (parentIsColumnLike) {
+      // Parent is a Column-like container
+      // MAIN AXIS (Vertical)
+      if (layoutWeight && layoutWeight > 0) {
+          wrapperStyle.flexGrow = layoutWeight;
+          wrapperStyle.flexShrink = 1;
+          wrapperStyle.flexBasis = '0%';
+          wrapperStyle.height = 'auto'; // Let flex properties control height
+      } else if (fillMaxHeight || fillMaxSize) {
+          wrapperStyle.flexGrow = 1;
+          wrapperStyle.flexBasis = '0%';
+          wrapperStyle.height = 'auto';
+      } else if (isNumericValue(component.properties.height)) {
+          wrapperStyle.height = `${component.properties.height}px`;
+      } else {
+          wrapperStyle.height = 'auto';
+      }
+
+      // CROSS AXIS (Horizontal)
+      if (fillMaxWidth || fillMaxSize) {
+          wrapperStyle.alignSelf = 'stretch';
+          wrapperStyle.width = 'auto'; 
+      } else {
+          if (isNumericValue(component.properties.width)) {
+              wrapperStyle.width = `${component.properties.width}px`;
+          } else {
+              wrapperStyle.width = 'auto';
+          }
+          if (selfAlign && selfAlign !== 'Inherit') {
+              const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
+              wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
+          }
+      }
+  } else if (parentIsRowLike) {
+      // Parent is a Row-like container
+      // MAIN AXIS (Horizontal)
+      if (layoutWeight && layoutWeight > 0) {
+          wrapperStyle.flexGrow = layoutWeight;
+          wrapperStyle.flexShrink = 1;
+          wrapperStyle.flexBasis = '0%';
+          wrapperStyle.width = 'auto'; 
+      } else if (fillMaxWidth || fillMaxSize) {
+          wrapperStyle.flexGrow = 1;
+          wrapperStyle.flexBasis = '0%';
+          wrapperStyle.width = 'auto';
+      } else if (isNumericValue(component.properties.width)) {
+          wrapperStyle.width = `${component.properties.width}px`;
+      } else {
+          wrapperStyle.width = 'auto';
+      }
+
+      // CROSS AXIS (Vertical)
+      if (fillMaxHeight || fillMaxSize) {
+          wrapperStyle.alignSelf = 'stretch';
+          wrapperStyle.height = 'auto';
+      } else {
+          if (isNumericValue(component.properties.height)) {
+              wrapperStyle.height = `${component.properties.height}px`;
+          } else {
+              wrapperStyle.height = 'auto';
+          }
+          if (selfAlign && selfAlign !== 'Inherit') {
+              const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
+              wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
+          }
+      }
+  } else {
+      // Root component in template preview or other non-flex context
+      if (fillMaxSize) {
+          wrapperStyle.width = '100%';
+          wrapperStyle.height = '100%';
+      } else {
+          if (fillMaxWidth) {
+              wrapperStyle.width = '100%';
+          } else if (isNumericValue(component.properties.width)) {
+              wrapperStyle.width = `${component.properties.width}px`;
+          }
+          if (fillMaxHeight) {
+              wrapperStyle.height = '100%';
+          } else if (isNumericValue(component.properties.height)) {
+              wrapperStyle.height = `${component.properties.height}px`;
+          }
+      }
+  }
+  
   const isCoreScaffoldElement = CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id);
 
   if (isCoreScaffoldElement) {
@@ -409,85 +518,20 @@ export function RenderedComponentWrapper({
       wrapperStyle.height = '100%';
     } else if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
       wrapperStyle.height = '100%';
+      // Main content area needs to be a flex container itself to scroll
+      wrapperStyle.display = 'flex';
+      wrapperStyle.flexDirection = 'column';
     } else {
-      wrapperStyle.flexShrink = 0;
+      wrapperStyle.flexShrink = 0; // for top/bottom bar
       wrapperStyle.height = isNumericValue(component.properties.height) 
           ? `${component.properties.height}px` 
           : 'auto';
     }
-  } else {
-      let parentIsRowLike = false;
-      let parentIsColumnLike = false;
-      
-      if (isTemplateRoot) {
-          parentIsColumnLike = true;
-      } else if (parent) {
-          let effectiveParentType = parent.type;
-          if (parent.templateIdRef) {
-              const template = customComponentTemplates.find(t => t.templateId === parent.templateIdRef);
-              if (template) {
-                  const rootOfTemplate = template.componentTree.find(c => c.id === template.rootComponentId);
-                  if (rootOfTemplate) effectiveParentType = rootOfTemplate.type;
-              }
-          }
-          parentIsRowLike = ['Row', 'LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar', 'Carousel'].includes(effectiveParentType);
-          parentIsColumnLike = ['LazyColumn', 'LazyVerticalGrid', 'Column', 'Card', 'Box', 'Scaffold', 'DropdownMenu', 'AnimatedContent'].includes(effectiveParentType);
-      }
-
-      const { selfAlign, fillMaxWidth, fillMaxHeight, fillMaxSize, layoutWeight } = component.properties;
-
-      if (layoutWeight && layoutWeight > 0) {
-        wrapperStyle.flexGrow = layoutWeight;
-        wrapperStyle.flexShrink = 1;
-        wrapperStyle.flexBasis = '0%';
-        if (parentIsColumnLike) wrapperStyle.height = '0px';
-        if (parentIsRowLike) wrapperStyle.width = '0px';
-      } else {
-          if (parentIsColumnLike) {
-              wrapperStyle.flexShrink = 0;
-              if (fillMaxHeight || fillMaxSize) {
-                wrapperStyle.flexGrow = 1;
-                wrapperStyle.flexBasis = '0%';
-                wrapperStyle.height = 'auto'; // Let flex-grow handle it
-              } else {
-                wrapperStyle.height = isNumericValue(component.properties.height) ? `${component.properties.height}px` : 'auto';
-              }
-              
-              if (fillMaxWidth || fillMaxSize) {
-                  wrapperStyle.alignSelf = 'stretch';
-              } else {
-                  wrapperStyle.width = isNumericValue(component.properties.width) ? `${component.properties.width}px` : 'auto';
-                  if (selfAlign && selfAlign !== 'Inherit') {
-                    const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
-                    wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
-                  }
-              }
-          } else if (parentIsRowLike) {
-              wrapperStyle.flexShrink = 0;
-              if (fillMaxWidth || fillMaxSize) {
-                wrapperStyle.flexGrow = 1;
-                wrapperStyle.flexBasis = '0%';
-                wrapperStyle.width = 'auto'; // Let flex-grow handle it
-              } else {
-                wrapperStyle.width = isNumericValue(component.properties.width) ? `${component.properties.width}px` : 'auto';
-              }
-              
-              if (fillMaxHeight || fillMaxSize) {
-                  wrapperStyle.alignSelf = 'stretch';
-              } else {
-                 if (selfAlign && selfAlign !== 'Inherit') {
-                     const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
-                     wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
-                 }
-                 wrapperStyle.height = isNumericValue(component.properties.height) ? `${component.properties.height}px` : 'auto';
-              }
-          } else {
-              wrapperStyle.width = isNumericValue(component.properties.width) ? `${component.properties.width}px` : 'auto';
-              wrapperStyle.height = isNumericValue(component.properties.height) ? `${component.properties.height}px` : 'auto';
-          }
-      }
+    // Reset properties that might conflict
+    wrapperStyle.flexGrow = undefined;
+    wrapperStyle.flexBasis = undefined;
+    wrapperStyle.alignSelf = undefined;
   }
-
 
   const hasCornerRadius = (component.properties.cornerRadius || 0) > 0 ||
                           (component.properties.cornerRadiusTopLeft || 0) > 0 ||
