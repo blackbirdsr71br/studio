@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { DesignComponent, CustomComponentTemplate, BaseComponentProps } from '@/types/compose-spec';
@@ -26,6 +25,7 @@ interface RenderedComponentWrapperProps {
   addComponent: (typeOrTemplateId: string, parentId: string | null, dropPosition?: { x: number; y: number }, index?: number) => void;
   moveComponent: (draggedId: string, newParentId: string | null, newIndex?: number) => void;
   updateComponent: (id: string, updates: { properties: Partial<BaseComponentProps> }) => void;
+  _parentComponent?: DesignComponent;
 }
 
 
@@ -67,6 +67,7 @@ export function RenderedComponentWrapper({
   addComponent,
   moveComponent,
   updateComponent,
+  _parentComponent,
  }: RenderedComponentWrapperProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [dropIndicator, setDropIndicator] = useState<DropIndicatorPosition>(null);
@@ -317,6 +318,7 @@ export function RenderedComponentWrapper({
                 <RenderedComponentWrapper
                     component={topBarChild}
                     isPreview={isPreview}
+                    _parentComponent={component}
                     {...propsToPass}
                 />
               </div>
@@ -329,6 +331,7 @@ export function RenderedComponentWrapper({
                 <RenderedComponentWrapper
                     component={contentChild}
                     isPreview={isPreview}
+                    _parentComponent={component}
                     {...propsToPass}
                 />
               </div>
@@ -338,6 +341,7 @@ export function RenderedComponentWrapper({
                  <RenderedComponentWrapper
                     component={bottomBarChild}
                     isPreview={isPreview}
+                    _parentComponent={component}
                     {...propsToPass}
                  />
               </div>
@@ -394,7 +398,7 @@ export function RenderedComponentWrapper({
 
   const { selfAlign, fillMaxWidth, fillMaxHeight, fillMaxSize, layoutWeight, width, height } = component.properties;
   
-  const parent = component.parentId ? getComponentById(component.parentId) : null;
+  const parent = _parentComponent || (component.parentId ? getComponentById(component.parentId) : null);
   const isTemplateRoot = !parent && component.type !== 'Scaffold' && !isPreview;
 
   let parentIsRowLike = false;
@@ -417,18 +421,19 @@ export function RenderedComponentWrapper({
   
   const wrapperStyle: React.CSSProperties = {
     position: 'relative',
-    display: 'block',
+    display: 'flex', // Use flex to allow content to fill wrapper
     transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
     flexShrink: 0,
   };
 
   const isCoreScaffoldElement = CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id);
 
+  // Handle core scaffold elements separately as they have fixed layout logic
   if (isCoreScaffoldElement) {
     wrapperStyle.width = '100%';
     if (component.id === ROOT_SCAFFOLD_ID || component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
       wrapperStyle.height = '100%';
-       if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
+      if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
         wrapperStyle.display = 'flex';
         wrapperStyle.flexDirection = 'column';
       }
@@ -437,11 +442,10 @@ export function RenderedComponentWrapper({
     }
   } else if (parentIsColumnLike) {
     // Parent is a Column. Main axis is vertical, cross is horizontal.
-
     // Cross-axis (width)
     if (fillMaxWidth || fillMaxSize) {
         wrapperStyle.alignSelf = 'stretch';
-        wrapperStyle.width = 'auto'; 
+        wrapperStyle.width = 'auto'; // Let align-self control the width
     } else {
         wrapperStyle.width = isNumericValue(width) ? `${width}px` : 'auto';
         if (selfAlign && selfAlign !== 'Inherit') {
@@ -449,32 +453,28 @@ export function RenderedComponentWrapper({
             wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
         }
     }
-
     // Main-axis (height)
     if (layoutWeight && layoutWeight > 0) {
         wrapperStyle.flexGrow = layoutWeight;
         wrapperStyle.flexBasis = '0%';
-        wrapperStyle.height = 'auto'; // Flex grow controls the height
+        wrapperStyle.height = 'auto';
     } else {
         wrapperStyle.height = (fillMaxHeight || fillMaxSize) ? '100%' : (isNumericValue(height) ? `${height}px` : 'auto');
     }
-
-} else if (parentIsRowLike) {
+  } else if (parentIsRowLike) {
     // Parent is a Row. Main axis is horizontal, cross is vertical.
-
     // Main-axis (width)
     if (layoutWeight && layoutWeight > 0) {
         wrapperStyle.flexGrow = layoutWeight;
         wrapperStyle.flexBasis = '0%';
-        wrapperStyle.width = 'auto'; // Flex grow controls the width
+        wrapperStyle.width = 'auto';
     } else {
         wrapperStyle.width = (fillMaxWidth || fillMaxSize) ? '100%' : (isNumericValue(width) ? `${width}px` : 'auto');
     }
-
     // Cross-axis (height)
     if (fillMaxHeight || fillMaxSize) {
         wrapperStyle.alignSelf = 'stretch';
-        wrapperStyle.height = 'auto'; 
+        wrapperStyle.height = 'auto';
     } else {
         wrapperStyle.height = isNumericValue(height) ? `${height}px` : 'auto';
         if (selfAlign && selfAlign !== 'Inherit') {
@@ -482,13 +482,22 @@ export function RenderedComponentWrapper({
             wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
         }
     }
-} else {
-    // No flex parent (e.g. root of template)
+  } else {
+    // No flex parent (e.g. root of template being edited)
     wrapperStyle.width = (fillMaxWidth || fillMaxSize) ? '100%' : (isNumericValue(width) ? `${width}px` : 'auto');
     wrapperStyle.height = (fillMaxHeight || fillMaxSize) ? '100%' : (isNumericValue(height) ? `${height}px` : 'auto');
-}
+  }
 
-
+  // Handle Carousel-specific logic
+  if (parent?.type === 'Carousel') {
+    if (parent.properties.carouselStyle === 'Pager') {
+      wrapperStyle.scrollSnapAlign = 'start';
+    }
+    if (parent.properties.carouselStyle === 'MultiBrowse') {
+      wrapperStyle.width = `${parent.properties.preferredItemWidth}px`;
+      wrapperStyle.flexShrink = 0;
+    }
+  }
 
   const hasCornerRadius = (component.properties.cornerRadius || 0) > 0 ||
                           (component.properties.cornerRadiusTopLeft || 0) > 0 ||

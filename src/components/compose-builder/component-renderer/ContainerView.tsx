@@ -1,4 +1,3 @@
-
 'use client';
 import type { DesignComponent, ComponentType as OriginalComponentType, BaseComponentProps, CustomComponentTemplate, M3Theme } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from '../component-renderer/RenderedComponentWrapper';
@@ -363,24 +362,15 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
                 {(!isDataBound && effectiveType === 'LazyHorizontalGrid' && effectiveProperties.rows) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.rows})</span>}
               </div>
             ) : (
-               childrenComponents.map(child => {
-                  const childWrapperStyle: React.CSSProperties = { flexShrink: 0 };
-                   if (effectiveType === 'Carousel' && carouselStyle === 'Pager') {
-                     childWrapperStyle.scrollSnapAlign = 'start';
-                   }
-                   if (effectiveType === 'Carousel' && carouselStyle === 'MultiBrowse') {
-                      childWrapperStyle.width = `${effectiveProperties.preferredItemWidth}px`;
-                  }
-                  return (
-                      <div key={child.id} style={childWrapperStyle}>
-                          <RenderedComponentWrapper 
-                              component={child} 
-                              isPreview={isPreview}
-                              {...passThroughProps}
-                          />
-                      </div>
-                  );
-               })
+               childrenComponents.map(child => (
+                  <RenderedComponentWrapper 
+                      key={child.id}
+                      component={child} 
+                      isPreview={isPreview}
+                      _parentComponent={component}
+                      {...passThroughProps}
+                  />
+               ))
             )}
         </div>
       </div>
