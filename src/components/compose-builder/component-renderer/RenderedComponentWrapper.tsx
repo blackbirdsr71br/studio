@@ -392,7 +392,6 @@ export function RenderedComponentWrapper({
     }
   };
 
-  // --- Sizing Logic ---
   const { selfAlign, fillMaxWidth, fillMaxHeight, fillMaxSize, layoutWeight, width, height } = component.properties;
   
   const parent = component.parentId ? getComponentById(component.parentId) : null;
@@ -420,16 +419,16 @@ export function RenderedComponentWrapper({
     position: 'relative',
     display: 'flex',
     transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
+    flexShrink: 0,
   };
 
   const isCoreScaffoldElement = CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id);
 
   if (isCoreScaffoldElement) {
     wrapperStyle.width = '100%';
-    wrapperStyle.flexShrink = 0;
     if (component.id === ROOT_SCAFFOLD_ID || component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
       wrapperStyle.height = '100%';
-      if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
+       if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
         wrapperStyle.display = 'flex';
         wrapperStyle.flexDirection = 'column';
       }
@@ -437,45 +436,64 @@ export function RenderedComponentWrapper({
       wrapperStyle.height = isNumericValue(height) ? `${height}px` : 'auto';
     }
   } else {
-    // --- WIDTH ---
-    if (fillMaxWidth || fillMaxSize) {
-      wrapperStyle.width = '100%';
-    } else if (parentIsRowLike && layoutWeight && layoutWeight > 0) {
-      wrapperStyle.flexGrow = layoutWeight;
-      wrapperStyle.flexShrink = 1;
-      wrapperStyle.flexBasis = '0%';
-      wrapperStyle.width = 'auto'; // Let flex properties control width
-    } else if (isNumericValue(width)) {
-      wrapperStyle.width = `${width}px`;
-    } else {
-      wrapperStyle.width = 'auto';
-    }
+      if(parentIsColumnLike) {
+        // Main Axis (Vertical)
+        if(fillMaxHeight || fillMaxSize) {
+            wrapperStyle.flexGrow = 1;
+            wrapperStyle.flexBasis = '0%';
+            wrapperStyle.height = '100%';
+        } else if (layoutWeight && layoutWeight > 0) {
+            wrapperStyle.flexGrow = layoutWeight;
+            wrapperStyle.flexBasis = '0%';
+            wrapperStyle.height = 'auto';
+        } else {
+            wrapperStyle.height = isNumericValue(height) ? `${height}px` : 'auto';
+        }
 
-    // --- HEIGHT ---
-    if (fillMaxHeight || fillMaxSize) {
-      wrapperStyle.height = '100%';
-    } else if (parentIsColumnLike && layoutWeight && layoutWeight > 0) {
-      wrapperStyle.flexGrow = layoutWeight;
-      wrapperStyle.flexShrink = 1;
-      wrapperStyle.flexBasis = '0%';
-      wrapperStyle.height = 'auto'; // Let flex properties control height
-    } else if (isNumericValue(height)) {
-      wrapperStyle.height = `${height}px`;
-    } else {
-      wrapperStyle.height = 'auto';
-    }
+        // Cross Axis (Horizontal)
+        if(fillMaxWidth || fillMaxSize) {
+            wrapperStyle.alignSelf = 'stretch';
+            wrapperStyle.width = 'auto';
+        } else {
+            if (selfAlign && selfAlign !== 'Inherit') {
+                const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
+                wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
+            }
+            wrapperStyle.width = isNumericValue(width) ? `${width}px` : 'auto';
+        }
+      } 
+      else if (parentIsRowLike) {
+        // Main Axis (Horizontal)
+        if(fillMaxWidth || fillMaxSize) {
+            wrapperStyle.flexGrow = 1;
+            wrapperStyle.flexBasis = '0%';
+            wrapperStyle.width = '100%';
+        } else if (layoutWeight && layoutWeight > 0) {
+            wrapperStyle.flexGrow = layoutWeight;
+            wrapperStyle.flexBasis = '0%';
+            wrapperStyle.width = 'auto';
+        } else {
+            wrapperStyle.width = isNumericValue(width) ? `${width}px` : 'auto';
+        }
 
-    // --- CROSS-AXIS ALIGNMENT ---
-    if (selfAlign && selfAlign !== 'Inherit') {
-      const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
-      wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
-    }
-    
-    // Set flex-shrink to 0 for non-weighted items to prevent them from shrinking
-    if (!layoutWeight || layoutWeight === 0) {
-      wrapperStyle.flexShrink = 0;
-    }
+        // Cross Axis (Vertical)
+        if(fillMaxHeight || fillMaxSize) {
+            wrapperStyle.alignSelf = 'stretch';
+            wrapperStyle.height = 'auto';
+        } else {
+            if (selfAlign && selfAlign !== 'Inherit') {
+                const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
+                wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
+            }
+            wrapperStyle.height = isNumericValue(height) ? `${height}px` : 'auto';
+        }
+      }
+      else {
+        wrapperStyle.width = (fillMaxWidth || fillMaxSize) ? '100%' : (isNumericValue(width) ? `${width}px` : 'auto');
+        wrapperStyle.height = (fillMaxHeight || fillMaxSize) ? '100%' : (isNumericValue(height) ? `${height}px` : 'auto');
+      }
   }
+
 
   const hasCornerRadius = (component.properties.cornerRadius || 0) > 0 ||
                           (component.properties.cornerRadiusTopLeft || 0) > 0 ||
