@@ -44,7 +44,6 @@ export function ButtonView({ properties }: ButtonViewProps) {
     paddingBottom,
     paddingStart,
     paddingEnd,
-    fillMaxWidth,
     shape,
     cornerRadius,
     cornerRadiusTopLeft,
@@ -111,12 +110,6 @@ export function ButtonView({ properties }: ButtonViewProps) {
         style.borderRadius = `${cornerRadius ?? 4}px`;
       }
       break;
-  }
-
-  // If not fillMaxWidth and width is wrap_content (default or explicit), adjust width
-  if (!fillMaxWidth && (properties.width === 'wrap_content' || properties.width === undefined)) {
-    style.width = 'auto'; // Let the button size to its content + padding
-    style.display = 'inline-flex'; // Behave more like an inline element if not filling width
   }
   
   const iconElement = iconName ? (

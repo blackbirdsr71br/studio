@@ -60,6 +60,9 @@ export function TextView({ properties }: TextViewProps) {
     textDecorationLine: textDecoration === 'LineThrough' ? 'line-through' : textDecoration.toLowerCase(),
     fontFamily: getFontFamilyVariable(fontFamily || 'Inter'), // Apply the font family via CSS variable
     color: textColor || 'var(--m3-on-surface)',
+    width: '100%',
+    height: '100%',
+    boxSizing: 'border-box'
   };
 
   if (backgroundColor) {
@@ -76,29 +79,9 @@ export function TextView({ properties }: TextViewProps) {
     }
   }
   
-  if (properties.fillMaxWidth) {
-    style.width = '100%';
-    style.display = 'block';
-  } else if (typeof properties.width === 'number') {
-    style.width = `${properties.width}px`;
-    style.display = 'block';
-  } else if (properties.width === 'wrap_content') {
-    style.display = 'inline-block';
-    style.width = 'auto';
-  } else {
-    style.display = 'inline-block';
-    style.width = 'auto';
-  }
-
-  if (typeof properties.height === 'number') {
-    style.height = `${properties.height}px`;
-  } else if (properties.fillMaxHeight) {
-    style.height = '100%';
-  }
-  
   return (
-    <div style={style} className="select-none">
-      {text}
+    <div style={style} className="select-none flex items-center">
+      <span>{text}</span>
     </div>
   );
 }
