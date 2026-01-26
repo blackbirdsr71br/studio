@@ -297,6 +297,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     case 'Card':
     case 'AnimatedContent':
     case 'Column':
+    case 'LazyColumn':
       childrenContainerStyle.justifyContent = effectiveProperties.verticalArrangement ? { 'Top': 'flex-start', 'Bottom': 'flex-end', 'Center': 'center', 'SpaceAround': 'space-around', 'SpaceBetween': 'space-between', 'SpaceEvenly': 'space-evenly' }[effectiveProperties.verticalArrangement] || 'flex-start' : 'flex-start';
       childrenContainerStyle.alignItems = effectiveProperties.horizontalAlignment ? { 'Start': 'flex-start', 'CenterHorizontally': 'center', 'End': 'flex-end' }[effectiveProperties.horizontalAlignment] || 'flex-start' : 'flex-start';
       break;
