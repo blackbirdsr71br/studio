@@ -147,7 +147,6 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     minWidth: '20px',
     minHeight: '20px',
     boxShadow: elevation > 0 ? `0 ${elevation}px ${elevation * 2}px rgba(0,0,0,0.1)` : 'none',
-    overflow: 'hidden' // Main container should hide overflow
   };
 
   if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
@@ -299,13 +298,11 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     case 'AnimatedContent':
     case 'Column':
       childrenContainerStyle.justifyContent = effectiveProperties.verticalArrangement ? { 'Top': 'flex-start', 'Bottom': 'flex-end', 'Center': 'center', 'SpaceAround': 'space-around', 'SpaceBetween': 'space-between', 'SpaceEvenly': 'space-evenly' }[effectiveProperties.verticalArrangement] || 'flex-start' : 'flex-start';
-      // This is the crucial change: always stretch children horizontally in a column-like container.
-      // The alignment is now handled inside the RenderedComponentWrapper.
-      childrenContainerStyle.alignItems = 'stretch';
+      childrenContainerStyle.alignItems = effectiveProperties.horizontalAlignment ? { 'Start': 'flex-start', 'CenterHorizontally': 'center', 'End': 'flex-end' }[effectiveProperties.horizontalAlignment] || 'flex-start' : 'flex-start';
       break;
     case 'Row':
       childrenContainerStyle.justifyContent = effectiveProperties.horizontalArrangement ? { 'Start': 'flex-start', 'End': 'flex-end', 'Center': 'center', 'SpaceAround': 'space-around', 'SpaceBetween': 'space-between', 'SpaceEvenly': 'space-evenly' }[effectiveProperties.horizontalArrangement] || 'flex-start' : 'flex-start';
-      childrenContainerStyle.alignItems = 'stretch';
+      childrenContainerStyle.alignItems = effectiveProperties.verticalAlignment ? { 'Top': 'flex-start', 'CenterVertically': 'center', 'Bottom': 'flex-end' }[effectiveProperties.verticalAlignment] || 'flex-start' : 'flex-start';
       break;
     case 'Box':
        // For Box, alignment is about placing a single item (or overlapping items), not a flow.
@@ -330,7 +327,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     case 'BottomNavigationBar':
       baseStyle.flexDirection = 'row';
       baseStyle.alignItems = 'center'; // Center vertically
-      childrenContainerStyle.alignItems = 'stretch';
+      childrenContainerStyle.alignItems = 'center';
       childrenContainerStyle.justifyContent = effectiveProperties.horizontalArrangement ? { 'Start': 'flex-start', 'End': 'flex-end', 'Center': 'center', 'SpaceAround': 'space-around', 'SpaceBetween': 'space-between', 'SpaceEvenly': 'space-evenly' }[effectiveProperties.horizontalArrangement] || 'flex-start' : 'flex-start';
       scrollContainerStyle.flexDirection = 'row';
       break;
@@ -361,7 +358,7 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
           {showPlaceholder && !topAppBarTitleElement ? (
               <div style={placeholderStyle} className="flex-grow flex flex-col items-center justify-center text-muted-foreground/70 text-xs pointer-events-none p-2 text-center leading-tight">
                 <span>{placeholderText}</span>
-                {(!isDataBound && effectiveType === 'LazyVerticalGrid' && effectiveProperties.columns) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.columns} columns)</span>}
+                {(!isDataBound && effectiveType === 'LazyVerticalGrid' && effectiveProperties.columns) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.columns})</span>}
                 {(!isDataBound && effectiveType === 'LazyHorizontalGrid' && effectiveProperties.rows) && <span className="mt-1 text-xxs opacity-70">({effectiveProperties.rows})</span>}
               </div>
             ) : (
