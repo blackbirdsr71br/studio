@@ -417,7 +417,7 @@ export function RenderedComponentWrapper({
   
   const wrapperStyle: React.CSSProperties = {
     position: 'relative',
-    display: 'flex',
+    display: 'block',
     transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
     flexShrink: 0,
   };
@@ -435,64 +435,59 @@ export function RenderedComponentWrapper({
     } else {
       wrapperStyle.height = isNumericValue(height) ? `${height}px` : 'auto';
     }
-  } else {
-      if(parentIsColumnLike) {
-        // Main Axis (Vertical)
-        if(fillMaxHeight || fillMaxSize) {
-            wrapperStyle.flexGrow = 1;
-            wrapperStyle.flexBasis = '0%';
-            wrapperStyle.height = '100%';
-        } else if (layoutWeight && layoutWeight > 0) {
-            wrapperStyle.flexGrow = layoutWeight;
-            wrapperStyle.flexBasis = '0%';
-            wrapperStyle.height = 'auto';
-        } else {
-            wrapperStyle.height = isNumericValue(height) ? `${height}px` : 'auto';
-        }
+  } else if (parentIsColumnLike) {
+    // Parent is a Column. Main axis is vertical, cross is horizontal.
 
-        // Cross Axis (Horizontal)
-        if(fillMaxWidth || fillMaxSize) {
-            wrapperStyle.alignSelf = 'stretch';
-            wrapperStyle.width = 'auto';
-        } else {
-            if (selfAlign && selfAlign !== 'Inherit') {
-                const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
-                wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
-            }
-            wrapperStyle.width = isNumericValue(width) ? `${width}px` : 'auto';
+    // Cross-axis (width)
+    if (fillMaxWidth || fillMaxSize) {
+        wrapperStyle.alignSelf = 'stretch';
+        wrapperStyle.width = 'auto'; 
+    } else {
+        wrapperStyle.width = isNumericValue(width) ? `${width}px` : 'auto';
+        if (selfAlign && selfAlign !== 'Inherit') {
+            const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
+            wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
         }
-      } 
-      else if (parentIsRowLike) {
-        // Main Axis (Horizontal)
-        if(fillMaxWidth || fillMaxSize) {
-            wrapperStyle.flexGrow = 1;
-            wrapperStyle.flexBasis = '0%';
-            wrapperStyle.width = '100%';
-        } else if (layoutWeight && layoutWeight > 0) {
-            wrapperStyle.flexGrow = layoutWeight;
-            wrapperStyle.flexBasis = '0%';
-            wrapperStyle.width = 'auto';
-        } else {
-            wrapperStyle.width = isNumericValue(width) ? `${width}px` : 'auto';
-        }
+    }
 
-        // Cross Axis (Vertical)
-        if(fillMaxHeight || fillMaxSize) {
-            wrapperStyle.alignSelf = 'stretch';
-            wrapperStyle.height = 'auto';
-        } else {
-            if (selfAlign && selfAlign !== 'Inherit') {
-                const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
-                wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
-            }
-            wrapperStyle.height = isNumericValue(height) ? `${height}px` : 'auto';
-        }
-      }
-      else {
-        wrapperStyle.width = (fillMaxWidth || fillMaxSize) ? '100%' : (isNumericValue(width) ? `${width}px` : 'auto');
+    // Main-axis (height)
+    if (layoutWeight && layoutWeight > 0) {
+        wrapperStyle.flexGrow = layoutWeight;
+        wrapperStyle.flexBasis = '0%';
+        wrapperStyle.height = 'auto'; // Flex grow controls the height
+    } else {
         wrapperStyle.height = (fillMaxHeight || fillMaxSize) ? '100%' : (isNumericValue(height) ? `${height}px` : 'auto');
-      }
-  }
+    }
+
+} else if (parentIsRowLike) {
+    // Parent is a Row. Main axis is horizontal, cross is vertical.
+
+    // Main-axis (width)
+    if (layoutWeight && layoutWeight > 0) {
+        wrapperStyle.flexGrow = layoutWeight;
+        wrapperStyle.flexBasis = '0%';
+        wrapperStyle.width = 'auto'; // Flex grow controls the width
+    } else {
+        wrapperStyle.width = (fillMaxWidth || fillMaxSize) ? '100%' : (isNumericValue(width) ? `${width}px` : 'auto');
+    }
+
+    // Cross-axis (height)
+    if (fillMaxHeight || fillMaxSize) {
+        wrapperStyle.alignSelf = 'stretch';
+        wrapperStyle.height = 'auto'; 
+    } else {
+        wrapperStyle.height = isNumericValue(height) ? `${height}px` : 'auto';
+        if (selfAlign && selfAlign !== 'Inherit') {
+            const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
+            wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
+        }
+    }
+} else {
+    // No flex parent (e.g. root of template)
+    wrapperStyle.width = (fillMaxWidth || fillMaxSize) ? '100%' : (isNumericValue(width) ? `${width}px` : 'auto');
+    wrapperStyle.height = (fillMaxHeight || fillMaxSize) ? '100%' : (isNumericValue(height) ? `${height}px` : 'auto');
+}
+
 
 
   const hasCornerRadius = (component.properties.cornerRadius || 0) > 0 ||
