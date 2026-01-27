@@ -19,9 +19,6 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
     "data-ai-hint": aiHint = "abstract pattern",
     contentScale = "Crop",
     backgroundColor, // This is the user-defined background color from props
-    fillMaxWidth,
-    fillMaxHeight,
-    fillMaxSize,
   } = properties;
 
   const src = (rawSrc && rawSrc.trim() !== '') ? rawSrc : 'https://placehold.co/300x200.png';
@@ -34,43 +31,58 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
   const effectivePaddingEnd = paddingEnd ?? 0;
 
   const containerStyle: React.CSSProperties = {
-    display: 'block',
+    width: '100%',
+    height: '100%',
+    display: 'flex', // Use flex to center image for certain scales
+    justifyContent: 'center',
+    alignItems: 'center',
     boxSizing: 'border-box',
     backgroundColor: backgroundColor ? backgroundColor : (hasRealImage ? 'transparent' : 'hsl(var(--muted))'),
     paddingTop: `${effectivePaddingTop}px`,
     paddingBottom: `${effectivePaddingBottom}px`,
     paddingLeft: `${effectivePaddingStart}px`,
     paddingRight: `${effectivePaddingEnd}px`,
+    overflow: 'hidden', // This is crucial to crop the image when needed
   };
-  
-  if (fillMaxWidth || fillMaxSize) {
-    containerStyle.width = '100%';
-  }
-  if (fillMaxHeight || fillMaxSize) {
-    containerStyle.height = '100%';
-  }
-
 
   const imageStyle: React.CSSProperties = {
-      width: '100%',
-      height: '100%',
-      display: 'block',
-      objectFit: 'cover' // default
+    display: 'block',
+    // Default values, will be overridden by the switch
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
   };
-  
+
   if (isPreview) {
     imageStyle.objectFit = 'contain';
   } else {
-    switch(contentScale) {
-      case 'Fit': imageStyle.objectFit = 'contain'; break;
-      case 'FillBounds': imageStyle.objectFit = 'fill'; break;
-      case 'Inside': imageStyle.objectFit = 'scale-down'; break;
-      case 'None': imageStyle.objectFit = 'none'; break;
-      case 'Crop':
-      case 'FillWidth': 
+    switch (contentScale) {
+      case 'Fit':
+        imageStyle.objectFit = 'contain';
+        break;
+      case 'FillBounds':
+        imageStyle.objectFit = 'fill';
+        break;
+      case 'FillWidth':
+        imageStyle.width = '100%';
+        imageStyle.height = 'auto';
+        imageStyle.objectFit = undefined; // Let the width/height do the work
+        break;
       case 'FillHeight':
-      default: 
+        imageStyle.height = '100%';
+        imageStyle.width = 'auto';
+        imageStyle.objectFit = undefined; // Let the width/height do the work
+        break;
+      case 'Inside':
+        imageStyle.objectFit = 'scale-down';
+        break;
+      case 'None':
+        imageStyle.objectFit = 'none';
+        break;
+      case 'Crop':
+      default:
         imageStyle.objectFit = 'cover';
+        break;
     }
   }
 
