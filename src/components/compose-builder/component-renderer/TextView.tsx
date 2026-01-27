@@ -1,4 +1,3 @@
-
 'use client';
 import type { BaseComponentProps } from '@/types/compose-spec';
 import { getDefaultProperties } from '@/types/compose-spec';
@@ -56,14 +55,33 @@ export function TextView({ properties }: TextViewProps) {
     lineHeight: lineHeight,
     fontWeight: getFontWeightValue(fontWeight),
     fontStyle: fontStyle.toLowerCase() as 'normal' | 'italic',
-    textAlign: textAlign.toLowerCase() as 'left' | 'center' | 'right' | 'justify' | 'start' | 'end',
     textDecorationLine: textDecoration === 'LineThrough' ? 'line-through' : textDecoration.toLowerCase(),
     fontFamily: getFontFamilyVariable(fontFamily || 'Inter'), // Apply the font family via CSS variable
     color: textColor || 'var(--m3-on-surface)',
     width: '100%',
     height: '100%',
-    boxSizing: 'border-box'
+    boxSizing: 'border-box',
+    display: 'flex',
+    alignItems: 'center', // for vertical centering
   };
+
+  // Map Compose textAlign to flexbox justify-content for horizontal alignment
+  const justifyContentMap = {
+      'Start': 'flex-start',
+      'Left': 'flex-start',
+      'Center': 'center',
+      'End': 'flex-end',
+      'Right': 'flex-end',
+  };
+  style.justifyContent = justifyContentMap[textAlign as keyof typeof justifyContentMap] || 'flex-start';
+
+  // For Justify, we need text-align property and a full-width child
+  let spanClassName = '';
+  if (textAlign === 'Justify') {
+      style.textAlign = 'justify';
+      spanClassName = 'w-full';
+  }
+
 
   if (backgroundColor) {
      if (typeof backgroundColor === 'object' && backgroundColor.type === 'linearGradient') {
@@ -80,8 +98,8 @@ export function TextView({ properties }: TextViewProps) {
   }
   
   return (
-    <div style={style} className="select-none flex items-center">
-      <span>{text}</span>
+    <div style={style} className="select-none">
+      <span className={cn(spanClassName)}>{text}</span>
     </div>
   );
 }
