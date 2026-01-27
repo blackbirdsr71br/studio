@@ -18,7 +18,7 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
     paddingEnd,
     "data-ai-hint": aiHint = "abstract pattern",
     contentScale = "Crop",
-    backgroundColor, // This is the user-defined background color from props
+    backgroundColor,
   } = properties;
 
   const src = (rawSrc && rawSrc.trim() !== '') ? rawSrc : 'https://placehold.co/300x200.png';
@@ -33,7 +33,7 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
   const containerStyle: React.CSSProperties = {
     width: '100%',
     height: '100%',
-    display: 'flex', // Use flex to center image for certain scales
+    display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
     boxSizing: 'border-box',
@@ -42,46 +42,57 @@ export function ImageView({ properties, isPreview = false }: ImageViewProps) {
     paddingBottom: `${effectivePaddingBottom}px`,
     paddingLeft: `${effectivePaddingStart}px`,
     paddingRight: `${effectivePaddingEnd}px`,
-    overflow: 'hidden', // This is crucial to crop the image when needed
+    overflow: 'hidden',
   };
 
   const imageStyle: React.CSSProperties = {
     display: 'block',
-    // Default values, will be overridden by the switch
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
   };
 
   if (isPreview) {
     imageStyle.objectFit = 'contain';
+    imageStyle.width = '100%';
+    imageStyle.height = '100%';
   } else {
     switch (contentScale) {
       case 'Fit':
         imageStyle.objectFit = 'contain';
+        imageStyle.width = '100%';
+        imageStyle.height = '100%';
+        break;
+      case 'Crop':
+        imageStyle.objectFit = 'cover';
+        imageStyle.width = '100%';
+        imageStyle.height = '100%';
         break;
       case 'FillBounds':
         imageStyle.objectFit = 'fill';
+        imageStyle.width = '100%';
+        imageStyle.height = '100%';
         break;
       case 'FillWidth':
         imageStyle.width = '100%';
         imageStyle.height = 'auto';
-        imageStyle.objectFit = undefined; // Let the width/height do the work
         break;
       case 'FillHeight':
         imageStyle.height = '100%';
         imageStyle.width = 'auto';
-        imageStyle.objectFit = undefined; // Let the width/height do the work
         break;
       case 'Inside':
         imageStyle.objectFit = 'scale-down';
+        imageStyle.maxWidth = '100%';
+        imageStyle.maxHeight = '100%';
         break;
       case 'None':
         imageStyle.objectFit = 'none';
+        imageStyle.maxWidth = '100%';
+        imageStyle.maxHeight = '100%';
         break;
-      case 'Crop':
       default:
+        // Default to 'Crop' as defined in compose-spec.ts for the property
         imageStyle.objectFit = 'cover';
+        imageStyle.width = '100%';
+        imageStyle.height = '100%';
         break;
     }
   }
