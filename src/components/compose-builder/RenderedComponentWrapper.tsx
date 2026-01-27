@@ -26,6 +26,7 @@ interface RenderedComponentWrapperProps {
   addComponent: (typeOrTemplateId: string, parentId: string | null, dropPosition?: { x: number; y: number }, index?: number) => void;
   moveComponent: (draggedId: string, newParentId: string | null, newIndex?: number) => void;
   updateComponent: (id: string, updates: { properties: Partial<BaseComponentProps> }) => void;
+  _parentComponent?: DesignComponent;
 }
 
 
@@ -56,39 +57,6 @@ const isNumericValue = (value: any): boolean => {
   return false;
 };
 
-const getDimensionValue = (
-    propName: 'width' | 'height',
-    properties: BaseComponentProps,
-    componentType: string,
-    componentId: string,
-  ): string => {
-
-    if (properties.fillMaxSize) return '100%';
-
-    const fillValue = propName === 'width' ? properties.fillMaxWidth : properties.fillMaxHeight;
-    const propValue = properties[propName];
-
-    if (componentId === ROOT_SCAFFOLD_ID) return '100%';
-
-    if (componentId === DEFAULT_TOP_APP_BAR_ID || componentType === 'TopAppBar') {
-      return propName === 'width' ? '100%' : (isNumericValue(propValue) ? `${propValue}px` : '56px');
-    }
-    if (componentId === DEFAULT_BOTTOM_NAV_BAR_ID || componentType === 'BottomNavigationBar') {
-      return propName === 'width' ? '100%' : (isNumericValue(propValue) ? `${propValue}px` : '56px');
-    }
-    if (componentId === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
-      return '100%';
-    }
-
-    if (fillValue) {
-        return '100%';
-    }
-
-    if (isNumericValue(propValue)) return `${propValue}px`;
-
-    return 'auto';
-};
-
 export function RenderedComponentWrapper({
   component,
   isPreview = false,
@@ -100,6 +68,7 @@ export function RenderedComponentWrapper({
   addComponent,
   moveComponent,
   updateComponent,
+  _parentComponent,
  }: RenderedComponentWrapperProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [dropIndicator, setDropIndicator] = useState<DropIndicatorPosition>(null);
@@ -350,6 +319,7 @@ export function RenderedComponentWrapper({
                 <RenderedComponentWrapper
                     component={topBarChild}
                     isPreview={isPreview}
+                    _parentComponent={component}
                     {...propsToPass}
                 />
               </div>
@@ -362,6 +332,7 @@ export function RenderedComponentWrapper({
                 <RenderedComponentWrapper
                     component={contentChild}
                     isPreview={isPreview}
+                    _parentComponent={component}
                     {...propsToPass}
                 />
               </div>
@@ -371,6 +342,7 @@ export function RenderedComponentWrapper({
                  <RenderedComponentWrapper
                     component={bottomBarChild}
                     isPreview={isPreview}
+                    _parentComponent={component}
                     {...propsToPass}
                  />
               </div>
@@ -419,18 +391,20 @@ export function RenderedComponentWrapper({
 
       default:
         if (component.templateIdRef) {
-           return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isRowLike} isPreview={isPreview} passThroughProps={passThroughProps} />;
+           return <ContainerView component={component} childrenComponents={childrenToRender} isRow={isRowLike} isPreview={isPreview} passThroughProps={propsToPass} />;
         }
         return <div className="p-2 border border-dashed border-red-500 text-xs">Unknown: {component.type}</div>;
     }
   };
 
-  const parent = component.parentId ? getComponentById(component.parentId) : null;
+  const { selfAlign, fillMaxWidth, fillMaxHeight, fillMaxSize, layoutWeight, width, height } = component.properties;
+  
+  const parent = _parentComponent || (component.parentId ? getComponentById(component.parentId) : null);
+  const isTemplateRoot = !parent && component.type !== 'Scaffold' && !isPreview;
+
   let parentIsRowLike = false;
   let parentIsColumnLike = false;
   
-  const isTemplateRoot = !parent && component.type !== 'Scaffold' && !isPreview;
-
   if (isTemplateRoot) {
       parentIsColumnLike = true;
   } else if (parent) {
@@ -443,61 +417,82 @@ export function RenderedComponentWrapper({
           }
       }
       parentIsRowLike = ['Row', 'LazyRow', 'LazyHorizontalGrid', 'TopAppBar', 'BottomNavigationBar', 'Carousel'].includes(effectiveParentType);
-      parentIsColumnLike = ['LazyColumn', 'LazyVerticalGrid', 'Column', 'Card', 'Box', 'Scaffold', 'DropdownMenu'].includes(effectiveParentType);
+      parentIsColumnLike = ['LazyColumn', 'LazyVerticalGrid', 'Column', 'Card', 'Box', 'Scaffold', 'DropdownMenu', 'AnimatedContent'].includes(effectiveParentType);
   }
-
+  
   const wrapperStyle: React.CSSProperties = {
-    transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
-    height: getDimensionValue('height', component.properties, component.type, component.id),
     position: 'relative',
-    display: 'block',
+    display: 'block', 
+    transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out',
+    flexShrink: 0,
   };
 
-  const { selfAlign, fillMaxWidth, fillMaxHeight, fillMaxSize, layoutWeight } = component.properties;
+  const isCoreScaffoldElement = CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id);
 
-  if (parentIsRowLike) {
-    wrapperStyle.flexShrink = 0;
-  }
-
-  if (parentIsColumnLike) {
+  // Handle core scaffold elements separately as they have fixed layout logic
+  if (isCoreScaffoldElement) {
+    wrapperStyle.width = '100%';
+    if (component.id === ROOT_SCAFFOLD_ID || component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
+      wrapperStyle.height = '100%';
+      if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
+        wrapperStyle.display = 'flex';
+        wrapperStyle.flexDirection = 'column';
+      }
+    } else {
+      wrapperStyle.height = isNumericValue(height) ? `${height}px` : 'auto';
+    }
+  } else if (parentIsColumnLike) {
     if (fillMaxWidth || fillMaxSize) {
         wrapperStyle.width = '100%';
         wrapperStyle.alignSelf = 'stretch';
     } else {
-        wrapperStyle.width = isNumericValue(component.properties.width) ? `${component.properties.width}px` : 'auto';
+        wrapperStyle.width = isNumericValue(width) ? `${width}px` : 'auto';
+        if (selfAlign && selfAlign !== 'Inherit') {
+            const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
+            wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
+        }
+    }
+    if (layoutWeight && layoutWeight > 0) {
+        wrapperStyle.flexGrow = layoutWeight;
+        wrapperStyle.flexBasis = '0%';
+        wrapperStyle.height = '100%';
+    } else {
+        wrapperStyle.height = (fillMaxHeight || fillMaxSize) ? '100%' : (isNumericValue(height) ? `${height}px` : 'auto');
+    }
+  } else if (parentIsRowLike) {
+    if (layoutWeight && layoutWeight > 0) {
+        wrapperStyle.flexGrow = layoutWeight;
+        wrapperStyle.flexBasis = '0%';
+        wrapperStyle.width = '100%';
+    } else {
+        wrapperStyle.width = (fillMaxWidth || fillMaxSize) ? '100%' : (isNumericValue(width) ? `${width}px` : 'auto');
+    }
+    if (fillMaxHeight || fillMaxSize) {
+        wrapperStyle.alignSelf = 'stretch';
+        wrapperStyle.height = '100%';
+    } else {
+        wrapperStyle.height = isNumericValue(height) ? `${height}px` : 'auto';
         if (selfAlign && selfAlign !== 'Inherit') {
             const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
             wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
         }
     }
   } else {
-    wrapperStyle.width = getDimensionValue('width', component.properties, component.type, component.id);
+    // No flex parent (e.g. root of template being edited)
+    wrapperStyle.width = (fillMaxWidth || fillMaxSize) ? '100%' : (isNumericValue(width) ? `${width}px` : 'auto');
+    wrapperStyle.height = (fillMaxHeight || fillMaxSize) ? '100%' : (isNumericValue(height) ? `${height}px` : 'auto');
   }
 
-
-  if (parentIsRowLike) {
-      if (fillMaxHeight || fillMaxSize) {
-          wrapperStyle.alignSelf = 'stretch';
-      } else if (selfAlign && selfAlign !== 'Inherit') {
-          const alignMap = { Start: 'flex-start', Center: 'center', End: 'flex-end' };
-          wrapperStyle.alignSelf = alignMap[selfAlign as keyof typeof alignMap] || 'auto';
-      }
+  // Handle Carousel-specific logic
+  if (parent?.type === 'Carousel') {
+    if (parent.properties.carouselStyle === 'Pager') {
+      wrapperStyle.scrollSnapAlign = 'start';
+    }
+    if (parent.properties.carouselStyle === 'MultiBrowse') {
+      wrapperStyle.width = `${parent.properties.preferredItemWidth}px`;
+      wrapperStyle.flexShrink = 0;
+    }
   }
-
-  if (layoutWeight && layoutWeight > 0) {
-    wrapperStyle.flexGrow = layoutWeight;
-    wrapperStyle.flexShrink = 1;
-    wrapperStyle.flexBasis = '0%';
-  }
-  
-  if (parentIsRowLike && layoutWeight && layoutWeight > 0) {
-      wrapperStyle.width = '0px';
-  }
-  
-  if (parentIsColumnLike && layoutWeight && layoutWeight > 0) {
-      wrapperStyle.height = '0px';
-  }
-
 
   const hasCornerRadius = (component.properties.cornerRadius || 0) > 0 ||
                           (component.properties.cornerRadiusTopLeft || 0) > 0 ||
@@ -519,13 +514,13 @@ export function RenderedComponentWrapper({
     ? 'bg-accent/10'
     : '';
 
-  const canResizeHorizontally = !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxWidth && !component.properties.fillMaxSize;
-  const canResizeVertically = !CORE_SCAFFOLD_ELEMENT_IDS.includes(component.id) && !component.properties.fillMaxHeight && !component.properties.fillMaxSize;
+  const canResizeHorizontally = !isCoreScaffoldElement && !component.properties.fillMaxWidth && !component.properties.fillMaxSize;
+  const canResizeVertically = !isCoreScaffoldElement && !component.properties.fillMaxHeight && !component.properties.fillMaxSize;
   const canResize = canResizeHorizontally || canResizeVertically;
 
   const isReorderTarget = isOverCurrent && canDropCurrent && dropIndicator !== null;
 
-  const SELECTION_OFFSET = 8;
+  const SELECTION_OFFSET = 4;
 
   return (
     <div
@@ -558,33 +553,30 @@ export function RenderedComponentWrapper({
         >
             {canResize && (
               <>
-                {canResizeVertically && canResizeHorizontally && ['nw', 'ne', 'sw', 'se'].map(handle => (
-                    <div key={handle} className={`resize-handle ${handle} pointer-events-auto`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle as HandleType)} />
-                ))}
-                {canResizeVertically && ['n', 's'].map(handle => (
-                    <div key={handle} className={`resize-handle ${handle} pointer-events-auto`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle as HandleType)} />
-                ))}
-                {canResizeHorizontally && ['e', 'w'].map(handle => (
-                    <div key={handle} className={`resize-handle ${handle} pointer-events-auto`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle as HandleType)} />
-                ))}
+                {['nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w'].map(handle => {
+                  if (handle.length === 2 && (!canResizeHorizontally || !canResizeVertically)) return null;
+                  if (handle.length === 1 && handle.match(/[ns]/) && !canResizeVertically) return null;
+                  if (handle.length === 1 && handle.match(/[ew]/) && !canResizeHorizontally) return null;
+                  return <div key={handle} className={`resize-handle ${handle} pointer-events-auto`} onMouseDown={(e) => handleMouseDownOnResizeHandle(e, handle as HandleType)} />;
+                })}
                 <style jsx>{`
                     .resize-handle {
-                    position: absolute;
-                    width: 12px;
-                    height: 12px;
-                    background-color: hsl(var(--primary));
-                    border: 1px solid hsl(var(--primary-foreground));
-                    border-radius: 2px;
-                    z-index: 10;
+                      position: absolute;
+                      width: 12px;
+                      height: 12px;
+                      background-color: hsl(var(--primary));
+                      border: 1px solid hsl(var(--primary-foreground));
+                      border-radius: 2px;
+                      z-index: 10;
                     }
-                    .resize-handle.nw { cursor: nwse-resize; top: -6px; left: -6px; }
-                    .resize-handle.ne { cursor: nesw-resize; top: -6px; right: -6px; }
-                    .resize-handle.sw { cursor: nesw-resize; bottom: -6px; left: -6px; }
-                    .resize-handle.se { cursor: nwse-resize; bottom: -6px; right: -6px; }
-                    .resize-handle.n { cursor: ns-resize; top: -6px; left: 50%; transform: translateX(-50%); }
-                    .resize-handle.s { cursor: ns-resize; bottom: -6px; left: 50%; transform: translateX(-50%); }
-                    .resize-handle.w { cursor: ew-resize; top: 50%; left: -6px; transform: translateY(-50%); }
-                    .resize-handle.e { cursor: ew-resize; top: 50%; right: -6px; transform: translateY(-50%); }
+                    .resize-handle.nw { cursor: nwse-resize; top: 0; left: 0; transform: translate(-50%, -50%); }
+                    .resize-handle.ne { cursor: nesw-resize; top: 0; right: 0; transform: translate(50%, -50%); }
+                    .resize-handle.sw { cursor: nesw-resize; bottom: 0; left: 0; transform: translate(-50%, 50%); }
+                    .resize-handle.se { cursor: nwse-resize; bottom: 0; right: 0; transform: translate(50%, 50%); }
+                    .resize-handle.n { cursor: ns-resize; top: 0; left: 50%; transform: translate(-50%, -50%); }
+                    .resize-handle.s { cursor: ns-resize; bottom: 0; left: 50%; transform: translate(-50%, 50%); }
+                    .resize-handle.w { cursor: ew-resize; top: 50%; left: 0; transform: translate(-50%, -50%); }
+                    .resize-handle.e { cursor: ew-resize; top: 50%; right: 0; transform: translate(50%, -50%); }
                 `}</style>
               </>
             )}
