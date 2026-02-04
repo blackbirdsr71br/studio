@@ -1,4 +1,4 @@
-# UI Compose Builder
+# Compose Builder
 
 This is a UI designer for creating Jetpack Compose layouts.
 
