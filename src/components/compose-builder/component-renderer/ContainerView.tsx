@@ -1,3 +1,4 @@
+
 'use client';
 import type { DesignComponent, ComponentType as OriginalComponentType, BaseComponentProps, CustomComponentTemplate, M3Theme } from '@/types/compose-spec';
 import { RenderedComponentWrapper } from '../component-renderer/RenderedComponentWrapper';
@@ -249,6 +250,14 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
 
   if (isLazyRowType || isLazyColumnType || (effectiveType === 'Carousel' && carouselStyle === 'Pager')) {
     scrollContainerStyle.overflow = 'auto';
+    
+    // Add internal padding to the main content area's scroll container
+    // to prevent selection rings from being clipped, without affecting user-controlled padding.
+    if (component.id === DEFAULT_CONTENT_LAZY_COLUMN_ID) {
+        scrollContainerStyle.padding = '8px';
+        scrollContainerStyle.boxSizing = 'border-box';
+    }
+      
     if(isLazyRowType) {
         childrenContainerStyle.height = '100%';
         childrenContainerStyle.width = 'auto';
@@ -377,3 +386,5 @@ export function ContainerView({ component, childrenComponents, isRow: isRowPropH
     </div>
   );
 }
+
+    
